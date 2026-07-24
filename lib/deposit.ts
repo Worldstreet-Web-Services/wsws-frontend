@@ -11,9 +11,6 @@ export const BASE_CHAIN_ID = 8453;
 export const ARBITRUM_CHAIN_ID = 42161;
 export const POLYGON_CHAIN_ID = 137;
 
-// Sentinel address Dextopus uses for a chain's native asset.
-export const NATIVE_ASSET_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-
 // The address family a chain's addresses belong to. Matches the enum the
 // validate-address endpoint accepts.
 export type AddressKind =
@@ -125,6 +122,8 @@ export interface SettleChain {
   usdc: string;
   decimals: number;
   nativeSymbol: string;
+  // Alchemy portfolio network id, so we can find the native gas balance.
+  alchemyNetwork: string;
 }
 
 export const SETTLE_CHAINS: Record<SettleChainKey, SettleChain> = {
@@ -136,6 +135,7 @@ export const SETTLE_CHAINS: Record<SettleChainKey, SettleChain> = {
     usdc: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
     decimals: 6,
     nativeSymbol: "ETH",
+    alchemyNetwork: "base-mainnet",
   },
   arbitrum: {
     key: "arbitrum",
@@ -145,6 +145,7 @@ export const SETTLE_CHAINS: Record<SettleChainKey, SettleChain> = {
     usdc: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     decimals: 6,
     nativeSymbol: "ETH",
+    alchemyNetwork: "arb-mainnet",
   },
   polygon: {
     key: "polygon",
@@ -154,6 +155,7 @@ export const SETTLE_CHAINS: Record<SettleChainKey, SettleChain> = {
     usdc: "0x3c499c542cEF5E3811e1192cE70d8cC03d5c3359",
     decimals: 6,
     nativeSymbol: "POL",
+    alchemyNetwork: "polygon-mainnet",
   },
   solana: {
     key: "solana",
@@ -163,6 +165,7 @@ export const SETTLE_CHAINS: Record<SettleChainKey, SettleChain> = {
     usdc: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     decimals: 6,
     nativeSymbol: "SOL",
+    alchemyNetwork: "solana-mainnet",
   },
 };
 

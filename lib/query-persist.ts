@@ -11,6 +11,7 @@ export const PERSISTED_PREFIXES = new Set([
   "rwa-assets",
   "rwa-categories",
   "fx-rates",
+  "predictions",
 ]);
 
 export const RQ_PERSIST_KEY = "wsws.rq-cache.v1";

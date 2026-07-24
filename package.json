@@ -14,6 +14,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@polymarket/client": "^0.1.0",
     "@privy-io/node": "^0.26.0",
     "@privy-io/react-auth": "^3.35.1",
     "@solana-program/memo": "^0.12.0",
@@ -23,6 +24,7 @@
     "@tanstack/query-sync-storage-persister": "^5.101.4",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-query-persist-client": "^5.101.4",
+    "@tanstack/react-table": "^8.21.3",
     "@web3icons/react": "^4.1.19",
     "embla-carousel-react": "^8.6.0",
     "lightweight-charts": "^5.2.0",
@@ -34,7 +36,8 @@
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "viem": "^2.55.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

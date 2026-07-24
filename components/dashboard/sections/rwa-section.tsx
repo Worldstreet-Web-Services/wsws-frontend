@@ -6,7 +6,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { RwaAssetList } from "@/components/dashboard/rwa/rwa-asset-list";
 import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { RwaDetailSheet } from "@/components/dashboard/rwa/rwa-detail-sheet";
-import { useRwaAssets, useRwaCategories } from "@/hooks/use-rwa-assets";
+import { useRwaAssets } from "@/hooks/use-rwa-assets";
 import { clampPage, isTradable, pageCount, pageSlice } from "@/lib/rwa/presenter";
 import type { RwaApiAsset } from "@/lib/rwa-api";
 import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
@@ -23,25 +23,24 @@ const PER_PAGE = 9;
 
 export const RwaSection: FC<RwaSectionProps> = () => {
   const { assets, loading, error } = useRwaAssets();
-  const categories = useRwaCategories();
 
   const [tab, setTab] = useState("All");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState("");
   const [detailAsset, setDetailAsset] = useState<RwaApiAsset | null>(null);
 
-  const catList = categories.length
-    ? categories.map((c) => c.category)
-    : [...new Set(assets.map((a) => a.category))];
+  // Only buyable assets are shown — non-tradable (issuer-only) ones are filtered
+  // out entirely, so every row and tab is actionable.
+  const buyable = assets.filter(isTradable);
+  const catList = [...new Set(buyable.map((a) => a.category))].sort();
   const tabs = ["All", ...catList];
 
-  const filtered = tab === "All" ? assets : assets.filter((a) => a.category === tab);
+  const filtered = tab === "All" ? buyable : buyable.filter((a) => a.category === tab);
   const pages = pageCount(filtered.length, PER_PAGE);
   const pageClamped = clampPage(page, filtered.length, PER_PAGE);
   const visible = pageSlice(filtered, pageClamped, PER_PAGE);
 
-  const selected =
-    assets.find((a) => a.id === selectedId) ?? assets.find(isTradable) ?? assets[0] ?? null;
+  const selected = buyable.find((a) => a.id === selectedId) ?? buyable[0] ?? null;
 
   const onTab = (next: string) => {
     setTab(next);

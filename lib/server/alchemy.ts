@@ -3,19 +3,17 @@ import "server-only";
 // Alchemy Portfolio API. One call returns native + ERC-20 + SPL balances with
 // USD prices across every requested network. Key stays server-side.
 
-const EVM_NETWORKS = [
-  "eth-mainnet",
-  "base-mainnet",
-  "arb-mainnet",
-  "opt-mainnet",
-  "polygon-mainnet",
-];
+// We track/hold on the four settlement chains only (Base, Arbitrum, Polygon,
+// Solana) — USDC plus the native gas token on each.
+const EVM_NETWORKS = ["base-mainnet", "arb-mainnet", "polygon-mainnet"];
 const SOLANA_NETWORK = "solana-mainnet";
 
 export interface TokenBalance {
   symbol: string;
   name: string;
   network: string;
+  address: string | null;
+  decimals: number;
   balance: number;
   priceUsd: number;
   valueUsd: number;
@@ -29,6 +27,7 @@ export interface Portfolio {
 
 interface AlchemyToken {
   network: string;
+  tokenAddress?: string | null;
   tokenBalance: string;
   tokenMetadata?: { decimals?: number; logo?: string; name?: string; symbol?: string };
   tokenPrices?: { currency: string; value: string }[];
@@ -51,6 +50,8 @@ function normalize(tokens: AlchemyToken[]): TokenBalance[] {
       symbol: t.tokenMetadata?.symbol ?? "?",
       name: t.tokenMetadata?.name ?? "Unknown token",
       network: t.network,
+      address: t.tokenAddress ?? null,
+      decimals,
       balance,
       priceUsd,
       valueUsd: balance * priceUsd,

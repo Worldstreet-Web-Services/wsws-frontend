@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-table";
 import { BalanceCard } from "@/components/dashboard/balance-card";
 import { AssetIcon } from "@/components/ui/asset-icon";
+import { NetworkIcon } from "@/components/ui/network-icon";
 import { useMoney } from "@/components/ui/currency-select";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
@@ -296,7 +297,12 @@ export function PortfolioView({
                     className="grid w-full cursor-pointer grid-cols-[1.7fr_auto] items-center gap-3.5 border-t border-white/6 px-4 py-3.5 text-left transition-colors hover:bg-white/4 min-[560px]:grid-cols-[2fr_1fr_1fr_1fr] sm:px-6"
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <AssetIcon sym={t.symbol} bg={tokenBg(t.symbol)} logo={t.logo} />
+                      <span className="relative shrink-0">
+                        <AssetIcon sym={t.symbol} bg={tokenBg(t.symbol)} logo={t.logo} />
+                        <span className="absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-[#0d0d0f] p-[1.5px]">
+                          <NetworkIcon network={t.network} size={14} />
+                        </span>
+                      </span>
                       <span className="min-w-0">
                         <span className="block truncate font-sans text-[14.5px] font-medium">
                           {t.symbol}
@@ -309,7 +315,8 @@ export function PortfolioView({
                     <span className="tnum hidden text-right text-sm font-normal min-[560px]:block">
                       {money.format(t.priceUsd)}
                     </span>
-                    <span className="hidden text-right text-[13px] font-normal text-white/45 min-[560px]:block">
+                    <span className="hidden items-center justify-end gap-1.5 text-[13px] font-normal text-white/60 min-[560px]:flex">
+                      <NetworkIcon network={t.network} size={16} />
                       {networkLabel(t.network)}
                     </span>
                     <span className="tnum text-right font-sans text-sm font-medium">

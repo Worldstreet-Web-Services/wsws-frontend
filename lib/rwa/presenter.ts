@@ -57,6 +57,21 @@ export function gasSymbolForChain(chain: RwaChain): string {
   return CHAIN_GAS[chain].symbol;
 }
 
+// Human network label. The same RWA (symbol) is often deployed on several
+// chains, so the table shows this to tell those deployments apart.
+export const RWA_CHAIN_LABEL: Record<RwaChain, string> = {
+  solana: "Solana",
+  ethereum: "Ethereum",
+  base: "Base",
+  arbitrum: "Arbitrum",
+  bsc: "BNB",
+  polygon: "Polygon",
+};
+
+export function chainLabel(chain: RwaChain): string {
+  return RWA_CHAIN_LABEL[chain] ?? chain;
+}
+
 // Held tokens on the asset's own chain, the candidates for paying for a buy.
 // Empty when the chain isn't tracked (e.g. Ethereum/BSC), in which case the
 // caller falls back to USDC.

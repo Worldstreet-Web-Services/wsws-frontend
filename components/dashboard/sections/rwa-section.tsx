@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type FC } from "react";
+import { useMemo, useState, type FC } from "react";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { RwaAssetList } from "@/components/dashboard/rwa/rwa-asset-list";
 import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { RwaDetailSheet } from "@/components/dashboard/rwa/rwa-detail-sheet";
 import { useRwaAssets } from "@/hooks/use-rwa-assets";
-import { clampPage, isTradable, pageCount, pageSlice } from "@/lib/rwa/presenter";
+import { isTradable } from "@/lib/rwa/presenter";
 import type { RwaApiAsset } from "@/lib/rwa-api";
 import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
 
@@ -19,33 +19,16 @@ export interface RwaSectionProps {
   onOpenConfirm: (confirm: ConfirmPayload) => void;
 }
 
-const PER_PAGE = 9;
-
 export const RwaSection: FC<RwaSectionProps> = () => {
   const { assets, loading, error } = useRwaAssets();
 
-  const [tab, setTab] = useState("All");
-  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState("");
   const [detailAsset, setDetailAsset] = useState<RwaApiAsset | null>(null);
 
   // Only buyable assets are shown — non-tradable (issuer-only) ones are filtered
-  // out entirely, so every row and tab is actionable.
-  const buyable = assets.filter(isTradable);
-  const catList = [...new Set(buyable.map((a) => a.category))].sort();
-  const tabs = ["All", ...catList];
-
-  const filtered = tab === "All" ? buyable : buyable.filter((a) => a.category === tab);
-  const pages = pageCount(filtered.length, PER_PAGE);
-  const pageClamped = clampPage(page, filtered.length, PER_PAGE);
-  const visible = pageSlice(filtered, pageClamped, PER_PAGE);
-
+  // out entirely, so every row is actionable. The list owns search/sort/paging.
+  const buyable = useMemo(() => assets.filter(isTradable), [assets]);
   const selected = buyable.find((a) => a.id === selectedId) ?? buyable[0] ?? null;
-
-  const onTab = (next: string) => {
-    setTab(next);
-    setPage(1);
-  };
 
   const onTrade = (asset: RwaApiAsset) => {
     setSelectedId(asset.id);
@@ -72,14 +55,7 @@ export const RwaSection: FC<RwaSectionProps> = () => {
       <div className="mt-5 grid grid-cols-1 gap-4 min-[980px]:grid-cols-[1fr_380px] min-[980px]:items-start">
         <div className="order-2 min-[980px]:order-1">
           <RwaAssetList
-            tabs={tabs}
-            activeTab={tab}
-            onTab={onTab}
-            visible={visible}
-            total={filtered.length}
-            page={pageClamped}
-            pages={pages}
-            onPage={setPage}
+            assets={buyable}
             selectedId={selected?.id ?? ""}
             loading={loading}
             error={error}

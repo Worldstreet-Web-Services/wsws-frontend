@@ -20,6 +20,7 @@ import { SendModal } from "@/components/dashboard/modals/send-modal";
 import { AccountModal } from "@/components/dashboard/modals/account-modal";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { scrollToSection } from "@/lib/scroll";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const nav = useMemo(() => buildNav(loadInterest()), []);
   const sectionIds = useMemo(() => nav.map((n) => n.id), [nav]);
   const activeSection = useScrollSpy(sectionIds);
+  usePrefetchDepositCatalog();
 
   const close = () => setModal(null);
   const openDetail = (detail: DetailPayload) => setModal({ type: "detail", detail });

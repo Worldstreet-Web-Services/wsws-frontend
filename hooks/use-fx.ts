@@ -27,9 +27,6 @@ export function useFx() {
   const rates = data?.rates ?? EMPTY_RATES;
   const updatedAt = data?.updatedAt ?? "";
   // Stable identities so consumers can safely put `rate`/`rates` in dep arrays.
-  const rate = useCallback(
-    (code: string) => (code === "USD" ? 1 : (rates[code] ?? null)),
-    [rates]
-  );
+  const rate = useCallback((code: string) => (code === "USD" ? 1 : (rates[code] ?? null)), [rates]);
   return useMemo(() => ({ rates, updatedAt, rate }), [rates, updatedAt, rate]);
 }

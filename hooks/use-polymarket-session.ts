@@ -7,13 +7,7 @@ import type { EIP1193Provider } from "viem";
 import { getWalletAddress } from "@/lib/user";
 import { buildSecureClient, type SecureClient } from "@/lib/polymarket/secure-client";
 
-export type SessionStatus =
-  | "idle"
-  | "connecting"
-  | "deploying"
-  | "approving"
-  | "ready"
-  | "error";
+export type SessionStatus = "idle" | "connecting" | "deploying" | "approving" | "ready" | "error";
 
 // Shared across every hook instance so the Deposit Wallet is derived, deployed,
 // and approved exactly once per user — betting and funding reuse one client.

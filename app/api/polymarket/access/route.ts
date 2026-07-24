@@ -5,7 +5,6 @@ import { isBlockedCountry } from "@/lib/polymarket/restricted";
 // (Vercel sets x-vercel-ip-country) and reports eligibility. No auth needed — it
 // returns only a boolean, never anything sensitive.
 export async function GET(req: NextRequest) {
-  const country =
-    req.headers.get("x-vercel-ip-country") ?? req.headers.get("x-country") ?? null;
+  const country = req.headers.get("x-vercel-ip-country") ?? req.headers.get("x-country") ?? null;
   return NextResponse.json({ country, allowed: !isBlockedCountry(country) });
 }

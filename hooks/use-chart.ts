@@ -34,5 +34,9 @@ export function useChart(id: string | null, range: ChartRange, type: "area" | "c
     refetchInterval: FIVE_MINUTES,
   });
 
-  return { points: data?.points ?? EMPTY_POINTS, loading: Boolean(id) && isPending, error: isError };
+  return {
+    points: data?.points ?? EMPTY_POINTS,
+    loading: Boolean(id) && isPending,
+    error: isError,
+  };
 }

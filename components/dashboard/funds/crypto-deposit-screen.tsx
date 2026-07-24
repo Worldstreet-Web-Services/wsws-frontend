@@ -110,8 +110,8 @@ export function CryptoDepositScreen({ onBack }: CryptoDepositScreenProps) {
         </div>
         <div className="border-accent/20 bg-accent/8 mt-3 rounded-[14px] border px-4 py-3">
           <p className="text-[12.5px] leading-[1.5] font-normal text-white/80">
-            This address is permanent. Send to it any time and the funds land as USDC in your
-            wallet automatically, usually within a minute.
+            This address is permanent. Send to it any time and the funds land as USDC in your wallet
+            automatically, usually within a minute.
           </p>
         </div>
         <button
@@ -180,7 +180,10 @@ export function CryptoDepositScreen({ onBack }: CryptoDepositScreenProps) {
         {req && staticAddr.isError ? (
           <div className="text-down text-[13px] font-normal">
             {staticAddr.error.message}{" "}
-            <button onClick={() => staticAddr.refetch()} className="text-accent cursor-pointer underline">
+            <button
+              onClick={() => staticAddr.refetch()}
+              className="text-accent cursor-pointer underline"
+            >
               Try again
             </button>
           </div>
@@ -194,9 +197,8 @@ export function CryptoDepositScreen({ onBack }: CryptoDepositScreenProps) {
 
         {originToken && settlementAddress && !refundTo ? (
           <div className="border-down/25 bg-down/10 rounded-[14px] border px-4 py-3 text-[12.5px] font-normal text-white/70">
-            Deposits from {originChain?.name} need a{" "}
-            {refundType === "solana" ? "Solana" : "wallet"} address on your account for refunds.
-            Pick another network to continue.
+            Deposits from {originChain?.name} need a {refundType === "solana" ? "Solana" : "wallet"}{" "}
+            address on your account for refunds. Pick another network to continue.
           </div>
         ) : null}
       </div>

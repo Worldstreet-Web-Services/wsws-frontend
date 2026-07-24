@@ -52,7 +52,10 @@ export default function DashboardPage() {
   // Stable handler identities so the memoized section views below don't
   // re-render when this page re-renders (modal open/close, active-section scroll).
   const close = useCallback(() => setModal(null), []);
-  const openDetail = useCallback((detail: DetailPayload) => setModal({ type: "detail", detail }), []);
+  const openDetail = useCallback(
+    (detail: DetailPayload) => setModal({ type: "detail", detail }),
+    []
+  );
   const openConfirm = useCallback(
     (confirm: ConfirmPayload) => setModal({ type: "confirm", confirm }),
     []

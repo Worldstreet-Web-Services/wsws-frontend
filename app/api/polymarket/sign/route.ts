@@ -43,9 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Polymarket builder not configured" }, { status: 503 });
   }
 
-  const { method = "GET", path = "", body = "" } = (await req
-    .json()
-    .catch(() => ({}))) as SignBody;
+  const { method = "GET", path = "", body = "" } = (await req.json().catch(() => ({}))) as SignBody;
 
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = buildBuilderSignature(secret, timestamp, method.toUpperCase(), path, body);

@@ -214,10 +214,10 @@ export function isRoutable(pay: TradeAsset, receive: TradeAsset): boolean {
 export function isEvmRoutable(pay: TradeAsset, receive: TradeAsset): boolean {
   return Boolean(
     pay.evmAddress &&
-      pay.evmDecimals != null &&
-      pay.evmChainId != null &&
-      receive.evmAddress &&
-      receive.evmDecimals != null &&
-      receive.evmChainId === pay.evmChainId
+    pay.evmDecimals != null &&
+    pay.evmChainId != null &&
+    receive.evmAddress &&
+    receive.evmDecimals != null &&
+    receive.evmChainId === pay.evmChainId
   );
 }

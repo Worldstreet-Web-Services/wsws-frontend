@@ -95,7 +95,9 @@ export function NetworkTabs({
                 }`}
               >
                 <ChainGlyph chain={c} />
-                <span className="font-sans text-[13px] font-medium whitespace-nowrap">{c.name}</span>
+                <span className="font-sans text-[13px] font-medium whitespace-nowrap">
+                  {c.name}
+                </span>
               </button>
             );
           })}

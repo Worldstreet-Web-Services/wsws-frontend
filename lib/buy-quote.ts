@@ -1,9 +1,14 @@
-// Dextopus quote + status client for market buys. A buy quotes the user's USDC
-// on Base into the chosen destination token/chain, delivered to the user's own
-// wallet. Requests go through the /api/dextopus proxy. The live Dextopus
-// response shape differs from the (never-wired) deposit types in lib/deposit, so
-// it is normalized here against the live fields. Amounts stay in integer base
+// Dextopus quote client for market buys. A buy quotes the user's USDC on Base
+// into the chosen destination token/chain, delivered to the user's own wallet.
+// Requests go through the /api/dextopus proxy. Amounts stay in integer base
 // units (bigint) so we never lose precision to floating point.
+//
+// Field names are verified against the live API: the quote returns
+// depositRequestId / amountOut (not the requestId / estimatedOutput the hosted
+// docs list). The quote is EXACT_INPUT: send exactly the quoted amount to the
+// deposit address within expiresInSeconds. dry mode is not used because the live
+// API ignores it and mints a real request either way, so the "you get" preview
+// is derived from market price and the real quote is only fetched at buy time.
 
 import { apiFetch } from "@/lib/api";
 import { toBaseUnits } from "@/lib/trade/math";
@@ -15,21 +20,22 @@ export interface BuyQuoteInput {
   amount: bigint;
   // The user's own wallet on the destination chain: where the bought token lands.
   recipient: string;
-  // The user's Base wallet, refunded if the bridge cannot complete.
+  // The user's Base wallet, refunded if the order cannot complete.
   refundTo: string;
   slippageBps: number;
-  // Preview only: quote without minting a deposit address.
-  dry?: boolean;
 }
 
 export interface BuyQuote {
-  // Estimated destination token received, in that token's base units.
+  // Expected destination token received, in that token's base units.
   estimatedOutput: bigint;
-  // Present only on a real (non-dry) quote: where to send the USDC, and the id
-  // to poll status against.
-  depositAddress: string | null;
-  requestId: string | null;
-  expiresAt: string | null;
+  // Guaranteed minimum after slippage, in base units.
+  minOutput: bigint;
+  // Where to send the USDC on Base.
+  depositAddress: string;
+  // Id to poll status against.
+  requestId: string;
+  // Seconds the quoted deposit address stays valid.
+  expiresInSeconds: number;
 }
 
 // Build the Dextopus deposit/quote body for a buy. Pure, so it is unit tested.
@@ -43,38 +49,37 @@ export function buildBuyQuoteBody(input: BuyQuoteInput) {
     recipient: input.recipient,
     refundTo: input.refundTo,
     slippageBps: input.slippageBps,
-    dry: Boolean(input.dry),
   };
 }
 
 interface RawBuyQuote {
   success?: boolean;
+  depositRequestId?: string;
   depositAddress?: string;
-  requestId?: string;
-  estimatedOutput?: string;
   amountOut?: string;
-  expiresAt?: string;
+  minAmountOut?: string;
+  expiresInSeconds?: number;
 }
 
 // Parse an output amount the API may return either as integer base units
-// ("1230000") or a human decimal ("1.23"). Base units are the documented shape;
-// the decimal branch is a defensive fallback so an unexpected format is not read
-// as a wildly wrong integer.
+// ("38402") or a human decimal ("0.00038402"). Base units are the live shape;
+// the decimal branch is a defensive fallback.
 function parseOutput(value: string, decimals: number): bigint {
   const v = value.trim();
   return v.includes(".") ? toBaseUnits(v, decimals) : BigInt(v || "0");
 }
 
-// Normalize a raw Dextopus quote. estimatedOutput is the forward-quote field;
-// amountOut is the reverse-quote fallback.
 export function normalizeBuyQuote(raw: RawBuyQuote, decimals: number): BuyQuote {
-  const out = raw.estimatedOutput ?? raw.amountOut;
-  if (out == null) throw new Error("The quote returned no output amount.");
+  if (raw.amountOut == null) throw new Error("The quote returned no output amount.");
+  if (!raw.depositAddress || !raw.depositRequestId) {
+    throw new Error("The quote did not return a deposit address.");
+  }
   return {
-    estimatedOutput: parseOutput(out, decimals),
-    depositAddress: raw.depositAddress ?? null,
-    requestId: raw.requestId ?? null,
-    expiresAt: raw.expiresAt ?? null,
+    estimatedOutput: parseOutput(raw.amountOut, decimals),
+    minOutput: parseOutput(raw.minAmountOut ?? raw.amountOut, decimals),
+    depositAddress: raw.depositAddress,
+    requestId: raw.depositRequestId,
+    expiresInSeconds: raw.expiresInSeconds ?? 0,
   };
 }
 
@@ -86,45 +91,9 @@ export async function fetchBuyQuote(input: BuyQuoteInput): Promise<BuyQuote> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const message = typeof data?.message === "string" ? data.message : "Couldn't get a buy quote.";
+    const message =
+      typeof data?.message === "string" ? data.message : "Couldn't complete your order.";
     throw new Error(message);
   }
   return normalizeBuyQuote(data, input.route.decimals);
-}
-
-export interface BuyStatus {
-  status: string;
-  progress: { deposited: boolean; bridged: boolean; settled: boolean };
-  destinationTxHash: string | null;
-}
-
-export async function fetchBuyStatus(requestId: string): Promise<BuyStatus> {
-  const res = await apiFetch(
-    `/api/dextopus/deposit/status?requestId=${encodeURIComponent(requestId)}`
-  );
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error("Couldn't check buy status.");
-  const p = (data.progress ?? {}) as Record<string, unknown>;
-  return {
-    status: typeof data.status === "string" ? data.status : "",
-    progress: {
-      deposited: Boolean(p.deposited),
-      bridged: Boolean(p.bridged),
-      settled: Boolean(p.settled),
-    },
-    destinationTxHash: typeof data.destinationTxHash === "string" ? data.destinationTxHash : null,
-  };
-}
-
-// Map the live status into the shared deposit stage strings so depositProgress
-// and the DepositStatus component can render a buy the same way as a deposit.
-export function buyStatusStrings(s: BuyStatus): { status: string; executionStatus: string } {
-  const exec = s.progress.settled
-    ? "settled"
-    : s.progress.bridged
-      ? "processing"
-      : s.progress.deposited
-        ? "detected"
-        : "";
-  return { status: s.status, executionStatus: exec };
 }

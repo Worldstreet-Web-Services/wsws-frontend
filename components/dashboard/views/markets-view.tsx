@@ -18,10 +18,11 @@ import { useBuyDestinations } from "@/hooks/use-buy-catalog";
 import { buyableSymbols } from "@/lib/buy";
 import type { MarketToken } from "@/lib/market-catalog";
 import { formatUsd } from "@/lib/trade/math";
-import type { DetailPayload } from "@/components/dashboard/modal-types";
+import type { BuyPayload, DetailPayload } from "@/components/dashboard/modal-types";
 
 interface MarketsViewProps {
   onOpenDetail: (detail: DetailPayload) => void;
+  onOpenBuy: (buy: BuyPayload) => void;
 }
 
 const ICON_BG = "linear-gradient(135deg,#A78BFA,#6d5bd0)";
@@ -44,7 +45,7 @@ const columns = [
   columnHelper.accessor("marketCap", { id: "mcap" }),
 ];
 
-export function MarketsView({ onOpenDetail }: MarketsViewProps) {
+export function MarketsView({ onOpenDetail, onOpenBuy }: MarketsViewProps) {
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([{ id: "mcap", desc: true }]);
   const { data: tokens = [], isLoading, isError } = useMarketTokens("popular");
@@ -97,6 +98,9 @@ export function MarketsView({ onOpenDetail }: MarketsViewProps) {
         { k: "24h change", v: changeLabel(t.change24h) },
         { k: "Market cap", v: compactUsd(t.marketCap) },
       ],
+      cta: `Buy ${t.name}`,
+      onCta: () =>
+        onOpenBuy({ symbol: t.symbol, name: t.name, priceUsd: t.priceUsd, logo: t.logo }),
     });
 
   const sortHeader = (id: string, label: string, className: string) => {

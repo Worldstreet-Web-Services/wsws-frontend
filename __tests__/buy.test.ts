@@ -5,6 +5,7 @@ import {
   buyableSymbols,
   defaultRouteForSymbol,
   isBuyable,
+  isOfferable,
   routesForSymbol,
   sortRoutes,
   type BuyRoute,
@@ -14,6 +15,8 @@ const BASE = DEFAULT_BUY_CHAIN_ID; // 8453
 const ARBITRUM = 42161;
 const POLYGON = 137;
 const SOLANA = 792703809;
+const BITCOIN = 8253038;
+const XRP = 1440000;
 
 function route(overrides: Partial<BuyRoute>): BuyRoute {
   return {
@@ -26,7 +29,9 @@ function route(overrides: Partial<BuyRoute>): BuyRoute {
   };
 }
 
-// ETH on three chains, USDT on two, cbBTC on Base only, WIF on Solana only.
+// ETH on three chains, USDT on two, cbBTC on Base, WIF on Solana, SOL on both
+// Solana (native) and Base (a wrapped ERC-20), plus BTC and XRP that only route
+// to chains we hold no wallet for.
 const DESTINATIONS: BuyRoute[] = [
   route({ symbol: "ETH", destinationChainId: ARBITRUM, chainName: "Arbitrum" }),
   route({ symbol: "ETH", destinationChainId: BASE, chainName: "Base" }),
@@ -34,7 +39,17 @@ const DESTINATIONS: BuyRoute[] = [
   route({ symbol: "USDT", destinationChainId: POLYGON, chainName: "Polygon", decimals: 6 }),
   route({ symbol: "USDT", destinationChainId: ARBITRUM, chainName: "Arbitrum", decimals: 6 }),
   route({ symbol: "cbBTC", destinationChainId: BASE, chainName: "Base", decimals: 8 }),
-  route({ symbol: "WIF", destinationChainId: SOLANA, chainName: "Solana", decimals: 6 }),
+  route({ symbol: "WIF", destinationChainId: SOLANA, chainName: "solana", decimals: 6 }),
+  route({ symbol: "SOL", destinationChainId: SOLANA, chainName: "solana", decimals: 9 }),
+  route({
+    symbol: "SOL",
+    destinationChainId: BASE,
+    chainName: "Base",
+    decimals: 9,
+    asset: "0x3119",
+  }),
+  route({ symbol: "BTC", destinationChainId: BITCOIN, chainName: "bitcoin", decimals: 8 }),
+  route({ symbol: "XRP", destinationChainId: XRP, chainName: "xrp", decimals: 6 }),
 ];
 
 describe("BUY_ORIGIN", () => {
@@ -45,8 +60,35 @@ describe("BUY_ORIGIN", () => {
   });
 });
 
+describe("isOfferable", () => {
+  it("allows EVM and Solana routes", () => {
+    expect(isOfferable(route({ chainName: "Arbitrum", destinationChainId: ARBITRUM }))).toBe(true);
+    expect(
+      isOfferable(route({ symbol: "WIF", chainName: "solana", destinationChainId: SOLANA }))
+    ).toBe(true);
+  });
+
+  it("rejects chains we hold no wallet for", () => {
+    expect(
+      isOfferable(route({ symbol: "BTC", chainName: "bitcoin", destinationChainId: BITCOIN }))
+    ).toBe(false);
+    expect(isOfferable(route({ symbol: "XRP", chainName: "xrp", destinationChainId: XRP }))).toBe(
+      false
+    );
+  });
+
+  it("rejects a wrapped coin off its canonical chain (SOL only on Solana)", () => {
+    expect(isOfferable(route({ symbol: "SOL", chainName: "Base", destinationChainId: BASE }))).toBe(
+      false
+    );
+    expect(
+      isOfferable(route({ symbol: "SOL", chainName: "solana", destinationChainId: SOLANA }))
+    ).toBe(true);
+  });
+});
+
 describe("routesForSymbol", () => {
-  it("returns every chain a symbol can be delivered to, Base first", () => {
+  it("returns every deliverable chain for a symbol, Base first", () => {
     const routes = routesForSymbol(DESTINATIONS, "ETH");
     expect(routes.map((r) => r.chainName)).toEqual(["Base", "Arbitrum", "Polygon"]);
   });
@@ -56,8 +98,21 @@ describe("routesForSymbol", () => {
     expect(routes.map((r) => r.chainName)).toEqual(["Arbitrum", "Polygon"]);
   });
 
-  it("matches the symbol case-insensitively and ignores surrounding space", () => {
-    expect(routesForSymbol(DESTINATIONS, " eth ")).toHaveLength(3);
+  it("offers SOL only on Solana, hiding the Base wrapper", () => {
+    const routes = routesForSymbol(DESTINATIONS, "SOL");
+    expect(routes).toHaveLength(1);
+    expect(routes[0].destinationChainId).toBe(SOLANA);
+  });
+
+  it("resolves BTC through its alias to cbBTC on Base", () => {
+    const routes = routesForSymbol(DESTINATIONS, "BTC");
+    expect(routes).toHaveLength(1);
+    expect(routes[0].chainName).toBe("Base");
+    expect(routes[0].symbol).toBe("cbBTC");
+  });
+
+  it("offers nothing for a coin that only routes to a non-deliverable chain", () => {
+    expect(routesForSymbol(DESTINATIONS, "XRP")).toEqual([]);
   });
 
   it("returns a single route for a symbol tied to one chain", () => {
@@ -66,7 +121,7 @@ describe("routesForSymbol", () => {
     expect(routes[0].destinationChainId).toBe(SOLANA);
   });
 
-  it("returns nothing for an unbuyable symbol", () => {
+  it("returns nothing for an unknown symbol", () => {
     expect(routesForSymbol(DESTINATIONS, "DOGE")).toEqual([]);
   });
 });
@@ -78,21 +133,24 @@ describe("defaultRouteForSymbol", () => {
 
   it("picks the only chain for a single-chain symbol", () => {
     expect(defaultRouteForSymbol(DESTINATIONS, "cbBTC")?.destinationChainId).toBe(BASE);
-    expect(defaultRouteForSymbol(DESTINATIONS, "WIF")?.destinationChainId).toBe(SOLANA);
+    expect(defaultRouteForSymbol(DESTINATIONS, "SOL")?.destinationChainId).toBe(SOLANA);
   });
 
-  it("is null for an unbuyable symbol", () => {
-    expect(defaultRouteForSymbol(DESTINATIONS, "DOGE")).toBeNull();
+  it("is null for a non-offerable symbol", () => {
+    expect(defaultRouteForSymbol(DESTINATIONS, "XRP")).toBeNull();
   });
 });
 
 describe("buyableSymbols / isBuyable", () => {
-  it("collects the uppercased buyable symbol set", () => {
-    expect(buyableSymbols(DESTINATIONS)).toEqual(new Set(["ETH", "USDT", "CBBTC", "WIF"]));
+  it("collects offerable symbols by display ticker (cbBTC surfaces as BTC)", () => {
+    expect(buyableSymbols(DESTINATIONS)).toEqual(new Set(["ETH", "USDT", "BTC", "WIF", "SOL"]));
   });
 
-  it("reports buyability case-insensitively", () => {
+  it("reports buyability, resolving aliases and excluding non-deliverable chains", () => {
     expect(isBuyable(DESTINATIONS, "eth")).toBe(true);
+    expect(isBuyable(DESTINATIONS, "SOL")).toBe(true);
+    expect(isBuyable(DESTINATIONS, "BTC")).toBe(true);
+    expect(isBuyable(DESTINATIONS, "XRP")).toBe(false);
     expect(isBuyable(DESTINATIONS, "DOGE")).toBe(false);
   });
 });

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
-import type { EIP1193Provider } from "@privy-io/react-auth";
+import { usePrivy, useSendTransaction } from "@privy-io/react-auth";
+import { createPublicClient, http, type Chain } from "viem";
+import { arbitrum, base, polygon } from "viem/chains";
 import { fetchLifiQuote } from "@/lib/trade/lifi";
 import {
   encodeAllowanceCall,
@@ -20,60 +21,82 @@ export interface EvmSwapExecuteInput {
   slippageBps: number;
 }
 
-// Poll for a mined receipt so the approve transaction confirms before the swap
-// spends the allowance. Caps the wait so a stuck transaction surfaces an error
-// instead of hanging the flow.
-const RECEIPT_POLL_ATTEMPTS = 40;
-const RECEIPT_POLL_INTERVAL_MS = 3000;
+// Chains the swap flow supports. Reads (allowance, receipt) go through a client
+// pinned to one of these, never the embedded wallet's ambient provider: Privy
+// can leave that provider pointed at a different chain, so a receipt for a
+// Base/Polygon/Arbitrum transaction would be polled on the wrong chain and never
+// found, timing the swap out even though it actually landed.
+const SWAP_CHAINS: Record<number, Chain> = {
+  [base.id]: base,
+  [arbitrum.id]: arbitrum,
+  [polygon.id]: polygon,
+};
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// Cap the wait so a genuinely stuck transaction surfaces an error instead of
+// hanging the flow. Fast L2 blocks (~2s) confirm well inside this.
+const RECEIPT_TIMEOUT_MS = 120_000;
+const RECEIPT_POLL_MS = 2_000;
+
+function publicClientFor(chainId: number) {
+  const chain = SWAP_CHAINS[chainId];
+  if (!chain) throw new Error(`This swap chain isn't supported yet (${chainId}).`);
+  return createPublicClient({ chain, transport: http() });
 }
 
+// Inferred so it tracks the app's viem version (a second copy is bundled by
+// other deps, and naming the exported PublicClient type collides with it).
+type SwapClient = ReturnType<typeof publicClientFor>;
+
 async function readAllowance(
-  provider: EIP1193Provider,
+  client: SwapClient,
   token: string,
   owner: string,
   spender: string
 ): Promise<bigint> {
-  const result: string = await provider.request({
-    method: "eth_call",
-    params: [{ to: token, data: encodeAllowanceCall(owner, spender) }, "latest"],
+  const { data } = await client.call({
+    to: token as `0x${string}`,
+    data: encodeAllowanceCall(owner, spender),
   });
-  return parseAllowance(result);
+  return parseAllowance(data ?? "0x");
 }
 
-async function waitForReceipt(provider: EIP1193Provider, hash: string): Promise<void> {
-  for (let attempt = 0; attempt < RECEIPT_POLL_ATTEMPTS; attempt++) {
-    const receipt = await provider.request({
-      method: "eth_getTransactionReceipt",
-      params: [hash],
+// Waits for a transaction to confirm on its own chain. `label` names the step so
+// a timeout or revert reports the step that actually failed instead of always
+// blaming the approval.
+async function awaitReceipt(client: SwapClient, hash: string, label: string): Promise<void> {
+  let receipt;
+  try {
+    receipt = await client.waitForTransactionReceipt({
+      hash: hash as `0x${string}`,
+      timeout: RECEIPT_TIMEOUT_MS,
+      pollingInterval: RECEIPT_POLL_MS,
     });
-    if (receipt) {
-      if (receipt.status === "0x0") throw new Error("Token approval failed on-chain.");
-      return;
-    }
-    await delay(RECEIPT_POLL_INTERVAL_MS);
+  } catch {
+    throw new Error(
+      `${label} is taking longer than usual to confirm. Check your wallet, then try again.`
+    );
   }
-  throw new Error("Token approval is taking too long. Try again.");
+  if (receipt.status === "reverted") {
+    throw new Error(`${label} failed on-chain. No funds were moved. Try again.`);
+  }
 }
 
 // Executes an EVM swap on the token's own chain (Base, Arbitrum or Polygon)
 // through LI.FI, signed by the Privy embedded EVM wallet. Fetches a fresh quote
-// for the taker on input.fromChainId, grants the ERC-20 allowance if
-// the router needs one, then sends the swap transaction. The backend never
-// holds keys; the wallet signs client-side. Returns once the swap is submitted.
+// for the taker on input.fromChainId, grants the ERC-20 allowance if the router
+// needs one, then sends the swap transaction. The backend never holds keys; the
+// wallet signs client-side. Returns once the swap has confirmed on-chain so the
+// caller's balance refetch reflects the received token.
 export function useEvmSwapExecute() {
   const { user } = usePrivy();
   const { sendTransaction } = useSendTransaction();
-  const { wallets } = useWallets();
 
   return useCallback(
     async (input: EvmSwapExecuteInput): Promise<void> => {
       const owner = getWalletAddress(user, "ethereum");
       if (!owner) throw new Error("No EVM wallet is connected.");
-      const wallet = wallets.find((w) => w.address.toLowerCase() === owner.toLowerCase());
-      if (!wallet) throw new Error("The EVM wallet is not ready. Try again.");
+
+      const client = publicClientFor(input.fromChainId);
 
       const quote = await fetchLifiQuote({
         fromChain: input.fromChainId,
@@ -85,11 +108,9 @@ export function useEvmSwapExecute() {
         slippage: input.slippageBps / 10000,
       });
 
-      const provider = await wallet.getEthereumProvider();
-
       if (!isNativeToken(input.fromToken)) {
         const allowance = await readAllowance(
-          provider,
+          client,
           input.fromToken,
           owner,
           quote.approvalAddress
@@ -100,7 +121,7 @@ export function useEvmSwapExecute() {
             data: encodeApprove(quote.approvalAddress, input.fromAmount),
             chainId: input.fromChainId,
           });
-          await waitForReceipt(provider, hash);
+          await awaitReceipt(client, hash, "Token approval");
         }
       }
 
@@ -114,8 +135,8 @@ export function useEvmSwapExecute() {
       });
       // Wait for the swap to mine so the caller's balance refetch reflects the
       // received token instead of the pre-swap balance.
-      await waitForReceipt(provider, hash);
+      await awaitReceipt(client, hash, "The swap");
     },
-    [user, sendTransaction, wallets]
+    [user, sendTransaction]
   );
 }

@@ -29,18 +29,13 @@ export interface BuyRoute {
   decimals: number;
 }
 
-// We can only deliver a bought asset to a chain one of our embedded wallets
-// controls: any EVM chain (EVM wallet) or Solana (Solana wallet). We hold no
-// wallet for these ecosystems, so their routes are never offered. Classified by
-// the Dextopus blockchain label, which is always present (addressKind is not).
-const NON_DELIVERABLE_CHAINS = new Set([
-  "bitcoin",
-  "tron",
-  "xrp",
-  "ton",
-  "eclipse", // SVM but not Solana; out of scope for now
-  "soon",
-]);
+// The chains we settle buys on and can display in holdings. A bought asset lands
+// on the network picked in the sheet, so we only offer networks the portfolio
+// reads back (Alchemy-supported) and that our embedded wallets control. Anything
+// else (obscure L2s, or chains we hold no wallet for like bitcoin/tron/xrp/ton)
+// is never offered. Classified by the Dextopus blockchain label, which is always
+// present (addressKind is not).
+const SUPPORTED_CHAINS = new Set(["base", "ethereum", "arbitrum", "optimism", "polygon", "solana"]);
 
 // Some coins are native to one ecosystem and appear on other chains only as
 // wrapped representations that would mislead a buyer: an ERC-20 "SOL" on Base is
@@ -54,7 +49,7 @@ const CANONICAL_CHAIN: Record<string, number> = {
 // A route is offerable when we can deliver to its chain and it is not a
 // misleading wrapped representation of a coin native to another chain.
 export function isOfferable(route: BuyRoute): boolean {
-  if (NON_DELIVERABLE_CHAINS.has(route.chainName.toLowerCase())) return false;
+  if (!SUPPORTED_CHAINS.has(route.chainName.toLowerCase())) return false;
   const canonical = CANONICAL_CHAIN[route.symbol.toUpperCase()];
   return canonical == null || route.destinationChainId === canonical;
 }

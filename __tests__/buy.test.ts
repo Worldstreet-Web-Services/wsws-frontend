@@ -61,14 +61,18 @@ describe("BUY_ORIGIN", () => {
 });
 
 describe("isOfferable", () => {
-  it("allows EVM and Solana routes", () => {
+  it("allows supported chains (EVM and Solana)", () => {
+    expect(isOfferable(route({ chainName: "Ethereum", destinationChainId: 1 }))).toBe(true);
     expect(isOfferable(route({ chainName: "Arbitrum", destinationChainId: ARBITRUM }))).toBe(true);
     expect(
       isOfferable(route({ symbol: "WIF", chainName: "solana", destinationChainId: SOLANA }))
     ).toBe(true);
   });
 
-  it("rejects chains we hold no wallet for", () => {
+  it("rejects unsupported chains and ones we hold no wallet for", () => {
+    expect(isOfferable(route({ symbol: "BNB", chainName: "bsc", destinationChainId: 56 }))).toBe(
+      false
+    );
     expect(
       isOfferable(route({ symbol: "BTC", chainName: "bitcoin", destinationChainId: BITCOIN }))
     ).toBe(false);

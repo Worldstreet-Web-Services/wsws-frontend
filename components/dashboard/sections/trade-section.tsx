@@ -27,17 +27,40 @@ export function TradeSection() {
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <Eyebrow>Perpetuals</Eyebrow>
-
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="ws-serif text-[26px]">Perpetuals</h2>
-      </div>
+      <h2 className="ws-serif mt-3.5 text-[32px] tracking-[-0.01em]">Perpetuals</h2>
 
       <div className="mt-4 grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,440px)_1fr]">
         <div className="ws-card p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_30px_70px_-30px_rgba(0,0,0,0.8)] sm:p-5">
-          <PerpsPanel market={market} onMarket={setMarket} prices={prices} balances={balances} />
+          <PerpsPanel market={market} prices={prices} balances={balances} />
         </div>
 
         <div className="flex flex-col gap-4">
+          <div className="flex gap-2">
+            {PERP_ASSETS.map((m) => {
+              const on = m.symbol === market.symbol;
+              const price = prices[m.symbol] ?? 0;
+              return (
+                <button
+                  key={m.symbol}
+                  onClick={() => setMarket(m)}
+                  className={`flex flex-1 cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
+                    on
+                      ? "border-accent/40 bg-accent/10"
+                      : "border-white/10 bg-white/4 hover:bg-white/6"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <AssetIcon sym={m.symbol} bg={m.bg} size={18} />
+                    <span className="font-sans text-[13px] font-semibold">{m.symbol}-PERP</span>
+                  </span>
+                  <span className="tnum text-xs font-normal text-white/55">
+                    {price > 0 ? formatUsd(price) : "—"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="ws-card p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2.5">
               <AssetIcon sym={base} bg={findAsset(base)?.bg ?? "#333"} size={30} />

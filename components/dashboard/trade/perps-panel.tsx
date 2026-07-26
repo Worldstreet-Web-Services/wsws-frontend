@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AssetIcon } from "@/components/ui/asset-icon";
 import { formatAmount, formatUsd, liquidationPrice, openFee, positionSize } from "@/lib/trade/math";
-import { PERP_ASSETS, type TradeAsset } from "@/lib/trade/assets";
+import type { TradeAsset } from "@/lib/trade/assets";
 
 interface PerpsPanelProps {
   market: TradeAsset;
-  onMarket: (asset: TradeAsset) => void;
   prices: Record<string, number>;
   balances: Record<string, number>;
 }
@@ -18,7 +16,7 @@ const DECIMAL_INPUT = /^\d*\.?\d*$/;
 const LEVERAGE_MARKS = [1, 5, 10, 25, 50];
 const ORDER_TYPES: OrderType[] = ["market", "limit"];
 
-export function PerpsPanel({ market, onMarket, prices, balances }: PerpsPanelProps) {
+export function PerpsPanel({ market, prices, balances }: PerpsPanelProps) {
   const [side, setSide] = useState<"long" | "short">("long");
   const [orderType, setOrderType] = useState<OrderType>("market");
   const [collateral, setCollateral] = useState("");
@@ -59,30 +57,6 @@ export function PerpsPanel({ market, onMarket, prices, balances }: PerpsPanelPro
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        {PERP_ASSETS.map((m) => {
-          const on = m.symbol === market.symbol;
-          const price = prices[m.symbol] ?? 0;
-          return (
-            <button
-              key={m.symbol}
-              onClick={() => onMarket(m)}
-              className={`flex flex-1 cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-left transition-colors ${
-                on ? "border-accent/40 bg-accent/10" : "border-white/10 bg-white/4 hover:bg-white/6"
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                <AssetIcon sym={m.symbol} bg={m.bg} size={18} />
-                <span className="font-sans text-[13px] font-semibold">{m.symbol}-PERP</span>
-              </span>
-              <span className="tnum text-xs font-normal text-white/55">
-                {price > 0 ? formatUsd(price) : "—"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => setSide("long")}

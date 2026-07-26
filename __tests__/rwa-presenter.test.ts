@@ -16,6 +16,7 @@ import {
   isIssuerAccess,
   isRateLimitError,
   isSellableChain,
+  isBaseAsset,
   isTradable,
   isTransientRwaError,
   minReceiveTokens,
@@ -95,6 +96,12 @@ describe("access classification", () => {
     expect(isIssuerAccess(asset({ freelyTradable: false }))).toBe(true);
     expect(isIssuerAccess(asset({ accessMode: "issuer" }))).toBe(true);
     expect(isTradable(asset({ accessMode: "issuer", freelyTradable: true }))).toBe(false);
+  });
+
+  it("is a Base asset only when the chain is base", () => {
+    expect(isBaseAsset(asset({ chain: "base" }))).toBe(true);
+    expect(isBaseAsset(asset({ chain: "ethereum" }))).toBe(false);
+    expect(isBaseAsset(asset({ chain: "arbitrum" }))).toBe(false);
   });
 });
 

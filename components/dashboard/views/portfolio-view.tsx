@@ -21,13 +21,14 @@ import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { selectHoldings } from "@/lib/holdings";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
-import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
+import type { BuyPayload, DetailPayload, SellPayload } from "@/components/dashboard/modal-types";
 
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
   onOpenDetail: (detail: DetailPayload) => void;
-  onOpenConfirm: (confirm: ConfirmPayload) => void;
+  onOpenBuy: (buy: BuyPayload) => void;
+  onOpenSell: (sell: SellPayload) => void;
 }
 
 const NETWORK_LABELS: Record<string, string> = {
@@ -64,7 +65,8 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   onOpenDetail,
-  onOpenConfirm,
+  onOpenBuy,
+  onOpenSell,
 }: PortfolioViewProps) {
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
@@ -120,24 +122,6 @@ export function PortfolioView({
     );
   };
 
-  const reviewConfirm = (t: TokenBalance): ConfirmPayload => ({
-    eyebrow: "Portfolio",
-    badgeSym: t.symbol,
-    badgeBg: tokenBg(t.symbol),
-    badgeLogo: t.logo,
-    title: t.name,
-    sub: `${formatQty(t.balance)} ${t.symbol} · ${networkLabel(t.network)}`,
-    lines: [
-      { k: "Holdings", v: `${formatQty(t.balance)} ${t.symbol}` },
-      { k: "Market price", v: money.format(t.priceUsd) },
-      { k: "Network", v: networkLabel(t.network) },
-      { k: "Position value", v: money.format(t.valueUsd), c: "#7CE7B0" },
-    ],
-    cta: "Done",
-    successTitle: "All set",
-    successMsg: `${t.name} is up to date in your portfolio.`,
-  });
-
   const openToken = (t: TokenBalance) =>
     onOpenDetail({
       sym: t.symbol,
@@ -152,8 +136,21 @@ export function PortfolioView({
         { k: "Network", v: networkLabel(t.network) },
         { k: "Position value", v: money.format(t.valueUsd) },
       ],
-      cta: `Trade ${t.name}`,
-      onCta: () => onOpenConfirm(reviewConfirm(t)),
+      cta: `Buy more ${t.name}`,
+      onCta: () =>
+        onOpenBuy({ symbol: t.symbol, name: t.name, priceUsd: t.priceUsd, logo: t.logo }),
+      cta2: `Sell ${t.name}`,
+      onCta2: () =>
+        onOpenSell({
+          symbol: t.symbol,
+          name: t.name,
+          network: t.network,
+          address: t.address,
+          decimals: t.decimals,
+          balance: t.balance,
+          priceUsd: t.priceUsd,
+          logo: t.logo,
+        }),
       coingeckoId: coingeckoId(t.symbol) ?? undefined,
       up: true,
       logo: t.logo,

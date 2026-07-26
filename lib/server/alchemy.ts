@@ -24,6 +24,10 @@ export interface TokenBalance {
   address: string | null;
   decimals: number;
   balance: number;
+  // Exact on-chain balance in base units, as a decimal string. `balance` is a
+  // lossy float for display; `rawBalance` is the precise integer to send so a
+  // "max" never rounds above what the wallet actually holds.
+  rawBalance: string;
   priceUsd: number;
   valueUsd: number;
   logo: string | null;
@@ -42,8 +46,11 @@ interface AlchemyToken {
   tokenPrices?: { currency: string; value: string }[];
 }
 
-function toNumber(hexOrDec: string, decimals: number): number {
-  const raw = hexOrDec.startsWith("0x") ? BigInt(hexOrDec) : BigInt(hexOrDec || "0");
+function toRawUnits(hexOrDec: string): bigint {
+  return hexOrDec.startsWith("0x") ? BigInt(hexOrDec) : BigInt(hexOrDec || "0");
+}
+
+function toNumber(raw: bigint, decimals: number): number {
   return Number(raw) / 10 ** decimals;
 }
 
@@ -153,7 +160,8 @@ function normalize(
     const rwaInfo = address ? rwa[network]?.get(address.toLowerCase()) : undefined;
     const native = isNative ? NATIVE_TOKEN[network] : undefined;
     const decimals = native?.decimals ?? t.tokenMetadata?.decimals ?? 18;
-    const balance = toNumber(t.tokenBalance, decimals);
+    const rawUnits = toRawUnits(t.tokenBalance);
+    const balance = toNumber(rawUnits, decimals);
     if (balance <= 0) continue;
     // Resolve identity, falling back to the RWA registry for tokens Alchemy
     // returns without metadata.
@@ -173,6 +181,7 @@ function normalize(
       address,
       decimals,
       balance,
+      rawBalance: rawUnits.toString(),
       priceUsd,
       valueUsd: balance * priceUsd,
       logo: t.tokenMetadata?.logo ?? rwaInfo?.logo ?? null,
@@ -204,6 +213,7 @@ async function withTrackedBaseline(
         address: null,
         decimals: native.decimals,
         balance: 0,
+        rawBalance: "0",
         priceUsd: priceOf(native.symbol),
         valueUsd: 0,
         logo: null,
@@ -218,6 +228,7 @@ async function withTrackedBaseline(
         address: stable.address,
         decimals: 6,
         balance: 0,
+        rawBalance: "0",
         priceUsd: 1,
         valueUsd: 0,
         logo: null,

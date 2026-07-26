@@ -19,6 +19,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { selectHoldings } from "@/lib/holdings";
+import { canSellAsset } from "@/lib/sell";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
 import type { BuyPayload, DetailPayload, SellPayload } from "@/components/dashboard/modal-types";
@@ -122,7 +123,10 @@ export function PortfolioView({
     );
   };
 
-  const openToken = (t: TokenBalance) =>
+  const openToken = (t: TokenBalance) => {
+    // Offer "Sell" only for assets Dextopus can actually take as an origin;
+    // native POL/SOL, for example, cannot be sold, so we don't dead-end the user.
+    const sellable = canSellAsset(t.network, t.address);
     onOpenDetail({
       sym: t.symbol,
       name: t.name,
@@ -139,22 +143,28 @@ export function PortfolioView({
       cta: `Buy more ${t.name}`,
       onCta: () =>
         onOpenBuy({ symbol: t.symbol, name: t.name, priceUsd: t.priceUsd, logo: t.logo }),
-      cta2: `Sell ${t.name}`,
-      onCta2: () =>
-        onOpenSell({
-          symbol: t.symbol,
-          name: t.name,
-          network: t.network,
-          address: t.address,
-          decimals: t.decimals,
-          balance: t.balance,
-          priceUsd: t.priceUsd,
-          logo: t.logo,
-        }),
+      ...(sellable
+        ? {
+            cta2: `Sell ${t.name}`,
+            onCta2: () =>
+              onOpenSell({
+                symbol: t.symbol,
+                name: t.name,
+                network: t.network,
+                address: t.address,
+                decimals: t.decimals,
+                balance: t.balance,
+                rawBalance: t.rawBalance,
+                priceUsd: t.priceUsd,
+                logo: t.logo,
+              }),
+          }
+        : {}),
       coingeckoId: coingeckoId(t.symbol) ?? undefined,
       up: true,
       logo: t.logo,
     });
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">

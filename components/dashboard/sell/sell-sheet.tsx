@@ -96,11 +96,15 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
 
   const confirm = async () => {
     try {
+      // Clamp to the exact on-chain balance so a "max" never sends more than the
+      // wallet holds (the displayed balance is a rounded float).
+      const entered = toBaseUnits(amount, payload.decimals);
+      const max = BigInt(payload.rawBalance);
       const result = await sell.mutateAsync({
         network: payload.network,
         asset: payload.address,
         decimals: payload.decimals,
-        amount: toBaseUnits(amount, payload.decimals),
+        amount: entered < max ? entered : max,
         slippageBps: SLIPPAGE_BPS,
       });
       setProceeds(formatAmount(Number(fromBaseUnits(result.estimatedOutput, 6))));

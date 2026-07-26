@@ -55,6 +55,9 @@ export interface SellPayload {
   address: string | null;
   decimals: number;
   balance: number;
+  // Exact on-chain balance in base units, so a "max" sell sends precisely what
+  // the wallet holds instead of a rounded float.
+  rawBalance: string;
   priceUsd: number;
   logo?: string | null;
 }

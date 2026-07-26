@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSellQuoteBody, canSell, SELL_DESTINATION } from "@/lib/sell";
+import { buildSellQuoteBody, canSell, canSellAsset, SELL_DESTINATION } from "@/lib/sell";
 
 const USDC_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 
@@ -20,6 +20,25 @@ describe("canSell", () => {
 
   it("rejects an unsupported network", () => {
     expect(canSell("bnb-mainnet")).toBe(false);
+  });
+});
+
+describe("canSellAsset", () => {
+  it("allows tokens (with an address) on supported chains", () => {
+    expect(canSellAsset("polygon-mainnet", "0xusdc")).toBe(true);
+    expect(canSellAsset("solana-mainnet", "somemint")).toBe(true);
+  });
+
+  it("allows native ETH but not native POL or SOL", () => {
+    expect(canSellAsset("base-mainnet", null)).toBe(true);
+    expect(canSellAsset("eth-mainnet", null)).toBe(true);
+    expect(canSellAsset("arb-mainnet", null)).toBe(true);
+    expect(canSellAsset("polygon-mainnet", null)).toBe(false);
+    expect(canSellAsset("solana-mainnet", null)).toBe(false);
+  });
+
+  it("rejects everything on an unsupported network", () => {
+    expect(canSellAsset("bnb-mainnet", "0xtoken")).toBe(false);
   });
 });
 

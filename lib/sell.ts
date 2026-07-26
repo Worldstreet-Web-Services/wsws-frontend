@@ -44,6 +44,19 @@ export function canSell(network: string): boolean {
   return network in NETWORK_TO_CHAIN;
 }
 
+// Chains whose native token is ETH. Dextopus accepts native ETH as an origin,
+// but not native POL or native SOL, so those are not sellable.
+const NATIVE_ETH_CHAINS = new Set(["base-mainnet", "eth-mainnet", "arb-mainnet", "opt-mainnet"]);
+
+// Whether a specific held asset can be sold. A token (has an address) is assumed
+// sellable and the quote is the final authority; a native balance is only
+// sellable where the native token is ETH.
+export function canSellAsset(network: string, address: string | null): boolean {
+  if (!canSell(network)) return false;
+  if (address === null) return NATIVE_ETH_CHAINS.has(network);
+  return true;
+}
+
 export interface SellQuoteInput {
   // Alchemy network id of the held asset.
   network: string;
@@ -82,9 +95,12 @@ export async function fetchSellQuote(input: SellQuoteInput): Promise<BuyQuote> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const message =
-      typeof data?.message === "string" ? data.message : "Couldn't complete your sale.";
-    throw new Error(message);
+    // Surface a friendly, retryable message. The raw provider text (e.g.
+    // "Origin asset ... is not supported") is technical and can be transient.
+    console.error("Sell quote failed:", data?.message ?? res.status);
+    throw new Error(
+      "We couldn't sell this asset to USDC right now. Try again or pick another one."
+    );
   }
   // Proceeds are USDC on Base (6 decimals).
   return normalizeBuyQuote(data, SELL_DESTINATION.decimals);

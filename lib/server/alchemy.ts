@@ -17,12 +17,19 @@ const EVM_NETWORKS = [
 ];
 const SOLANA_NETWORK = "solana-mainnet";
 
+// How a holding is classified for display: a native coin (ETH/POL/SOL), a
+// stablecoin (USDC/USDT), a real-world asset (from the RWA registry), or any
+// other token.
+export type AssetKind = "coin" | "stablecoin" | "rwa" | "token";
+
 export interface TokenBalance {
   symbol: string;
   name: string;
   network: string;
   address: string | null;
   decimals: number;
+  // What kind of asset this is, for the holdings "Type" column.
+  kind: AssetKind;
   balance: number;
   // Exact on-chain balance in base units, as a decimal string. `balance` is a
   // lossy float for display; `rawBalance` is the precise integer to send so a
@@ -174,12 +181,20 @@ function normalize(
     // (Polygon USDC has done this). They are dollar-pegged, so value a held
     // balance at $1 rather than $0, which would hide a real holding.
     if (priceUsd === 0 && isTrackedStable(network, address)) priceUsd = 1;
+    const kind: AssetKind = isNative
+      ? "coin"
+      : rwaInfo
+        ? "rwa"
+        : isTrackedStable(network, address)
+          ? "stablecoin"
+          : "token";
     out.push({
       symbol,
       name: native?.name ?? t.tokenMetadata?.name ?? symbol,
       network,
       address,
       decimals,
+      kind,
       balance,
       rawBalance: rawUnits.toString(),
       priceUsd,
@@ -212,6 +227,7 @@ async function withTrackedBaseline(
         network,
         address: null,
         decimals: native.decimals,
+        kind: "coin",
         balance: 0,
         rawBalance: "0",
         priceUsd: priceOf(native.symbol),
@@ -227,6 +243,7 @@ async function withTrackedBaseline(
         network,
         address: stable.address,
         decimals: 6,
+        kind: "stablecoin",
         balance: 0,
         rawBalance: "0",
         priceUsd: 1,

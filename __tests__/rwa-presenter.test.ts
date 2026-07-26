@@ -52,6 +52,7 @@ function token(overrides: Partial<TokenBalance> = {}): TokenBalance {
     network: "base-mainnet",
     address: null,
     decimals: 18,
+    kind: "coin",
     balance: 0.2,
     priceUsd: 3000,
     valueUsd: 600,

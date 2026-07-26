@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/hooks/use-polymarket-session";
 import type { SecureClient } from "@/lib/polymarket/secure-client";
 
@@ -26,7 +27,7 @@ export function usePolymarketPositions() {
       setPositions(page.items);
       setLoaded(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load your positions");
+      setError(friendlyError(e, "Couldn't load your positions. Please try again."));
     } finally {
       setLoading(false);
     }

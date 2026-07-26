@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { friendlyError } from "@/lib/errors";
 import { OrderSide, OrderType } from "@polymarket/client";
 import { usePolymarketSession, type SessionStatus } from "@/hooks/use-polymarket-session";
 import { BUILDER_CODE } from "@/lib/polymarket/config";
@@ -44,7 +45,7 @@ export function usePlaceBet() {
         if (!res.ok) throw new Error(res.message || "The order was not accepted.");
         return res;
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not place the bet.";
+        const message = friendlyError(e, "Couldn't place the bet. Please try again.");
         setError(message);
         throw e;
       } finally {

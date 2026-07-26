@@ -7,6 +7,7 @@ import { usePolymarketFunding } from "@/hooks/use-polymarket-funding";
 import { usePredictionConsent } from "@/hooks/use-prediction-consent";
 import { predictionPayout } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import { friendlyError } from "@/lib/errors";
 import type { Prediction } from "@/lib/types";
 
 const AMOUNTS = [5, 10, 25, 50];
@@ -46,7 +47,7 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
       await fund(amount);
       toast.success(`Adding $${amount}. It lands in about a minute — then place your bet.`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not add funds. Try again.");
+      toast.error(friendlyError(e, "Couldn't add funds. Please try again."));
     }
   };
 

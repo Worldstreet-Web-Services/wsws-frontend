@@ -10,6 +10,7 @@ import { useSell } from "@/hooks/use-sell";
 import { depositProgress, type DepositStage } from "@/lib/deposit";
 import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { toast } from "@/lib/toast";
+import { friendlyError } from "@/lib/errors";
 import type { SellPayload } from "@/components/dashboard/modal-types";
 
 // 1% price tolerance, hidden from the UI.
@@ -228,7 +229,9 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
         </p>
       ) : null}
       {sell.error ? (
-        <p className="text-down mt-3 text-[13px] font-normal">{sell.error.message}</p>
+        <p className="text-down mt-3 text-[13px] font-normal">
+          {friendlyError(sell.error, "We couldn't complete your sale. Please try again.")}
+        </p>
       ) : null}
 
       <button

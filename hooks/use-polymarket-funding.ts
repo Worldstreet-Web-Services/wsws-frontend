@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/hooks/use-polymarket-session";
 import { useSendUsdc } from "@/hooks/use-withdraw";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -87,7 +88,7 @@ export function usePolymarketFunding() {
           settle: source.settle,
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not add funds.";
+        const message = friendlyError(e, "Couldn't add funds. Please try again.");
         setError(message);
         throw e;
       } finally {

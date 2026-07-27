@@ -28,17 +28,23 @@ export function PredictionView() {
   const { data: live } = usePredictions();
 
   const onRedeem = async (conditionId: string) => {
+    // 1) Claim: convert the winning shares to pUSD in the prediction account.
     try {
       await redeem.redeem(conditionId);
-      // Winnings settle as pUSD in the prediction account (shown as "available to
-      // bet"), not as USDC. Don't assert an amount: a resolved position that lost
-      // claims nothing.
-      toast.success("Claim submitted. Any winnings show up in your prediction balance.");
-      setSlip(null);
-      positions.refresh();
     } catch {
       toast.error(redeem.error ?? "Could not claim your winnings.");
+      return;
     }
+    // 2) Move the winnings out to USDC on Base. If this leg fails, the claim
+    // still succeeded and the funds are safe as pUSD, recoverable via Cash out.
+    try {
+      await settle.settleToBase();
+      toast.success("Winnings claimed and on their way to your USDC on Base.");
+    } catch {
+      toast.error("Claimed to your prediction balance. Use Cash out to move it to Base.");
+    }
+    setSlip(null);
+    positions.refresh();
   };
 
   const onCashOut = async () => {
@@ -118,7 +124,11 @@ export function PredictionView() {
 
       <ModalShell open={slip !== null} onClose={() => setSlip(null)}>
         {slip ? (
-          <BetSlipSheet position={slip} onClaim={onRedeem} claiming={redeem.redeeming != null} />
+          <BetSlipSheet
+            position={slip}
+            onClaim={onRedeem}
+            claiming={redeem.redeeming != null || settle.phase !== "idle"}
+          />
         ) : null}
       </ModalShell>
     </div>

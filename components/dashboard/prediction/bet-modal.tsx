@@ -7,7 +7,6 @@ import { usePolymarketFunding } from "@/hooks/use-polymarket-funding";
 import { usePredictionConsent } from "@/hooks/use-prediction-consent";
 import { predictionPayout } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { friendlyError } from "@/lib/errors";
 import type { Prediction } from "@/lib/types";
 
 const AMOUNTS = [5, 10, 25, 50];
@@ -25,31 +24,14 @@ interface BetModalProps {
 export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps) {
   const { accepted, accept } = usePredictionConsent();
   const { place, placing, error, status } = usePlaceBet();
-  const { fund, funding, error: fundError, usdcTotal, portfolioLoading } = usePolymarketFunding();
+  const {
+    fundToCover,
+    status: fundingStatus,
+    error: fundError,
+    usdcTotal,
+    portfolioLoading,
+  } = usePolymarketFunding();
   const [amount, setAmount] = useState(10);
-
-  // Placing fails with a balance/allowance error when the account has no pUSD;
-  // offer to top up from the user's existing USDC.
-  const needsFunds = error != null && /balance|allowance|insufficient|funds/i.test(error);
-
-  // Guard the top-up: once balances have loaded, block it when the user can't
-  // cover the amount rather than letting it fail deep in the transfer.
-  const insufficientUsdc = !portfolioLoading && usdcTotal < amount;
-
-  const addFunds = async () => {
-    if (insufficientUsdc) {
-      toast.error(
-        `You have $${usdcTotal.toFixed(2)} USDC, which isn't enough for a $${amount} bet. Add USDC to your wallet first.`
-      );
-      return;
-    }
-    try {
-      await fund(amount);
-      toast.success(`Adding $${amount}. It lands in about a minute — then place your bet.`);
-    } catch (e) {
-      toast.error(friendlyError(e, "Couldn't add funds. Please try again."));
-    }
-  };
 
   const open = prediction !== null;
   const tokenId = prediction
@@ -60,18 +42,31 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
   const priceCents = prediction ? (side === "yes" ? prediction.yes : prediction.no) : "0¢";
   const tradable = Boolean(tokenId);
 
-  const statusLabel =
+  const busy = placing || fundingStatus !== "idle";
+  const shownError = fundError ?? error;
+
+  // One button drives the whole flow, so its label tracks the current step:
+  // account setup, then moving funds from Base USDC, then placing.
+  const actionLabel =
     status === "deploying"
       ? "Setting up your account…"
       : status === "approving"
         ? "Enabling trading…"
         : status === "connecting"
           ? "Connecting…"
-          : "Placing your bet…";
+          : fundingStatus === "funding"
+            ? "Adding funds from USDC…"
+            : fundingStatus === "waiting"
+              ? "Waiting for funds to arrive…"
+              : placing
+                ? "Placing your bet…"
+                : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`;
 
+  // One click: top up pUSD from Base USDC if the account is short, then place.
   const submit = async () => {
     if (!tokenId) return;
     try {
+      await fundToCover(amount);
       await place({ tokenId, amountUsd: amount });
       toast.success(`Bet placed: $${amount} on ${side === "yes" ? "Yes" : "No"}`);
       onPlaced?.();
@@ -82,7 +77,7 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
   };
 
   return (
-    <ModalShell open={open} onClose={placing ? () => {} : onClose}>
+    <ModalShell open={open} onClose={busy ? () => {} : onClose}>
       <div className="p-5 sm:p-6">
         {!accepted ? (
           <div className="flex flex-col gap-3">
@@ -159,43 +154,21 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
                   </span>
                 </div>
 
-                {error ? (
-                  <p className="text-down text-[13px] font-normal">
-                    {needsFunds ? "You need pUSD in your account to place this bet." : error}
-                  </p>
+                {shownError ? (
+                  <p className="text-down text-[13px] font-normal">{shownError}</p>
                 ) : null}
 
                 <button
                   onClick={submit}
-                  disabled={placing || funding}
+                  disabled={busy}
                   className="text-ink mt-1 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {placing ? statusLabel : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`}
+                  {actionLabel}
                 </button>
-
-                <button
-                  onClick={addFunds}
-                  disabled={funding || placing || insufficientUsdc}
-                  className={`w-full cursor-pointer rounded-[14px] border p-3 font-sans text-[14px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    needsFunds && !insufficientUsdc
-                      ? "border-accent/45 bg-accent/12 text-white"
-                      : "border-white/12 bg-white/5 text-white/80 hover:bg-white/10"
-                  }`}
-                >
-                  {funding
-                    ? "Adding funds…"
-                    : insufficientUsdc
-                      ? `Not enough USDC · you have $${usdcTotal.toFixed(2)}`
-                      : `Add $${amount} from your USDC`}
-                </button>
-
-                {fundError ? (
-                  <p className="text-down text-[13px] font-normal">{fundError}</p>
-                ) : null}
 
                 <p className="text-center text-xs font-normal text-white/45">
-                  {!portfolioLoading ? `USDC available: $${usdcTotal.toFixed(2)}. ` : ""}Bets settle
-                  in pUSD. Funding converts your Polygon USDC automatically. No network fee to
+                  {!portfolioLoading ? `USDC on Base: $${usdcTotal.toFixed(2)}. ` : ""}Placing a bet
+                  moves what it needs from your Base USDC and settles in pUSD. No network fee to
                   trade.
                 </p>
               </>

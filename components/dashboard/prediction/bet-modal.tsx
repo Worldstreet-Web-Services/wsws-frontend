@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { usePlaceBet } from "@/hooks/use-place-bet";
-import { usePolymarketFunding } from "@/hooks/use-polymarket-funding";
+import { useBet } from "@/hooks/use-bet";
 import { usePredictionConsent } from "@/hooks/use-prediction-consent";
 import { predictionPayout } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -23,14 +22,7 @@ interface BetModalProps {
 // the first bet and is surfaced as the button label.
 export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps) {
   const { accepted, accept } = usePredictionConsent();
-  const { place, placing, error, status } = usePlaceBet();
-  const {
-    fundToCover,
-    status: fundingStatus,
-    error: fundError,
-    usdcTotal,
-    portfolioLoading,
-  } = usePolymarketFunding();
+  const { placeBet, phase, error, sessionStatus, usdcTotal, portfolioLoading } = useBet();
   const [amount, setAmount] = useState(10);
 
   const open = prediction !== null;
@@ -42,32 +34,31 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
   const priceCents = prediction ? (side === "yes" ? prediction.yes : prediction.no) : "0¢";
   const tradable = Boolean(tokenId);
 
-  const busy = placing || fundingStatus !== "idle";
-  const shownError = fundError ?? error;
+  const busy = phase !== "idle";
 
   // One button drives the whole flow, so its label tracks the current step:
   // account setup, then moving funds from Base USDC, then placing.
   const actionLabel =
-    status === "deploying"
+    sessionStatus === "deploying"
       ? "Setting up your account…"
-      : status === "approving"
+      : sessionStatus === "approving"
         ? "Enabling trading…"
-        : status === "connecting"
+        : sessionStatus === "connecting"
           ? "Connecting…"
-          : fundingStatus === "funding"
+          : phase === "funding"
             ? "Adding funds from USDC…"
-            : fundingStatus === "waiting"
+            : phase === "settling"
               ? "Waiting for funds to arrive…"
-              : placing
+              : phase === "placing"
                 ? "Placing your bet…"
                 : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`;
 
-  // One click: top up pUSD from Base USDC if the account is short, then place.
+  // One click: place, and if the account is short, move the stake from Base
+  // USDC and retry until it lands.
   const submit = async () => {
     if (!tokenId) return;
     try {
-      await fundToCover(amount);
-      await place({ tokenId, amountUsd: amount });
+      await placeBet({ tokenId, amountUsd: amount });
       toast.success(`Bet placed: $${amount} on ${side === "yes" ? "Yes" : "No"}`);
       onPlaced?.();
       onClose();
@@ -154,9 +145,7 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
                   </span>
                 </div>
 
-                {shownError ? (
-                  <p className="text-down text-[13px] font-normal">{shownError}</p>
-                ) : null}
+                {error ? <p className="text-down text-[13px] font-normal">{error}</p> : null}
 
                 <button
                   onClick={submit}

@@ -1,30 +1,20 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { erc20Abi } from "viem";
 import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/hooks/use-polymarket-session";
 import { useSendUsdc } from "@/hooks/use-withdraw";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { apiFetch } from "@/lib/api";
 import { SETTLE_CHAINS } from "@/lib/deposit";
-import { CONTRACTS, POLYGON_CHAIN_ID, PUSD_DECIMALS } from "@/lib/polymarket/config";
-import { publicClientForChain } from "@/lib/trade/receipt";
 import { toBaseUnits } from "@/lib/trade/math";
 
 // Betting settles in pUSD inside the Polymarket account. We fund it from the
 // user's USDC on Base only: the platform runs on Base, so every spend comes from
 // there. Polymarket's deposit bridge is cross-chain and auto-wraps the incoming
-// USDC to pUSD in the account's Deposit Wallet.
+// USDC to pUSD in the account's Deposit Wallet (a short, asynchronous hop).
 const FUNDING_NETWORK = "base-mainnet";
 const FUNDING_SETTLE = SETTLE_CHAINS.base;
-
-// The bridge credits pUSD asynchronously (a cross-chain hop, ~a minute), so after
-// sending we poll the Deposit Wallet's pUSD until it covers the bet.
-const POLL_MS = 4000;
-const MAX_WAIT_MS = 120_000;
-
-export type FundingStatus = "idle" | "funding" | "waiting";
 
 // The bridge returns an address per VM family; keys have varied across versions,
 // so pull each defensively. We only ever use the EVM address (Base origin).
@@ -41,13 +31,11 @@ function pickEvmAddress(data: unknown): string | null {
   return null;
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export function usePolymarketFunding() {
   const { ensureReady } = usePolymarketSession();
   const { sendUsdc } = useSendUsdc();
   const { tokens, loading: portfolioLoading } = usePortfolio();
-  const [status, setStatus] = useState<FundingStatus>("idle");
+  const [funding, setFunding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Spendable USDC on Base — the only funding source.
@@ -59,78 +47,40 @@ export function usePolymarketFunding() {
     [tokens]
   );
 
-  // Reads the Deposit Wallet's pUSD balance in base units, on Polygon (where
-  // pUSD lives), through a chain-pinned client rather than the wallet's provider.
-  const readPusd = useCallback(async (wallet: string): Promise<bigint> => {
-    const polygon = publicClientForChain(POLYGON_CHAIN_ID);
-    return polygon.readContract({
-      address: CONTRACTS.pusd as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      args: [wallet as `0x${string}`],
-    });
-  }, []);
-
-  // Ensures the Polymarket account holds at least `amountUsd` in pUSD, moving the
-  // shortfall from Base USDC and waiting for it to arrive. A no-op when the
-  // account already has enough, so a funded user places instantly.
-  const fundToCover = useCallback(
-    async (amountUsd: number): Promise<void> => {
+  // Sends `amountUsd` of Base USDC to the deposit bridge, which credits pUSD to
+  // the account's Deposit Wallet. Resolves once the Base transfer is sent; the
+  // pUSD lands a little later, which the caller waits out.
+  const fund = useCallback(
+    async (amountUsd: number): Promise<string> => {
+      setFunding(true);
       setError(null);
       try {
         const client = await ensureReady();
-        const wallet = client.account.wallet;
-        const needed = toBaseUnits(String(amountUsd), PUSD_DECIMALS);
-
-        const current = await readPusd(wallet);
-        if (current >= needed) return;
-
-        // Shortfall in whole cents, so we never bridge a sub-cent dust amount.
-        const shortfallUnits = needed - current;
-        const shortfallUsd = Math.ceil(Number(shortfallUnits) / 10 ** (PUSD_DECIMALS - 2)) / 100;
-        if (usdcTotal < shortfallUsd) {
-          throw new Error(
-            `You have $${usdcTotal.toFixed(2)} USDC on Base, which isn't enough. Add USDC to your wallet first.`
-          );
-        }
-
-        setStatus("funding");
         const res = await apiFetch("/api/polymarket/deposit-address", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: wallet }),
+          body: JSON.stringify({ address: client.account.wallet }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error("Could not get a deposit address");
         const bridge = pickEvmAddress(data);
         if (!bridge) throw new Error("No deposit address returned");
 
-        await sendUsdc({
+        return await sendUsdc({
           chainType: "ethereum",
           to: bridge,
-          amount: toBaseUnits(String(shortfallUsd), 6),
+          amount: toBaseUnits(String(amountUsd), 6),
           settle: FUNDING_SETTLE,
         });
-
-        // Wait for the bridge to credit pUSD, then betting can spend it.
-        setStatus("waiting");
-        const started = Date.now();
-        while (Date.now() - started < MAX_WAIT_MS) {
-          await delay(POLL_MS);
-          if ((await readPusd(wallet)) >= needed) return;
-        }
-        throw new Error(
-          "Your funds are on the way. This can take a minute — try placing the bet again shortly."
-        );
       } catch (e) {
         setError(friendlyError(e, "Couldn't add funds. Please try again."));
         throw e;
       } finally {
-        setStatus("idle");
+        setFunding(false);
       }
     },
-    [ensureReady, readPusd, sendUsdc, usdcTotal]
+    [ensureReady, sendUsdc]
   );
 
-  return { fundToCover, status, error, usdcTotal, portfolioLoading };
+  return { fund, funding, error, usdcTotal, portfolioLoading };
 }

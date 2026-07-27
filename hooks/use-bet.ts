@@ -81,10 +81,7 @@ export function useBet() {
       orderType: OrderType.FAK,
       ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
     });
-    if (!res.ok) {
-      console.error("Polymarket order rejected:", res);
-      throw new Error(res.message || "The order was not accepted.");
-    }
+    if (!res.ok) throw new Error(res.message || "The order was not accepted.");
     return res;
   }, []);
 
@@ -132,8 +129,6 @@ export function useBet() {
           setError(NO_LIQUIDITY_MESSAGE);
           throw e;
         }
-        // Log unexpected failures with context for diagnosis.
-        console.error("placeBet failed:", e);
         setError(friendlyError(e, "Couldn't place your bet. Try again."));
         throw e;
       } finally {

@@ -7,6 +7,7 @@ import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
 interface PositionsPanelProps {
   positions: PolymarketPosition[];
   available: number | null;
+  cashable: number | null;
   loading: boolean;
   loaded: boolean;
   error: string | null;
@@ -37,6 +38,7 @@ function num(v: string | number | undefined): number {
 export function PositionsPanel({
   positions,
   available,
+  cashable,
   loading,
   loaded,
   error,
@@ -126,10 +128,10 @@ export function PositionsPanel({
         })
       ) : null}
 
-      {loaded && available != null && available > 0 ? (
+      {loaded && cashable != null && cashable > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 px-4 py-3.5 sm:px-6">
           <span className="text-[12.5px] font-normal text-white/55">
-            Cash out ${available.toFixed(2)} to USDC on Base
+            Cash out ${cashable.toFixed(2)} to USDC on Base
           </span>
           <button
             onClick={onCashOut}

@@ -42,9 +42,9 @@ export function PredictionView() {
   };
 
   const onCashOut = async () => {
-    if (positions.available == null || positions.available <= 0) return;
+    if (positions.cashable == null || positions.cashable <= 0) return;
     try {
-      await settle.settleToBase(positions.available);
+      await settle.settleToBase();
       toast.success("Cashing out. Your USDC will arrive on Base shortly.");
       positions.refresh();
     } catch {
@@ -95,6 +95,7 @@ export function PredictionView() {
           <PositionsPanel
             positions={positions.positions}
             available={positions.available}
+            cashable={positions.cashable}
             loading={positions.loading}
             loaded={positions.loaded}
             error={positions.error}

@@ -111,9 +111,9 @@ export function useBet() {
           "Your funds are on the way. This can take a minute — try placing the bet again shortly."
         );
       } catch (e) {
-        // Surface the real cause in the console while keeping the UI friendly,
-        // so a failure that isn't a known case can still be diagnosed.
-        console.error("placeBet failed:", e);
+        // Log unexpected failures with context (BetError is an expected,
+        // already-explained user condition, so it doesn't need logging).
+        if (!(e instanceof BetError)) console.error("placeBet failed:", e);
         setError(
           e instanceof BetError
             ? e.message

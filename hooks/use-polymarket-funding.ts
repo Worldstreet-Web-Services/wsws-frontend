@@ -16,15 +16,22 @@ import { toBaseUnits } from "@/lib/trade/math";
 const FUNDING_NETWORK = "base-mainnet";
 const FUNDING_SETTLE = SETTLE_CHAINS.base;
 
-// The bridge returns an address per VM family; keys have varied across versions,
-// so pull each defensively. We only ever use the EVM address (Base origin).
+// The bridge returns an address per VM family under `address` (e.g.
+// { address: { evm, svm, tron, btc } }). Key names have varied across versions,
+// so check the known containers and EVM keys defensively. We only ever use the
+// EVM address (Base origin).
 function pickEvmAddress(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
-  const nested = (d.addresses as Record<string, unknown>) ?? {};
   const re = /^0x[0-9a-fA-F]{40}$/;
-  for (const k of ["evm", "evmAddress", "polygon"]) {
-    for (const v of [d[k], nested[k]]) {
+  const containers: Record<string, unknown>[] = [d];
+  for (const key of ["address", "addresses"]) {
+    const c = d[key];
+    if (c && typeof c === "object") containers.push(c as Record<string, unknown>);
+  }
+  for (const c of containers) {
+    for (const k of ["evm", "evmAddress", "polygon"]) {
+      const v = c[k];
       if (typeof v === "string" && re.test(v)) return v;
     }
   }

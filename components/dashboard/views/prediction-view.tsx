@@ -89,6 +89,7 @@ export function PredictionView() {
 
           <PositionsPanel
             positions={positions.positions}
+            available={positions.available}
             loading={positions.loading}
             loaded={positions.loaded}
             error={positions.error}

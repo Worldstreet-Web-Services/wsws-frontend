@@ -6,6 +6,7 @@ import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
 
 interface PositionsPanelProps {
   positions: PolymarketPosition[];
+  available: number | null;
   loading: boolean;
   loaded: boolean;
   error: string | null;
@@ -37,6 +38,7 @@ function num(v: string | number | undefined): number {
 
 export function PositionsPanel({
   positions,
+  available,
   loading,
   loaded,
   error,
@@ -52,7 +54,14 @@ export function PositionsPanel({
   return (
     <div className="ws-card mt-4 overflow-hidden">
       <div className="flex items-center justify-between px-4 pt-4 pb-3 sm:px-6">
-        <span className="ws-serif text-[18px]">Your positions</span>
+        <div className="min-w-0">
+          <span className="ws-serif text-[18px]">Your positions</span>
+          {available != null ? (
+            <div className="tnum mt-0.5 text-[12px] font-normal text-white/50">
+              ${available.toFixed(2)} available to bet
+            </div>
+          ) : null}
+        </div>
         <button
           onClick={onRefresh}
           disabled={loading}

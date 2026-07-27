@@ -7,6 +7,7 @@ import {
   formatMoney,
   formatResolveDate,
   formatSignedMoney,
+  hasEnded,
   priceCents,
   type RawPosition,
 } from "@/lib/prediction";
@@ -39,7 +40,7 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
       c: slip.pnl >= 0 ? "#7CE7B0" : "#F6A5A5",
     },
   ];
-  if (resolves) rows.push({ k: "Resolves", v: resolves });
+  if (resolves) rows.push({ k: hasEnded(slip.resolvesAt) ? "Ended" : "Resolves", v: resolves });
 
   return (
     <div>

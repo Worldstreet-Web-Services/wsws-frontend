@@ -49,9 +49,11 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
             ? "Adding funds from USDC…"
             : phase === "settling"
               ? "Waiting for funds to arrive…"
-              : phase === "placing"
-                ? "Placing your bet…"
-                : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`;
+              : phase === "approving"
+                ? "Enabling trading…"
+                : phase === "placing"
+                  ? "Placing your bet…"
+                  : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`;
 
   // One click: place, and if the account is short, move the stake from Base
   // USDC and retry until it lands.

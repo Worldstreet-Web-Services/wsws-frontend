@@ -9,7 +9,7 @@ import { readCollateralUsd } from "@/lib/polymarket/collateral";
 import { BUILDER_CODE } from "@/lib/polymarket/config";
 import type { SecureClient } from "@/lib/polymarket/secure-client";
 
-export type BetPhase = "idle" | "placing" | "funding" | "settling";
+export type BetPhase = "idle" | "placing" | "funding" | "settling" | "approving";
 
 // How long to keep waiting while the deposit bridge credits pUSD.
 const SETTLE_POLL_MS = 5000;
@@ -45,6 +45,14 @@ class BetError extends Error {}
 function isNoLiquidity(e: unknown): boolean {
   const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
   return /no orders found to match|no match|not enough liquidity|no liquidity/.test(m);
+}
+
+// True when the order was rejected for a missing/insufficient token allowance
+// (the exchange isn't approved to spend the account's pUSD yet). The fix is to
+// set trading approvals and retry, not to add funds.
+function isAllowanceError(e: unknown): boolean {
+  const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return /allowance/.test(m);
 }
 
 const NO_LIQUIDITY_MESSAGE =
@@ -137,7 +145,18 @@ export function useBet() {
         }
 
         setPhase("placing");
-        return await placeOrder(client, input);
+        try {
+          return await placeOrder(client, input);
+        } catch (e) {
+          if (!isAllowanceError(e)) throw e;
+          // Trading approvals aren't set (or the order routes to an exchange
+          // spender the cached session never approved). Set them and retry once.
+          console.info("[bet] allowance missing, setting trading approvals…");
+          setPhase("approving");
+          await client.setupTradingApprovals();
+          setPhase("placing");
+          return await placeOrder(client, input);
+        }
       } catch (e) {
         console.error("[bet] failed:", e);
         if (e instanceof BetError) {

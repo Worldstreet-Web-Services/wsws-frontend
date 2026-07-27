@@ -20,10 +20,11 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 class BetError extends Error {}
 
 // True when a place failed only because the account is short on pUSD. This is the
-// signal to fund from Base and retry, rather than a real failure.
+// signal to fund from Base and retry, rather than a real failure. Polymarket
+// phrases this several ways, so match the known variants.
 function isInsufficientFunds(e: unknown): boolean {
   const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
-  return /balance|allowance|insufficient|not enough|funds/.test(m);
+  return /balance|allowance|insufficient|not enough|collateral|exceeds|funds/.test(m);
 }
 
 export interface PlaceBetInput {
@@ -63,7 +64,12 @@ export function useBet() {
         orderType: OrderType.FAK,
         ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
       });
-      if (!res.ok) throw new Error(res.message || "The order was not accepted.");
+      if (!res.ok) {
+        // Log the full rejection so its real shape (message/code) is visible
+        // while we map the failure cases; the user still sees a friendly message.
+        console.error("Polymarket order rejected:", res);
+        throw new Error(res.message || "The order was not accepted.");
+      }
       return res;
     },
     [ensureReady]
@@ -105,6 +111,9 @@ export function useBet() {
           "Your funds are on the way. This can take a minute — try placing the bet again shortly."
         );
       } catch (e) {
+        // Surface the real cause in the console while keeping the UI friendly,
+        // so a failure that isn't a known case can still be diagnosed.
+        console.error("placeBet failed:", e);
         setError(
           e instanceof BetError
             ? e.message

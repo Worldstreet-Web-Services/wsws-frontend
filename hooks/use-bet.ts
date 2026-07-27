@@ -6,7 +6,7 @@ import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession, type SessionStatus } from "@/hooks/use-polymarket-session";
 import { usePolymarketFunding } from "@/hooks/use-polymarket-funding";
 import { readCollateralUsd } from "@/lib/polymarket/collateral";
-import { BUILDER_CODE } from "@/lib/polymarket/config";
+import { BUILDER_CODE, CONTRACTS } from "@/lib/polymarket/config";
 import type { SecureClient } from "@/lib/polymarket/secure-client";
 
 export type BetPhase = "idle" | "placing" | "funding" | "settling" | "approving";
@@ -53,6 +53,15 @@ function isNoLiquidity(e: unknown): boolean {
 function isAllowanceError(e: unknown): boolean {
   const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
   return /allowance/.test(m);
+}
+
+// The exchange contract the rejected order needs allowance for. Polymarket
+// fetches this per-market, so it isn't in our config; the CLOB error names it,
+// e.g. "spender: 0xABC…". We approve exactly that address.
+function extractSpender(e: unknown): string | null {
+  const m = e instanceof Error ? e.message : String(e);
+  const match = m.match(/spender:\s*(0x[0-9a-fA-F]{40})/);
+  return match ? match[1] : null;
 }
 
 const NO_LIQUIDITY_MESSAGE =
@@ -149,11 +158,22 @@ export function useBet() {
           return await placeOrder(client, input);
         } catch (e) {
           if (!isAllowanceError(e)) throw e;
-          // Trading approvals aren't set (or the order routes to an exchange
-          // spender the cached session never approved). Set them and retry once.
-          console.info("[bet] allowance missing, setting trading approvals…");
+          // The order's exchange isn't approved to spend the account's pUSD.
+          // setupTradingApprovals doesn't cover this market's spender, so approve
+          // exactly the one the error names (pUSD -> that spender), then retry.
           setPhase("approving");
-          await client.setupTradingApprovals();
+          const spender = extractSpender(e);
+          console.info("[bet] approving pUSD for spender:", spender);
+          if (spender) {
+            const handle = await client.approveErc20({
+              amount: "max",
+              spenderAddress: spender,
+              tokenAddress: CONTRACTS.pusd,
+            });
+            await handle.wait();
+          } else {
+            await client.setupTradingApprovals();
+          }
           setPhase("placing");
           return await placeOrder(client, input);
         }

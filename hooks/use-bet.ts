@@ -86,7 +86,12 @@ export function useBet() {
       orderType: OrderType.FAK,
       ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
     });
-    if (!res.ok) throw new Error(res.message || "The order was not accepted.");
+    console.info("[bet] estimate", estimate, "maxPrice", crossingPrice(estimate));
+    if (!res.ok) {
+      console.error("[bet] order rejected:", res);
+      throw new Error(res.message || "The order was not accepted.");
+    }
+    console.info("[bet] order accepted:", res);
     return res;
   }, []);
 
@@ -99,6 +104,7 @@ export function useBet() {
 
         // Reuse pUSD the account already holds; only fund what's missing.
         let available = await readCollateralUsd(client);
+        console.info("[bet] pUSD available:", available, "needed:", input.amountUsd);
         if (available < input.amountUsd) {
           // The bridge silently drops deposits below its per-asset minimum
           // ($2 for Base USDC, per bridge /supported-assets), so never send less.
@@ -110,8 +116,10 @@ export function useBet() {
               `You need at least $${deposit.toFixed(2)} USDC on Base for this, but have $${usdcTotal.toFixed(2)}. Add USDC first.`
             );
           }
+          console.info("[bet] funding from Base USDC:", deposit);
           setPhase("funding");
-          await fund(deposit);
+          const txHash = await fund(deposit);
+          console.info("[bet] funding sent, tx:", txHash);
 
           // Wait for the bridge to credit the pUSD before placing.
           setPhase("settling");
@@ -119,6 +127,7 @@ export function useBet() {
           while (available < input.amountUsd && Date.now() - started < SETTLE_MAX_MS) {
             await delay(SETTLE_POLL_MS);
             available = await readCollateralUsd(client);
+            console.info("[bet] waiting for pUSD… now:", available, "needed:", input.amountUsd);
           }
           if (available < input.amountUsd) {
             throw new BetError(
@@ -130,6 +139,7 @@ export function useBet() {
         setPhase("placing");
         return await placeOrder(client, input);
       } catch (e) {
+        console.error("[bet] failed:", e);
         if (e instanceof BetError) {
           setError(e.message);
           throw e;

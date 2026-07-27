@@ -4,6 +4,7 @@ import {
   formatMoney,
   formatResolveDate,
   formatSignedMoney,
+  isClaimable,
   priceCents,
   resolutionInfo,
 } from "@/lib/prediction";
@@ -59,6 +60,23 @@ describe("betSlip", () => {
 
   it("marks a redeemable position", () => {
     expect(betSlip({ redeemable: true, conditionId: "0x" }).redeemable).toBe(true);
+  });
+});
+
+describe("isClaimable", () => {
+  it("is true only for a resolved position that still has value (the winning side)", () => {
+    expect(isClaimable(true, 8)).toBe(true);
+  });
+
+  it("is false for a resolved but worthless position (the losing side)", () => {
+    expect(isClaimable(true, 0)).toBe(false);
+    expect(isClaimable(true, 0.005)).toBe(false);
+  });
+
+  it("is false for an unresolved position and for missing flags", () => {
+    expect(isClaimable(false, 10)).toBe(false);
+    expect(isClaimable(null, 10)).toBe(false);
+    expect(isClaimable(undefined, 10)).toBe(false);
   });
 });
 

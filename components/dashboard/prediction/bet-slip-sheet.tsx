@@ -6,6 +6,7 @@ import {
   betSlip,
   formatMoney,
   formatSignedMoney,
+  isClaimable,
   priceCents,
   resolutionInfo,
   type RawPosition,
@@ -69,18 +70,19 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
         ))}
       </div>
 
-      {slip.redeemable && slip.conditionId ? (
+      {isClaimable(slip.redeemable, slip.currentValue) && slip.conditionId ? (
         <button
           onClick={() => onClaim(slip.conditionId as string)}
           disabled={claiming}
           className="text-ink mt-5 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {claiming ? "Claiming…" : `Claim ${formatMoney(slip.payoutIfWins)}`}
+          {claiming ? "Claiming…" : `Claim ${formatMoney(slip.currentValue)}`}
         </button>
       ) : (
         <p className="mt-5 text-center text-xs font-normal text-white/45">
-          Settles on Polymarket when the market resolves. You can cash out anytime from your
-          positions.
+          {slip.redeemable
+            ? "This market has resolved. There's nothing to claim on this position."
+            : "Settles on Polymarket when the market resolves."}
         </p>
       )}
     </div>

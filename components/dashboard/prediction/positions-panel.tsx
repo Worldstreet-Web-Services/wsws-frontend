@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeftIcon } from "@/components/ui/icons";
+import { isClaimable } from "@/lib/prediction";
 import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
 
 interface PositionsPanelProps {
@@ -94,7 +95,7 @@ export function PositionsPanel({
                   </span>
                 </div>
               </div>
-              {p.redeemable && p.conditionId ? (
+              {isClaimable(p.redeemable, num(p.currentValue)) && p.conditionId ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

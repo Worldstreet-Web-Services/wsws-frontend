@@ -87,6 +87,13 @@ export function betSlip(raw: RawPosition): BetSlip {
   };
 }
 
+// Whether a position actually has winnings to claim. A market resolving marks
+// BOTH sides `redeemable`, but the losing side settles to $0, so redeeming it
+// adds nothing. Only offer a claim when the held tokens still have value.
+export function isClaimable(redeemable: boolean | null | undefined, currentValue: number): boolean {
+  return redeemable === true && currentValue > 0.01;
+}
+
 // A share price of 0..1 shown as whole cents, e.g. 0.68 -> "68¢".
 export function priceCents(price: number): string {
   if (!Number.isFinite(price) || price <= 0) return "—";

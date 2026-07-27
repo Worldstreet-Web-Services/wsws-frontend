@@ -15,6 +15,11 @@ export type BetPhase = "idle" | "placing" | "funding" | "settling";
 const SETTLE_POLL_MS = 5000;
 const SETTLE_MAX_MS = 120_000;
 
+// Polymarket's deposit bridge silently ignores deposits below a per-asset
+// minimum; Base USDC is $2 (bridge /supported-assets). Fund at least this so a
+// small shortfall isn't sent and lost.
+const MIN_DEPOSIT_USD = 2;
+
 // A market buy must cross the spread to fill. maxPrice is the highest price per
 // share we accept, so set it a little above the estimate: the order still fills
 // at the real ask (never worse), but a normal spread or a small book move
@@ -95,14 +100,18 @@ export function useBet() {
         // Reuse pUSD the account already holds; only fund what's missing.
         let available = await readCollateralUsd(client);
         if (available < input.amountUsd) {
+          // The bridge silently drops deposits below its per-asset minimum
+          // ($2 for Base USDC, per bridge /supported-assets), so never send less.
+          // The extra over the shortfall lands as reusable pUSD, not lost.
           const shortfall = Math.ceil((input.amountUsd - available) * 100) / 100;
-          if (!portfolioLoading && usdcTotal < shortfall) {
+          const deposit = Math.max(shortfall, MIN_DEPOSIT_USD);
+          if (!portfolioLoading && usdcTotal < deposit) {
             throw new BetError(
-              `You have $${usdcTotal.toFixed(2)} USDC on Base, which isn't enough for a $${input.amountUsd} bet. Add USDC first.`
+              `You need at least $${deposit.toFixed(2)} USDC on Base for this, but have $${usdcTotal.toFixed(2)}. Add USDC first.`
             );
           }
           setPhase("funding");
-          await fund(shortfall);
+          await fund(deposit);
 
           // Wait for the bridge to credit the pUSD before placing.
           setPhase("settling");

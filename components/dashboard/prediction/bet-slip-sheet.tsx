@@ -7,7 +7,6 @@ import {
   formatMoney,
   formatResolveDate,
   formatSignedMoney,
-  hasEnded,
   priceCents,
   type RawPosition,
 } from "@/lib/prediction";
@@ -40,7 +39,10 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
       c: slip.pnl >= 0 ? "#7CE7B0" : "#F6A5A5",
     },
   ];
-  if (resolves) rows.push({ k: hasEnded(slip.resolvesAt) ? "Ended" : "Resolves", v: resolves });
+  // A past endDate doesn't mean the market closed: Polymarket markets stay
+  // tradeable past their scheduled date until they actually resolve. So label
+  // the date neutrally, and only say "Resolved" once the position is claimable.
+  if (resolves) rows.push({ k: slip.redeemable ? "Resolved" : "Est. resolution", v: resolves });
 
   return (
     <div>

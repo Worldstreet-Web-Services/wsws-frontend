@@ -119,11 +119,3 @@ export function formatResolveDate(iso: string | null): string {
     day: "numeric",
   });
 }
-
-// Whether a market's end date has passed, so the slip reads "Ended" instead of
-// "Resolves". `now` is injectable for deterministic tests.
-export function hasEnded(iso: string | null, now: number = Date.now()): boolean {
-  if (!iso) return false;
-  const t = Date.parse(iso);
-  return Number.isFinite(t) && t < now;
-}

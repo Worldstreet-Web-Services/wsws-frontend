@@ -4,7 +4,6 @@ import {
   formatMoney,
   formatResolveDate,
   formatSignedMoney,
-  hasEnded,
   priceCents,
 } from "@/lib/prediction";
 
@@ -95,20 +94,5 @@ describe("formatResolveDate", () => {
   it("returns an empty string for missing or invalid input", () => {
     expect(formatResolveDate(null)).toBe("");
     expect(formatResolveDate("not-a-date")).toBe("");
-  });
-});
-
-describe("hasEnded", () => {
-  const now = Date.parse("2026-07-27T12:00:00Z");
-
-  it("is true for a date before now", () => {
-    expect(hasEnded("2026-07-25", now)).toBe(true);
-  });
-
-  it("is false for a future date and for missing/invalid input", () => {
-    expect(hasEnded("2026-08-01", now)).toBe(false);
-    expect(hasEnded("2026-12-31", now)).toBe(false);
-    expect(hasEnded(null, now)).toBe(false);
-    expect(hasEnded("not-a-date", now)).toBe(false);
   });
 });

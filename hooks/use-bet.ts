@@ -13,6 +13,20 @@ export type BetPhase = "idle" | "placing" | "funding" | "settling";
 const SETTLE_POLL_MS = 5000;
 const SETTLE_MAX_MS = 120_000;
 
+// A market buy must cross the spread to fill. maxPrice is the highest price per
+// share we accept, so set it a little above the estimate: the order still fills
+// at the real ask (never worse), but a normal spread or a small book move
+// between estimate and placement no longer kills a Fill-and-Kill order.
+const PRICE_SLIPPAGE = 0.03;
+// Prediction prices are 0..1. Cap just below 1, and round to whole cents so the
+// price is always a valid tick (0.01 divides every market's tick size).
+const MAX_SHARE_PRICE = 0.99;
+
+function crossingPrice(estimate: number): number {
+  const bumped = Math.ceil(estimate * (1 + PRICE_SLIPPAGE) * 100) / 100;
+  return Math.min(Math.max(bumped, 0.01), MAX_SHARE_PRICE);
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // A user-facing error whose message is already friendly, so the outer handler
@@ -24,8 +38,18 @@ class BetError extends Error {}
 // phrases this several ways, so match the known variants.
 function isInsufficientFunds(e: unknown): boolean {
   const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
-  return /balance|allowance|insufficient|not enough|collateral|exceeds|funds/.test(m);
+  return /balance|allowance|insufficient|collateral|exceeds|funds/.test(m);
 }
+
+// True when the order couldn't match because the book is empty or too thin at
+// our price. Funding won't help, so this stops the flow with a clear message.
+function isNoLiquidity(e: unknown): boolean {
+  const m = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return /no orders found to match|no match|not enough liquidity|no liquidity/.test(m);
+}
+
+const NO_LIQUIDITY_MESSAGE =
+  "This market doesn't have matching orders right now. Try again in a moment, a different amount, or another market.";
 
 export interface PlaceBetInput {
   // CLOB token of the outcome being bought (Yes or No token).
@@ -50,17 +74,20 @@ export function useBet() {
     async ({ tokenId, amountUsd }: PlaceBetInput) => {
       const client = await ensureReady();
       const amount = String(amountUsd);
-      const maxPrice = await client.estimateMarketPrice({
+      const estimate = await client.estimateMarketPrice({
         tokenId,
         side: OrderSide.BUY,
         amount,
         orderType: OrderType.FAK,
       });
+      // No ask depth to model a price against: the book is empty.
+      if (!(estimate > 0)) throw new BetError(NO_LIQUIDITY_MESSAGE);
+
       const res = await client.placeMarketOrder({
         tokenId,
         side: OrderSide.BUY,
         amount,
-        maxPrice,
+        maxPrice: crossingPrice(estimate),
         orderType: OrderType.FAK,
         ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
       });
@@ -84,6 +111,7 @@ export function useBet() {
         try {
           return await attempt(input);
         } catch (e) {
+          if (isNoLiquidity(e)) throw new BetError(NO_LIQUIDITY_MESSAGE);
           if (!isInsufficientFunds(e)) throw e;
         }
 
@@ -104,6 +132,7 @@ export function useBet() {
           try {
             return await attempt(input);
           } catch (e) {
+            if (isNoLiquidity(e)) throw new BetError(NO_LIQUIDITY_MESSAGE);
             if (!isInsufficientFunds(e)) throw e;
           }
         }

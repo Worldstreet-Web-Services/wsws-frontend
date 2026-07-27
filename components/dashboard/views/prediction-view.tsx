@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { PredictionCard } from "@/components/dashboard/prediction/prediction-card";
 import { PredictionSlider } from "@/components/dashboard/prediction/prediction-slider";
 import { BetModal } from "@/components/dashboard/prediction/bet-modal";
+import { BetSlipSheet } from "@/components/dashboard/prediction/bet-slip-sheet";
 import { PositionsPanel } from "@/components/dashboard/prediction/positions-panel";
 import { usePredictions } from "@/hooks/use-predictions";
 import { usePolymarketAccess } from "@/hooks/use-polymarket-access";
-import { usePolymarketPositions } from "@/hooks/use-polymarket-positions";
+import { usePolymarketPositions, type PolymarketPosition } from "@/hooks/use-polymarket-positions";
 import { usePolymarketRedeem } from "@/hooks/use-polymarket-redeem";
 import { usePolymarketWithdraw } from "@/hooks/use-polymarket-withdraw";
 import { PREDICTIONS } from "@/lib/data/dashboard";
@@ -18,6 +20,7 @@ import type { Prediction } from "@/lib/types";
 export function PredictionView() {
   const [desktop, setDesktop] = useState(false);
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
+  const [slip, setSlip] = useState<PolymarketPosition | null>(null);
   const access = usePolymarketAccess();
   const positions = usePolymarketPositions();
   const redeem = usePolymarketRedeem();
@@ -28,6 +31,7 @@ export function PredictionView() {
     try {
       await redeem.redeem(conditionId);
       toast.success("Winnings claimed to your balance.");
+      setSlip(null);
       positions.refresh();
     } catch {
       toast.error(redeem.error ?? "Could not claim your winnings.");
@@ -89,6 +93,7 @@ export function PredictionView() {
             loaded={positions.loaded}
             error={positions.error}
             onRefresh={positions.refresh}
+            onOpenSlip={setSlip}
             onRedeem={onRedeem}
             redeemingId={redeem.redeeming}
             onWithdraw={onWithdraw}
@@ -103,6 +108,12 @@ export function PredictionView() {
         onClose={() => setBet(null)}
         onPlaced={positions.refresh}
       />
+
+      <ModalShell open={slip !== null} onClose={() => setSlip(null)}>
+        {slip ? (
+          <BetSlipSheet position={slip} onClaim={onRedeem} claiming={redeem.redeeming != null} />
+        ) : null}
+      </ModalShell>
     </div>
   );
 }

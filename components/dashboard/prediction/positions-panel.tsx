@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
 
 interface PositionsPanelProps {
@@ -9,6 +10,7 @@ interface PositionsPanelProps {
   loaded: boolean;
   error: string | null;
   onRefresh: () => void;
+  onOpenSlip: (position: PolymarketPosition) => void;
   onRedeem: (conditionId: string) => void;
   redeemingId: string | null;
   onWithdraw: (amount: number) => void;
@@ -39,6 +41,7 @@ export function PositionsPanel({
   loaded,
   error,
   onRefresh,
+  onOpenSlip,
   onRedeem,
   redeemingId,
   onWithdraw,
@@ -74,19 +77,29 @@ export function PositionsPanel({
           return (
             <div
               key={i}
-              className="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-white/6 px-4 py-3 sm:px-6"
+              onClick={() => onOpenSlip(positions[i])}
+              className="grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-t border-white/6 px-4 py-3 transition-colors hover:bg-white/4 sm:px-6"
             >
               <div className="min-w-0">
                 <div className="truncate font-sans text-[13.5px] font-medium">
                   {p.title ?? "Market"}
                 </div>
-                <div className="text-xs font-normal text-white/50">
-                  {p.outcome ?? "—"} · {num(p.size).toFixed(2)} shares
+                <div className="flex items-center gap-1 text-xs font-normal text-white/50">
+                  <span className="truncate">
+                    {p.outcome ?? "—"} · {num(p.size).toFixed(2)} shares
+                  </span>
+                  <span className="text-accent inline-flex shrink-0 items-center">
+                    · View slip
+                    <ChevronLeftIcon size={12} className="-scale-x-100" />
+                  </span>
                 </div>
               </div>
               {p.redeemable && p.conditionId ? (
                 <button
-                  onClick={() => onRedeem(p.conditionId as string)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRedeem(p.conditionId as string);
+                  }}
                   disabled={claiming}
                   className="border-accent/45 bg-accent/12 cursor-pointer rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-white disabled:opacity-60"
                 >

@@ -12,7 +12,6 @@ import { usePredictions } from "@/hooks/use-predictions";
 import { usePolymarketAccess } from "@/hooks/use-polymarket-access";
 import { usePolymarketPositions, type PolymarketPosition } from "@/hooks/use-polymarket-positions";
 import { usePolymarketRedeem } from "@/hooks/use-polymarket-redeem";
-import { usePolymarketWithdraw } from "@/hooks/use-polymarket-withdraw";
 import { PREDICTIONS } from "@/lib/data/dashboard";
 import { toast } from "@/lib/toast";
 import type { Prediction } from "@/lib/types";
@@ -24,13 +23,15 @@ export function PredictionView() {
   const access = usePolymarketAccess();
   const positions = usePolymarketPositions();
   const redeem = usePolymarketRedeem();
-  const withdraw = usePolymarketWithdraw();
   const { data: live } = usePredictions();
 
   const onRedeem = async (conditionId: string) => {
     try {
       await redeem.redeem(conditionId);
-      toast.success("Winnings claimed to your balance.");
+      // Winnings settle as pUSD in the prediction account (shown as "available to
+      // bet"), not as USDC. Don't assert an amount: a resolved position that lost
+      // claims nothing.
+      toast.success("Claim submitted. Any winnings show up in your prediction balance.");
       setSlip(null);
       positions.refresh();
     } catch {
@@ -38,15 +39,6 @@ export function PredictionView() {
     }
   };
 
-  const onWithdraw = async (amount: number) => {
-    try {
-      await withdraw.withdraw(amount);
-      toast.success(`Cashed out $${amount} to USDC on Polygon.`);
-      positions.refresh();
-    } catch {
-      toast.error(withdraw.error ?? "Could not cash out.");
-    }
-  };
   // Live Polymarket markets, with the static set as a fallback so the section
   // never blanks if the feed is briefly unavailable.
   const predictions = live && live.length > 0 ? live : PREDICTIONS;
@@ -97,8 +89,6 @@ export function PredictionView() {
             onOpenSlip={setSlip}
             onRedeem={onRedeem}
             redeemingId={redeem.redeeming}
-            onWithdraw={onWithdraw}
-            withdrawing={withdraw.withdrawing}
           />
         </div>
       )}

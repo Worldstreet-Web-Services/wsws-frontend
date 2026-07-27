@@ -14,6 +14,8 @@ interface PositionsPanelProps {
   onOpenSlip: (position: PolymarketPosition) => void;
   onRedeem: (conditionId: string) => void;
   redeemingId: string | null;
+  onCashOut: () => void;
+  cashingOut: boolean;
 }
 
 // Position fields are read defensively so a schema tweak in the SDK never breaks
@@ -42,6 +44,8 @@ export function PositionsPanel({
   onOpenSlip,
   onRedeem,
   redeemingId,
+  onCashOut,
+  cashingOut,
 }: PositionsPanelProps) {
   return (
     <div className="ws-card mt-4 overflow-hidden">
@@ -122,12 +126,18 @@ export function PositionsPanel({
         })
       ) : null}
 
-      {loaded && positions.length > 0 ? (
+      {loaded && available != null && available > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 px-4 py-3.5 sm:px-6">
-          <span className="text-[12.5px] font-normal text-white/55">Cash out to USDC</span>
-          <span className="rounded-lg border border-white/10 bg-white/4 px-3 py-1.5 text-[12.5px] font-medium text-white/50">
-            Coming soon
+          <span className="text-[12.5px] font-normal text-white/55">
+            Cash out ${available.toFixed(2)} to USDC on Base
           </span>
+          <button
+            onClick={onCashOut}
+            disabled={cashingOut}
+            className="text-ink cursor-pointer rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cashingOut ? "Cashing out…" : "Cash out"}
+          </button>
         </div>
       ) : null}
     </div>

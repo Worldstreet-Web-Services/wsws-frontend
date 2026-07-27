@@ -12,6 +12,7 @@ import { usePredictions } from "@/hooks/use-predictions";
 import { usePolymarketAccess } from "@/hooks/use-polymarket-access";
 import { usePolymarketPositions, type PolymarketPosition } from "@/hooks/use-polymarket-positions";
 import { usePolymarketRedeem } from "@/hooks/use-polymarket-redeem";
+import { useSettleToBase } from "@/hooks/use-settle";
 import { PREDICTIONS } from "@/lib/data/dashboard";
 import { toast } from "@/lib/toast";
 import type { Prediction } from "@/lib/types";
@@ -23,6 +24,7 @@ export function PredictionView() {
   const access = usePolymarketAccess();
   const positions = usePolymarketPositions();
   const redeem = usePolymarketRedeem();
+  const settle = useSettleToBase();
   const { data: live } = usePredictions();
 
   const onRedeem = async (conditionId: string) => {
@@ -36,6 +38,17 @@ export function PredictionView() {
       positions.refresh();
     } catch {
       toast.error(redeem.error ?? "Could not claim your winnings.");
+    }
+  };
+
+  const onCashOut = async () => {
+    if (positions.available == null || positions.available <= 0) return;
+    try {
+      await settle.settleToBase(positions.available);
+      toast.success("Cashing out. Your USDC will arrive on Base shortly.");
+      positions.refresh();
+    } catch {
+      toast.error(settle.error ?? "Couldn't cash out.");
     }
   };
 
@@ -89,6 +102,8 @@ export function PredictionView() {
             onOpenSlip={setSlip}
             onRedeem={onRedeem}
             redeemingId={redeem.redeeming}
+            onCashOut={onCashOut}
+            cashingOut={settle.phase !== "idle"}
           />
         </div>
       )}

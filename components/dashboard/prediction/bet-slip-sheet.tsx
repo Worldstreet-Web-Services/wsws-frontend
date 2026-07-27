@@ -5,9 +5,9 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   betSlip,
   formatMoney,
-  formatResolveDate,
   formatSignedMoney,
   priceCents,
+  resolutionInfo,
   type RawPosition,
 } from "@/lib/prediction";
 import type { StatLine } from "@/components/dashboard/modal-types";
@@ -25,7 +25,6 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
   const slip = betSlip(position);
   const yes = slip.outcome.toLowerCase() === "yes";
   const outcomeColor = yes ? "#7CE7B0" : slip.outcome === "—" ? "#FFFFFF" : "#F6A5A5";
-  const resolves = formatResolveDate(slip.resolvesAt);
 
   const rows: StatLine[] = [
     { k: "Amount staked", v: formatMoney(slip.staked) },
@@ -39,10 +38,8 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
       c: slip.pnl >= 0 ? "#7CE7B0" : "#F6A5A5",
     },
   ];
-  // A past endDate doesn't mean the market closed: Polymarket markets stay
-  // tradeable past their scheduled date until they actually resolve. So label
-  // the date neutrally, and only say "Resolved" once the position is claimable.
-  if (resolves) rows.push({ k: slip.redeemable ? "Resolved" : "Est. resolution", v: resolves });
+  const resolution = resolutionInfo(slip.redeemable, slip.resolvesAt);
+  if (resolution) rows.push(resolution);
 
   return (
     <div>

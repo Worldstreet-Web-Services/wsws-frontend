@@ -5,6 +5,7 @@ import {
   formatResolveDate,
   formatSignedMoney,
   priceCents,
+  resolutionInfo,
 } from "@/lib/prediction";
 
 describe("betSlip", () => {
@@ -94,5 +95,31 @@ describe("formatResolveDate", () => {
   it("returns an empty string for missing or invalid input", () => {
     expect(formatResolveDate(null)).toBe("");
     expect(formatResolveDate("not-a-date")).toBe("");
+  });
+});
+
+describe("resolutionInfo", () => {
+  const now = Date.parse("2026-07-27T12:00:00Z");
+
+  it("says Resolved when the position is redeemable", () => {
+    expect(resolutionInfo(true, "2026-07-25", now)).toEqual({ k: "Status", v: "Resolved" });
+  });
+
+  it("says Awaiting result when the scheduled date passed but it isn't redeemable", () => {
+    expect(resolutionInfo(false, "2026-07-25", now)).toEqual({
+      k: "Status",
+      v: "Awaiting result",
+    });
+  });
+
+  it("shows the expected date when it is still ahead", () => {
+    const info = resolutionInfo(false, "2026-08-15", now);
+    expect(info?.k).toBe("Est. resolution");
+    expect(info?.v).toMatch(/2026/);
+  });
+
+  it("shows nothing when there is no date and it isn't redeemable", () => {
+    expect(resolutionInfo(false, null, now)).toBeNull();
+    expect(resolutionInfo(false, "not-a-date", now)).toBeNull();
   });
 });

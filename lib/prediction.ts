@@ -119,3 +119,23 @@ export function formatResolveDate(iso: string | null): string {
     day: "numeric",
   });
 }
+
+// The resolution status row for a bet slip, or null when there's nothing useful
+// to show. Three honest states, because a market's scheduled endDate can lie in
+// the past while it's still open and unsettled:
+//   - redeemable: the market resolved and the win can be claimed.
+//   - scheduled date passed but not yet redeemable: the outcome is pending, so
+//     show "Awaiting result" rather than a stale past date.
+//   - scheduled date still ahead: show the expected date.
+// `now` is injectable for deterministic tests.
+export function resolutionInfo(
+  redeemable: boolean,
+  iso: string | null,
+  now: number = Date.now()
+): { k: string; v: string } | null {
+  if (redeemable) return { k: "Status", v: "Resolved" };
+  const t = iso ? Date.parse(iso) : NaN;
+  if (Number.isFinite(t) && t < now) return { k: "Status", v: "Awaiting result" };
+  const date = formatResolveDate(iso);
+  return date ? { k: "Est. resolution", v: date } : null;
+}

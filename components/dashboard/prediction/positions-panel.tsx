@@ -106,6 +106,12 @@ export function PositionsPanel({
                 >
                   {claiming ? "Claiming…" : "Claim"}
                 </button>
+              ) : p.redeemable ? (
+                // Resolved but worth nothing — the losing side. Say so plainly
+                // instead of showing a bare $0.00.
+                <span className="text-down text-right text-[12.5px] font-medium">
+                  Resolved · no win
+                </span>
               ) : (
                 <span className="tnum text-right font-sans text-sm font-medium">
                   ${num(p.currentValue).toFixed(2)}

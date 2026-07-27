@@ -138,9 +138,12 @@ export function formatResolveDate(iso: string | null): string {
 export function resolutionInfo(
   redeemable: boolean,
   iso: string | null,
-  now: number = Date.now()
+  now: number = Date.now(),
+  claimable = false
 ): { k: string; v: string } | null {
-  if (redeemable) return { k: "Status", v: "Resolved" };
+  // Redeemable means the market resolved. If it isn't claimable, the held side
+  // lost, so say that rather than a bare "Resolved".
+  if (redeemable) return { k: "Status", v: claimable ? "Resolved · you won" : "Resolved · no win" };
   const t = iso ? Date.parse(iso) : NaN;
   if (Number.isFinite(t) && t < now) return { k: "Status", v: "Awaiting result" };
   const date = formatResolveDate(iso);

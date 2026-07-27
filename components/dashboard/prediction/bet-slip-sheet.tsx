@@ -39,7 +39,8 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
       c: slip.pnl >= 0 ? "#7CE7B0" : "#F6A5A5",
     },
   ];
-  const resolution = resolutionInfo(slip.redeemable, slip.resolvesAt);
+  const claimable = isClaimable(slip.redeemable, slip.currentValue);
+  const resolution = resolutionInfo(slip.redeemable, slip.resolvesAt, undefined, claimable);
   if (resolution) rows.push(resolution);
 
   return (
@@ -70,7 +71,7 @@ export function BetSlipSheet({ position, onClaim, claiming }: BetSlipSheetProps)
         ))}
       </div>
 
-      {isClaimable(slip.redeemable, slip.currentValue) && slip.conditionId ? (
+      {claimable && slip.conditionId ? (
         <button
           onClick={() => onClaim(slip.conditionId as string)}
           disabled={claiming}

@@ -119,8 +119,15 @@ describe("formatResolveDate", () => {
 describe("resolutionInfo", () => {
   const now = Date.parse("2026-07-27T12:00:00Z");
 
-  it("says Resolved when the position is redeemable", () => {
-    expect(resolutionInfo(true, "2026-07-25", now)).toEqual({ k: "Status", v: "Resolved" });
+  it("distinguishes a won from a lost resolved position", () => {
+    expect(resolutionInfo(true, "2026-07-25", now, true)).toEqual({
+      k: "Status",
+      v: "Resolved · you won",
+    });
+    expect(resolutionInfo(true, "2026-07-25", now, false)).toEqual({
+      k: "Status",
+      v: "Resolved · no win",
+    });
   });
 
   it("says Awaiting result when the scheduled date passed but it isn't redeemable", () => {

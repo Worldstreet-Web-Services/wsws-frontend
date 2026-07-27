@@ -73,17 +73,13 @@ export function usePolymarketFunding() {
         const bridge = pickEvmAddress(data);
         if (!bridge) throw new Error("No deposit address returned");
 
-        console.info("[fund] sending", amountUsd, "USDC (Base) to bridge", bridge);
-        const hash = await sendUsdc({
+        return await sendUsdc({
           chainType: "ethereum",
           to: bridge,
           amount: toBaseUnits(String(amountUsd), 6),
           settle: FUNDING_SETTLE,
         });
-        console.info("[fund] Base USDC transfer sent, tx:", hash);
-        return hash;
       } catch (e) {
-        console.error("[fund] failed:", e);
         setError(friendlyError(e, "Couldn't add funds. Please try again."));
         throw e;
       } finally {

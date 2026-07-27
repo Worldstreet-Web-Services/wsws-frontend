@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { formatEther } from "viem";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -10,10 +9,10 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useMoney } from "@/components/ui/currency-select";
 import { VaultFundSheet } from "@/components/dashboard/vault/vault-fund-sheet";
+import { RoundOverlay, type RoundPhase } from "@/components/dashboard/vault/round-overlay";
 import { useVaultGame } from "@/hooks/use-vault-game";
 import { useVaultActions } from "@/hooks/use-vault-actions";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { fetchPendingWinnings } from "@/lib/vault-api";
 import { getWalletAddress } from "@/lib/user";
 import { truncateAddress } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
@@ -21,7 +20,15 @@ import { toast } from "@/lib/toast";
 
 const EXPLORER_TX_URL = "https://basescan.org/tx/";
 const EXPLORER_ADDRESS_URL = "https://basescan.org/address/";
-const PENDING_POLL_MS = 15_000;
+// How long to keep re-checking the balance after a win, and how often. The
+// portfolio is cached ~15s server-side, so a 5s cadence catches the credited
+// winnings shortly after the cache turns over without hammering the API.
+const WIN_POLL_WINDOW_MS = 30_000;
+const WIN_POLL_INTERVAL_MS = 5_000;
+// Suspense window shown to everyone the moment a round ends, before revealing
+// whether this wallet won. Builds anticipation and covers the brief gap while
+// the result settles.
+const CALCULATING_MS = 5_000;
 
 function formatCountdown(totalSeconds: number): string {
   const clamped = Math.max(0, Math.floor(totalSeconds));
@@ -54,18 +61,17 @@ export function VaultSection() {
   const { user } = usePrivy();
   const money = useMoney();
   const { tokens, refetch: refetchPortfolio } = usePortfolio();
-  const { status, statusLoading, activities, winners, winnersLoading, connected } = useVaultGame();
-  const { wager, wagering, claim, claiming } = useVaultActions();
+  const { status, statusLoading, activities, winners, winnersLoading } = useVaultGame();
+  const { wager, wagering } = useVaultActions();
   const [fundOpen, setFundOpen] = useState(false);
+  // End-of-round overlay: null (idle), "calculating" (5s suspense), or "won"
+  // (jackpot for this wallet). Prize is USD, formatted to money only at render.
+  const [phase, setPhase] = useState<RoundPhase>(null);
+  const [roundPrizeUsd, setRoundPrizeUsd] = useState<number | null>(null);
+  // Shows the "you won, balance updating" banner briefly after a win.
+  const [recentWinUsd, setRecentWinUsd] = useState<number | null>(null);
 
   const address = getWalletAddress(user, "ethereum");
-  const pending = useQuery({
-    queryKey: ["vault-pending-winnings", address],
-    queryFn: () => fetchPendingWinnings(address as string),
-    enabled: Boolean(address),
-    staleTime: PENDING_POLL_MS,
-    refetchInterval: PENDING_POLL_MS,
-  });
 
   // The balance the player spends from is their own money on the platform. We
   // present everything as plain dollars — the underlying asset (ETH on Base)
@@ -99,7 +105,100 @@ export function VaultSection() {
     gameActive && status ? Math.min(100, (countdown / Math.max(1, status.timerDuration)) * 100) : 0;
   const urgent = gameActive && countdown <= 10;
 
-  const hasPending = (pending.data?.usdValue ?? 0) > 0;
+  // Round-end handling. The winner is whoever was the last to play when the
+  // clock ran out, and the contract credits their balance automatically — no
+  // claim needed. The moment a live round ends we show the "calculating"
+  // suspense to everyone; after it, only the winning wallet sees the jackpot.
+  const potUsd = status?.vaultBalance.usdValue ?? 0;
+  const lastPlayer = status?.lastPlayer ?? null;
+  const prevActiveRef = useRef(false);
+  const lastPotRef = useRef(0);
+  const winnerAtEndRef = useRef<string | null>(null);
+  // Newest winner id we've already reacted to, so the winners feed (when it
+  // works) reveals a fresh win without re-firing on load or on repeat polls.
+  const seenWinnerIdRef = useRef<string | null>(null);
+  const [pollUntil, setPollUntil] = useState(0);
+
+  // Starts the end-of-round sequence: suspense now, winner reveal after it.
+  const beginRoundEnd = (winnerAddress: string | null, prizeUsd: number) => {
+    winnerAtEndRef.current = winnerAddress;
+    setRoundPrizeUsd(prizeUsd);
+    setPhase("calculating");
+    setPollUntil(Date.now() + WIN_POLL_WINDOW_MS);
+    void refetchPortfolio();
+  };
+
+  useEffect(() => {
+    // Remember the pot while the round is live; it resets to 0 once paid out.
+    if (gameActive && potUsd > 0) lastPotRef.current = potUsd;
+
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = gameActive;
+    // A live round just ended (active -> inactive). Only start once per round.
+    if (wasActive && !gameActive && phase === null) {
+      beginRoundEnd(lastPlayer, lastPotRef.current || potUsd);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameActive]);
+
+  // Reveal after the suspense: jackpot if this wallet won, otherwise back to idle.
+  useEffect(() => {
+    if (phase !== "calculating") return;
+    const id = setTimeout(() => {
+      const me = address?.toLowerCase();
+      const winner = winnerAtEndRef.current?.toLowerCase();
+      if (me && winner && me === winner) {
+        setPhase("won");
+        setRecentWinUsd(roundPrizeUsd);
+      } else {
+        setPhase(null);
+      }
+    }, CALCULATING_MS);
+    return () => clearTimeout(id);
+  }, [phase, address, roundPrizeUsd]);
+
+  // Fallback reveal: if the winners feed surfaces a fresh win for this wallet
+  // (e.g. we missed the live round), jackpot straight away, deduped by id.
+  useEffect(() => {
+    const latest = winners[0];
+    if (!latest) return;
+    if (seenWinnerIdRef.current === null) {
+      // First load — mark as seen so we never celebrate an old win.
+      seenWinnerIdRef.current = latest.id;
+      return;
+    }
+    if (seenWinnerIdRef.current === latest.id) return;
+    seenWinnerIdRef.current = latest.id;
+    const me = address?.toLowerCase();
+    if (me && latest.winnerAddress.toLowerCase() === me && phase === null) {
+      setRoundPrizeUsd(lastPotRef.current);
+      setRecentWinUsd(lastPotRef.current);
+      setPhase("won");
+      setPollUntil(Date.now() + WIN_POLL_WINDOW_MS);
+      void refetchPortfolio();
+    }
+  }, [winners, address, phase, refetchPortfolio]);
+
+  // Brief post-win balance re-check so the auto-credited winnings appear
+  // quickly; self-clearing once the window passes.
+  useEffect(() => {
+    if (pollUntil <= Date.now()) return;
+    const id = setInterval(() => {
+      if (Date.now() > pollUntil) {
+        clearInterval(id);
+        return;
+      }
+      void refetchPortfolio();
+    }, WIN_POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [pollUntil, refetchPortfolio]);
+
+  // Auto-dismiss the "you won" banner after the balance has had time to update.
+  useEffect(() => {
+    if (recentWinUsd === null) return;
+    const id = setTimeout(() => setRecentWinUsd(null), WIN_POLL_WINDOW_MS);
+    return () => clearTimeout(id);
+  }, [recentWinUsd]);
 
   const onPlay = async () => {
     if (!canPlay) {
@@ -112,17 +211,6 @@ export function VaultSection() {
       void refetchPortfolio();
     } catch (e) {
       toast.error(friendlyError(e, "That didn't go through."));
-    }
-  };
-
-  const onClaim = async () => {
-    try {
-      await claim();
-      toast.success("Winnings added to your balance.");
-      void refetchPortfolio();
-      void pending.refetch();
-    } catch (e) {
-      toast.error(friendlyError(e, "The claim didn't go through."));
     }
   };
 
@@ -155,13 +243,13 @@ export function VaultSection() {
         </div>
         <span
           className={`ws-glass inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-white/75 ${
-            connected ? "shadow-[0_0_24px_-8px_rgba(124,231,176,0.7)]" : ""
+            gameActive ? "shadow-[0_0_24px_-8px_rgba(124,231,176,0.7)]" : ""
           }`}
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-up animate-pulse" : "bg-white/25"}`}
+            className={`h-1.5 w-1.5 rounded-full ${gameActive ? "bg-up animate-pulse" : "bg-white/25"}`}
           />
-          {connected ? "Live" : "Offline"}
+          {gameActive ? "Live" : "Offline"}
         </span>
       </div>
 
@@ -321,23 +409,14 @@ export function VaultSection() {
               </button>
             </div>
 
-            {/* Winnings to claim */}
-            {hasPending ? (
+            {/* You won — auto-credited, no claim needed. */}
+            {recentWinUsd !== null ? (
               <div className="border-up/40 bg-up/10 mt-3 rounded-[16px] border px-4 py-3.5 shadow-[0_0_28px_-10px_rgba(124,231,176,0.6)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[13.5px] font-bold text-white">You won a round 🎉</div>
-                    <div className="tnum text-[12.5px] font-normal text-white/60">
-                      {money.format(pending.data?.usdValue ?? 0)} ready to claim
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => void onClaim()}
-                    disabled={claiming}
-                    className="text-up-ink bg-up shrink-0 cursor-pointer rounded-xl px-4 py-2.5 font-sans text-[13px] font-bold whitespace-nowrap transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {claiming ? "Claiming…" : "Claim"}
-                  </button>
+                <div className="text-[13.5px] font-bold text-white">
+                  You won a round, your money will be added to your balance 🎉
+                </div>
+                <div className="tnum mt-0.5 text-[12.5px] font-normal text-white/60">
+                  {money.format(recentWinUsd)} — updating your balance now
                 </div>
               </div>
             ) : null}
@@ -438,6 +517,12 @@ export function VaultSection() {
       <ModalShell open={fundOpen} onClose={() => setFundOpen(false)} contentKey="vault-fund">
         <VaultFundSheet onClose={() => setFundOpen(false)} />
       </ModalShell>
+
+      <RoundOverlay
+        phase={phase}
+        prizeLabel={money.format(roundPrizeUsd ?? 0)}
+        onClose={() => setPhase(null)}
+      />
     </div>
   );
 }

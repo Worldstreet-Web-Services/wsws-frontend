@@ -341,7 +341,9 @@ export function VaultSection() {
               // hot money on the line.
               <motion.div
                 className="ws-serif tnum mt-1.5 text-[clamp(48px,8vw,72px)] leading-none tracking-[-0.02em] drop-shadow-[0_0_34px_rgba(246,211,101,0.4)]"
-                animate={reduce ? { color: "#F6D365" } : { color: ["#ffffff", "#F6D365", "#ffffff"] }}
+                animate={
+                  reduce ? { color: "#F6D365" } : { color: ["#ffffff", "#F6D365", "#ffffff"] }
+                }
                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
               >
                 <MoneyTicker value={status.vaultBalance.usdValue} format={money.format} />
@@ -459,7 +461,9 @@ export function VaultSection() {
                 disabled={wagering || !status || !address}
                 animate={luring && !reduce ? { opacity: [1, 0.5, 1] } : undefined}
                 transition={
-                  luring && !reduce ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined
+                  luring && !reduce
+                    ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                    : undefined
                 }
                 className={`relative w-full cursor-pointer overflow-hidden rounded-2xl p-4 font-sans text-[16.5px] font-bold transition-[transform] hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 ${
                   canPlay || luring
@@ -473,11 +477,20 @@ export function VaultSection() {
                     aria-hidden
                     className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)]"
                     animate={{ x: ["0%", "420%"] }}
-                    transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.2, ease: "easeInOut" }}
+                    transition={{
+                      duration: 2.2,
+                      repeat: Infinity,
+                      repeatDelay: 1.2,
+                      ease: "easeInOut",
+                    }}
                   />
                 ) : null}
                 <span className="relative inline-flex items-center justify-center gap-2">
-                  {luring ? <span aria-hidden className="text-xl">💰</span> : null}
+                  {luring ? (
+                    <span aria-hidden className="text-xl">
+                      💰
+                    </span>
+                  ) : null}
                   {wagering
                     ? "Placing your play…"
                     : !status

@@ -81,12 +81,7 @@ export function CryptoDepositScreen({ onBack }: CryptoDepositScreenProps) {
         {/* Selected token + chain, with a one-tap way back to change it. */}
         <div className="mb-3 flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2.5">
-            <AssetIcon
-              sym={originToken.symbol}
-              bg="#26262b"
-              size={26}
-              logo={originToken.logoUrl}
-            />
+            <AssetIcon sym={originToken.symbol} bg="#26262b" size={26} logo={originToken.logoUrl} />
             <span className="min-w-0 truncate text-[14px] font-medium text-white">
               {originToken.symbol}
               <span className="font-normal text-white/45"> on </span>

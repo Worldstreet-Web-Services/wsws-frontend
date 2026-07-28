@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import confetti from "canvas-confetti";
+import { MoneyTicker } from "@/components/ui/money-ticker";
 
-// App palette plus a jackpot gold.
-const COLORS = ["#A78BFA", "#7CE7B0", "#F6D365", "#ffffff", "#8b6ef0"];
+// Two confetti palettes: gold-forward when this wallet won, cooler house
+// colours when we're celebrating someone else taking the pot.
+const GOLD = ["#F6D365", "#e0a83a", "#ffffff", "#A78BFA", "#7CE7B0"];
+const HOUSE = ["#A78BFA", "#8b6ef0", "#c3b0ff", "#7CE7B0", "#ffffff"];
 const BURST_MS = 4200;
 const WON_AUTO_CLOSE_MS = 7000;
 
@@ -13,16 +16,34 @@ export type RoundPhase = "calculating" | "won" | null;
 
 interface RoundOverlayProps {
   phase: RoundPhase;
-  // Already-formatted money string (e.g. "$42.00"). No raw data is passed in.
+  // True when this wallet is the one that took the pot. Switches the reveal
+  // from a personal jackpot to a "someone won" announcement.
+  youWon?: boolean;
+  // Truncated winner address (e.g. "0x12…34"). Only ever a shortened form —
+  // never the full address — so the winner is named without exposing them.
+  winnerLabel?: string | null;
+  // Already-formatted money string (e.g. "$42.00") used as the static fallback.
   prizeLabel: string;
+  // Numeric prize + a formatter so the reveal can count the amount up. Both
+  // optional: without them the reveal shows the static prizeLabel.
+  prizeValue?: number;
+  formatMoney?: (n: number) => string;
   onClose: () => void;
 }
 
 // The end-of-round moment. First a short suspense ("calculating the winner")
-// that locks everyone in, then — only for the winning wallet — a big jackpot
-// with confetti. Shows only the pot as money and generic copy; never an
-// address, wallet, or raw game object.
-export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) {
+// that locks everyone in, then a reveal for everyone: a big personal jackpot
+// with confetti if this wallet won, otherwise a celebratory announcement of
+// the winner by their truncated address. The full address is never shown.
+export function RoundOverlay({
+  phase,
+  youWon = false,
+  winnerLabel = null,
+  prizeLabel,
+  prizeValue,
+  formatMoney,
+  onClose,
+}: RoundOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -30,9 +51,11 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
   }, [onClose]);
   const reduce = useReducedMotion();
 
-  // Jackpot confetti while the "won" card is up.
+  // Confetti while the reveal card is up — gold for the winner, house colours
+  // when we're marking someone else's win.
   useEffect(() => {
     if (phase !== "won" || reduce || !canvasRef.current) return;
+    const colors = youWon ? GOLD : HOUSE;
     const fire = confetti.create(canvasRef.current, { resize: true, useWorker: false });
     const end = Date.now() + BURST_MS;
     // Everything emanates from the card's centre (it sits dead-centre of the
@@ -42,13 +65,13 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
 
     // Opening explosion out of the card, in every direction.
     fire({
-      particleCount: 220,
+      particleCount: youWon ? 220 : 150,
       spread: 360,
       startVelocity: 45,
       gravity: 0.95,
       scalar: 1.05,
       origin: center,
-      colors: COLORS,
+      colors,
     });
 
     // Fountains up the two sides of the card.
@@ -60,7 +83,7 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
         spread: 55,
         startVelocity: 55,
         origin: { x: 0.08, y: 0.9 },
-        colors: COLORS,
+        colors,
       });
       fire({
         particleCount: 6,
@@ -68,7 +91,7 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
         spread: 55,
         startVelocity: 55,
         origin: { x: 0.92, y: 0.9 },
-        colors: COLORS,
+        colors,
       });
       if (Date.now() < end) raf = requestAnimationFrame(streams);
     };
@@ -82,7 +105,7 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
         startVelocity: 32,
         scalar: 1.1,
         origin: center,
-        colors: COLORS,
+        colors,
       });
     }, 620);
     const stopBursts = setTimeout(() => clearInterval(bursts), BURST_MS);
@@ -93,9 +116,9 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
       cancelAnimationFrame(raf);
       fire.reset();
     };
-  }, [phase, reduce]);
+  }, [phase, reduce, youWon]);
 
-  // Auto-dismiss the jackpot after a beat.
+  // Auto-dismiss the reveal after a beat.
   useEffect(() => {
     if (phase !== "won") return;
     const id = setTimeout(() => onCloseRef.current(), WON_AUTO_CLOSE_MS);
@@ -104,6 +127,7 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
 
   const open = phase !== null;
   const won = phase === "won";
+  const canTick = prizeValue != null && formatMoney != null;
 
   return (
     <AnimatePresence>
@@ -127,39 +151,67 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
           ) : null}
           <div className="pointer-events-none fixed inset-0 z-[400] grid place-items-center p-6">
             <AnimatePresence mode="wait">
-              {won ? (
+              {won && youWon ? (
                 <motion.div
-                  key="won"
+                  key="won-me"
                   initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.8, y: 22 }}
                   animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={
                     reduce ? { duration: 0.2 } : { type: "spring", stiffness: 300, damping: 20 }
                   }
-                  className="ws-glass pointer-events-auto relative w-full max-w-[440px] overflow-hidden rounded-[28px] p-8 text-center shadow-[0_50px_140px_-30px_rgba(167,139,250,0.8)]"
+                  className="ws-glass pointer-events-auto relative w-full max-w-[440px] overflow-hidden rounded-[28px] p-8 text-center shadow-[0_50px_140px_-30px_rgba(246,211,101,0.6)]"
                 >
                   <div
                     aria-hidden
-                    className="bg-accent/35 pointer-events-none absolute -top-28 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full blur-[80px]"
+                    className="pointer-events-none absolute -top-28 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full bg-[#F6D365]/25 blur-[80px]"
                   />
                   <div className="relative">
-                    <motion.div
-                      initial={reduce ? {} : { scale: 0, rotate: -30 }}
-                      animate={reduce ? {} : { scale: 1, rotate: 0 }}
-                      transition={{ delay: 0.1, type: "spring", stiffness: 260, damping: 13 }}
-                      className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[linear-gradient(180deg,#F6D365,#e0a83a)] text-[38px] shadow-[0_14px_36px_-8px_rgba(246,211,101,0.8)]"
-                    >
-                      🏆
-                    </motion.div>
-                    <div className="text-accent mt-5 text-[13px] font-bold tracking-[0.24em] uppercase">
+                    {/* Trophy on a slowly rotating conic shine. */}
+                    <div className="relative mx-auto h-24 w-24">
+                      {reduce ? null : (
+                        <motion.div
+                          aria-hidden
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 5, ease: "linear", repeat: Infinity }}
+                          className="absolute inset-0 rounded-full opacity-80"
+                          style={{
+                            background:
+                              "conic-gradient(from 0deg, rgba(246,211,101,0) 0deg, #F6D365 70deg, #ffffff 150deg, rgba(246,211,101,0) 260deg)",
+                            mask: "radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
+                            WebkitMask:
+                              "radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
+                          }}
+                        />
+                      )}
+                      <motion.div
+                        initial={reduce ? {} : { scale: 0, rotate: -30 }}
+                        animate={reduce ? {} : { scale: 1, rotate: 0 }}
+                        transition={{ delay: 0.1, type: "spring", stiffness: 260, damping: 13 }}
+                        className="absolute inset-[10px] grid place-items-center rounded-full bg-[linear-gradient(180deg,#F6D365,#e0a83a)] text-[34px] shadow-[0_14px_36px_-8px_rgba(246,211,101,0.8)]"
+                      >
+                        🏆
+                      </motion.div>
+                    </div>
+                    <div className="mt-5 text-[13px] font-bold tracking-[0.24em] text-[#F6D365] uppercase">
                       Jackpot
                     </div>
                     <div className="ws-serif mt-1 bg-[linear-gradient(180deg,#ffffff,#cbbcff)] bg-clip-text text-[40px] leading-none text-transparent">
                       You won!
                     </div>
-                    <div className="ws-serif tnum mt-4 text-[clamp(48px,13vw,72px)] leading-none text-white drop-shadow-[0_0_32px_rgba(167,139,250,0.55)]">
-                      {prizeLabel}
+                    <div className="ws-serif tnum mt-4 text-[clamp(48px,13vw,72px)] leading-none text-white drop-shadow-[0_0_32px_rgba(246,211,101,0.5)]">
+                      {canTick ? (
+                        <MoneyTicker value={prizeValue} format={formatMoney} delay={0.25} />
+                      ) : (
+                        prizeLabel
+                      )}
                     </div>
+                    {winnerLabel ? (
+                      <div className="tnum mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#F6D365]/25 bg-[#F6D365]/10 px-3 py-1 text-[12px] font-semibold text-[#F6D365]">
+                        <span aria-hidden>✦</span>
+                        Credited to {winnerLabel}
+                      </div>
+                    ) : null}
                     <div className="mt-3 text-[13.5px] font-normal text-white/60">
                       The whole pot has been added to your balance.
                     </div>
@@ -168,6 +220,57 @@ export function RoundOverlay({ phase, prizeLabel, onClose }: RoundOverlayProps) 
                       className="mt-7 w-full cursor-pointer rounded-2xl bg-[linear-gradient(180deg,#c3b0ff,#8b6ef0)] p-4 font-sans text-[16px] font-bold text-white shadow-[0_16px_42px_-12px_rgba(167,139,250,0.9)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
                     >
                       Nice!
+                    </button>
+                  </div>
+                </motion.div>
+              ) : won ? (
+                <motion.div
+                  key="won-them"
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85, y: 22 }}
+                  animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={
+                    reduce ? { duration: 0.2 } : { type: "spring", stiffness: 300, damping: 22 }
+                  }
+                  className="ws-glass pointer-events-auto relative w-full max-w-[440px] overflow-hidden rounded-[28px] p-8 text-center shadow-[0_50px_140px_-30px_rgba(167,139,250,0.7)]"
+                >
+                  <div
+                    aria-hidden
+                    className="bg-accent/30 pointer-events-none absolute -top-28 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full blur-[80px]"
+                  />
+                  <div className="relative">
+                    <motion.div
+                      initial={reduce ? {} : { scale: 0, rotate: -20 }}
+                      animate={reduce ? {} : { scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.08, type: "spring", stiffness: 260, damping: 14 }}
+                      className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[linear-gradient(180deg,#c3b0ff,#8b6ef0)] text-[36px] shadow-[0_14px_36px_-8px_rgba(167,139,250,0.8)]"
+                    >
+                      👑
+                    </motion.div>
+                    <div className="text-accent mt-5 text-[13px] font-bold tracking-[0.24em] uppercase">
+                      We have a winner
+                    </div>
+                    <div className="ws-serif tnum mt-2 bg-[linear-gradient(180deg,#ffffff,#cbbcff)] bg-clip-text text-[clamp(34px,10vw,52px)] leading-none tracking-[0.02em] text-transparent">
+                      {winnerLabel ?? "A player"}
+                    </div>
+                    <div className="mt-4 text-[14px] font-normal text-white/60">
+                      took the whole pot of{" "}
+                      <span className="tnum text-accent font-semibold">
+                        {canTick ? (
+                          <MoneyTicker value={prizeValue} format={formatMoney} delay={0.25} />
+                        ) : (
+                          prizeLabel
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 text-[13px] font-normal text-white/45">
+                      Better luck next round — a fresh pot is building now.
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="mt-7 w-full cursor-pointer rounded-2xl bg-white/10 p-4 font-sans text-[16px] font-bold text-white ring-1 ring-white/15 transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      Got it
                     </button>
                   </div>
                 </motion.div>

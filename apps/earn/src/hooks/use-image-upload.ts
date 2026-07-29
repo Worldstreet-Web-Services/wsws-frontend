@@ -1,0 +1,293 @@
+'use client';
+
+import { useCallback, useState } from 'react';
+
+import { api } from '@earn/lib/api';
+import {
+  compressImage,
+  detectFormat,
+  extractPublicIdFromUrl,
+  type ImageSource,
+  ImageUploadError,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_LARGE,
+  type SignedUploadParams,
+  UPLOAD_CONFIGS,
+  type UploadProgress,
+  type UploadResult,
+  validateImageBuffer,
+} from '@earn/lib/image-upload/client';
+
+interface UseImageUploadOptions {
+  source: ImageSource;
+  allowPdf?: boolean;
+  allowLargeFiles?: boolean;
+  onProgress?: (progress: UploadProgress) => void;
+  onError?: (error: ImageUploadError) => void;
+}
+
+interface UseImageUploadReturn {
+  upload: (file: File) => Promise<UploadResult>;
+  uploadAndReplace: (file: File, oldImageUrl?: string) => Promise<UploadResult>;
+  deleteImage: (imageUrl: string) => Promise<void>;
+  uploading: boolean;
+  progress: number;
+  error: ImageUploadError | null;
+  reset: () => void;
+}
+
+export function useImageUpload({
+  source,
+  allowPdf = false,
+  allowLargeFiles = false,
+  onProgress,
+  onError,
+}: UseImageUploadOptions): UseImageUploadReturn {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<ImageUploadError | null>(null);
+
+  const effectiveMaxSize = allowLargeFiles
+    ? MAX_FILE_SIZE_LARGE
+    : MAX_FILE_SIZE;
+
+  const updateProgress = useCallback(
+    (loaded: number, total: number) => {
+      const percentage = Math.round((loaded / total) * 100);
+      setProgress(percentage);
+      onProgress?.({ loaded, total, percentage });
+    },
+    [onProgress],
+  );
+
+  const handleError = useCallback(
+    (err: ImageUploadError) => {
+      setError(err);
+      onError?.(err);
+    },
+    [onError],
+  );
+
+  const reset = useCallback(() => {
+    setUploading(false);
+    setProgress(0);
+    setError(null);
+  }, []);
+
+  const upload = useCallback(
+    async (file: File): Promise<UploadResult> => {
+      reset();
+      setUploading(true);
+
+      const isPdf = file.type === 'application/pdf';
+
+      try {
+        if (file.size > effectiveMaxSize) {
+          throw ImageUploadError.fileTooLarge(effectiveMaxSize);
+        }
+
+        if (isPdf && !allowPdf) {
+          throw ImageUploadError.invalidFormat('PDF files are not allowed');
+        }
+
+        updateProgress(0, 100);
+
+        let processedFile: File;
+        let mimeType: string;
+
+        if (isPdf) {
+          // For PDFs, skip validation and compression
+          processedFile = file;
+          mimeType = 'application/pdf';
+          updateProgress(40, 100);
+        } else {
+          // For images, validate and compress
+          const buffer = await file.arrayBuffer();
+          const validation = validateImageBuffer(buffer, file.type);
+
+          if (!validation.valid) {
+            throw ImageUploadError.invalidMagicBytes(validation.error);
+          }
+
+          updateProgress(10, 100);
+
+          const config = UPLOAD_CONFIGS[source];
+
+          try {
+            processedFile = await compressImage(file, {
+              maxWidth: config.maxWidth,
+              maxHeight: config.maxHeight,
+              quality: config.quality / 100,
+              format: 'image/webp',
+            });
+          } catch {
+            processedFile = file;
+          }
+
+          updateProgress(30, 100);
+
+          const processedBuffer = await processedFile.arrayBuffer();
+          const detectedFormat = detectFormat(processedBuffer);
+
+          if (!detectedFormat) {
+            throw ImageUploadError.invalidFormat(
+              'Failed to detect format after compression',
+            );
+          }
+
+          mimeType = `image/${detectedFormat}`;
+        }
+
+        updateProgress(40, 100);
+
+        const signResponse = await api.post<SignedUploadParams>(
+          '/api/image/sign',
+          {
+            source,
+            contentType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+            contentLength: processedFile.size,
+          },
+        );
+
+        const signedParams = signResponse.data;
+
+        updateProgress(50, 100);
+
+        const formData = new FormData();
+        formData.append('file', processedFile);
+        formData.append('signature', signedParams.signature);
+        formData.append('timestamp', signedParams.timestamp.toString());
+        formData.append('folder', signedParams.folder);
+        formData.append('api_key', signedParams.apiKey);
+
+        if (signedParams.publicId) {
+          formData.append('public_id', signedParams.publicId);
+        }
+
+        if (signedParams.eager) {
+          formData.append('eager', signedParams.eager);
+        }
+
+        const resourceType = isPdf ? 'raw' : 'image';
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${signedParams.cloudName}/${resourceType}/upload`;
+
+        const xhr = new XMLHttpRequest();
+
+        const cloudinaryResponse = await new Promise<{
+          public_id: string;
+          secure_url: string;
+          width: number;
+          height: number;
+          format: string;
+          bytes: number;
+        }>((resolve, reject) => {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const uploadProgress = 50 + (event.loaded / event.total) * 50;
+              updateProgress(uploadProgress, 100);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+              } catch {
+                reject(
+                  ImageUploadError.uploadFailed('Invalid response format'),
+                );
+              }
+            } else {
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                reject(
+                  ImageUploadError.cloudinaryError(
+                    errorResponse.error?.message || 'Upload failed',
+                  ),
+                );
+              } catch {
+                reject(ImageUploadError.uploadFailed(`HTTP ${xhr.status}`));
+              }
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            reject(ImageUploadError.networkError());
+          });
+
+          xhr.addEventListener('abort', () => {
+            reject(ImageUploadError.uploadFailed('Upload aborted'));
+          });
+
+          xhr.open('POST', uploadUrl);
+          xhr.send(formData);
+        });
+
+        updateProgress(100, 100);
+
+        return {
+          publicId: cloudinaryResponse.public_id,
+          secureUrl: cloudinaryResponse.secure_url,
+          width: cloudinaryResponse.width,
+          height: cloudinaryResponse.height,
+          format: cloudinaryResponse.format,
+          bytes: cloudinaryResponse.bytes,
+        };
+      } catch (err) {
+        const uploadError =
+          err instanceof ImageUploadError
+            ? err
+            : ImageUploadError.uploadFailed(
+                err instanceof Error ? err.message : 'Unknown error',
+              );
+        handleError(uploadError);
+        throw uploadError;
+      } finally {
+        setUploading(false);
+      }
+    },
+    [source, effectiveMaxSize, allowPdf, updateProgress, handleError, reset],
+  );
+
+  const deleteImageFn = useCallback(
+    async (imageUrl: string): Promise<void> => {
+      const publicId = extractPublicIdFromUrl(imageUrl);
+      if (!publicId) {
+        return;
+      }
+
+      try {
+        await api.delete('/api/image/delete', {
+          data: { publicId, source },
+        });
+      } catch (err) {
+        console.warn('Failed to delete old image:', err);
+      }
+    },
+    [source],
+  );
+
+  const uploadAndReplace = useCallback(
+    async (file: File, oldImageUrl?: string): Promise<UploadResult> => {
+      const result = await upload(file);
+
+      if (oldImageUrl && oldImageUrl.includes('res.cloudinary.com')) {
+        deleteImageFn(oldImageUrl).catch(() => {});
+      }
+
+      return result;
+    },
+    [upload, deleteImageFn],
+  );
+
+  return {
+    upload,
+    uploadAndReplace,
+    deleteImage: deleteImageFn,
+    uploading,
+    progress,
+    error,
+    reset,
+  };
+}

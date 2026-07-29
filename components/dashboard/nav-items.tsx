@@ -1,4 +1,5 @@
 import {
+  BriefcaseIcon,
   BulbIcon,
   ChartBarsIcon,
   GridIcon,
@@ -15,6 +16,7 @@ export const SECTION_ICONS: Record<SectionId, (props: { size?: number }) => Reac
   rwa: HouseIcon,
   prediction: BulbIcon,
   vault: LockIcon,
+  earn: BriefcaseIcon,
 };
 
 export interface NavItem {

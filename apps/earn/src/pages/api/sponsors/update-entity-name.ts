@@ -1,0 +1,51 @@
+import type { NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { type NextApiRequestWithSponsor } from '@earn/features/auth/types';
+import { withSponsorAuth } from '@earn/features/auth/utils/withSponsorAuth';
+
+async function handler(req: NextApiRequestWithSponsor, res: NextApiResponse) {
+  const userId = req.userId;
+
+  try {
+    const userSponsorId = req.userSponsorId;
+
+    if (!userSponsorId) {
+      logger.warn(`User ${userId} does not have a current sponsor`);
+      return res
+        .status(403)
+        .json({ error: 'User does not have a current sponsor' });
+    }
+
+    logger.debug(`Request body: ${safeStringify(req.body)}`);
+
+    const { entityName } = req.body;
+
+    const result = await prisma.sponsors.update({
+      where: {
+        id: userSponsorId,
+      },
+      data: {
+        entityName,
+      },
+    });
+
+    logger.info(
+      `Entity name of sponsor updated successfully by user: ${userId}`,
+    );
+    return res.status(200).json(result);
+  } catch (error: any) {
+    logger.error(
+      `Error occurred while updating sponsor for user ${userId}: ${error.message}`,
+    );
+    return res.status(500).json({
+      error: error.message || 'Internal server error',
+      message: 'Error occurred while updating sponsor.',
+    });
+  }
+}
+
+export default withSponsorAuth(handler);

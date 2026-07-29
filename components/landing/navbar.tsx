@@ -3,6 +3,8 @@ import { Wordmark } from "@/components/ui/wordmark";
 import { ArrowUpRightIcon } from "@/components/ui/icons";
 
 const LINKS = [
+  { href: "/earn", label: "Earn", badge: "New" },
+  { href: "#story", label: "Why us" },
   { href: "#markets", label: "Markets" },
   { href: "#values", label: "Security" },
   { href: "#how", label: "How it works" },
@@ -14,15 +16,30 @@ export function Navbar() {
     <nav className="ws-glass fixed top-4 left-1/2 z-[200] flex w-[min(1120px,calc(100%-24px))] -translate-x-1/2 items-center justify-between rounded-full py-[9px] pr-2.5 pl-[18px]">
       <Wordmark />
       <div className="hidden items-center gap-0.5 rounded-full border border-white/10 bg-white/5 p-[5px] lg:flex">
-        {LINKS.map((l) => (
-          <a
-            key={l.href}
-            href={l.href}
-            className="hover:text-accent rounded-full px-3.5 py-2 text-sm font-medium text-white/90"
-          >
-            {l.label}
-          </a>
-        ))}
+        {LINKS.map((l) =>
+          l.href.startsWith("/") ? (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="hover:text-accent rounded-full px-3.5 py-2 text-sm font-medium text-white/90"
+            >
+              {l.label}
+              {"badge" in l ? (
+                <span className="text-ink ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold">
+                  {l.badge}
+                </span>
+              ) : null}
+            </Link>
+          ) : (
+            <a
+              key={l.href}
+              href={l.href}
+              className="hover:text-accent rounded-full px-3.5 py-2 text-sm font-medium text-white/90"
+            >
+              {l.label}
+            </a>
+          )
+        )}
       </div>
       <div className="flex items-center gap-0.5 sm:gap-1">
         <Link

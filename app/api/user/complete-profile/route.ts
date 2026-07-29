@@ -1,0 +1,304 @@
+import { headers } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { ZodError } from 'zod';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { cleanSkills } from '@earn/utils/cleanSkills';
+import { verifyImageExists } from '@earn/utils/cloudinary';
+import { filterAllowedFields } from '@earn/utils/filterAllowedFields';
+import { generateUniqueReferralCode } from '@earn/utils/referralCodeGenerator';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { userSelectOptions } from '@earn/features/auth/constants/userSelectOptions';
+import { getUserSession } from '@earn/features/auth/utils/getUserSession';
+import { refreshUserMembershipLevel } from '@earn/features/membership/utils/refreshUserMembershipLevel';
+import { extractSocialUsername } from '@earn/features/social/utils/extractUsername';
+import {
+  profileSchema,
+  socialSuperRefine,
+  usernameSuperRefine,
+} from '@earn/features/talent/schema';
+
+function isZodValidationError(error: unknown): error is ZodError {
+  if (error instanceof ZodError) return true;
+
+  if (!error || typeof error !== 'object') return false;
+
+  const candidate = error as {
+    name?: unknown;
+    flatten?: unknown;
+  };
+
+  return (
+    candidate.name === 'ZodError' && typeof candidate.flatten === 'function'
+  );
+}
+
+const allowedFields = [
+  'username',
+  'photo',
+  'firstName',
+  'lastName',
+  'interests',
+  'bio',
+  'twitter',
+  'discord',
+  'github',
+  'linkedin',
+  'website',
+  'telegram',
+  'community',
+  'experience',
+  'location',
+  'cryptoExperience',
+  'workPrefernce',
+  'currentEmployer',
+  'skills',
+  'private',
+];
+
+function normalizeSocialInput(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return undefined;
+
+  return trimmedValue.replace(/^@/, '');
+}
+
+function normalizeLinkedSocialInput(
+  platform: 'github' | 'twitter' | 'linkedin' | 'telegram',
+  value: unknown,
+): string | undefined {
+  const normalizedValue = normalizeSocialInput(value);
+  if (!normalizedValue) return undefined;
+
+  return extractSocialUsername(platform, normalizedValue) || normalizedValue;
+}
+
+export async function POST(request: NextRequest) {
+  const sessionResponse = await getUserSession(await headers());
+
+  if (sessionResponse.status !== 200 || !sessionResponse.data) {
+    logger.warn(`Authentication failed: ${sessionResponse.error}`);
+    return NextResponse.json(
+      { error: sessionResponse.error },
+      { status: sessionResponse.status },
+    );
+  }
+
+  const { userId } = sessionResponse.data;
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  logger.debug(`Request body: ${safeStringify(body)}`);
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      logger.warn(`User not found for user ID: ${userId}`);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const filteredData = filterAllowedFields(body, allowedFields);
+
+    const referralCodeRaw = (body?.referralCode || '')
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    const referredByUpdate: { referredById?: string } = {};
+    if (referralCodeRaw && !user.referredById) {
+      try {
+        const inviter = await prisma.user.findUnique({
+          where: { referralCode: referralCodeRaw },
+          select: { id: true },
+        });
+        if (inviter && inviter.id !== user.id) {
+          const accepted = await prisma.user.count({
+            where: { referredById: inviter.id },
+          });
+          if (accepted < 10) {
+            referredByUpdate.referredById = inviter.id;
+          } else {
+            logger.info(
+              `Referral cap reached for inviter ${inviter.id}, ignoring referralCode during profile completion`,
+            );
+          }
+        } else if (!inviter) {
+          logger.info(`Invalid referralCode provided on profile completion`);
+        }
+      } catch (e) {
+        logger.error(
+          `Error validating referral code on profile completion: ${safeStringify(e)}`,
+        );
+      }
+    }
+
+    if (filteredData.photo && typeof filteredData.photo === 'string') {
+      try {
+        const imageExists = await verifyImageExists(filteredData.photo);
+        if (!imageExists) {
+          logger.warn(
+            `Photo verification failed for user ${userId}: ${filteredData.photo}`,
+          );
+          return NextResponse.json(
+            { error: 'Invalid photo: Image does not exist in our storage' },
+            { status: 400 },
+          );
+        }
+        logger.info(
+          `Photo verification successful for user ${userId}: ${filteredData.photo}`,
+        );
+      } catch (error: any) {
+        logger.warn(
+          `Photo verification error for user ${userId}: ${safeStringify(error)}`,
+        );
+        filteredData.photo = user.photo || undefined;
+      }
+    }
+
+    type SchemaKeys = keyof typeof profileSchema._def.schema.shape;
+    const keysToValidate = Object.keys(filteredData).reduce<
+      Record<SchemaKeys, true>
+    >(
+      (acc, key) => {
+        acc[key as SchemaKeys] = true;
+        return acc;
+      },
+      {} as Record<SchemaKeys, true>,
+    );
+
+    const partialSchema = profileSchema._def.schema
+      .pick(keysToValidate)
+      .superRefine(async (data, ctx) => {
+        await socialSuperRefine(data, ctx);
+        await usernameSuperRefine(data, ctx, user.id, {
+          isUsernameAvailable: async (username, currentUserId) => {
+            const existingUser = await prisma.user.findUnique({
+              where: { username },
+              select: { id: true },
+            });
+            return !existingUser || existingUser.id === currentUserId;
+          },
+        });
+      });
+
+    const updatedData = await partialSchema.parseAsync({
+      ...filteredData,
+      github: normalizeLinkedSocialInput('github', filteredData.github),
+      twitter: normalizeLinkedSocialInput('twitter', filteredData.twitter),
+      linkedin: normalizeLinkedSocialInput('linkedin', filteredData.linkedin),
+      telegram: normalizeLinkedSocialInput('telegram', filteredData.telegram),
+    });
+
+    const correctedSkills = updatedData.skills
+      ? cleanSkills(updatedData.skills)
+      : undefined;
+
+    const categories = new Set([
+      'createListing',
+      'scoutInvite',
+      'commentOrLikeSubmission',
+      'weeklyListingRoundup',
+      'replyOrTagComment',
+      'productAndNewsletter',
+    ]);
+
+    for (const category of categories) {
+      await prisma.emailSettings.deleteMany({
+        where: {
+          userId,
+          category,
+        },
+      });
+      await prisma.emailSettings.create({
+        data: {
+          user: { connect: { id: userId } },
+          category,
+        },
+      });
+    }
+
+    logger.info(
+      `Completing user profile for user ID: ${userId}; fields: ${Object.keys(updatedData).join(', ')}`,
+    );
+
+    if (user.walletAddress) {
+      logger.info(`Using existing wallet for user ID: ${userId}`);
+    }
+
+    const referralCode =
+      user.referralCode ?? (await generateUniqueReferralCode());
+
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        ...updatedData,
+        ...referredByUpdate,
+        ...(correctedSkills
+          ? {
+              skills: correctedSkills,
+            }
+          : {}),
+        interests: updatedData.interests
+          ? JSON.stringify(updatedData.interests)
+          : undefined,
+        community: updatedData.community
+          ? JSON.stringify(updatedData.community)
+          : undefined,
+        isTalentFilled: true,
+        walletAddress: user.walletAddress,
+        referralCode,
+      },
+    });
+
+    await refreshUserMembershipLevel({
+      userId,
+      email: user.email,
+      currentPeopleId: user.peopleId ?? null,
+    });
+
+    const result = await prisma.user.findUnique({
+      where: { id: userId },
+      select: userSelectOptions,
+    });
+
+    logger.info(`User onboarded successfully for user ID: ${userId}`);
+    return NextResponse.json(result, { status: 200 });
+  } catch (error: any) {
+    if (isZodValidationError(error)) {
+      logger.warn(
+        `Validation failed while onboarding user ${userId}: ${safeStringify(error.flatten())}`,
+      );
+      return NextResponse.json(
+        {
+          message: 'Invalid onboarding data',
+          errors: error.flatten(),
+        },
+        { status: 422 },
+      );
+    }
+
+    logger.error(
+      `Error occurred while onboarding user ${userId}: ${safeStringify(error)}`,
+    );
+    return NextResponse.json(
+      {
+        message: `Error occurred while updating user ${userId}: ${error.message}`,
+      },
+      { status: 500 },
+    );
+  }
+}

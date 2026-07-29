@@ -1,0 +1,367 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { toast } from 'sonner';
+import type * as z from 'zod';
+
+import MdPendingActions from '@earn/components/icons/MdPendingActions';
+import { SuperteamCombobox } from '@earn/components/shared/SuperteamCombobox';
+import { VerifiedBadge } from '@earn/components/shared/VerifiedBadge';
+import { Button } from '@earn/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@earn/components/ui/form';
+import { Input } from '@earn/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@earn/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@earn/components/ui/select';
+import { SideDrawer, SideDrawerContent } from '@earn/components/ui/side-drawer';
+import { api } from '@earn/lib/api';
+import { useUser } from '@earn/store/user';
+
+import { chaptersQuery } from '@earn/features/chapters/queries/chapters';
+import { SocialInput } from '@earn/features/social/components/SocialInput';
+import { sponsorVerificationSchema } from '@earn/features/sponsor/utils/sponsorVerificationSchema';
+
+import { useListingForm } from '../../hooks';
+
+type CoreMember = {
+  id: string;
+  name: string;
+};
+
+export const SponsorVerificationForm = () => {
+  const { refetchUser } = useUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const isSubmittingRef = useRef(false);
+
+  const listingForm = useListingForm();
+  const id = useWatch({
+    control: listingForm.control,
+    name: 'id',
+  });
+
+  const form = useForm<z.infer<typeof sponsorVerificationSchema>>({
+    resolver: zodResolver(sponsorVerificationSchema),
+    defaultValues: {
+      superteamLead: '',
+      superteamName: '',
+      fundingSource: '',
+      telegram: '',
+      commitToDeadline: undefined,
+      listingId: id || undefined,
+    },
+  });
+
+  const commitToDeadline = form.watch('commitToDeadline');
+  const superteamName = useWatch({
+    control: form.control,
+    name: 'superteamName',
+  });
+
+  const { data: chapters = [] } = useQuery(chaptersQuery);
+  const selectedChapter = useMemo(
+    () => chapters.find((chapter) => chapter.name === superteamName),
+    [chapters, superteamName],
+  );
+  const hasNoAssociation = superteamName === 'No association';
+
+  const { data: coreMembers = [], isLoading: isLoadingCoreMembers } = useQuery({
+    queryKey: ['chapter-core-members', selectedChapter?.id],
+    queryFn: async () => {
+      const response = await api.get<{ coreMembers: CoreMember[] }>(
+        `/api/chapters/${selectedChapter?.id}/core-members`,
+      );
+      return response.data.coreMembers;
+    },
+    enabled: Boolean(selectedChapter?.id) && !hasNoAssociation,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    form.setValue('superteamLead', '');
+  }, [form, superteamName]);
+
+  const onSubmit = async (
+    values: z.infer<typeof sponsorVerificationSchema>,
+  ) => {
+    if (isSubmittingRef.current) return;
+
+    try {
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
+
+      const payload = {
+        ...values,
+        superteamName:
+          values.superteamName === 'No association'
+            ? null
+            : values.superteamName,
+      };
+
+      await api.post('/api/sponsor/verification', payload);
+      setHasSubmitted(true);
+      await refetchUser();
+
+      toast.success('Verification information updated successfully');
+    } catch (error: any) {
+      console.error('Error submitting verification:', error);
+      toast.error(
+        error.response?.data?.message ||
+          'Failed to update verification information',
+      );
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <SideDrawer isOpen={true} onClose={() => null}>
+      <SideDrawerContent className="overflow-auto py-6 sm:max-w-lg sm:px-6">
+        {!hasSubmitted ? (
+          <div className="flex h-full flex-col">
+            <div className="w-fit rounded-full bg-blue-50 p-6">
+              <VerifiedBadge style={{ width: '30px', height: '30px' }} />
+            </div>
+            <p className="my-4 text-xl font-semibold text-slate-900">
+              We’ll need to verify your listing before it can be published
+            </p>
+            <p className="text-sm text-slate-500">
+              It’s important for us to verify new sponsors to keep the platform
+              free of any bad actors and maintain trust. Please share the
+              following information with us, and we will try to verify your
+              listing within 24H.
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Once verified, your listing will be published automatically. If we
+              need any additional information, we will get in touch with you.
+            </p>
+
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="mt-6 space-y-4"
+              >
+                <FormField
+                  control={form.control}
+                  name="superteamName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1 text-slate-500" isRequired>
+                        Which Superteam are you associated with?
+                      </FormLabel>
+                      <FormControl>
+                        <SuperteamCombobox
+                          value={field.value || null}
+                          onChange={(value) => {
+                            field.onChange(value || '');
+                          }}
+                          placeholder="Select a Superteam"
+                          className="w-full"
+                          classNames={{
+                            popoverContent:
+                              'w-[var(--radix-popper-anchor-width)]',
+                          }}
+                          showNoAssociation
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="superteamLead"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1 text-slate-500" isRequired>
+                        Is there a Superteam lead that can vouch for you?
+                      </FormLabel>
+                      <FormControl>
+                        {hasNoAssociation ? (
+                          <Input
+                            placeholder="Enter their name"
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        ) : !selectedChapter ? (
+                          <Input
+                            disabled
+                            placeholder="Select a Superteam first"
+                            value=""
+                          />
+                        ) : isLoadingCoreMembers ? (
+                          <Input
+                            disabled
+                            placeholder="Loading Leads..."
+                            value=""
+                          />
+                        ) : coreMembers.length === 0 ? (
+                          <Input
+                            disabled
+                            placeholder="No Leads found for this Superteam"
+                            value=""
+                          />
+                        ) : (
+                          <Select
+                            value={
+                              coreMembers.find(
+                                (member) => member.name === field.value,
+                              )?.id
+                            }
+                            onValueChange={(memberId) => {
+                              const selectedMember = coreMembers.find(
+                                (member) => member.id === memberId,
+                              );
+                              field.onChange(selectedMember?.name || '');
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a Lead" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {coreMembers.map((member) => (
+                                <SelectItem key={member.id} value={member.id}>
+                                  <div className="flex flex-col">
+                                    <span>{member.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fundingSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1 text-slate-500" isRequired>
+                        What is your source of funding?
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter funding source" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <SocialInput
+                  name="telegram"
+                  socialName={'telegram'}
+                  formLabel="What’s your Telegram username?"
+                  placeholder="username"
+                  required
+                  control={form.control}
+                  showIcon={false}
+                  height="h-9"
+                />
+
+                <FormField
+                  control={form.control}
+                  name="commitToDeadline"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-1 text-slate-500" isRequired>
+                        Do you commit to announcing and rewarding winners within
+                        one week, after the deadline is over?
+                      </FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex w-fit items-start justify-start gap-6"
+                        >
+                          <FormItem className="flex flex-row items-center gap-2">
+                            <FormControl>
+                              <RadioGroupItem
+                                value="yes"
+                                className="border-slate-300"
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">Yes</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex flex-row items-center gap-2">
+                            <FormControl>
+                              <RadioGroupItem
+                                className="border-slate-300"
+                                value="no"
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">No</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      {commitToDeadline === 'no' && (
+                        <p className="mt-2 text-sm text-red-500">
+                          You must commit to the one-week deadline to proceed
+                          with verification
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex w-full flex-col pt-8 pb-4">
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting || commitToDeadline !== 'yes'}
+                  >
+                    {isSubmitting ? (
+                      <span>Submitting...</span>
+                    ) : (
+                      <span>Submit</span>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
+            <div className="mb-4 flex h-fit w-fit rounded-full bg-slate-100 p-5">
+              <MdPendingActions className="text-slate-500" size={36} />
+            </div>
+            <p className="text-lg font-semibold text-slate-900">
+              Verification details successfully received
+            </p>
+            <p className="font-medium text-slate-500">
+              We’re currently reviewing your listing! This shouldn’t take long.
+              We’ll notify you about your verification status via email.
+            </p>
+            <div className="w-full pt-8">
+              <Link href="/earn/dashboard/listings" className="w-full">
+                <Button type="button" className="w-full">
+                  Understood
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </SideDrawerContent>
+    </SideDrawer>
+  );
+};

@@ -1,0 +1,173 @@
+import { useIsFetching, useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { useAtomValue } from 'jotai';
+import { CheckIcon, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useWatch } from 'react-hook-form';
+
+import { CopyButton } from '@earn/components/ui/copy-tooltip';
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@earn/components/ui/form';
+import { Input } from '@earn/components/ui/input';
+import { useDebounce } from '@earn/components/ui/multi-select';
+
+import { slugCheckQuery } from '@earn/features/listing-builder/queries/slug-check';
+
+import { isEditingAtom } from '../../../atoms';
+import { useListingForm } from '../../../hooks';
+
+export function Slug() {
+  const form = useListingForm();
+  const isEditing = useAtomValue(isEditingAtom);
+
+  // const [isValidated, setIsValidated] = useState(false);
+  const isSlugLoading = useIsFetching({ queryKey: ['slug'] }) > 0;
+
+  const slug = useWatch({
+    control: form.control,
+    name: 'slug',
+  });
+
+  const listingId = useWatch({
+    control: form.control,
+    name: 'id',
+  });
+  const publishedAt = useWatch({
+    control: form.control,
+    name: 'publishedAt',
+  });
+
+  const debouncedSlug = useDebounce(slug, 1000);
+
+  const queryEnabled = useMemo(
+    () =>
+      form.formState.errors.slug === undefined &&
+      !isEditing &&
+      !!debouncedSlug &&
+      !!listingId,
+    [form.formState.errors.slug, isEditing, debouncedSlug, listingId],
+  );
+
+  const slugCheckQueryResult = useMemo(() => {
+    return slugCheckQuery({ slug: debouncedSlug, check: true, id: listingId });
+  }, [debouncedSlug, listingId]);
+  const {
+    data: slugCheckData,
+    error: slugCheckError,
+    isError: isSlugCheckError,
+    isFetching: slugCheckFetching,
+  } = useQuery({
+    ...slugCheckQueryResult,
+    enabled: queryEnabled,
+    retry: false,
+    retryOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const isSlugTaken = useMemo(() => {
+    if (slugCheckData?.data.slugExists) return true;
+    if (!axios.isAxiosError(slugCheckError)) return false;
+
+    return (
+      slugCheckError.response?.status === 400 &&
+      slugCheckError.response?.data?.slugExists === true
+    );
+  }, [slugCheckData, slugCheckError]);
+  const isSlugAvailable = slugCheckData?.data.slugExists === false;
+
+  useEffect(() => {
+    if (isSlugTaken) {
+      if (slug === '') return;
+      form.setError('slug', {
+        message: 'Slug already exists. Please try another.',
+        type: 'manual',
+      });
+      form.setFocus('slug');
+    }
+  }, [isSlugTaken]);
+
+  const prevDebouncedSlugRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    async function validateSlug() {
+      await form.trigger('slug');
+      form.setFocus('slug');
+      // Only save if slug actually changed
+      console.log('[DRAFT_DEBUG] Slug.tsx useEffect', {
+        prevSlug: prevDebouncedSlugRef.current,
+        debouncedSlug,
+        willSave: prevDebouncedSlugRef.current !== debouncedSlug,
+      });
+      if (prevDebouncedSlugRef.current !== debouncedSlug) {
+        prevDebouncedSlugRef.current = debouncedSlug;
+        form.saveDraft();
+      }
+    }
+    validateSlug();
+  }, [debouncedSlug]);
+
+  return (
+    <FormField
+      control={form.control}
+      name="slug"
+      render={({ field }) => {
+        return (
+          <FormItem className="gap-2">
+            <div>
+              <FormLabel className="">Customise URL (Slug)</FormLabel>
+              <FormDescription className="cursor-pointer">
+                <CopyButton
+                  text={`https://superteam.fun/earn/listing/${slug}`}
+                  contentProps={{
+                    side: 'right',
+                    className: 'px-1.5 py-0.5 text-[0.6875rem]',
+                  }}
+                >
+                  <button className="max-w-md cursor-pointer truncate text-slate-400">
+                    <span>https://superteam.fun/earn/listing/</span>
+                    <span className="underline underline-offset-2">{slug}</span>
+                  </button>
+                </CopyButton>
+              </FormDescription>
+            </div>
+            <FormControl>
+              <div className="relative">
+                <Input
+                  {...field}
+                  placeholder="write-a-twitter-thread-on-TSION"
+                  disabled={!!publishedAt || isSlugLoading}
+                  onBlur={() => null}
+                  className="pr-8"
+                  onChange={(e) => {
+                    const value = e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, '-'); // Replace spaces with dashes
+                    field.onChange(value);
+                  }}
+                />
+                {slugCheckFetching || isSlugLoading ? (
+                  <Loader2 className="absolute top-1.5 right-2 animate-spin text-slate-300" />
+                ) : (
+                  form.formState.errors.slug === undefined &&
+                  isSlugAvailable &&
+                  !isSlugCheckError &&
+                  !isEditing && (
+                    <span className="text-background absolute top-2 right-2 flex h-5 w-5 scale-75 items-center rounded-full bg-emerald-500 p-1">
+                      <CheckIcon className="h-full w-full stroke-[3px]" />
+                    </span>
+                  )
+                )}
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}

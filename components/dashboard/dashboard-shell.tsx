@@ -24,8 +24,8 @@ interface DashboardShellProps {
 // (the scroll-spy sections) and any standalone section page like /vault, so
 // moving between them feels like one app, not a different shell per page.
 //
-// Every nav target is dispatched through one function: "vault" is a real
-// route, so it always navigates there; everything else is a scroll-spy
+// Every nav target is dispatched through one function. Standalone sections are
+// real routes, so they navigate there; everything else is a scroll-spy
 // anchor that only exists on /dashboard, so it scrolls in-page when already
 // there and otherwise navigates to /dashboard#id first.
 export function DashboardShell({ nav, activeSection, children }: DashboardShellProps) {
@@ -41,8 +41,8 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
   const navigate = useCallback(
     (id: string) => {
-      if (id === "vault") {
-        router.push("/vault");
+      if (id === "vault" || id === "earn") {
+        router.push(`/${id}`);
         return;
       }
       if (pathname === "/dashboard") {

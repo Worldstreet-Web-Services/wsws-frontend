@@ -258,6 +258,21 @@ export function LockIcon({ size = 13, className }: IconProps) {
   );
 }
 
+export function BriefcaseIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="4" y="7" width="16" height="12" rx="2.5" stroke={stroke} strokeWidth="1.8" />
+      <path
+        d="M9 7V5.8A1.8 1.8 0 0110.8 4h2.4A1.8 1.8 0 0115 5.8V7"
+        stroke={stroke}
+        strokeWidth="1.8"
+      />
+      <path d="M4 12h16" stroke={stroke} strokeWidth="1.8" />
+      <path d="M10 12v1.5h4V12" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function WalletIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>

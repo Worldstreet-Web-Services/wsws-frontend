@@ -1,4 +1,4 @@
-export type SectionId = "portfolio" | "trade" | "markets" | "rwa" | "prediction" | "vault";
+export type SectionId = "portfolio" | "trade" | "markets" | "rwa" | "prediction" | "vault" | "earn";
 
 export const SECTION_LABEL: Record<SectionId, string> = {
   portfolio: "Portfolio",
@@ -7,12 +7,13 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   rwa: "Real assets",
   prediction: "Prediction",
   vault: "Vault",
+  earn: "Earn",
 };
 
 // Portfolio is always the account home. The rest follow, led by whatever the
 // user picked during onboarding.
 const PINNED: SectionId = "portfolio";
-const REORDERABLE: SectionId[] = ["trade", "markets", "rwa", "prediction", "vault"];
+const REORDERABLE: SectionId[] = ["trade", "markets", "rwa", "prediction", "vault", "earn"];
 
 // Maps an onboarding interest to the section it should surface first.
 const INTEREST_TO_SECTION: Record<string, SectionId> = {

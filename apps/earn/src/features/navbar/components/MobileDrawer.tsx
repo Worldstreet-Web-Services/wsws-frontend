@@ -1,0 +1,341 @@
+import { usePrivy } from '@privy-io/react-auth';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useRouter } from 'next/router';
+import posthog from 'posthog-js';
+import React, { useState } from 'react';
+
+import { SupportFormDialog } from '@earn/components/shared/SupportFormDialog';
+import { Button } from '@earn/components/ui/button';
+import { ExternalImage } from '@earn/components/ui/cloudinary-image';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@earn/components/ui/collapsible';
+import { Separator } from '@earn/components/ui/separator';
+import { Sheet, SheetContent } from '@earn/components/ui/sheet';
+import { generateTelegramBotUrl } from '@earn/constants/Telegram';
+import { useDisclosure } from '@earn/hooks/use-disclosure';
+import { useLogout, useUser } from '@earn/store/user';
+import { cn } from '@earn/utils/cn';
+
+import { HACKATHONS } from '@earn/features/hackathon/constants/hackathons';
+import { userStatsQuery } from '@earn/features/home/queries/user-stats';
+import { isEligiblePeopleType } from '@earn/features/membership/utils/peopleEligibility';
+import { ProBadge } from '@earn/features/pro/components/ProBadge';
+import { ProIntro } from '@earn/features/pro/components/ProIntro';
+import { EarnAvatar } from '@earn/features/talent/components/EarnAvatar';
+import { EmailSettingsModal } from '@earn/features/talent/components/EmailSettingsModal';
+
+import {
+  CATEGORY_NAV_ITEMS,
+  LISTING_NAV_ITEMS,
+  renderLabel,
+} from '../constants';
+
+interface MobileDrawerProps {
+  isDrawerOpen: boolean;
+  onDrawerClose: () => void;
+  onLoginOpen: () => void;
+}
+
+interface NavItemProps {
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  label: React.ReactNode;
+  className?: string;
+}
+
+const NavItem = ({ onClick, label, className }: NavItemProps) => {
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        'ph-no-capture flex cursor-pointer items-center rounded-lg p-2 text-slate-600 select-none hover:bg-slate-100',
+        className,
+      )}
+    >
+      {label}
+    </div>
+  );
+};
+
+export const MobileDrawer = ({
+  isDrawerOpen,
+  onDrawerClose,
+  onLoginOpen,
+}: MobileDrawerProps) => {
+  const router = useRouter();
+  const { authenticated, ready } = usePrivy();
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const logout = useLogout();
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
+    ...userStatsQuery,
+    enabled: ready && authenticated,
+  });
+
+  const { isOpen, onClose, onOpen } = useDisclosure();
+
+  const { user } = useUser();
+  const hasEligibleMembership = isEligiblePeopleType(user?.people?.type);
+
+  const isLoggedIn = !!user && authenticated && ready;
+
+  const showProIntro = !!(
+    !user?.isPro &&
+    user?.isTalentFilled &&
+    !isStatsLoading &&
+    ((stats?.totalWinnings && stats.totalWinnings >= 1000) ||
+      hasEligibleMembership)
+  );
+
+  return (
+    <Sheet open={isDrawerOpen} onOpenChange={onDrawerClose}>
+      <SheetContent
+        side="left"
+        className="w-[300px] overflow-y-auto p-0 text-sm sm:w-[380px] sm:text-base"
+        showCloseIcon={false}
+        onOpenAutoFocus={() => false}
+      >
+        {/* Hidden element to prevent auto-focus */}
+        <div tabIndex={-1} className="sr-only" />
+
+        <EmailSettingsModal isOpen={isOpen} onClose={onClose} />
+
+        {isLoggedIn && (
+          <div>
+            <div
+              className="flex items-center gap-1.5 px-4 py-3 select-none sm:gap-2 sm:py-4"
+              onClick={() => {
+                router.push(`/earn/t/${user?.username}`);
+                onDrawerClose();
+              }}
+            >
+              <EarnAvatar
+                className="size-8 sm:size-9"
+                id={user?.id}
+                avatar={user?.photo}
+              />
+              <p className="line-clamp-1 text-lg text-slate-600">
+                {user?.firstName} {user?.lastName}
+              </p>
+            </div>
+            <Separator />
+            <div className="mt-1 px-1">
+              {showProIntro && (
+                <ProIntro className="rounded-lg" origin="sidebar" />
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="px-4 py-3">
+          {ready && !authenticated && (
+            <div className="ph-no-capture mb-3 ml-2 flex items-center gap-3">
+              <div
+                className="text-semibold cursor-pointer p-0 text-slate-600 hover:text-slate-900"
+                onClick={() => {
+                  posthog.capture('login_navbar');
+                  onDrawerClose();
+                  onLoginOpen();
+                }}
+              >
+                Login
+              </div>
+              <Separator orientation="vertical" className="h-5 bg-slate-300" />
+              <div
+                className="text-semibold text-brand-grey hover:text-brand-grey-dark cursor-pointer"
+                onClick={() => {
+                  posthog.capture('signup_navbar');
+                  onDrawerClose();
+                  onLoginOpen();
+                }}
+              >
+                Sign Up
+              </div>
+            </div>
+          )}
+          {user && !user.currentSponsorId && !user.isTalentFilled && (
+            <Button
+              variant="ghost"
+              className="text-semibold text-brand-grey hover:text-brand-grey-dark cursor-pointer"
+              onClick={() => {
+                router.push('/earn/new');
+              }}
+            >
+              Complete your Profile
+            </Button>
+          )}
+          {HACKATHONS?.map((hackathon) => (
+            <NavItem
+              key={hackathon.slug}
+              label={
+                <div className="relateive flex translate-x-1.75 items-center gap-2">
+                  <ExternalImage
+                    src={hackathon.logo}
+                    alt={hackathon.label}
+                    className="h-5 scale-200 p-1"
+                  />
+                </div>
+              }
+              onClick={() => {
+                router.push(`/earn/hackathon/${hackathon.slug}`);
+              }}
+            />
+          ))}
+          <div className="ph-no-capture flex flex-col">
+            {isLoggedIn && user?.isTalentFilled && (
+              <>
+                <NavItem
+                  label="Profile"
+                  onClick={() => router.push(`/earn/t/${user?.username}`)}
+                />
+                <NavItem
+                  label="Edit Profile"
+                  onClick={() => router.push(`/earn/t/${user?.username}/edit`)}
+                />
+                <NavItem label="Email Preferences" onClick={onOpen} />
+                <NavItem
+                  label="Bookmarks"
+                  onClick={() => {
+                    posthog.capture('bookmarks_user menu');
+                    router.push(`/earn/bookmarks`);
+                  }}
+                />
+              </>
+            )}
+            <Collapsible
+              className="space-y-1"
+              open={categoriesOpen}
+              onOpenChange={setCategoriesOpen}
+            >
+              <CollapsibleTrigger
+                tabIndex={-1}
+                data-no-focus
+                className={cn(
+                  'flex w-full items-center justify-between rounded-lg p-2 text-slate-600 transition-colors focus:outline-none focus-visible:ring-0 focus-visible:outline-none',
+                  'hover:bg-slate-100',
+                  categoriesOpen && 'bg-slate-100',
+                )}
+              >
+                <span>Browse Categories</span>
+                {categoriesOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="pl-4">
+                  {LISTING_NAV_ITEMS?.map((navItem) => {
+                    return (
+                      <NavItem
+                        onClick={() => {
+                          posthog.capture(navItem.posthog);
+                          router.push(navItem.href);
+                          onDrawerClose();
+                        }}
+                        key={navItem.label}
+                        label={renderLabel(navItem)}
+                      />
+                    );
+                  })}
+                  <NavItem
+                    className="ph-no-capture"
+                    onClick={() => {
+                      posthog.capture('pro_navbar');
+                      router.push('/earn/pro');
+                    }}
+                    label={
+                      <ProBadge
+                        containerClassName="gap-1 mt-px"
+                        iconClassName="size-4 text-zinc-600"
+                        textClassName="text-xs font-medium text-slate-600"
+                      />
+                    }
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible
+              className="space-y-1"
+              open={skillsOpen}
+              onOpenChange={setSkillsOpen}
+            >
+              <CollapsibleTrigger
+                tabIndex={-1}
+                data-no-focus
+                className={cn(
+                  'flex w-full items-center justify-between rounded-lg p-2 text-slate-600 transition-colors focus:outline-none focus-visible:ring-0 focus-visible:outline-none',
+                  'hover:bg-slate-100',
+                  skillsOpen && 'bg-slate-100',
+                )}
+              >
+                <span>Browse Skills</span>
+                {skillsOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="pl-4">
+                  {CATEGORY_NAV_ITEMS?.map((navItem) => {
+                    return (
+                      <NavItem
+                        onClick={() => {
+                          posthog.capture(navItem.posthog);
+                          router.push(navItem.href);
+                          onDrawerClose();
+                        }}
+                        key={navItem.label}
+                        label={renderLabel(navItem)}
+                      />
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <NavItem
+              label="Activity Feed"
+              onClick={() => router.push(`/earn/feed`)}
+            />
+            <NavItem
+              label="Leaderboard"
+              onClick={() => router.push(`/earn/leaderboard`)}
+            />
+            <SupportFormDialog>
+              <NavItem
+                label="Get Help"
+                onClick={() => {
+                  posthog.capture('get help_navbar');
+                }}
+              />
+            </SupportFormDialog>
+            {isLoggedIn && (
+              <NavItem
+                onClick={() => {
+                  posthog.capture('telegram notifications_user menu');
+                  window.open(generateTelegramBotUrl(user?.email), '_blank');
+                }}
+                label="Telegram Notifications"
+              />
+            )}
+            {isLoggedIn && (
+              <NavItem
+                label="Logout"
+                onClick={() => {
+                  posthog.capture('logout_user menu');
+                  logout();
+                }}
+                className="text-red-500"
+              />
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};

@@ -1,0 +1,293 @@
+import { usePrivy } from '@privy-io/react-auth';
+import { useQuery } from '@tanstack/react-query';
+import { AlertTriangle, Loader2, Lock, Pencil } from 'lucide-react';
+import posthog from 'posthog-js';
+
+import { Button } from '@earn/components/ui/button';
+import { useDisclosure } from '@earn/hooks/use-disclosure';
+import { useUser } from '@earn/store/user';
+import { cn } from '@earn/utils/cn';
+
+import { AuthWrapper } from '@earn/features/auth/components/AuthWrapper';
+import { chaptersQuery } from '@earn/features/chapters/queries/chapters';
+import {
+  getLocationCooldown,
+  locationCooldownTooltip,
+} from '@earn/features/listings/utils/locationCooldown';
+import {
+  getRegionTooltipLabel,
+  userRegionEligibilty,
+} from '@earn/features/listings/utils/region';
+import { ProBadge } from '@earn/features/pro/components/ProBadge';
+
+import { useApplicationState } from '../hooks/useApplicationState';
+import { userApplicationQuery } from '../queries/user-application';
+import { type Grant } from '../types';
+import { grantApplicationCooldownTooltip } from '../utils/grantApplicationCooldown';
+import { isUserEligibleForST } from '../utils/stGrant';
+import { GrantModal } from './GrantModal';
+import { InfoWrapper } from './InfoWrapper';
+
+interface GrantApplicationButtonProps {
+  grant: Grant;
+}
+
+export const ApplicationActionButton = ({
+  grant,
+}: GrantApplicationButtonProps) => {
+  const { user } = useUser();
+  const { authenticated } = usePrivy();
+  const isAuthenticated = authenticated;
+
+  const {
+    region,
+    id,
+    link,
+    isNative,
+    isPublished,
+    isPaused,
+    isPro,
+    isST,
+    sponsorId,
+  } = grant;
+  const isUserPro = user?.isPro;
+  const isUserEligibleST = isUserEligibleForST(user);
+
+  const { data: application, isLoading: isUserApplicationLoading } = useQuery({
+    ...userApplicationQuery(id),
+    enabled: !!user?.id,
+  });
+  const { data: chapters = [] } = useQuery(chaptersQuery);
+
+  const { buttonConfig, hasApplied, applicationState, tranches } =
+    useApplicationState(application, grant);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const isUserEligibleByRegion = userRegionEligibilty({
+    region,
+    userLocation: user?.location,
+    chapters,
+  });
+
+  const regionTooltipLabel = getRegionTooltipLabel(region, false, chapters);
+
+  const locationCooldown = getLocationCooldown({
+    locationUpdatedAt: user?.locationUpdatedAt ?? null,
+    listingRegion: region,
+    userLocation: user?.location,
+    chapters,
+  });
+  const isLocationCooldown = locationCooldown.inCooldown;
+  const isNewApplicationLocationCooldown =
+    isLocationCooldown && applicationState === 'ALLOW NEW';
+
+  const getCooldownTooltipContent = () => {
+    if (isNewApplicationLocationCooldown) {
+      return locationCooldownTooltip(locationCooldown.daysRemaining);
+    }
+    if (applicationState !== 'COOLDOWN' || !application?.decidedAt) return null;
+
+    return grantApplicationCooldownTooltip(application.decidedAt);
+  };
+
+  const cooldownTooltipContent = getCooldownTooltipContent() || undefined;
+
+  const isPausedForNewApplications =
+    Boolean(isPaused) && applicationState === 'ALLOW NEW';
+
+  const isGrantSponsor = user?.currentSponsorId === sponsorId;
+  const isProRestricted = isST
+    ? !isUserEligibleST && !isGrantSponsor && applicationState === 'ALLOW NEW'
+    : isPro &&
+      !isUserPro &&
+      !isGrantSponsor &&
+      applicationState === 'ALLOW NEW';
+  const isNotEligibleForPro = isAuthenticated && isProRestricted;
+
+  const isBtnDisabled =
+    buttonConfig.isDisabled ||
+    Boolean(
+      !isPublished ||
+      isPausedForNewApplications ||
+      (user?.id && user?.isTalentFilled && !isUserEligibleByRegion) ||
+      (user?.id && user?.isTalentFilled && isNewApplicationLocationCooldown) ||
+      isNotEligibleForPro,
+    );
+
+  const getButtonText = () => {
+    if (isPausedForNewApplications) {
+      return 'Applications Paused';
+    }
+    if (isNewApplicationLocationCooldown) {
+      return 'Ineligible';
+    }
+    if (isProRestricted && !isUserApplicationLoading) {
+      if (!isAuthenticated) {
+        return 'Check Eligibility';
+      }
+      return 'Not Eligible';
+    }
+    return buttonConfig.text;
+  };
+
+  const getButtonBg = () => {
+    if (isPausedForNewApplications) {
+      return 'bg-gray-500';
+    }
+    if (isNewApplicationLocationCooldown) {
+      return 'bg-brand-grey-400';
+    }
+    if (isProRestricted && !isUserApplicationLoading) {
+      if (!isAuthenticated) {
+        return 'bg-zinc-700';
+      }
+      return 'bg-zinc-300';
+    }
+    if (isUserPro && isPro && applicationState === 'ALLOW NEW') {
+      return 'bg-zinc-800';
+    }
+    return buttonConfig.bg;
+  };
+
+  const handleSubmit = () => {
+    if (link && !isNative) {
+      window.open(link, '_blank', 'noopener,noreferrer');
+    } else {
+      if (applicationState === 'ALLOW EDIT') {
+        posthog.capture('edit_grant application');
+      } else if (applicationState === 'ALLOW NEW') {
+        posthog.capture('start_grant application');
+      }
+      onOpen();
+    }
+  };
+
+  const grantCreditConditions =
+    user &&
+    applicationState === 'ALLOW NEW' &&
+    !isUserApplicationLoading &&
+    !isPaused;
+
+  return (
+    <>
+      {isOpen && (
+        <GrantModal
+          onClose={onClose}
+          isOpen={isOpen}
+          grant={grant}
+          editableGrantApplication={
+            applicationState === 'ALLOW EDIT' ? application : undefined
+          }
+          applicationId={application?.id}
+          tranches={tranches}
+        />
+      )}
+      <div className="ph-no-capture w-full md:px-0 md:pb-3">
+        <div className="flex items-center gap-2">
+          <InfoWrapper
+            isUserEligibleByRegion={isUserEligibleByRegion}
+            regionTooltipLabel={regionTooltipLabel}
+            user={user}
+            cooldownTooltipContent={cooldownTooltipContent}
+          >
+            <AuthWrapper
+              showCompleteProfileModal
+              completeProfileModalBodyText={
+                'Please complete your profile before applying for a grant.'
+              }
+              className="w-full flex-col"
+            >
+              <div className="relative w-full">
+                <Button
+                  className={cn(
+                    'h-12 w-full gap-4',
+                    isProRestricted
+                      ? 'disabled:opacity-100'
+                      : 'disabled:opacity-70',
+                    'text-base md:text-lg',
+                    'font-medium',
+                    grant?.link && !grant?.isNative ? 'mt-4' : '',
+                    getButtonBg(),
+                    'size-lg',
+                    isNotEligibleForPro && 'text-zinc-700',
+                    applicationState === 'ALLOW EDIT' &&
+                      (isPro
+                        ? 'border-zinc-700 text-zinc-700 hover:bg-zinc-100'
+                        : 'border-brand-grey text-brand-grey hover:text-brand-grey-dark'),
+                    isUserPro && isPro && 'hover:bg-black',
+                    !isUserPro && isPro && 'hover:opacity-90',
+                  )}
+                  disabled={isBtnDisabled}
+                  onClick={handleSubmit}
+                  variant={
+                    applicationState === 'ALLOW EDIT' ? 'outline' : 'default'
+                  }
+                >
+                  {isUserApplicationLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span>{buttonConfig.loadingText}</span>
+                    </>
+                  ) : (
+                    <>
+                      {isNotEligibleForPro && <Lock className="h-4 w-4" />}
+                      {applicationState === 'ALLOW EDIT' && <Pencil />}
+                      <span>{getButtonText()}</span>
+                    </>
+                  )}
+                </Button>
+                {!isST &&
+                  isUserPro &&
+                  isPro &&
+                  applicationState === 'ALLOW NEW' &&
+                  !isUserApplicationLoading && (
+                    <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                      <ProBadge
+                        containerClassName="bg-zinc-700 px-2 py-0.5 gap-1"
+                        iconClassName="size-2.5 text-zinc-400"
+                        textClassName="text-[10px] font-medium text-white"
+                      />
+                    </div>
+                  )}
+              </div>
+            </AuthWrapper>
+          </InfoWrapper>
+        </div>
+        {hasApplied && (
+          <div className="flex w-full gap-2 bg-[#62F6FF10] p-2 md:mb-4 md:p-3">
+            <AlertTriangle className="text-[#1A7F86]" />
+            <p className="text-left text-xs font-medium text-[#1A7F86]">
+              You will be notified via email if your grant has been approved or
+              rejected.
+            </p>
+          </div>
+        )}
+        {(isPro || isST) && (isST ? !isUserEligibleST : !isUserPro) && (
+          <div className="mt-1 md:my-1.5 md:flex">
+            <p className="mx-auto w-full rounded-md bg-gray-50 px-2 py-2 text-center text-xs text-slate-600 md:text-xs">
+              {isST ? (
+                <>
+                  You need to be a <strong>Superteam member</strong> to be able
+                  to apply for this grant
+                </>
+              ) : (
+                <>
+                  You need to be a part of the <strong>PRO membership</strong>{' '}
+                  to apply for this grant
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {grantCreditConditions && !isPro && (
+          <div className="mt-1 md:my-1.5 md:flex">
+            <p className="mx-auto w-full rounded-md bg-[#62F6FF10] py-0.5 text-center text-xs font-medium text-[#1A7F86] md:text-xs">
+              Grant applications do not require credits
+            </p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};

@@ -5,6 +5,7 @@ const COLUMNS = [
     title: "Product",
     links: [
       { href: "#markets", label: "Markets" },
+      { href: "/earn", label: "Earn" },
       { href: "#naira", label: "Funding" },
       { href: "#how", label: "How it works" },
       { href: "#early", label: "Get started" },

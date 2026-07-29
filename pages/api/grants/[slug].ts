@@ -1,0 +1,42 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { getGrantBySlug } from '@earn/features/grants/queries/get-grant-by-slug';
+
+export default async function user(req: NextApiRequest, res: NextApiResponse) {
+  const params = req.query;
+  const slug = params.slug as string;
+  logger.debug(`Request query: ${safeStringify(req.query)}`);
+
+  if (!slug) {
+    logger.warn('Slug is missing in the request query');
+    return res.status(400).json({
+      message: 'Slug is required in the request query.',
+    });
+  }
+
+  try {
+    logger.debug(`Fetching grant details for slug: ${slug}`);
+    const grant = await getGrantBySlug(slug);
+
+    if (!grant) {
+      logger.warn(`No grant found with slug: ${slug}`);
+      return res.status(404).json({
+        message: `No grant found with slug=${slug}.`,
+      });
+    }
+
+    logger.info(`Grant details fetched successfully for slug: ${slug}`);
+    return res.status(200).json(grant);
+  } catch (error: any) {
+    logger.error(
+      `Error occurred while fetching grant with slug=${slug}: ${safeStringify(error)}`,
+    );
+    return res.status(500).json({
+      error: error.message,
+      message: `Error occurred while fetching grant with slug=${slug}.`,
+    });
+  }
+}

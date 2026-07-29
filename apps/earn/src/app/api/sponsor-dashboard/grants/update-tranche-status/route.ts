@@ -1,0 +1,333 @@
+import { waitUntil } from '@vercel/functions';
+import { headers } from 'next/headers';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+import logger from '@earn/lib/logger';
+import { LockNotAcquiredError, withRedisLock } from '@earn/lib/with-redis-lock';
+import { prisma } from '@earn/prisma';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { checkGrantSponsorAuth } from '@earn/features/auth/utils/checkGrantSponsorAuth';
+import { getSponsorSession } from '@earn/features/auth/utils/getSponsorSession';
+import { queueEmail } from '@earn/features/emails/utils/queueEmail';
+import { addPaymentInfoToAirtable } from '@earn/features/grants/utils/addPaymentInfoToAirtable';
+import { validateCustomEmailNote } from '@earn/features/sponsor-dashboard/utils/customEmailSanitizer';
+import {
+  getTrancheApprovedEmailBody,
+  getTrancheRejectedEmailBody,
+} from '@earn/features/sponsor-dashboard/utils/grantEmailCopy';
+
+const UpdateGrantTrancheSchema = z
+  .object({
+    id: z.string(),
+    approvedAmount: z.number().finite().positive().optional(),
+    status: z.enum(['Approved', 'Rejected']),
+    customNote: z.string().trim().min(1).max(5000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status !== 'Approved') return;
+    if (value.approvedAmount === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['approvedAmount'],
+        message: 'approvedAmount is required when approving a tranche',
+      });
+    }
+  });
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const validationResult = UpdateGrantTrancheSchema.safeParse(body);
+
+  if (!validationResult.success) {
+    const errorMessage = validationResult.error.errors
+      .map((err) => `${err.path.join('.')}: ${err.message}`)
+      .join(', ');
+    logger.warn('Invalid request body:', errorMessage);
+    return NextResponse.json(
+      {
+        error: 'Invalid request body',
+        details: errorMessage,
+      },
+      { status: 400 },
+    );
+  }
+
+  const session = await getSponsorSession(await headers());
+
+  if (session.error || !session.data) {
+    return NextResponse.json(
+      { error: session.error },
+      { status: session.status },
+    );
+  }
+  const { id, status, approvedAmount, customNote } = validationResult.data;
+  const { userId, userSponsorId } = session.data;
+  try {
+    return await withRedisLock(
+      `locks:update-tranche-status:${id}`,
+      async () => {
+        const currentTranche = await prisma.grantTranche.findUniqueOrThrow({
+          where: { id },
+          include: {
+            Grant: {
+              include: {
+                sponsor: true,
+              },
+            },
+            GrantApplication: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const { error } = await checkGrantSponsorAuth(
+          userSponsorId,
+          currentTranche.grantId,
+        );
+        if (error) {
+          return NextResponse.json(
+            { error: error.message },
+            { status: error.status },
+          );
+        }
+
+        let sanitizedCustomNote: string | undefined;
+        if (customNote) {
+          const fullEmailHtml =
+            status === 'Approved'
+              ? getTrancheApprovedEmailBody({
+                  granteeName: currentTranche.GrantApplication.user?.firstName,
+                  projectTitle: currentTranche.GrantApplication.projectTitle,
+                  sponsorName: currentTranche.Grant.sponsor.name,
+                  approvedAmount,
+                  token: currentTranche.Grant.token || 'USDC',
+                  salutation: currentTranche.Grant.emailSalutation,
+                  reviewerNote: customNote,
+                })
+              : getTrancheRejectedEmailBody({
+                  granteeName: currentTranche.GrantApplication.user?.firstName,
+                  projectTitle: currentTranche.GrantApplication.projectTitle,
+                  sponsorName: currentTranche.Grant.sponsor.name,
+                  salutation: currentTranche.Grant.emailSalutation,
+                  reviewerNote: customNote,
+                });
+          const noteValidation = validateCustomEmailNote({
+            noteHtml: customNote,
+            fullEmailHtml,
+          });
+          if (!noteValidation.isValid) {
+            logger.warn('Invalid custom note:', noteValidation.error);
+            return NextResponse.json(
+              {
+                error: 'Invalid custom note',
+                details: noteValidation.error,
+              },
+              { status: 400 },
+            );
+          }
+          sanitizedCustomNote = noteValidation.sanitized;
+        }
+
+        const updateData: any = {
+          status,
+          decidedAt: new Date().toISOString(),
+          approvedAmount,
+        };
+
+        const application = await prisma.grantApplication.findUniqueOrThrow({
+          where: { id: currentTranche.applicationId },
+          select: {
+            totalTranches: true,
+            approvedAmount: true,
+            totalPaid: true,
+          },
+        });
+
+        let totalTranches = application.totalTranches;
+
+        if (status === 'Approved') {
+          if (approvedAmount === undefined) {
+            return NextResponse.json(
+              {
+                error: 'Invalid approved amount',
+                message: 'Approved amount is required for approved tranches.',
+              },
+              { status: 400 },
+            );
+          }
+
+          if (approvedAmount > currentTranche.ask) {
+            return NextResponse.json(
+              {
+                error: 'Invalid approved amount',
+                message: `Approved amount (${approvedAmount}) cannot exceed tranche requested amount (${currentTranche.ask}).`,
+              },
+              { status: 400 },
+            );
+          }
+
+          const approvedTranches = await prisma.grantTranche.findMany({
+            where: {
+              applicationId: currentTranche.applicationId,
+              status: 'Approved',
+              id: { not: id },
+            },
+            select: {
+              approvedAmount: true,
+            },
+          });
+
+          const totalApprovedSoFar = approvedTranches.reduce(
+            (sum, tranche) => sum + (tranche.approvedAmount || 0),
+            0,
+          );
+
+          if (
+            totalApprovedSoFar + approvedAmount >
+            application.approvedAmount
+          ) {
+            return NextResponse.json(
+              {
+                error: 'Invalid approved amount',
+                message: `Total approved tranches (${totalApprovedSoFar + approvedAmount}) would exceed grant's approved amount (${application.approvedAmount})`,
+              },
+              { status: 400 },
+            );
+          }
+
+          const existingTranches = await prisma.grantTranche.count({
+            where: {
+              applicationId: currentTranche.applicationId,
+              status: {
+                not: 'Rejected',
+              },
+            },
+          });
+          if (
+            totalTranches - existingTranches === 0 &&
+            application.totalPaid + approvedAmount < application.approvedAmount
+          ) {
+            totalTranches! += 1;
+          }
+          await prisma.grantApplication.update({
+            where: { id: currentTranche.applicationId },
+            include: {
+              grant: true,
+              user: true,
+            },
+            data: { totalTranches },
+          });
+        }
+
+        const result = await prisma.grantTranche.update({
+          where: { id },
+          data: updateData,
+          include: {
+            GrantApplication: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    twitter: true,
+                    discord: true,
+                    kycName: true,
+                    location: true,
+                    kycAddress: true,
+                    kycDOB: true,
+                    kycIDNumber: true,
+                    kycIDType: true,
+                    kycCountry: true,
+                    username: true,
+                  },
+                },
+                grant: {
+                  select: {
+                    airtableId: true,
+                    isNative: true,
+                    title: true,
+                    approverRecordId: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        waitUntil(
+          (async () => {
+            if (result.status === 'Approved') {
+              try {
+                await addPaymentInfoToAirtable(result.GrantApplication, result);
+              } catch (airtableError: any) {
+                logger.error(
+                  `Error adding payment info to Airtable: ${airtableError.message}`,
+                );
+                logger.error(
+                  `Airtable error details: ${safeStringify(airtableError.response?.data || airtableError)}`,
+                );
+              }
+              await queueEmail({
+                type: 'trancheApproved',
+                id: result.id,
+                userId: result.GrantApplication.userId,
+                triggeredBy: userId,
+                otherInfo: sanitizedCustomNote
+                  ? {
+                      customEmailNote: sanitizedCustomNote,
+                    }
+                  : undefined,
+              });
+            }
+
+            if (result.status === 'Rejected') {
+              await queueEmail({
+                type: 'trancheRejected',
+                id: result.id,
+                userId: result.GrantApplication.userId,
+                triggeredBy: userId,
+                otherInfo: sanitizedCustomNote
+                  ? {
+                      customEmailNote: sanitizedCustomNote,
+                    }
+                  : undefined,
+              });
+            }
+          })(),
+        );
+        return NextResponse.json({ status: 200 });
+      },
+      { ttlSeconds: 300 },
+    );
+  } catch (error: any) {
+    if (error instanceof LockNotAcquiredError) {
+      return NextResponse.json(
+        {
+          error: 'Tranche update already in progress',
+          message: `Tranche update is already being processed for tranche with id=${id}.`,
+        },
+        { status: 409 },
+      );
+    }
+    logger.error(
+      `Error occurred while updating grant tranche ID: ${id}:  ${error.message}`,
+    );
+    return NextResponse.json(
+      {
+        error: error.message,
+        message: 'Error occurred while updating the grant tranche.',
+      },
+      { status: 500 },
+    );
+  }
+}

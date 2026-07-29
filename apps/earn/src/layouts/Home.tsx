@@ -1,0 +1,198 @@
+import { usePrivy } from '@privy-io/react-auth';
+import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
+import { type ReactNode, useMemo } from 'react';
+
+import { type ChapterDisplay } from '@earn/interface/chapter';
+import { Default } from '@earn/layouts/Default';
+import { Meta } from '@earn/layouts/Meta';
+import { cn } from '@earn/utils/cn';
+
+import { BannerCarousel } from '@earn/features/home/components/Banner';
+import { OpportunityBanner } from '@earn/features/home/components/OpportunityBanner';
+import { UserStatsBanner } from '@earn/features/home/components/UserStatsBanner';
+import { userCountQuery } from '@earn/features/home/queries/user-count';
+import type { ParsedOpportunityTags } from '@earn/features/listings/utils/parse-opportunity-tags';
+
+interface CountryData {
+  readonly name: string;
+  readonly code: string;
+}
+
+interface SkillData {
+  readonly name: string;
+  readonly type: 'parent' | 'subskill';
+  readonly parent?: string;
+}
+
+interface CategoryData {
+  readonly name: string;
+  readonly slug: string;
+}
+
+interface HomeProps {
+  readonly children: ReactNode;
+  readonly type:
+    | 'listing'
+    | 'region'
+    | 'feed'
+    | 'region-all'
+    | 'skill'
+    | 'skill-all'
+    | 'category'
+    | 'category-all'
+    | 'opportunity';
+  readonly st?: ChapterDisplay;
+  readonly countryData?: CountryData;
+  readonly skillData?: SkillData;
+  readonly categoryData?: CategoryData;
+  readonly opportunityTags?: ParsedOpportunityTags;
+  readonly listingType?: 'bounties' | 'projects';
+  readonly potentialSession?: boolean;
+  readonly meta?: ReactNode;
+}
+
+type CategoryTypes = 'content' | 'development' | 'design' | 'other' | 'all';
+
+const RegionBanner = dynamic(() =>
+  import('@earn/features/home/components/RegionBanner').then(
+    (mod) => mod.RegionBanner,
+  ),
+);
+
+const CategoryBanner = dynamic(() =>
+  import('@earn/features/home/components/CategoryBanner').then(
+    (mod) => mod.CategoryBanner,
+  ),
+);
+
+const CountryBanner = dynamic(() =>
+  import('@earn/features/home/components/CountryBanner').then(
+    (mod) => mod.CountryBanner,
+  ),
+);
+
+const SkillBanner = dynamic(() =>
+  import('@earn/features/home/components/SkillBanner').then(
+    (mod) => mod.SkillBanner,
+  ),
+);
+
+const TypeBanner = dynamic(() =>
+  import('@earn/features/home/components/TypeBanner').then((mod) => mod.TypeBanner),
+);
+
+const HomeSideBar = dynamic(() =>
+  import('@earn/features/home/components/SideBar').then((mod) => mod.HomeSideBar),
+);
+
+export function Home({
+  children,
+  type,
+  st,
+  countryData,
+  skillData,
+  categoryData,
+  opportunityTags,
+  listingType,
+  potentialSession = false,
+  meta,
+}: HomeProps) {
+  const router = useRouter();
+  const { authenticated } = usePrivy();
+
+  const { data: totalUsers } = useQuery(userCountQuery);
+
+  const currentCategory = useMemo(() => {
+    const categoryParam = router.query.category?.toString().toLowerCase();
+    const isAllPage = router.asPath.includes('/all');
+
+    if (isAllPage) {
+      if (
+        !categoryParam ||
+        categoryParam === 'all' ||
+        categoryParam === 'for you'
+      ) {
+        return 'all';
+      }
+      if (
+        categoryParam === 'development' ||
+        categoryParam === 'design' ||
+        categoryParam === 'content' ||
+        categoryParam === 'other'
+      ) {
+        return categoryParam as CategoryTypes;
+      }
+      return null;
+    }
+    return null;
+  }, [router.query.category, router.asPath]);
+
+  return (
+    <Default
+      className="bg-white"
+      meta={
+        meta || (
+          <Meta
+            title="TSION Earn | Work to Earn in Crypto"
+            description="Explore the latest bounties on TSION Earn, offering opportunities in the crypto space across Design, Development, and Content."
+            canonical="https://superteam.fun/earn"
+          />
+        )
+      }
+    >
+      {type === 'region' && st && <RegionBanner st={st} />}
+      {type === 'region' && countryData && !st && (
+        <CountryBanner
+          countryName={countryData.name}
+          countryCode={countryData.code}
+        />
+      )}
+      {(type === 'skill' || type === 'skill-all') && skillData && (
+        <SkillBanner skillName={skillData.name} skillType={skillData.type} />
+      )}
+      {(type === 'category' || type === 'category-all') && categoryData && (
+        <CategoryBanner
+          category={categoryData.name.toLowerCase() as CategoryTypes}
+        />
+      )}
+      {type === 'opportunity' && opportunityTags && (
+        <OpportunityBanner tags={opportunityTags} />
+      )}
+      {type === 'listing' && listingType && <TypeBanner type={listingType} />}
+      {!!currentCategory &&
+        type !== 'region' &&
+        type !== 'region-all' &&
+        type !== 'skill' &&
+        type !== 'skill-all' &&
+        type !== 'category' &&
+        type !== 'category-all' && (
+          <CategoryBanner category={currentCategory} />
+        )}
+      <div className={cn('mx-auto w-full px-2 lg:px-6')}>
+        <div className="mx-auto w-full max-w-7xl p-0">
+          <div className="flex items-start justify-between">
+            <div className="w-full lg:border-r lg:border-slate-100">
+              <div className="w-full lg:pr-6">
+                {!currentCategory && type === 'listing' && !listingType && (
+                  <div className="pt-3">
+                    {potentialSession || authenticated ? (
+                      <UserStatsBanner />
+                    ) : (
+                      <BannerCarousel totalUsers={totalUsers?.totalUsers} />
+                    )}
+                  </div>
+                )}
+                {children}
+              </div>
+            </div>
+            <div className="hidden lg:flex">
+              <HomeSideBar type={type} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Default>
+  );
+}

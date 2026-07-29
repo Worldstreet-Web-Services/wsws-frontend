@@ -37,17 +37,17 @@ import { dayjs } from '@earn/utils/dayjs';
 const animeAce = localFont({
   src: [
     {
-      path: '../../../theme/animeace2_reg.ttf',
+      path: '../../../apps/earn/src/theme/animeace2_reg.ttf',
       weight: '400',
       style: 'normal',
     },
     {
-      path: '../../../theme/animeace2_ital.ttf',
+      path: '../../../apps/earn/src/theme/animeace2_ital.ttf',
       weight: '400',
       style: 'italic',
     },
     {
-      path: '../../../theme/animeace2_bld.ttf',
+      path: '../../../apps/earn/src/theme/animeace2_bld.ttf',
       weight: '700',
       style: 'normal',
     },

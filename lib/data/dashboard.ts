@@ -208,7 +208,7 @@ export const PREDICTIONS: Prediction[] = [
   {
     tag: "Sports",
     vol: "$690k vol",
-    q: "Will the next World Cup final go to penalties?",
+    q: "Will the next championship final go to penalties?",
     yes: "22¢",
     no: "78¢",
     pct: 22,

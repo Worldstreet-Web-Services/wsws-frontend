@@ -1,6 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { Gift, Menu } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 
@@ -12,6 +11,7 @@ import { useUser } from '@earn/store/user';
 import { cn } from '@earn/utils/cn';
 
 import { CreditIcon } from '@earn/features/credits/icon/credit';
+import { MobileDrawer } from './MobileDrawer';
 
 interface Props {
   onLoginOpen: () => void;
@@ -22,13 +22,6 @@ interface Props {
 // const AnnouncementBar = dynamic(() =>
 //   import('@earn/features/navbar').then((mod) => mod.AnnouncementBar),
 // );
-
-const MobileDrawer = dynamic(
-  () => import('./MobileDrawer').then((mod) => mod.MobileDrawer),
-  {
-    ssr: false,
-  },
-);
 
 export const MobileNavbar = ({
   onLoginOpen,

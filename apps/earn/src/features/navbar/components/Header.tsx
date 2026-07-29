@@ -4,17 +4,11 @@ import { useSearchParams } from 'next/navigation';
 import posthog from 'posthog-js';
 import { useEffect } from 'react';
 
+import { CreditDrawer } from '@earn/features/credits/components/CreditDrawer';
 import { useDisclosure } from '@earn/hooks/use-disclosure';
 
 const Login = dynamic(
   () => import('@earn/features/auth/components/Login').then((mod) => mod.Login),
-  { ssr: false },
-);
-const CreditDrawer = dynamic(
-  () =>
-    import('@earn/features/credits/components/CreditDrawer').then(
-      (mod) => mod.CreditDrawer,
-    ),
   { ssr: false },
 );
 const ReferralModal = dynamic(

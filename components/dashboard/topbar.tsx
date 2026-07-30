@@ -12,7 +12,7 @@ import { deriveProfile } from "@/lib/user";
 interface TopbarProps {
   onOpenAccount: () => void;
   // Scrolls in-page on /dashboard, or navigates there first from any other
-  // page (e.g. /vault) — same dispatcher the sidebar uses.
+  // page (e.g. /casino) — same dispatcher the sidebar uses.
   onSelectSection: (id: string) => void;
 }
 

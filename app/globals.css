@@ -80,3 +80,25 @@ body {
 @utility tnum {
   font-variant-numeric: tabular-nums;
 }
+
+/* Casino: the hub's top-wins marquee scrolls one full copy of a duplicated
+   list, and drawn lottery balls pop in as they land. */
+@keyframes ws-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ws-ball-in {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

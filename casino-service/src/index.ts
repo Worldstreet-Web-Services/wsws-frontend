@@ -17,18 +17,14 @@ await app.register(cors, { origin: true });
 // Several actions (accept, resign, cancel) carry no body but are still sent
 // as JSON by clients. Fastify rejects an empty JSON body by default, so treat
 // it as an empty object rather than failing the request.
-app.addContentTypeParser(
-  "application/json",
-  { parseAs: "string" },
-  (_req, body: string, done) => {
-    if (!body || body.trim() === "") return done(null, {});
-    try {
-      done(null, JSON.parse(body));
-    } catch {
-      done(new BadRequest("INVALID_JSON", "That request body isn't valid JSON."), undefined);
-    }
+app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body: string, done) => {
+  if (!body || body.trim() === "") return done(null, {});
+  try {
+    done(null, JSON.parse(body));
+  } catch {
+    done(new BadRequest("INVALID_JSON", "That request body isn't valid JSON."), undefined);
   }
-);
+});
 
 function ok(data: unknown) {
   return { success: true, data };
@@ -120,12 +116,7 @@ app.post<{ Body: { stakeWei?: string; timeControl?: string; mode?: string } }>(
     const stakeWei = parseWei(req.body?.stakeWei);
     const timeControl = timeControlOf(req.body?.timeControl);
     const mode = req.body?.mode === "auto" ? "auto" : "invite";
-    const { challenge, ticket } = await casino.createChallenge(
-      userId,
-      stakeWei,
-      timeControl,
-      mode
-    );
+    const { challenge, ticket } = await casino.createChallenge(userId, stakeWei, timeControl, mode);
     return ok({
       challenge: {
         id: challenge.id,

@@ -91,9 +91,9 @@ describe("staked chess between two players", () => {
   });
 
   it("won't let a player stake more than they hold", async () => {
-    await expect(
-      casino.createChallenge("alice", FUND + 1n, "5+3", "invite")
-    ).rejects.toThrow(/not enough balance/i);
+    await expect(casino.createChallenge("alice", FUND + 1n, "5+3", "invite")).rejects.toThrow(
+      /not enough balance/i
+    );
   });
 
   it("returns the stake when a challenge is cancelled", async () => {
@@ -203,9 +203,9 @@ describe("spectator betting", () => {
 
   it("rejects a bet when the price has moved away from what was shown", async () => {
     const match = await liveMatch();
-    await expect(
-      casino.placeBet(match.id, "carol", "white", STAKE, 99)
-    ).rejects.toThrow(/price moved/i);
+    await expect(casino.placeBet(match.id, "carol", "white", STAKE, 99)).rejects.toThrow(
+      /price moved/i
+    );
     // The rejected stake is returned, not swallowed.
     expect(await ledger.balanceOf("carol")).toBe(FUND);
   });
@@ -333,8 +333,7 @@ describe("a drawn game", () => {
     // games. This ledger reports bob as short at that moment.
     const drained = new InMemoryLedger();
     const short = Object.create(drained) as InMemoryLedger;
-    short.balanceOf = async (userId: string) =>
-      userId === "bob" ? 0n : drained.balanceOf(userId);
+    short.balanceOf = async (userId: string) => (userId === "bob" ? 0n : drained.balanceOf(userId));
     const c2 = new Casino(short);
     await drained.credit("alice", FUND, "test");
     await drained.credit("bob", FUND, "test");

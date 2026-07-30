@@ -18,7 +18,7 @@ export function amount(wei: bigint, unitPriceUsd = 0): TokenAmount {
     wei: wei.toString(),
     tokenSymbol: TOKEN_SYMBOL,
     // Display only. Computed at the edge so the exact wei stays authoritative.
-    usdValue: unitPriceUsd > 0 ? Number(wei) / 1e18 * unitPriceUsd : 0,
+    usdValue: unitPriceUsd > 0 ? (Number(wei) / 1e18) * unitPriceUsd : 0,
   };
 }
 

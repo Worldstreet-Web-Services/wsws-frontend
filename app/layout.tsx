@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Space_Grotesk } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import Providers from "./providers";
 import "./globals.css";
 
@@ -18,21 +20,29 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "TSION",
+  title: "Ark",
   description:
     "The onchain superapp for global markets. Own stocks, gold, crypto and real-world assets from one self-custody account, funded in Naira.",
-  icons: { icon: "/tsion-logo.svg" },
+  icons: { icon: "/ark-logo.svg" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Locale comes from the NEXT_LOCALE cookie (or Accept-Language on a first
+  // visit) via i18n/request.ts. Reading it here makes rendering dynamic, which
+  // the app already is everywhere that matters.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={`${geist.variable} ${spaceGrotesk.variable} h-full antialiased`}>
+    <html lang={locale} className={`${geist.variable} ${spaceGrotesk.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -45,6 +45,18 @@ export const CASINO_GAMES: CasinoGame[] = [
     note: "Staked head-to-head, invite or quick match",
     comingSoon: false,
   },
+  // Sits beside Chess in the first row: the hero spans four of the six
+  // columns, and "tall" is the two-column slot that pairs with it.
+  {
+    id: "last-standing",
+    name: "Last Man Standing",
+    category: "New",
+    size: "tall",
+    glyph: "⌛",
+    href: "/casino/last-standing",
+    note: "Outlast everyone, winner takes the pot",
+    comingSoon: false,
+  },
   {
     id: "draw",
     name: "Draw",
@@ -53,16 +65,6 @@ export const CASINO_GAMES: CasinoGame[] = [
     glyph: "✦",
     href: "/casino/draw",
     note: "Pick 5 numbers and a bonus",
-    comingSoon: false,
-  },
-  {
-    id: "last-standing",
-    name: "Last Man Standing",
-    category: "New",
-    size: "medium",
-    glyph: "⌛",
-    href: "/casino/last-standing",
-    note: "Outlast everyone, winner takes the pot",
     comingSoon: false,
   },
   {

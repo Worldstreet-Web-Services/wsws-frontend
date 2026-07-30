@@ -45,11 +45,15 @@ export async function casinoGet<T>(path: string, params?: Record<string, string>
 }
 
 export async function casinoPost<T>(path: string, body?: unknown): Promise<T> {
+  // Actions like accept and resign carry no body. Sending a JSON content-type
+  // with nothing in it is rejected by strict servers, so the header only goes
+  // on when there is actually a body.
   return unwrap<T>(
     await fetch(`${BASE_PATH}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      ...(body === undefined
+        ? {}
+        : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     })
   );
 }

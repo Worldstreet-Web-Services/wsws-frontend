@@ -6,7 +6,7 @@ import { scrollToSection } from "@/lib/scroll";
 import { isNavTarget, type TradePrefill } from "@/lib/voice/intent";
 import { prefillToQuery } from "@/lib/voice/prefill";
 
-// The one place that knows how to move between app sections: "vault" is a real
+// The one place that knows how to move between app sections: "casino" is a real
 // route, so it always navigates there; every other section is a scroll-spy
 // anchor that only exists on /dashboard, so it scrolls in-page when already
 // there and otherwise navigates to /dashboard#id first.
@@ -29,8 +29,8 @@ export function useAppNavigate(): (id: string, prefill?: TradePrefill) => void {
     (id: string, prefill?: TradePrefill) => {
       if (!isNavTarget(id)) return;
       const query = prefill ? prefillToQuery(prefill) : "";
-      if (id === "vault") {
-        router.push(query ? `/vault?${query}` : "/vault");
+      if (id === "casino") {
+        router.push(query ? `/casino?${query}` : "/casino");
         return;
       }
       if (pathname === "/dashboard" && !query) {

@@ -10,6 +10,7 @@ import {
   fetchMatch,
   fetchMatchmakingTicket,
   fetchOpenChallenges,
+  offerDraw,
   resignMatch,
   submitMove,
 } from "@/lib/casino/api/chess";
@@ -109,6 +110,11 @@ export function useChessMatch(matchId: string | null) {
     onSuccess: applyMatch,
   });
 
+  const proposeDraw = useMutation({
+    mutationFn: () => offerDraw(matchId as string),
+    onSuccess: applyMatch,
+  });
+
   return {
     match,
     clocks,
@@ -119,6 +125,8 @@ export function useChessMatch(matchId: string | null) {
     moveError: move.error,
     resign: resign.mutateAsync,
     resigning: resign.isPending,
+    offerDraw: proposeDraw.mutateAsync,
+    offeringDraw: proposeDraw.isPending,
   };
 }
 

@@ -70,6 +70,8 @@ export async function resignMatch(matchId: string): Promise<ChessMatch> {
   return casinoPost<ChessMatch>(`/chess/matches/${encodeURIComponent(matchId)}/resign`);
 }
 
+// Offers a draw, or accepts one the opponent already offered. Agreement
+// settles the game as a draw and starts the rematch.
 export async function offerDraw(matchId: string): Promise<ChessMatch> {
   return casinoPost<ChessMatch>(`/chess/matches/${encodeURIComponent(matchId)}/offer-draw`);
 }

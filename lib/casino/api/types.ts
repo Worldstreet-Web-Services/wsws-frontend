@@ -59,6 +59,14 @@ export interface ChessMatch {
   turn: ChessColor;
   // Set once the match settles.
   result: ChessResult | null;
+  // A drawn game spawns a rematch for the same stake with colours swapped;
+  // this is that game. Null when the draw ended play, e.g. because a player
+  // could no longer cover the stake.
+  rematchId: string | null;
+  // On a rematch, the drawn game it came from.
+  rematchOf: string | null;
+  // The colour with an outstanding draw offer, if any.
+  drawOffered: ChessColor | null;
   spectatorCount: number;
   createdAt: string;
 }

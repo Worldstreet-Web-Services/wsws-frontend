@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChessMatch } from "@/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
@@ -32,8 +33,19 @@ function resultLine(match: ChessMatch, you: ChessColor | null): string {
 
 export function PlaySection({ matchId }: { matchId: string | null }) {
   const wallet = useCasinoWallet();
-  const { match, clocks, isLoading, error, submitMove, moving, resign, resigning } =
-    useChessMatch(matchId);
+  const router = useRouter();
+  const {
+    match,
+    clocks,
+    isLoading,
+    error,
+    submitMove,
+    moving,
+    resign,
+    resigning,
+    offerDraw,
+    offeringDraw,
+  } = useChessMatch(matchId);
   const [selected, setSelected] = useState<Square | null>(null);
 
   // The board is whatever the server says. A malformed FEN yields null rather
@@ -65,6 +77,15 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     if (!position || !selected || !yourTurn) return [];
     return legalMovesForPiece(position.board, selected.r, selected.c);
   }, [position, selected, yourTurn]);
+
+  // A drawn game starts its rematch straight away. Give players a moment to
+  // read the result, then move them onto the new board.
+  const rematchId = match?.rematchId ?? null;
+  useEffect(() => {
+    if (!rematchId) return;
+    const id = setTimeout(() => router.push(`/casino/chess/play?match=${rematchId}`), 2500);
+    return () => clearTimeout(id);
+  }, [rematchId, router]);
 
   if (!matchId) {
     return (
@@ -105,6 +126,19 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     }
     const piece = board[r][c];
     setSelected(piece && piece.color === you ? { r, c } : null);
+  };
+
+  const onOfferDraw = async () => {
+    try {
+      const next = await offerDraw();
+      toast.success(
+        next.result?.kind === "draw"
+          ? "Draw agreed. Stakes returned, rematch starting."
+          : "Draw offered."
+      );
+    } catch (e) {
+      toast.error(friendlyError(e, "Couldn't offer a draw."));
+    }
   };
 
   const onResign = async () => {
@@ -190,13 +224,26 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
         </div>
         <div className="text-[12px] whitespace-nowrap text-white/50">{turnLabel}</div>
         {you !== null && !settled ? (
-          <button
-            onClick={() => void onResign()}
-            disabled={resigning}
-            className="border-down/40 text-down cursor-pointer rounded-full border px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap disabled:opacity-50"
-          >
-            {resigning ? "…" : "Resign"}
-          </button>
+          <>
+            <button
+              onClick={() => void onOfferDraw()}
+              disabled={offeringDraw}
+              className="cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap text-white/70 transition-colors hover:border-white/35 hover:text-white disabled:opacity-50"
+            >
+              {offeringDraw
+                ? "…"
+                : match.drawOffered && match.drawOffered !== you
+                  ? "Accept draw"
+                  : "Offer draw"}
+            </button>
+            <button
+              onClick={() => void onResign()}
+              disabled={resigning}
+              className="border-down/40 text-down cursor-pointer rounded-full border px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap disabled:opacity-50"
+            >
+              {resigning ? "…" : "Resign"}
+            </button>
+          </>
         ) : null}
       </div>
 
@@ -206,12 +253,37 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
             <div className="text-[12px] font-semibold tracking-[0.06em] text-white/70 uppercase">
               {resultLine(match, you)}
             </div>
-            <div className="ws-display tnum text-grey-100 mt-2 text-[34px]">
-              {wallet.format(amountUsd(match.pot, wallet.unitPriceUsd))}
-            </div>
-            <div className="mt-1 text-[12px] font-normal text-white/50">
-              Settled by the casino, paid to your balance
-            </div>
+            {match.result?.kind === "draw" ? (
+              <>
+                <div className="ws-display tnum text-grey-100 mt-2 text-[28px]">
+                  {wallet.format(amountUsd(match.stake, wallet.unitPriceUsd))}
+                </div>
+                <div className="mt-1 text-[12px] font-normal text-white/50">
+                  Your stake came back in full
+                </div>
+                {rematchId ? (
+                  <div className="mt-5">
+                    <div className="border-accent/30 border-t-accent mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2" />
+                    <div className="text-[12.5px] font-normal text-white/70">
+                      Rematch starting, colours swapped…
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 text-[12.5px] font-normal text-white/50">
+                    No rematch this time. Your stake is back in your balance.
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="ws-display tnum text-grey-100 mt-2 text-[34px]">
+                  {wallet.format(amountUsd(match.pot, wallet.unitPriceUsd))}
+                </div>
+                <div className="mt-1 text-[12px] font-normal text-white/50">
+                  Settled by the casino, paid to your balance
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}

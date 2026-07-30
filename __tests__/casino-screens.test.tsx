@@ -60,6 +60,7 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section";
+import { PlaySection } from "@/components/dashboard/casino/chess/play-section";
 import { CreateSection } from "@/components/dashboard/casino/chess/create-section";
 import { DrawSection } from "@/components/dashboard/casino/draw/draw-section";
 
@@ -246,5 +247,74 @@ describe("draw", () => {
     );
     render(<DrawSection />, { wrapper });
     expect(await screen.findByText(/the draw isn't available yet/i)).toBeInTheDocument();
+  });
+});
+
+describe("a drawn game", () => {
+  const player = (id: string, username: string) => ({
+    id,
+    username,
+    rating: 1500,
+    walletAddress: id,
+  });
+
+  // The signed-in wallet is 0xabc, so this is the player's own game.
+  const drawnMatch = (over: Record<string, unknown> = {}) => ({
+    id: "m1",
+    state: "settled",
+    white: player("0xabc", "you"),
+    black: player("0xdef", "them"),
+    timeControl: "5+3",
+    stake: money(50),
+    pot: money(100),
+    fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    moves: [],
+    clocks: { w: 300, b: 300 },
+    clockUpdatedAt: new Date().toISOString(),
+    turn: "w",
+    result: { kind: "draw", reason: "agreement" },
+    rematchId: "m2",
+    rematchOf: null,
+    drawOffered: null,
+    spectatorCount: 0,
+    createdAt: new Date().toISOString(),
+    ...over,
+  });
+
+  it("tells the player their stake came back and a rematch is starting", async () => {
+    chessApi.fetchMatch.mockResolvedValue(drawnMatch());
+    render(<PlaySection matchId="m1" />, { wrapper });
+
+    // The result reads in both the status line and the overlay.
+    expect((await screen.findAllByText(/Draw · agreement/)).length).toBeGreaterThan(0);
+    // The stake is returned in full, so that is the figure shown, not the pot.
+    expect(screen.getByText("$50.00")).toBeInTheDocument();
+    expect(screen.getByText(/Your stake came back in full/)).toBeInTheDocument();
+    expect(screen.getByText(/Rematch starting, colours swapped/)).toBeInTheDocument();
+  });
+
+  it("says so plainly when a draw ends play without a rematch", async () => {
+    chessApi.fetchMatch.mockResolvedValue(drawnMatch({ rematchId: null }));
+    render(<PlaySection matchId="m1" />, { wrapper });
+
+    expect(await screen.findByText(/No rematch this time/)).toBeInTheDocument();
+    expect(screen.queryByText(/Rematch starting/)).not.toBeInTheDocument();
+  });
+
+  it("offers a draw, and switches to accepting one the opponent offered", async () => {
+    const live = drawnMatch({ state: "in_progress", result: null, rematchId: null });
+    chessApi.fetchMatch.mockResolvedValue(live);
+    chessApi.offerDraw.mockResolvedValue({ ...live, drawOffered: "w" });
+
+    const { unmount } = render(<PlaySection matchId="m1" />, { wrapper });
+    fireEvent.click(await screen.findByRole("button", { name: "Offer draw" }));
+    await waitFor(() => expect(chessApi.offerDraw).toHaveBeenCalledWith("m1"));
+    unmount();
+
+    // With the opponent's offer outstanding, the same control accepts it.
+    // A fresh client so the match is fetched again rather than served warm.
+    chessApi.fetchMatch.mockResolvedValue({ ...live, drawOffered: "b" });
+    render(<PlaySection matchId="m1" />, { wrapper });
+    expect(await screen.findByRole("button", { name: "Accept draw" })).toBeInTheDocument();
   });
 });

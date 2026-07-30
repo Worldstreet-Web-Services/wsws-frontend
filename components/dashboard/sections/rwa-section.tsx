@@ -51,15 +51,16 @@ export const RwaSection: FC<RwaSectionProps> = () => {
     );
   }, [voicePrefill, buyable]);
 
-  // Open the staged trade once, when its asset first resolves. The ref guards
-  // against reopening if the user closes it (setState here is a one-shot modal
-  // open driven by an external URL param, not a render-loop).
-  const openedPrefill = useRef(false);
+  // Open the staged trade when its asset resolves. We guard on the prefill's
+  // identity (a NEW object per spoken command) rather than a one-shot boolean, so
+  // a SECOND voice buy/sell while the page is still mounted re-opens the panel —
+  // a boolean latch blocked every trade after the first (needed a refresh).
+  const openedPrefillRef = useRef<TradePrefill | null>(null);
   useEffect(() => {
-    if (openedPrefill.current || !prefillAsset) return;
-    openedPrefill.current = true;
+    if (!prefillAsset || !voicePrefill || openedPrefillRef.current === voicePrefill) return;
+    openedPrefillRef.current = voicePrefill;
     openTrade(prefillAsset);
-  }, [prefillAsset]);
+  }, [prefillAsset, voicePrefill]);
 
   // The staged mode/amount only applies while the prefilled asset is the one open.
   const prefill: TradePrefill | null =

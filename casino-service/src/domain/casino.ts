@@ -50,6 +50,13 @@ export class Casino {
     this.players.set(p.id, p);
   }
 
+  // Outside production a first-time player is given a starting balance, so
+  // the flow can be exercised before the balance is mirrored from chain.
+  // Unset in production, where the only money is the player's real funds.
+  readonly devStartingBalanceWei = process.env.CASINO_DEV_STARTING_BALANCE
+    ? BigInt(process.env.CASINO_DEV_STARTING_BALANCE)
+    : 0n;
+
   playerOf(userId: string): Player {
     const known = this.players.get(userId);
     if (known) return known;
@@ -62,6 +69,9 @@ export class Casino {
       walletAddress: userId,
     };
     this.players.set(userId, p);
+    if (this.devStartingBalanceWei > 0n) {
+      void this.ledger.credit(userId, this.devStartingBalanceWei, "dev-starting-balance");
+    }
     return p;
   }
 

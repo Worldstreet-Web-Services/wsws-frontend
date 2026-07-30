@@ -4,19 +4,52 @@ import type { SectionId } from "@/lib/sections";
 // getWalletAddress expects.
 export type ChainType = "ethereum" | "solana";
 
-// The typed result of understanding one spoken command. Gemini returns loose
-// JSON; lib/voice/normalize turns it into this union so the rest of the app
-// only ever sees WSWS types, never a raw model payload.
+// A pre-filled trade the target section should open. Derived from a Vivid
+// command frame (rwa.buy / rwa.sell): navigate to the section AND stage this
+// so the buy/sell form opens ready — the USER reviews and confirms the trade
+// themselves (we never auto-execute money actions).
+export interface TradePrefill {
+  symbol: string;
+  amount?: string;
+  mode: "buy" | "sell";
+}
+
+// A spoken origin-chain name — free text, NOT a fixed set. Dextopus offers a
+// large, dynamic list of deposit chains; the deposit screen resolves whatever
+// the user said ("solana", "arbitrum", "polygon", …) against the live list, so
+// voice deposit is never limited to a hardcoded subset.
+export type DepositChain = string;
+
+// A pre-selected crypto deposit, from a Vivid `deposit` frame ("deposit USDC on
+// Solana"): open Add Funds on the crypto screen with this chain (and token, when
+// it resolves) so the deposit address is shown. No money moves; the address is
+// the user's own non-custodial wallet.
+export interface DepositPrefill {
+  chain: DepositChain;
+  token?: string;
+}
+
+// Any non-empty, sanely-short chain name is accepted; matching against the live
+// Dextopus list happens in the deposit screen, which no-ops on no match.
+export function isDepositChain(value: string): value is DepositChain {
+  return /^[a-z0-9 .-]{1,32}$/i.test(value);
+}
+
+// The typed result of understanding one spoken command. The Vivid backend
+// (apps/ai) returns typed frames over the /audio socket; lib/voice/vivid-intent
+// maps them to this union so the rest of the app only ever sees WSWS types,
+// never a raw model payload.
 //
-// Phase 1 wired navigate. Phase 2 adds the read actions (balance, wallet
-// address, refresh). Money actions come later without reshaping the contract.
-//
-// "unsupported" is for commands the model understood but the app can't do by
-// voice yet (send, buy, sell, swap, deposit): we tell the user it's coming
-// rather than pretending we didn't understand. "unknown" is genuine
-// non-understanding.
+// - navigate: open a section. When `prefill` is present the section opens its
+//   trade form pre-filled from a spoken buy/sell (user confirms).
+// - speak: a spoken read result (price, list) to surface in a toast, no nav.
+// - getBalance / getWalletAddress / refresh: local read actions.
+// - "unsupported": understood but not voice-enabled yet. "unknown": genuine
+//   non-understanding.
 export type Intent =
-  | { action: "navigate"; target: SectionId }
+  | { action: "navigate"; target: SectionId; prefill?: TradePrefill }
+  | { action: "deposit"; prefill: DepositPrefill }
+  | { action: "speak"; message: string }
   | { action: "getBalance" }
   | { action: "getWalletAddress"; chain: ChainType }
   | { action: "refresh" }

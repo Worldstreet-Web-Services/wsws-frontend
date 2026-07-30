@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState, type FC } from "react";
+import { useEffect, useMemo, useRef, useState, type FC } from "react";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { RwaAssetList } from "@/components/dashboard/rwa/rwa-asset-list";
 import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { RwaDetailSheet } from "@/components/dashboard/rwa/rwa-detail-sheet";
 import { useRwaAssets } from "@/hooks/use-rwa-assets";
+import { useTradePrefill } from "@/hooks/use-trade-prefill";
 import { isBaseAsset, isTradable } from "@/lib/rwa/presenter";
 import type { RwaApiAsset } from "@/lib/rwa-api";
+import type { TradePrefill } from "@/lib/voice/intent";
 import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
 
 // The dashboard page passes detail and confirm openers, but the RWA section owns
@@ -37,6 +39,31 @@ export const RwaSection: FC<RwaSectionProps> = () => {
     setDetailAsset(null);
     setTradeAsset(asset);
   };
+
+  // A voice buy/sell lands as URL params. Resolve the spoken symbol against the
+  // loaded registry (pure derivation — no state), so the effect below only has
+  // to open the modal once. `prefill` (mode/amount) is read straight at render.
+  const voicePrefill = useTradePrefill();
+  const prefillAsset = useMemo(() => {
+    if (!voicePrefill || buyable.length === 0) return null;
+    return (
+      buyable.find((a) => a.symbol.toUpperCase() === voicePrefill.symbol.toUpperCase()) ?? null
+    );
+  }, [voicePrefill, buyable]);
+
+  // Open the staged trade once, when its asset first resolves. The ref guards
+  // against reopening if the user closes it (setState here is a one-shot modal
+  // open driven by an external URL param, not a render-loop).
+  const openedPrefill = useRef(false);
+  useEffect(() => {
+    if (openedPrefill.current || !prefillAsset) return;
+    openedPrefill.current = true;
+    openTrade(prefillAsset);
+  }, [prefillAsset]);
+
+  // The staged mode/amount only applies while the prefilled asset is the one open.
+  const prefill: TradePrefill | null =
+    voicePrefill && tradeAsset && prefillAsset?.id === tradeAsset.id ? voicePrefill : null;
 
   // One shell, two views: opening a trade from the detail sheet swaps the
   // content (contentKey change) so it slides across instead of stacking.
@@ -81,7 +108,13 @@ export const RwaSection: FC<RwaSectionProps> = () => {
         contentKey={`${modalMode}-${modalAsset?.id ?? ""}`}
       >
         {modalMode === "trade" && tradeAsset ? (
-          <RwaTradePanel key={tradeAsset.id} asset={tradeAsset} bare />
+          <RwaTradePanel
+            key={tradeAsset.id}
+            asset={tradeAsset}
+            bare
+            initialMode={prefill?.mode ?? "buy"}
+            initialAmount={prefill?.amount ?? ""}
+          />
         ) : modalMode === "detail" && detailAsset ? (
           <RwaDetailSheet asset={detailAsset} onTrade={openTrade} />
         ) : null}

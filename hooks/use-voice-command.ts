@@ -1,17 +1,28 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { getAccessToken, usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { toast } from "@/lib/toast";
 import { copyText } from "@/lib/clipboard";
 import { getWalletAddress } from "@/lib/user";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
 import { useVoiceRecord } from "@/hooks/use-voice-record";
+import { useVividSocket } from "@/hooks/use-vivid-socket";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { SECTION_LABEL } from "@/lib/sections";
+import { vividToIntent } from "@/lib/voice/vivid-intent";
+import { depositToQuery } from "@/lib/voice/prefill";
 import type { ChainType, Intent } from "@/lib/voice/intent";
+
+// How each deposit chain reads in a toast.
+const DEPOSIT_CHAIN_LABEL: Record<string, string> = {
+  solana: "Solana",
+  base: "Base",
+  ethereum: "Ethereum",
+};
 
 interface UseVoiceCommand {
   recording: boolean;
@@ -37,15 +48,17 @@ function capitalize(text: string): string {
 }
 
 // Ties the whole spoken-command flow together in a single call: capture one
-// utterance (the mic auto-stops when the speaker pauses) -> POST the audio to
-// /api/voice -> dispatch the returned intent. Uses one toast that starts as a
-// spinner and resolves in place to success or error, so a command reads as a
-// single "listening -> done" notification, matching how the app reports every
-// other async action.
+// utterance (the mic auto-stops when the speaker pauses) -> stream it to the
+// Vivid backend over the /audio socket -> dispatch the returned intent. Uses one
+// toast that starts as a spinner and resolves in place to success or error, so a
+// command reads as a single "listening -> done" notification, matching how the
+// app reports every other async action.
 export function useVoiceCommand(): UseVoiceCommand {
   const { user } = usePrivy();
+  const router = useRouter();
   const navigate = useAppNavigate();
   const { recording, supported, capture } = useVoiceRecord();
+  const { configured, send } = useVividSocket();
   const { totalUsd, refetch } = usePortfolio();
   const money = useMoney();
   const { hidden } = useBalanceVisibility();
@@ -55,8 +68,34 @@ export function useVoiceCommand(): UseVoiceCommand {
     (intent: Intent, toastId: string | number) => {
       switch (intent.action) {
         case "navigate":
-          toast.success(`Opening ${SECTION_LABEL[intent.target]}`, { id: toastId });
-          navigate(intent.target);
+          // A spoken buy/sell arrives as navigate + prefill: open the section
+          // with the trade staged so the user confirms it on the page (we never
+          // auto-execute money actions by voice).
+          if (intent.prefill) {
+            const { symbol, mode } = intent.prefill;
+            toast.success(`Opening ${symbol} to ${mode}`, { id: toastId });
+          } else {
+            toast.success(`Opening ${SECTION_LABEL[intent.target]}`, { id: toastId });
+          }
+          navigate(intent.target, intent.prefill);
+          return;
+
+        case "deposit": {
+          // Open Add Funds on the crypto screen with the chain (and token, when
+          // it matches) pre-selected, so the deposit address is shown. The
+          // dashboard reads these params and opens the funds modal.
+          const { chain, token } = intent.prefill;
+          const label = DEPOSIT_CHAIN_LABEL[chain] ?? chain;
+          toast.success(token ? `Add ${token} on ${label}` : `Add funds on ${label}`, {
+            id: toastId,
+          });
+          router.push(`/dashboard?${depositToQuery(intent.prefill)}`);
+          return;
+        }
+
+        case "speak":
+          // A spoken read result (price, list) or a clarify/reject message.
+          toast.success(intent.message, { id: toastId });
           return;
 
         case "getBalance":
@@ -101,7 +140,7 @@ export function useVoiceCommand(): UseVoiceCommand {
         }
       }
     },
-    [navigate, hidden, money, totalUsd, user, refetch]
+    [navigate, router, hidden, money, totalUsd, user, refetch]
   );
 
   const run = useCallback(async () => {
@@ -125,43 +164,27 @@ export function useVoiceCommand(): UseVoiceCommand {
       return;
     }
 
+    if (!configured) {
+      toast.error("Voice is not configured.", { id: toastId });
+      return;
+    }
+
     setBusy(true);
     toast.loading("Working…", { id: toastId });
     try {
-      // The voice route only needs the access token (verifyRequest reads it);
-      // we deliberately do NOT fetch Privy's identity token here, since that
-      // extra users/me call is unnecessary for this route and is the endpoint
-      // Privy rate-limits under heavy dev reloads.
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        toast.error("Please sign in again.", { id: toastId });
-        return;
-      }
-      const form = new FormData();
-      form.append("audio", audio, "command.webm");
-      console.log("[voice] POST /api/voice …");
-      const res = await fetch("/api/voice", {
-        method: "POST",
-        body: form,
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      console.log("[voice] response:", res.status);
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        console.error("[voice] non-OK response:", res.status, body);
-        toast.error("Couldn't understand that. Try again.", { id: toastId });
-        return;
-      }
-      const { intent } = (await res.json()) as { intent: Intent };
-      console.log("[voice] intent:", intent);
+      // Stream the clip to Vivid over the /audio socket. The hook authenticates
+      // with the Privy access token, sends the audio + endpoint frame, and
+      // resolves with the terminal frame for this turn.
+      const { frame } = await send(audio);
+      const intent = vividToIntent(frame);
       dispatch(intent, toastId);
     } catch (err) {
-      console.error("[voice] request threw:", err);
+      console.error("[voice] turn failed:", err);
       toast.error("Voice is unavailable right now.", { id: toastId });
     } finally {
       setBusy(false);
     }
-  }, [busy, recording, capture, dispatch]);
+  }, [busy, recording, capture, configured, send, dispatch]);
 
   return { recording, busy, supported, run };
 }

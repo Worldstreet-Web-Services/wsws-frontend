@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { buildNav } from "@/components/dashboard/nav-items";
 import { PortfolioView } from "@/components/dashboard/views/portfolio-view";
@@ -20,6 +20,7 @@ import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
 import { RwaTradeModal } from "@/components/dashboard/rwa/rwa-trade-modal";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
 import type {
@@ -56,6 +57,18 @@ export default function DashboardPage() {
     [nav]
   );
   const activeSection = useScrollSpy(scrollSectionIds);
+
+  // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
+  // the funds modal on the crypto screen with the chain/token pre-selected. The
+  // hook clears the params so a reload doesn't re-open it; adjusting state during
+  // render (guarded one-shot) opens the modal without a cascading effect render.
+  const depositPrefill = useDepositPrefill();
+  const openedDeposit = useRef(false);
+  useEffect(() => {
+    if (openedDeposit.current || !depositPrefill) return;
+    openedDeposit.current = true;
+    setModal({ type: "funds", deposit: depositPrefill });
+  }, [depositPrefill]);
 
   // Stable handler identities so the memoized section views below don't
   // re-render when this page re-renders (modal open/close, active-section scroll).
@@ -123,7 +136,7 @@ export default function DashboardPage() {
         {modal?.type === "buy" ? <BuySheet payload={modal.buy} onClose={close} /> : null}
         {modal?.type === "sell" ? <SellSheet payload={modal.sell} onClose={close} /> : null}
         {modal?.type === "rwaTrade" ? <RwaTradeModal payload={modal.rwaTrade} /> : null}
-        {modal?.type === "funds" ? <FundsModal onClose={close} /> : null}
+        {modal?.type === "funds" ? <FundsModal onClose={close} deposit={modal.deposit} /> : null}
         {modal?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}
         {modal?.type === "crossBorder" ? <CrossBorderModal /> : null}
         {modal?.type === "account" ? <AccountModal onClose={close} /> : null}

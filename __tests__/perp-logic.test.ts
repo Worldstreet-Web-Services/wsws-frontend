@@ -22,6 +22,7 @@ function pair(overrides: Partial<PerpPair> = {}): PerpPair {
     category: "crypto",
     feeIndex: 0,
     maxLeverage: 75,
+    minPositionUsdc: "100",
     spread: { min: 0, max: 0.001 },
     maxLongOiP: 100,
     maxShortOiP: 100,
@@ -87,14 +88,29 @@ describe("validateOrder", () => {
     expect(validateOrder(pair(), "100", "0.5").ok).toBe(false);
   });
 
-  it("enforces the category minimum position size", () => {
-    // Crypto: $100 minimum. 10 x 9 = 90 fails, 10 x 10 = 100 passes.
+  it("enforces the pair's own minimum position size", () => {
+    // $100 minimum: 10 x 9 = 90 fails, 10 x 10 = 100 passes.
     expect(validateOrder(pair(), "10", "9").ok).toBe(false);
     expect(validateOrder(pair(), "10", "10").ok).toBe(true);
-    // Forex: $300 minimum. 10 x 30 = 300 passes, 10 x 29 fails.
-    const fx = pair({ category: "forex", maxLeverage: 100 });
+    // The live gateway serves per-pair minimums as low as $10: 5 x 2 = 10.
+    const cheap = pair({ minPositionUsdc: "10" });
+    expect(validateOrder(cheap, "5", "2").ok).toBe(true);
+    expect(validateOrder(cheap, "4", "2").ok).toBe(false);
+    // $300 forex-style minimum. 10 x 30 = 300 passes, 10 x 29 fails.
+    const fx = pair({ category: "forex", maxLeverage: 100, minPositionUsdc: "300" });
     expect(validateOrder(fx, "10", "29").ok).toBe(false);
     expect(validateOrder(fx, "10", "30").ok).toBe(true);
+    // The reported minimum comes from the pair, not a category table.
+    const v = validateOrder(cheap, "1", "2");
+    expect(v.code).toBe("underMinPosition");
+    expect(v.params?.min).toBe(10);
+  });
+
+  it("falls back to category minimums when the pair carries none", () => {
+    // The synthesized preview pairs predate minPositionUsdc on the wire.
+    const legacy = pair({ minPositionUsdc: undefined as unknown as string, category: "forex" });
+    expect(validateOrder(legacy, "10", "29").ok).toBe(false);
+    expect(validateOrder(legacy, "10", "30").ok).toBe(true);
   });
 
   it("rejects collateral above the balance, compared exactly", () => {
@@ -130,6 +146,16 @@ describe("allowance and steps", () => {
     expect(() => parseStepValueWei("0x123")).toThrow();
     expect(() => parseStepValueWei("-1")).toThrow();
     expect(() => parseStepValueWei("1.5")).toThrow();
+  });
+
+  it("accepts the deployed gateway's numeric zero but rejects unsafe numbers", () => {
+    // approve-usdc steps arrive with value: 0 (a JSON number) in production.
+    expect(parseStepValueWei(0)).toBe(0n);
+    expect(parseStepValueWei(350_000_000_000_000)).toBe(350_000_000_000_000n);
+    // Anything past 2^53 already lost precision in JSON and must never sign.
+    expect(() => parseStepValueWei(9_007_199_254_740_993)).toThrow();
+    expect(() => parseStepValueWei(-1)).toThrow();
+    expect(() => parseStepValueWei(1.5)).toThrow();
   });
 
   it('treats "0" TP/SL as unset', () => {

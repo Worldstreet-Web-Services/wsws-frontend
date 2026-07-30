@@ -5,6 +5,7 @@ import type {
   BuildResult,
   OpenPosition,
   OpenTradeRequest,
+  PerpOrder,
   PerpPair,
   PerpPairMarket,
   PerpPrice,
@@ -52,7 +53,10 @@ export function isPerpUnavailable(e: unknown): boolean {
 
 export async function fetchPerpPairs(category?: string): Promise<PerpPair[]> {
   const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  return unwrap<PerpPair[]>(await apiFetch(`/api/perp/pairs${query}`));
+  const pairs = await unwrap<PerpPair[]>(await apiFetch(`/api/perp/pairs${query}`));
+  // The gateway currently returns a couple of placeholder slots with empty
+  // from/to (delisted pair indices). They render as "/" rows, so drop them.
+  return pairs.filter((p) => p.from !== "" && p.to !== "");
 }
 
 export async function fetchPerpMarket(pair: string): Promise<PerpPairMarket> {
@@ -68,6 +72,14 @@ export async function fetchPerpPrices(): Promise<PerpPrice[]> {
 export async function fetchPerpPositions(trader: string): Promise<OpenPosition[]> {
   return unwrap<OpenPosition[]>(
     await apiFetch(`/api/perp/trades?trader=${encodeURIComponent(trader)}`)
+  );
+}
+
+// Pending (unfilled) limit and stop orders; they rest here until the keeper
+// fills them at their trigger price, or the user cancels.
+export async function fetchPerpOrders(trader: string): Promise<PerpOrder[]> {
+  return unwrap<PerpOrder[]>(
+    await apiFetch(`/api/perp/orders?trader=${encodeURIComponent(trader)}`)
   );
 }
 
@@ -128,4 +140,11 @@ export async function buildUpdateTpSl(req: {
   stopLoss?: string;
 }): Promise<BuildResult> {
   return post<BuildResult>("/api/perp/build/update-tp-sl", req);
+}
+
+export async function buildCancelOrder(req: {
+  pairIndex: number;
+  orderIndex: number;
+}): Promise<BuildResult> {
+  return post<BuildResult>("/api/perp/build/cancel-order", req);
 }

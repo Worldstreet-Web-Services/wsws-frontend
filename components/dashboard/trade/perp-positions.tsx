@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AssetIcon } from "@/components/ui/asset-icon";
+import { PerpPairIcon } from "@/components/dashboard/trade/perp-pair-icon";
 import { formatUsd } from "@/lib/trade/math";
 import { isPositiveWireDecimal, isUnsetLevel, pairSymbol } from "@/lib/perp/logic";
-import { findAsset } from "@/lib/trade/assets";
 import type { OpenPosition, PerpPair } from "@/lib/perp/types";
 
 interface PerpPositionsProps {
@@ -35,6 +34,21 @@ function pnlEstimate(p: OpenPosition, mark: string | null): number | null {
   return collateral * leverage * move * (p.isLong ? 1 : -1);
 }
 
+// The gateway computes unrealized PnL net of funding per position; that value
+// wins whenever present, with the local mark-price estimate as the fallback
+// for older gateway responses. Signed decimal strings parse fine here.
+function pnlValue(p: OpenPosition, mark: string | null): number | null {
+  const fromApi = p.unrealizedPnlUsdc != null ? parseFloat(p.unrealizedPnlUsdc) : NaN;
+  if (Number.isFinite(fromApi)) return fromApi;
+  return pnlEstimate(p, mark);
+}
+
+// PnL as a percent of collateral, only when the gateway provides the fraction.
+function pnlPercent(p: OpenPosition): number | null {
+  const fraction = p.unrealizedPnlPct != null ? parseFloat(p.unrealizedPnlPct) : NaN;
+  return Number.isFinite(fraction) ? fraction * 100 : null;
+}
+
 // One open position row. Expansion (pro) reveals TP/SL and margin editing.
 function PositionRow({
   position: p,
@@ -58,11 +72,21 @@ function PositionRow({
   const [tp, setTp] = useState(isUnsetLevel(p.takeProfit) ? "" : p.takeProfit);
   const [sl, setSl] = useState(isUnsetLevel(p.stopLoss) ? "" : p.stopLoss);
   const [marginAmt, setMarginAmt] = useState("");
+  const [closeAmt, setCloseAmt] = useState("");
 
   const symbol = pair ? pairSymbol(pair) : `#${p.pairIndex}`;
   const baseSym = pair?.from ?? "?";
-  const pnl = pnlEstimate(p, mark);
+  const pnl = pnlValue(p, mark);
+  const pnlPct = pnlPercent(p);
+  const liq = p.liquidationPrice != null ? parseFloat(p.liquidationPrice) : NaN;
   const manageable = onUpdateTpSl != null || onUpdateMargin != null;
+
+  // Display gate only: a partial close must stay below the full collateral.
+  // Closing the whole position goes through the main close button, and the
+  // backend re-validates the amount either way.
+  const fullCollateral = parseFloat(p.initialCollateralUsdc);
+  const partialCloseValid =
+    isPositiveWireDecimal(closeAmt) && parseFloat(closeAmt) < fullCollateral;
 
   const guard = (value: string, set: (v: string) => void) => {
     const next = value.replace(/,/g, "");
@@ -72,7 +96,7 @@ function PositionRow({
   return (
     <div className="border-t border-white/6 px-4 py-3 sm:px-5">
       <div className="flex flex-wrap items-center gap-3">
-        <AssetIcon sym={baseSym} bg={findAsset(baseSym)?.bg ?? "#3c3c3c"} size={30} />
+        <PerpPairIcon sym={baseSym} category={pair?.category} size={30} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 font-sans text-[14px] font-semibold">
             {symbol}
@@ -95,6 +119,7 @@ function PositionRow({
             {!isUnsetLevel(p.stopLoss)
               ? ` · ${t("slAt", { price: formatUsd(parseFloat(p.stopLoss)) })}`
               : ""}
+            {Number.isFinite(liq) && liq > 0 ? ` · ${t("liqAt", { price: formatUsd(liq) })}` : ""}
           </div>
         </div>
         {pnl != null ? (
@@ -105,6 +130,12 @@ function PositionRow({
           >
             {pnl >= 0 ? "+" : "-"}
             {formatUsd(Math.abs(pnl))}
+            {pnlPct != null ? (
+              <span className="block text-[11px] font-medium opacity-80">
+                {pnlPct >= 0 ? "+" : ""}
+                {pnlPct.toFixed(1)}%
+              </span>
+            ) : null}
           </span>
         ) : null}
         {manageable ? (
@@ -186,6 +217,30 @@ function PositionRow({
               </div>
             </div>
           ) : null}
+          <div className="ws-inset p-3">
+            <div className="mb-2 text-[11.5px] font-medium tracking-[0.03em] text-white/45 uppercase">
+              {t("partialCloseHeading")}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={closeAmt}
+                onChange={(e) => guard(e.target.value, setCloseAmt)}
+                inputMode="decimal"
+                placeholder={t("partialCloseAmount")}
+                className="tnum w-full rounded-lg border border-white/10 bg-black/35 px-2.5 py-2 text-[13px] text-white outline-none placeholder:text-white/30"
+              />
+              <button
+                onClick={() => onClose(p, closeAmt)}
+                disabled={busy || !partialCloseValid}
+                className="shrink-0 cursor-pointer rounded-lg border border-white/14 bg-white/8 px-3 py-2 text-[12.5px] font-medium text-white hover:bg-white/12 disabled:opacity-50"
+              >
+                {t("partialCloseAction")}
+              </button>
+            </div>
+            <div className="mt-1.5 text-[11.5px] font-normal text-white/40">
+              {t("partialCloseMax", { amount: formatUsd(fullCollateral) })}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

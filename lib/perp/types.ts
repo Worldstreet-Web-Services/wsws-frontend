@@ -14,6 +14,9 @@ export interface PerpPair {
   category: PerpCategory;
   feeIndex: number;
   maxLeverage: number;
+  // Minimum notional (collateral x leverage) in USDC, per pair. Varies widely
+  // ($10 to $300 on the live gateway), so it must never be hardcoded.
+  minPositionUsdc: string;
   spread: { min: number; max: number };
   maxLongOiP: number;
   maxShortOiP: number;
@@ -49,6 +52,30 @@ export interface OpenPosition {
   // "0" means none for both.
   takeProfit: string;
   stopLoss: string;
+  // Live analytics computed by the gateway. Optional: older deployments omit
+  // them, and the UI falls back to its own mark-price estimate when absent.
+  markPrice?: string | null;
+  liquidationPrice?: string;
+  // Net of funding; may carry a leading minus sign, unlike wire inputs.
+  unrealizedPnlUsdc?: string;
+  unrealizedPnlPct?: string;
+  fundingFeeUsdc?: string;
+}
+
+// A pending (unfilled) limit or stop order, from GET /orders. `index` is the
+// orderIndex that /build/cancel-order takes.
+export interface PerpOrder {
+  trader: string;
+  pairIndex: number;
+  index: number;
+  isLong: boolean;
+  collateralUsdc: string;
+  leverage: string;
+  // The trigger/limit price the keeper fills at.
+  price: string;
+  takeProfit: string;
+  stopLoss: string;
+  slippagePct: string;
 }
 
 export interface TradeQuote {
@@ -64,11 +91,13 @@ export interface TradeQuote {
 }
 
 // One unsigned transaction the user's wallet signs. `value` is wei as a decimal
-// string ("0" for approvals, the keeper execution fee for open/close).
+// string per the contract ("0" for approvals, the keeper execution fee for
+// open/close), but the deployed gateway sends approval zeros as a JSON number,
+// so the type reflects the wire reality. parseStepValueWei guards both.
 export interface TransactionStep {
   to: string;
   data: string;
-  value: string;
+  value: string | number;
   label: string;
 }
 

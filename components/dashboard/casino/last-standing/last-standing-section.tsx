@@ -349,7 +349,7 @@ export function LastStandingSection() {
       {/* Playful layered glow behind the arena, for an arcade-y feel. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[520px] max-w-[1000px] bg-[radial-gradient(55%_55%_at_50%_0%,rgba(167,139,250,0.22),transparent_70%)]"
+        className="bg-[radial-gradient(55%_55%_at_50%_0%,rgba(255, 255, 255, 0.22),transparent_70%)] pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-[520px] max-w-[1000px]"
       />
       <div
         aria-hidden
@@ -363,8 +363,8 @@ export function LastStandingSection() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Eyebrow>Casino · Winner takes all</Eyebrow>
-          <h2 className="ws-display mt-2.5 bg-[linear-gradient(180deg,#ffffff,#cbbcff)] bg-clip-text text-[clamp(30px,4.4vw,40px)] tracking-[-0.02em] text-transparent">
-            Last Standing
+          <h2 className="ws-display mt-2.5 bg-[linear-gradient(180deg,#ffffff,#cfcfd4)] bg-clip-text text-[clamp(30px,4.4vw,40px)] tracking-[-0.02em] text-transparent">
+            Last Man Standing
           </h2>
           <p className="mt-1.5 max-w-[54ch] text-[13.5px] font-normal text-white/55">
             Play to become the last one standing. When the timer runs out, the last player to play
@@ -390,15 +390,15 @@ export function LastStandingSection() {
         <motion.div
           initial={reduce ? false : { opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative mt-5 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[20px] border border-[#F6D365]/40 bg-[linear-gradient(110deg,rgba(246,211,101,0.16),rgba(246,211,101,0.04))] px-5 py-4"
+          className="bg-[linear-gradient(110deg,rgba(216, 216, 220, 0.16),rgba(216, 216, 220, 0.04))] relative mt-5 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[20px] border border-[#d8d8dc]/40 px-5 py-4"
         >
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[linear-gradient(180deg,#F6D365,#e0a83a)] text-[22px] shadow-[0_8px_22px_-8px_rgba(246,211,101,0.9)]">
+            <span className="shadow-[0_8px_22px_-8px_rgba(216, 216, 220, 0.9)] grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[linear-gradient(180deg,#d8d8dc,#a8a8ae)] text-[22px]">
               🏆
             </span>
             <div>
               <div className="text-[14px] font-bold text-white">You won! Claim your winnings</div>
-              <div className="tnum text-[13px] font-normal text-[#F6D365]">
+              <div className="tnum text-[13px] font-normal text-[#d8d8dc]">
                 {weiToMoney(pendingWei.toString())} waiting in the vault
               </div>
             </div>
@@ -406,7 +406,7 @@ export function LastStandingSection() {
           <button
             onClick={() => void onClaim()}
             disabled={claiming}
-            className="shrink-0 cursor-pointer rounded-xl bg-[linear-gradient(180deg,#ffe7a0,#F6D365,#e6b23c)] px-6 py-2.5 font-sans text-[14px] font-bold text-[#3a2a00] shadow-[0_12px_30px_-10px_rgba(246,211,101,0.9)] transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shadow-[0_12px_30px_-10px_rgba(216, 216, 220, 0.9)] shrink-0 cursor-pointer rounded-xl bg-[linear-gradient(180deg,#f0f0f2,#d8d8dc,#b0b0b6)] px-6 py-2.5 font-sans text-[14px] font-bold text-[#1a1a1a] transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {claiming ? "Claiming…" : "Claim now"}
           </button>
@@ -415,7 +415,7 @@ export function LastStandingSection() {
 
       <div className="mt-5 grid grid-cols-1 gap-4 min-[980px]:grid-cols-[1fr_360px] min-[980px]:items-start">
         {/* Game panel */}
-        <div className="ws-glass relative overflow-hidden rounded-[26px] p-5 shadow-[0_40px_120px_-50px_rgba(167,139,250,0.55)] sm:p-7">
+        <div className="ws-glass shadow-[0_40px_120px_-50px_rgba(255, 255, 255, 0.55)] relative overflow-hidden rounded-[26px] p-5 sm:p-7">
           <div
             aria-hidden
             className="bg-accent/30 pointer-events-none absolute -top-32 left-1/2 h-64 w-72 -translate-x-1/2 animate-pulse rounded-full blur-[100px]"
@@ -426,7 +426,7 @@ export function LastStandingSection() {
               {SPARKLES.map((s, i) => (
                 <motion.span
                   key={i}
-                  className="absolute text-[#F6D365]/45"
+                  className="absolute text-[#d8d8dc]/45"
                   style={{ left: s.left, top: s.top, fontSize: s.size }}
                   animate={{ y: [0, -16, 0], opacity: [0, 0.85, 0], scale: [0.8, 1.05, 0.8] }}
                   transition={{
@@ -460,16 +460,16 @@ export function LastStandingSection() {
               // Live round: the pot pulses between white and gold so it reads as
               // hot money on the line.
               <motion.div
-                className="ws-display tnum mt-1.5 text-[clamp(48px,8vw,72px)] leading-none tracking-[-0.02em] drop-shadow-[0_0_34px_rgba(246,211,101,0.4)]"
+                className="ws-display tnum drop-shadow-[0_0_34px_rgba(216, 216, 220, 0.4)] mt-1.5 text-[clamp(48px,8vw,72px)] leading-none tracking-[-0.02em]"
                 animate={
-                  reduce ? { color: "#F6D365" } : { color: ["#ffffff", "#F6D365", "#ffffff"] }
+                  reduce ? { color: "#d8d8dc" } : { color: ["#ffffff", "#d8d8dc", "#ffffff"] }
                 }
                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
               >
                 <MoneyTicker value={status.vaultBalance.usdValue} format={money.format} />
               </motion.div>
             ) : (
-              <div className="ws-display tnum mt-1.5 bg-[linear-gradient(180deg,#ffffff,#cbbcff)] bg-clip-text text-[clamp(48px,8vw,72px)] leading-none tracking-[-0.02em] text-transparent drop-shadow-[0_0_30px_rgba(167,139,250,0.35)]">
+              <div className="ws-display tnum drop-shadow-[0_0_30px_rgba(255, 255, 255, 0.35)] mt-1.5 bg-[linear-gradient(180deg,#ffffff,#cfcfd4)] bg-clip-text text-[clamp(48px,8vw,72px)] leading-none tracking-[-0.02em] text-transparent">
                 <MoneyTicker value={status.vaultBalance.usdValue} format={money.format} />
               </div>
             )}
@@ -485,13 +485,13 @@ export function LastStandingSection() {
                 animate={{ opacity: 1, y: 0 }}
                 className={`relative mt-4 overflow-hidden rounded-[16px] border px-4 py-3 ${
                   urgent
-                    ? "border-[#F6D365]/60 bg-[#F6D365]/15"
-                    : "border-[#F6D365]/35 bg-[#F6D365]/10"
+                    ? "border-[#d8d8dc]/60 bg-[#d8d8dc]/15"
+                    : "border-[#d8d8dc]/35 bg-[#d8d8dc]/10"
                 }`}
               >
                 <motion.div
                   aria-hidden
-                  className="pointer-events-none absolute -inset-3 bg-[radial-gradient(55%_60%_at_50%_50%,rgba(246,211,101,0.4),transparent_70%)] blur-md"
+                  className="bg-[radial-gradient(55%_60%_at_50%_50%,rgba(216, 216, 220, 0.4),transparent_70%)] pointer-events-none absolute -inset-3 blur-md"
                   animate={reduce ? { opacity: 0.5 } : { opacity: [0.3, 0.7, 0.3] }}
                   transition={{ duration: urgent ? 0.7 : 1.5, repeat: Infinity, ease: "easeInOut" }}
                 />
@@ -504,7 +504,7 @@ export function LastStandingSection() {
                     👑
                   </motion.span>
                   <div className="min-w-0">
-                    <div className="text-[13.5px] font-bold text-[#F6D365]">
+                    <div className="text-[13.5px] font-bold text-[#d8d8dc]">
                       {urgent ? "Hold on — you're about to win!" : "You're last standing"}
                     </div>
                     <div className="text-[12px] font-normal text-white/70">
@@ -563,7 +563,7 @@ export function LastStandingSection() {
                   gameActive
                     ? urgent
                       ? "text-down animate-pulse drop-shadow-[0_0_28px_rgba(246,165,165,0.5)]"
-                      : "text-white drop-shadow-[0_0_26px_rgba(167,139,250,0.45)]"
+                      : "drop-shadow-[0_0_26px_rgba(255, 255, 255, 0.45)] text-white"
                     : "text-white/30"
                 }`}
               >
@@ -574,7 +574,7 @@ export function LastStandingSection() {
               <div className="mt-4">
                 <ProgressBar
                   pct={gameActive ? timerPct : 0}
-                  color={urgent ? "#F6A5A5" : "#A78BFA"}
+                  color={urgent ? "#F6A5A5" : "#d4d4d8"}
                 />
               </div>
               <div className="mt-3 text-center text-[12px] font-normal text-white/50">
@@ -606,9 +606,9 @@ export function LastStandingSection() {
               </div>
             </div>
 
-            {/* Play CTA — the primary action, purple whether you're playing or
-                being nudged to add money. The add-money state carries a golden
-                coin and blinks to pull the eye. */}
+            {/* Play CTA — the primary action, silver whether you're playing or
+                being nudged to add money. The add-money state carries a coin and
+                blinks to pull the eye. */}
             <div className="relative mt-5">
               {canPlay || luring ? (
                 <div
@@ -627,7 +627,7 @@ export function LastStandingSection() {
                 }
                 className={`relative w-full cursor-pointer overflow-hidden rounded-2xl p-4 font-sans text-[16.5px] font-bold transition-[transform] hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 ${
                   canPlay || luring
-                    ? "bg-[linear-gradient(180deg,#c3b0ff,#8b6ef0)] text-white shadow-[0_18px_44px_-12px_rgba(167,139,250,0.9),inset_0_1px_0_rgba(255,255,255,0.45)]"
+                    ? "shadow-[0_18px_44px_-12px_rgba(255, 255, 255, 0.9),inset_0_1px_0_rgba(255,255,255,0.45)] bg-[linear-gradient(180deg,#e8e8ea,#b6b6bc)] text-white"
                     : "text-ink bg-white shadow-[0_12px_32px_-14px_rgba(255,255,255,0.5)]"
                 }`}
               >
@@ -762,7 +762,7 @@ export function LastStandingSection() {
       <div className="ws-glass relative mt-4 overflow-hidden rounded-[24px] p-5 sm:p-6">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-20 -right-16 h-52 w-52 rounded-full bg-[#F6D365]/10 blur-[80px]"
+          className="pointer-events-none absolute -top-20 -right-16 h-52 w-52 rounded-full bg-[#d8d8dc]/10 blur-[80px]"
         />
         <div className="relative flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -775,7 +775,7 @@ export function LastStandingSection() {
             </div>
           </div>
           {winners.length > 0 ? (
-            <span className="tnum rounded-full bg-[#F6D365]/12 px-2.5 py-1 text-[11px] font-semibold text-[#F6D365]/80 ring-1 ring-[#F6D365]/20">
+            <span className="tnum rounded-full bg-[#d8d8dc]/12 px-2.5 py-1 text-[11px] font-semibold text-[#d8d8dc]/80 ring-1 ring-[#d8d8dc]/20">
               {winners.length} settled
             </span>
           ) : null}
@@ -809,7 +809,7 @@ export function LastStandingSection() {
                     rel="noopener noreferrer"
                     className={`relative flex items-center gap-3 overflow-hidden rounded-[14px] px-3 py-2.5 transition-colors ${
                       isLatest
-                        ? "bg-[linear-gradient(110deg,rgba(246,211,101,0.14),rgba(246,211,101,0.02))] ring-1 ring-[#F6D365]/25"
+                        ? "bg-[linear-gradient(110deg,rgba(216, 216, 220, 0.14),rgba(216, 216, 220, 0.02))] ring-1 ring-[#d8d8dc]/25"
                         : "bg-white/[0.03] hover:bg-white/[0.06]"
                     }`}
                   >
@@ -827,7 +827,7 @@ export function LastStandingSection() {
                         }}
                       />
                     ) : null}
-                    <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F6D365]/12 text-[15px] ring-1 ring-[#F6D365]/20">
+                    <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#d8d8dc]/12 text-[15px] ring-1 ring-[#d8d8dc]/20">
                       🏆
                     </span>
                     <span className="relative min-w-0 flex-1">
@@ -844,11 +844,11 @@ export function LastStandingSection() {
                       </span>
                     </span>
                     <span className="relative shrink-0 text-right">
-                      <span className="tnum block text-[14px] font-bold text-[#F6D365]">
+                      <span className="tnum block text-[14px] font-bold text-[#d8d8dc]">
                         {weiToMoney(w.winnerPrizeWei)}
                       </span>
                       {isLatest ? (
-                        <span className="block text-[9.5px] font-semibold tracking-[0.12em] text-[#F6D365]/70 uppercase">
+                        <span className="block text-[9.5px] font-semibold tracking-[0.12em] text-[#d8d8dc]/70 uppercase">
                           Latest
                         </span>
                       ) : null}

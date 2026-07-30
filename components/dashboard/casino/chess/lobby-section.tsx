@@ -49,7 +49,7 @@ export function LobbySection() {
               <div className="tnum text-[12px] font-normal text-white/50">
                 W {g.oddsWhite} · B {g.oddsBlack}
               </div>
-              <div className="ws-display tnum text-[16px] text-[#F6D365]">{g.pot}</div>
+              <div className="ws-display tnum text-grey-100 text-[16px]">{g.pot}</div>
             </div>
             <div className="mt-2 text-[11px] font-normal text-white/50">{g.viewers} watching</div>
           </Link>
@@ -73,7 +73,7 @@ export function LobbySection() {
             >
               <div>{c.name}</div>
               <div className="tnum font-normal text-white/50">{c.rating}</div>
-              <div className="tnum text-[#F6D365]">
+              <div className="tnum text-grey-100">
                 {formatCasinoAmount(c.stakeMinor, c.currency)}
               </div>
               <div className="font-normal text-white/50">{c.tcLabel}</div>

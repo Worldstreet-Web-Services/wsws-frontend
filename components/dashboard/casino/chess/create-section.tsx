@@ -104,7 +104,7 @@ export function CreateSection() {
         </div>
         <div className="flex justify-between border-t border-white/8 pt-2.5">
           <span>Potential winnings</span>
-          <span className="text-[17px] text-[#F6D365]">{fmt(potentialMinor)}</span>
+          <span className="text-grey-100 text-[17px]">{fmt(potentialMinor)}</span>
         </div>
         <div className="mt-1.5 text-[11px] font-normal text-white/50">
           1% withdrawal fee applies when funds leave the platform.

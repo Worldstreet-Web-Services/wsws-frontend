@@ -32,7 +32,7 @@ function presenceStyle(presence: TilePresence): { dot: string; text: string } {
     case "entries":
       return { dot: "bg-up", text: "text-up" };
     case "queue":
-      return { dot: "bg-[#F6D365]", text: "text-[#F6D365]" };
+      return { dot: "bg-grey-100", text: "text-grey-100" };
     case "befirst":
       return { dot: "bg-white/40", text: "text-white/50" };
   }
@@ -42,7 +42,7 @@ function badgeFor(game: CasinoGame): { text: string; className: string } | null 
   if (game.comingSoon) return { text: "COMING SOON", className: "bg-white/12 text-white/70" };
   if (game.presence?.kind === "playing")
     return { text: "POPULAR", className: "bg-accent text-ink" };
-  if (game.category === "New") return { text: "NEW", className: "bg-[#F6D365] text-[#3a2a00]" };
+  if (game.category === "New") return { text: "NEW", className: "bg-grey-100 text-ink" };
   return null;
 }
 
@@ -56,7 +56,7 @@ export function GameTile({ game }: { game: CasinoGame }) {
       {/* Oversized glyph motif floating behind the content. */}
       <span
         aria-hidden
-        className={`pointer-events-none absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_70%_20%,rgba(167,139,250,0.08),transparent_60%)]`}
+        className={`pointer-events-none absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_70%_20%,rgba(212,212,216,0.08),transparent_60%)]`}
       >
         <span
           className={`ws-display -rotate-8 leading-none select-none ${MOTIF_SIZE[game.size]} ${
@@ -98,7 +98,7 @@ export function GameTile({ game }: { game: CasinoGame }) {
             {game.name}
           </span>
           {game.jackpot ? (
-            <span className="ws-display tnum mt-1 block text-[25px] text-[#F6D365]">
+            <span className="ws-display tnum text-grey-100 mt-1 block text-[25px]">
               {game.jackpot}
             </span>
           ) : null}

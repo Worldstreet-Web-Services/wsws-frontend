@@ -203,7 +203,7 @@ export function SpectateSection() {
       <div className="tnum mb-4 flex gap-5 text-[13px]">
         <div>
           <span className="font-normal text-white/50">Pot </span>
-          <span className="font-semibold text-[#F6D365]">₦50,000</span>
+          <span className="text-grey-100 font-semibold">₦50,000</span>
         </div>
         <div>
           <span className="font-normal text-white/50">Spectator volume </span>
@@ -307,11 +307,11 @@ export function SpectateSection() {
               </button>
             </div>
             {betSlip ? (
-              <div className="rounded-[10px] border border-[#F6D365]/30 bg-black/40 px-3.5 py-3 text-[12.5px]">
+              <div className="border-grey-300/30 rounded-[10px] border bg-black/40 px-3.5 py-3 text-[12.5px]">
                 <div className="mb-1 font-normal text-white/50">Your bet</div>
                 <div>
                   {betSlip.side} @ {betSlip.odds} — potential payout{" "}
-                  <span className="font-semibold text-[#F6D365]">{betSlip.payout}</span>
+                  <span className="text-grey-100 font-semibold">{betSlip.payout}</span>
                 </div>
               </div>
             ) : null}
@@ -320,7 +320,7 @@ export function SpectateSection() {
           <div>
             <div className="mb-1.5 text-[11px] font-normal text-white/50">Odds movement</div>
             <svg viewBox="0 0 240 56" className="block h-[56px] w-full">
-              <polyline points={sparkPoints} fill="none" stroke="#F6D365" strokeWidth="2" />
+              <polyline points={sparkPoints} fill="none" stroke="#d4d4d8" strokeWidth="2" />
               <circle cx={blunderX} cy={blunderY} r="3.5" className="fill-down" />
             </svg>
           </div>

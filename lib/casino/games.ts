@@ -1,5 +1,5 @@
 // The casino hub's game catalog. Tiles, categories, and presence lines are
-// static product copy for now: only Last Standing and the flows linked below
+// static product copy for now: only Last Man Standing and the flows linked below
 // are live, the rest are teasers for what ships next.
 
 export type GameCategory = "Skill" | "Cards" | "Draws" | "Racing" | "New";
@@ -65,7 +65,7 @@ export const CASINO_GAMES: CasinoGame[] = [
   },
   {
     id: "last-standing",
-    name: "Last Standing",
+    name: "Last Man Standing",
     category: "New",
     size: "medium",
     glyph: "⌛",

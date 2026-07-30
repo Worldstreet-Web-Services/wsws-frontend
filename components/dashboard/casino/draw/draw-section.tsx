@@ -144,7 +144,7 @@ export function DrawSection() {
       className={`tnum aspect-square cursor-pointer rounded-lg border text-[12px] transition-colors ${
         selected
           ? gold
-            ? "border-[#F6D365] bg-[#F6D365] font-bold text-[#3a2a00]"
+            ? "border-grey-300 bg-grey-100 text-ink font-bold"
             : "border-accent bg-accent text-ink font-bold"
           : "border-white/10 bg-black/40 text-white hover:border-white/25"
       }`}
@@ -159,12 +159,12 @@ export function DrawSection() {
       <div className="ws-glass relative mb-6 overflow-hidden rounded-[20px] p-9 text-center">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-36 left-1/2 h-[280px] w-[480px] -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(246,211,101,0.13),transparent_70%)]"
+          className="pointer-events-none absolute -top-36 left-1/2 h-[280px] w-[480px] -translate-x-1/2 bg-[radial-gradient(ellipse,rgba(212,212,216,0.13),transparent_70%)]"
         />
         <div className="mb-2.5 text-[11px] font-normal tracking-[0.06em] text-white/50 uppercase">
           Jackpot · rolled over 3 draws
         </div>
-        <div className="ws-display tnum mb-2.5 text-[clamp(38px,7vw,56px)] leading-none text-[#F6D365]">
+        <div className="ws-display tnum text-grey-100 mb-2.5 text-[clamp(38px,7vw,56px)] leading-none">
           {DRAW_JACKPOT_LABEL}
         </div>
         <div className="tnum mb-4.5 text-[15px]">
@@ -188,7 +188,7 @@ export function DrawSection() {
                     key={`${num}-${i}`}
                     className={`tnum grid h-[42px] w-[42px] [animation:ws-ball-in_0.35s_ease-out] place-items-center rounded-full text-[15px] font-semibold ${
                       hit
-                        ? "bg-[#F6D365] text-[#3a2a00]"
+                        ? "bg-grey-100 text-ink"
                         : isBonus
                           ? "border-accent border bg-white/8 text-white"
                           : "border border-white/10 bg-white/8 text-white"
@@ -266,7 +266,7 @@ export function DrawSection() {
                 +
               </button>
             </div>
-            <div className="ws-display tnum mb-3.5 text-[22px] text-[#F6D365]">
+            <div className="ws-display tnum text-grey-100 mb-3.5 text-[22px]">
               {formatCasinoAmount(entryCount * DRAW_ENTRY_COST_MINOR, "NGN")}
             </div>
             <button
@@ -303,7 +303,7 @@ export function DrawSection() {
                 className="flex justify-between border-t border-white/6 py-1.5 text-[12.5px]"
               >
                 <span className="font-normal text-white/50">{t.label}</span>
-                <span className="tnum text-[#F6D365]">{t.prize}</span>
+                <span className="tnum text-grey-100">{t.prize}</span>
               </div>
             ))}
           </div>

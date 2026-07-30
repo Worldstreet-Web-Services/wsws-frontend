@@ -30,7 +30,7 @@ export function InviteSection({ stakeMinor, currency, timeControl }: InviteSecti
         <div className="mb-5 text-[12px] font-normal text-white/50">
           Rating {DEMO_CHALLENGER.rating} · {timeControlLabel(timeControl)}
         </div>
-        <div className="ws-display tnum text-[44px] text-[#F6D365]">{fmt(stakeMinor)}</div>
+        <div className="ws-display tnum text-grey-100 text-[44px]">{fmt(stakeMinor)}</div>
         <div className="mb-5 text-[12px] font-normal text-white/50">stake to match</div>
         <div className="text-up mb-5 flex items-center justify-center gap-2 text-[12px]">
           <span className="bg-up h-[7px] w-[7px] rounded-full" />
@@ -47,7 +47,7 @@ export function InviteSection({ stakeMinor, currency, timeControl }: InviteSecti
           </div>
           <div className="flex justify-between">
             <span>Potential winnings</span>
-            <span className="text-[#F6D365]">{fmt(potentialMinor)}</span>
+            <span className="text-grey-100">{fmt(potentialMinor)}</span>
           </div>
         </div>
         <Link

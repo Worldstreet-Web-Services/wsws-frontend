@@ -36,7 +36,7 @@ export function EntriesSection() {
           <div className="mb-2.5 flex items-center justify-between">
             <div className="text-[12px] font-normal text-white/50">{e.status}</div>
             {e.prize ? (
-              <div className="ws-display tnum text-[18px] text-[#F6D365]">{e.prize}</div>
+              <div className="ws-display tnum text-grey-100 text-[18px]">{e.prize}</div>
             ) : null}
           </div>
           <div className="flex gap-1.5">

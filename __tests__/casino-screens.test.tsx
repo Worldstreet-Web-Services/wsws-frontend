@@ -205,6 +205,6 @@ describe("casino game tile", () => {
     const lastStanding = CASINO_GAMES.find((g) => g.id === "last-standing")!;
     render(<GameTile game={lastStanding} />);
     expect(screen.getByRole("link")).toHaveAttribute("href", "/casino/last-standing");
-    expect(screen.getByText("Last Standing")).toBeInTheDocument();
+    expect(screen.getByText("Last Man Standing")).toBeInTheDocument();
   });
 });

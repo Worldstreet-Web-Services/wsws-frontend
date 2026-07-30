@@ -25,7 +25,7 @@ export function HubSection() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   // The balance games spend from: the player's Base ETH, shown as plain money.
-  // Same derivation the Last Standing game uses, so the numbers always agree.
+  // Same derivation the Last Man Standing game uses, so the numbers always agree.
   const ethHolding = tokens.find(
     (t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "ETH"
   );
@@ -38,21 +38,21 @@ export function HubSection() {
       {/* Ambient glows, violet up top and a faint gold wash lower left. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-44 right-[-120px] -z-10 h-[560px] w-[560px] bg-[radial-gradient(circle,rgba(167,139,250,0.16),transparent_65%)]"
+        className="pointer-events-none absolute -top-44 right-[-120px] -z-10 h-[560px] w-[560px] bg-[radial-gradient(circle,rgba(212,212,216,0.16),transparent_65%)]"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute top-60 left-[-160px] -z-10 h-[520px] w-[520px] bg-[radial-gradient(circle,rgba(246,211,101,0.09),transparent_65%)]"
+        className="pointer-events-none absolute top-60 left-[-160px] -z-10 h-[520px] w-[520px] bg-[radial-gradient(circle,rgba(212,212,216,0.09),transparent_65%)]"
       />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Eyebrow>Casino · Skill and chance</Eyebrow>
-          <h2 className="ws-display mt-2.5 bg-[linear-gradient(180deg,#ffffff,#cbbcff)] bg-clip-text text-[clamp(30px,4.4vw,44px)] tracking-[-0.02em] text-transparent">
+          <h2 className="ws-display mt-2.5 bg-[linear-gradient(180deg,#ffffff,#cfcfd4)] bg-clip-text text-[clamp(30px,4.4vw,44px)] tracking-[-0.02em] text-transparent">
             Casino
           </h2>
           <p className="mt-1.5 flex items-center gap-2.5 text-[13.5px] font-normal text-white/55">
-            <span aria-hidden className="inline-block h-px w-[22px] bg-[#F6D365]" />
+            <span aria-hidden className="bg-grey-100 inline-block h-px w-[22px]" />
             Skill and chance. Real stakes.
           </p>
         </div>
@@ -63,7 +63,7 @@ export function HubSection() {
             <div className="text-[10.5px] font-normal tracking-[0.08em] text-white/45 uppercase">
               Casino balance
             </div>
-            <div className="ws-display tnum text-[19px] text-[#F6D365]">
+            <div className="ws-display tnum text-grey-100 text-[19px]">
               {mask(money.format(balanceUsd))}
             </div>
           </div>

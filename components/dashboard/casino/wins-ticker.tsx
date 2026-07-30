@@ -23,7 +23,7 @@ export function WinsTicker() {
                 🏆
               </span>
               <span>
-                <span className="ws-display tnum block text-[14.5px] text-[#F6D365]">
+                <span className="ws-display tnum text-grey-100 block text-[14.5px]">
                   {w.amount}
                 </span>
                 <span className="block text-[10.5px] font-normal text-white/40">

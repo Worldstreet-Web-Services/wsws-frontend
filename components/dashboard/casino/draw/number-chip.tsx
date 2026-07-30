@@ -6,7 +6,7 @@ export type NumberChipVariant = "plain" | "matched" | "bonus";
 
 const VARIANT_CLASS: Record<NumberChipVariant, string> = {
   plain: "border border-white/10 bg-white/6 text-white",
-  matched: "bg-[#F6D365] text-[#3a2a00] font-bold",
+  matched: "bg-grey-100 text-ink font-bold",
   bonus: "border border-accent bg-white/6 text-accent",
 };
 

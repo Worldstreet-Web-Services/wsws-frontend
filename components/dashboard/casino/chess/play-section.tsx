@@ -85,7 +85,7 @@ export function PlaySection({ stakeMinor, currency, timeControl }: PlaySectionPr
 
   return (
     <div className="relative mx-auto w-full max-w-[560px] px-4 pt-7 pb-20 sm:px-6">
-      <div className="ws-display tnum mb-4 text-center text-[28px] text-[#F6D365]">
+      <div className="ws-display tnum text-grey-100 mb-4 text-center text-[28px]">
         {fmt(potMinor)} pot
       </div>
 
@@ -151,7 +151,7 @@ export function PlaySection({ stakeMinor, currency, timeControl }: PlaySectionPr
             <div className={`text-[12px] font-semibold tracking-[0.06em] uppercase ${resultColor}`}>
               {resultLabel}
             </div>
-            <div className="ws-display tnum mt-2 text-[34px] text-[#F6D365]">{resultPayout}</div>
+            <div className="ws-display tnum text-grey-100 mt-2 text-[34px]">{resultPayout}</div>
             <div className="mt-1 text-[12px] font-normal text-white/50">Payout after 5% fee</div>
             <div className="mt-5 flex gap-2.5">
               <button

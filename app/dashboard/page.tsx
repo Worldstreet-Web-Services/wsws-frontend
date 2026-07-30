@@ -21,6 +21,7 @@ import { RwaTradeModal } from "@/components/dashboard/rwa/rwa-trade-modal";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
+import type { DepositPrefill } from "@/lib/voice/intent";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
 import type {
@@ -60,13 +61,16 @@ export default function DashboardPage() {
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
   // the funds modal on the crypto screen with the chain/token pre-selected. The
-  // hook clears the params so a reload doesn't re-open it; adjusting state during
-  // render (guarded one-shot) opens the modal without a cascading effect render.
+  // hook returns a NEW prefill object each time a fresh deposit command arrives
+  // and clears the URL params so a reload doesn't re-open it. We guard on the
+  // prefill's identity (not a one-shot boolean) so a SECOND spoken deposit while
+  // the page is still mounted re-opens the modal — the boolean latch used to
+  // block every deposit after the first, which is why it only worked on refresh.
   const depositPrefill = useDepositPrefill();
-  const openedDeposit = useRef(false);
+  const openedDepositRef = useRef<DepositPrefill | null>(null);
   useEffect(() => {
-    if (openedDeposit.current || !depositPrefill) return;
-    openedDeposit.current = true;
+    if (!depositPrefill || openedDepositRef.current === depositPrefill) return;
+    openedDepositRef.current = depositPrefill;
     setModal({ type: "funds", deposit: depositPrefill });
   }, [depositPrefill]);
 

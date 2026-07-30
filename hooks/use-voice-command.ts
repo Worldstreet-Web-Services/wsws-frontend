@@ -151,7 +151,6 @@ export function useVoiceCommand(): UseVoiceCommand {
     try {
       const result = await capture();
       audio = result.blob;
-      console.log("[voice] capture done:", result.reason, "bytes:", result.blob?.size ?? 0);
     } catch (err) {
       console.error("[voice] capture failed:", err);
       toast.error("Microphone unavailable.", { id: toastId });
@@ -159,7 +158,6 @@ export function useVoiceCommand(): UseVoiceCommand {
     }
 
     if (!audio) {
-      console.warn("[voice] no audio captured (empty) — nothing sent");
       toast.error("Didn't hear anything. Try again.", { id: toastId });
       return;
     }
@@ -177,6 +175,7 @@ export function useVoiceCommand(): UseVoiceCommand {
       // resolves with the terminal frame for this turn.
       const { frame } = await send(audio);
       const intent = vividToIntent(frame);
+      console.log("[voice] dispatching intent:", intent.action, JSON.stringify(intent));
       dispatch(intent, toastId);
     } catch (err) {
       console.error("[voice] turn failed:", err);

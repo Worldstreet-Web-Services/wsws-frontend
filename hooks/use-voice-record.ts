@@ -28,7 +28,7 @@ const SILENCE_LEVEL = 0.03;
 // How often we sample the mic level while deciding if speech has stopped.
 const POLL_MS = 100;
 // While tuning, log the live level so the threshold can be set from real data.
-const DEBUG_LEVELS = true;
+const DEBUG_LEVELS = false;
 
 interface UseVoiceRecord {
   recording: boolean;

@@ -1,7 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { memo, useCallback, useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { buildNav } from "@/components/dashboard/nav-items";
 import { PortfolioView } from "@/components/dashboard/views/portfolio-view";
@@ -15,14 +14,11 @@ import { DetailModal } from "@/components/dashboard/modals/detail-modal";
 import { ConfirmModal } from "@/components/dashboard/modals/confirm-modal";
 import { FundsModal } from "@/components/dashboard/modals/funds-modal";
 import { WithdrawModal } from "@/components/dashboard/modals/withdraw-modal";
-import { CrossBorderModal } from "@/components/dashboard/remit/cross-border-modal";
 import { BuySheet } from "@/components/dashboard/buy/buy-sheet";
 import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
 import { RwaTradeModal } from "@/components/dashboard/rwa/rwa-trade-modal";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
-import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
-import type { DepositPrefill } from "@/lib/voice/intent";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
 import type {
@@ -37,9 +33,9 @@ import { AccountModal } from "@/components/dashboard/modals/account-modal";
 
 const SECTION_CLASS = "scroll-mt-[124px] md:scroll-mt-[76px]";
 
-// The scroll-spy sections mounted inline on this page. Casino lives on its
-// own route (/casino) and is never one of these.
-type ScrollSectionId = Exclude<SectionId, "casino">;
+// The scroll-spy sections mounted inline on this page. Standalone sections
+// live on their own routes and are never one of these.
+type ScrollSectionId = Exclude<SectionId, "vault" | "earn">;
 
 // The five scroll-spy sections stay mounted at once, so memoize them: with
 // stable handler props they skip re-rendering when the page re-renders for a
@@ -53,28 +49,13 @@ const Prediction = memo(PredictionView);
 
 export default function DashboardPage() {
   const [modal, setModal] = useState<DashboardModal>(null);
-  const tSections = useTranslations("sections");
-  const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
+  const nav = useMemo(() => buildNav(loadInterest()), []);
   const scrollSectionIds = useMemo(
-    () => nav.map((n) => n.id).filter((id): id is ScrollSectionId => id !== "casino"),
+    () =>
+      nav.map((n) => n.id).filter((id): id is ScrollSectionId => id !== "vault" && id !== "earn"),
     [nav]
   );
   const activeSection = useScrollSpy(scrollSectionIds);
-
-  // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
-  // the funds modal on the crypto screen with the chain/token pre-selected. The
-  // hook returns a NEW prefill object each time a fresh deposit command arrives
-  // and clears the URL params so a reload doesn't re-open it. We guard on the
-  // prefill's identity (not a one-shot boolean) so a SECOND spoken deposit while
-  // the page is still mounted re-opens the modal — the boolean latch used to
-  // block every deposit after the first, which is why it only worked on refresh.
-  const depositPrefill = useDepositPrefill();
-  const openedDepositRef = useRef<DepositPrefill | null>(null);
-  useEffect(() => {
-    if (!depositPrefill || openedDepositRef.current === depositPrefill) return;
-    openedDepositRef.current = depositPrefill;
-    setModal({ type: "funds", deposit: depositPrefill });
-  }, [depositPrefill]);
 
   // Stable handler identities so the memoized section views below don't
   // re-render when this page re-renders (modal open/close, active-section scroll).
@@ -95,14 +76,12 @@ export default function DashboardPage() {
   );
   const openFunds = useCallback(() => setModal({ type: "funds" }), []);
   const openWithdraw = useCallback(() => setModal({ type: "withdraw" }), []);
-  const openCrossBorder = useCallback(() => setModal({ type: "crossBorder" }), []);
 
   const sections: Record<ScrollSectionId, React.ReactNode> = {
     portfolio: (
       <Portfolio
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
-        onOpenCrossBorder={openCrossBorder}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}
@@ -142,9 +121,8 @@ export default function DashboardPage() {
         {modal?.type === "buy" ? <BuySheet payload={modal.buy} onClose={close} /> : null}
         {modal?.type === "sell" ? <SellSheet payload={modal.sell} onClose={close} /> : null}
         {modal?.type === "rwaTrade" ? <RwaTradeModal payload={modal.rwaTrade} /> : null}
-        {modal?.type === "funds" ? <FundsModal onClose={close} deposit={modal.deposit} /> : null}
+        {modal?.type === "funds" ? <FundsModal onClose={close} /> : null}
         {modal?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}
-        {modal?.type === "crossBorder" ? <CrossBorderModal /> : null}
         {modal?.type === "account" ? <AccountModal onClose={close} /> : null}
         {modal?.type === "done" ? (
           <SuccessPanel title={modal.title} onDone={close}>

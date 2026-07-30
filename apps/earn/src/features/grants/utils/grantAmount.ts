@@ -1,0 +1,19 @@
+import { formatNumberWithSuffix } from '@earn/utils/formatNumberWithSuffix';
+
+export function grantAmount({
+  minReward,
+  maxReward,
+}: {
+  minReward: number;
+  maxReward: number;
+}) {
+  if (minReward && maxReward && minReward === maxReward && minReward > 0) {
+    return formatNumberWithSuffix(minReward);
+  }
+
+  if (minReward && maxReward && minReward > 0) {
+    return `${formatNumberWithSuffix(minReward)}-${formatNumberWithSuffix(maxReward)}`;
+  } else {
+    return `Up to ${formatNumberWithSuffix(maxReward!)}`;
+  }
+}

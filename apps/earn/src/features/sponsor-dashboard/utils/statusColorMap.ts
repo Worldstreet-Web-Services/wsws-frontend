@@ -1,0 +1,92 @@
+export const colorMap = {
+  Needs_Review: {
+    bg: 'bg-amber-100',
+    color: 'text-amber-700',
+    border: 'border-amber-300',
+    focus: 'focus:text-amber-700 focus:bg-amber-200',
+  },
+  Inaccessible: {
+    bg: 'bg-red-50',
+    color: 'text-red-800',
+    border: 'border-red-200',
+    focus: 'focus:text-red-800 focus:bg-red-100',
+  },
+  Low_Quality: {
+    bg: 'bg-stone-100',
+    color: 'text-stone-800',
+    border: 'border-stone-300',
+    focus: 'focus:text-stone-900 focus:bg-stone-200',
+  },
+  Mid_Quality: {
+    bg: 'bg-cyan-100',
+    color: 'text-cyan-900',
+    border: 'border-cyan-300',
+    focus: 'focus:text-cyan-900 focus:bg-cyan-200',
+  },
+  High_Quality: {
+    bg: 'bg-slate-100',
+    color: 'text-slate-600',
+    border: 'border-slate-300',
+    focus: 'focus:text-slate-900 focus:bg-slate-200',
+  },
+  Spam: {
+    bg: 'bg-red-100',
+    color: 'text-red-600',
+    border: 'border-red-300',
+    focus: 'focus:text-red-600 focus:bg-red-200',
+  },
+  Reviewed: {
+    bg: 'bg-blue-100',
+    color: 'text-blue-600',
+    border: 'border-blue-300',
+    focus: 'focus:text-blue-900 focus:bg-blue-200',
+  },
+  Unreviewed: {
+    bg: 'bg-orange-50',
+    color: 'text-amber-600',
+    border: 'border-amber-200',
+    focus: 'focus:text-amber-700 focus:bg-orange-100',
+  },
+  Shortlisted: {
+    bg: 'bg-slate-100',
+    color: 'text-slate-600',
+    border: 'border-slate-300',
+    focus: 'focus:text-slate-900 focus:bg-slate-200',
+  },
+  Approved: {
+    bg: 'bg-green-100',
+    color: 'text-green-900',
+    border: 'border-green-300',
+    focus: 'focus:text-green-900 focus:bg-green-200',
+  },
+  Rejected: {
+    bg: 'bg-red-100',
+    color: 'text-red-600',
+    border: 'border-red-300',
+    focus: 'focus:text-red-600 focus:bg-red-200',
+  },
+  Pending: {
+    bg: 'bg-orange-100',
+    color: 'text-orange-700',
+    border: 'border-orange-200',
+    focus: 'focus:text-orange-900 focus:bg-orange-200',
+  },
+  Winner: {
+    bg: 'bg-emerald-100',
+    color: 'text-emerald-600',
+    border: 'border-emerald-300',
+    focus: 'focus:text-emerald-900 focus:bg-emerald-200',
+  },
+  Completed: {
+    bg: 'bg-blue-100',
+    color: 'text-blue-800',
+    border: 'border-blue-300',
+    focus: 'focus:text-blue-900 focus:bg-blue-200',
+  },
+  Paid: {
+    bg: 'bg-blue-100',
+    color: 'text-blue-800',
+    border: 'border-blue-300',
+    focus: 'focus:text-blue-900 focus:bg-blue-200',
+  },
+};

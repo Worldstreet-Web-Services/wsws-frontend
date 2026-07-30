@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { useRwaAssets } from "@/hooks/use-rwa-assets";
 import { findRwaAsset } from "@/lib/rwa/presenter";
@@ -11,7 +10,6 @@ import type { RwaTradePayload } from "@/components/dashboard/modal-types";
 // the RWA service. This keeps RWA buy/sell off the Dextopus deposit router, which
 // cannot source or deliver RWA tokens.
 export function RwaTradeModal({ payload }: { payload: RwaTradePayload }) {
-  const t = useTranslations("rwa");
   const { assets, loading } = useRwaAssets();
   const asset = findRwaAsset(assets, payload.network, payload.address);
 
@@ -22,12 +20,12 @@ export function RwaTradeModal({ payload }: { payload: RwaTradePayload }) {
   return (
     <div className="p-8 text-center">
       <div className="font-sans text-[14px] font-semibold text-white/85">
-        {loading ? t("loading") : t("cantTradeNow", { symbol: payload.symbol })}
+        {loading ? "Loading…" : `Can't trade ${payload.symbol} right now`}
       </div>
       <p className="mx-auto mt-1.5 max-w-[34ch] text-[12.5px] font-normal text-white/55">
         {loading
-          ? t("fetchingFromRegistry", { symbol: payload.symbol })
-          : t("notFoundInRegistry", { symbol: payload.symbol })}
+          ? `Fetching ${payload.symbol} from the RWA registry.`
+          : `We couldn't find ${payload.symbol} in the RWA registry. Try again shortly.`}
       </p>
     </div>
   );

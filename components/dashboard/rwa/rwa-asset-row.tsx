@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { assetPriceUsd, assetTvlUsd, rwaLogoUrl, type RwaApiAsset } from "@/lib/rwa-api";
 import { formatUsd } from "@/lib/trade/math";
@@ -25,7 +24,6 @@ function Dash() {
 }
 
 export function RwaAssetRow({ asset, selected, logo, onOpen, onTrade }: RwaAssetRowProps) {
-  const t = useTranslations("rwa");
   const price = assetPriceUsd(asset);
   const apy = formatApy(asset.yieldApyBps);
   const tradable = isTradable(asset);
@@ -80,7 +78,7 @@ export function RwaAssetRow({ asset, selected, logo, onOpen, onTrade }: RwaAsset
               : "border-white/12 bg-white/5 text-white/70 hover:text-white"
           }`}
         >
-          {tradable ? t("buy") : t("issuer")}
+          {tradable ? "Buy" : "Issuer"}
         </button>
       </span>
     </div>

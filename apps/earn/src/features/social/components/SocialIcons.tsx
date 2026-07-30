@@ -1,0 +1,87 @@
+import Link from 'next/link';
+import React from 'react';
+
+import FaGithub from '@earn/components/icons/FaGithub';
+import FaGlobe from '@earn/components/icons/FaGlobe';
+import FaLinkedin from '@earn/components/icons/FaLinkedin';
+import FaTelegram from '@earn/components/icons/FaTelegram';
+import FaXTwitter from '@earn/components/icons/FaXTwitter';
+import { type IconType } from '@earn/components/icons/helpers/GenIcon';
+import { cn } from '@earn/utils/cn';
+import { getURLSanitized } from '@earn/utils/getURLSanitized';
+
+interface SocialIconProps extends React.ComponentPropsWithoutRef<'svg'> {
+  link?: string;
+  as?: IconType;
+  size?: string | number;
+  className?: string;
+}
+
+const SocialIcon = ({
+  link,
+  as: Icon,
+  size = '1em',
+  className,
+  ...props
+}: SocialIconProps) => {
+  if (!Icon) return null;
+
+  const iconElement = (
+    <Icon
+      size={size}
+      className={cn(
+        'transition-opacity duration-200',
+        !link && 'opacity-20 grayscale',
+        link && 'cursor-pointer opacity-100 hover:opacity-80',
+        className,
+      )}
+      {...props}
+    />
+  );
+
+  if (!link) {
+    return (
+      <div className="flex" role="presentation">
+        {iconElement}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={getURLSanitized(link)}
+      rel="noopener noreferrer"
+      target="_blank"
+      className="flex"
+      tabIndex={0}
+    >
+      {iconElement}
+    </Link>
+  );
+};
+
+interface IndividualSocialIconProps extends Omit<SocialIconProps, 'as'> {
+  link?: string;
+}
+
+const Twitter = ({ link, ...props }: IndividualSocialIconProps) => (
+  <SocialIcon as={FaXTwitter} link={link} {...props} />
+);
+
+const Telegram = ({ link, ...props }: IndividualSocialIconProps) => (
+  <SocialIcon as={FaTelegram} link={link} {...props} />
+);
+
+const Linkedin = ({ link, ...props }: IndividualSocialIconProps) => (
+  <SocialIcon as={FaLinkedin} link={link} {...props} />
+);
+
+const Website = ({ link, ...props }: IndividualSocialIconProps) => (
+  <SocialIcon as={FaGlobe} link={link} {...props} />
+);
+
+const GitHub = ({ link, ...props }: IndividualSocialIconProps) => (
+  <SocialIcon as={FaGithub} link={link} {...props} />
+);
+
+export { GitHub, Linkedin, Telegram, Twitter, Website };

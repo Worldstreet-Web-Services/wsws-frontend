@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FC } from "react";
-import { useTranslations } from "next-intl";
+import { useMemo, useState, type FC } from "react";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { RwaAssetList } from "@/components/dashboard/rwa/rwa-asset-list";
 import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { RwaDetailSheet } from "@/components/dashboard/rwa/rwa-detail-sheet";
 import { useRwaAssets } from "@/hooks/use-rwa-assets";
-import { useTradePrefill } from "@/hooks/use-trade-prefill";
 import { isBaseAsset, isTradable } from "@/lib/rwa/presenter";
 import type { RwaApiAsset } from "@/lib/rwa-api";
-import type { TradePrefill } from "@/lib/voice/intent";
 import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
 
 // The dashboard page passes detail and confirm openers, but the RWA section owns
@@ -23,7 +20,6 @@ export interface RwaSectionProps {
 }
 
 export const RwaSection: FC<RwaSectionProps> = () => {
-  const t = useTranslations("rwa");
   const { assets, loading, error } = useRwaAssets();
 
   // The table owns the full view; a row opens the detail modal, and "Trade"
@@ -42,32 +38,6 @@ export const RwaSection: FC<RwaSectionProps> = () => {
     setTradeAsset(asset);
   };
 
-  // A voice buy/sell lands as URL params. Resolve the spoken symbol against the
-  // loaded registry (pure derivation — no state), so the effect below only has
-  // to open the modal once. `prefill` (mode/amount) is read straight at render.
-  const voicePrefill = useTradePrefill();
-  const prefillAsset = useMemo(() => {
-    if (!voicePrefill || buyable.length === 0) return null;
-    return (
-      buyable.find((a) => a.symbol.toUpperCase() === voicePrefill.symbol.toUpperCase()) ?? null
-    );
-  }, [voicePrefill, buyable]);
-
-  // Open the staged trade when its asset resolves. We guard on the prefill's
-  // identity (a NEW object per spoken command) rather than a one-shot boolean, so
-  // a SECOND voice buy/sell while the page is still mounted re-opens the panel —
-  // a boolean latch blocked every trade after the first (needed a refresh).
-  const openedPrefillRef = useRef<TradePrefill | null>(null);
-  useEffect(() => {
-    if (!prefillAsset || !voicePrefill || openedPrefillRef.current === voicePrefill) return;
-    openedPrefillRef.current = voicePrefill;
-    openTrade(prefillAsset);
-  }, [prefillAsset, voicePrefill]);
-
-  // The staged mode/amount only applies while the prefilled asset is the one open.
-  const prefill: TradePrefill | null =
-    voicePrefill && tradeAsset && prefillAsset?.id === tradeAsset.id ? voicePrefill : null;
-
   // One shell, two views: opening a trade from the detail sheet swaps the
   // content (contentKey change) so it slides across instead of stacking.
   const modalAsset = tradeAsset ?? detailAsset;
@@ -79,17 +49,18 @@ export const RwaSection: FC<RwaSectionProps> = () => {
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <Eyebrow>{t("eyebrow")}</Eyebrow>
+      <Eyebrow>Real-world assets</Eyebrow>
       <div className="mt-3.5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="ws-display text-[26px] tracking-[-0.01em]">{t("heading")}</h2>
+          <h2 className="ws-display text-[26px] tracking-[-0.01em]">Real-world assets</h2>
           <p className="mt-1 max-w-[52ch] text-[13.5px] font-normal text-white/55">
-            {t("subheading")}
+            Tokenized treasuries, equities, credit and metals. Live prices, onchain settlement,
+            trade or access through the issuer.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3 py-1.5 text-xs font-medium text-white/60">
           <span className="bg-up h-1.5 w-1.5 rounded-full" />
-          {t("liveRegistry")}
+          Live registry
         </span>
       </div>
 
@@ -110,13 +81,7 @@ export const RwaSection: FC<RwaSectionProps> = () => {
         contentKey={`${modalMode}-${modalAsset?.id ?? ""}`}
       >
         {modalMode === "trade" && tradeAsset ? (
-          <RwaTradePanel
-            key={tradeAsset.id}
-            asset={tradeAsset}
-            bare
-            initialMode={prefill?.mode ?? "buy"}
-            initialAmount={prefill?.amount ?? ""}
-          />
+          <RwaTradePanel key={tradeAsset.id} asset={tradeAsset} bare />
         ) : modalMode === "detail" && detailAsset ? (
           <RwaDetailSheet asset={detailAsset} onTrade={openTrade} />
         ) : null}

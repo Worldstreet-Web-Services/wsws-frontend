@@ -1,0 +1,92 @@
+import { ExternalImage } from '@earn/components/ui/cloudinary-image';
+import { cn } from '@earn/utils/cn';
+
+import { HACKATHONS } from '@earn/features/hackathon/constants/hackathons';
+
+import { type ListingContext, type ListingTab } from '../hooks/useListings';
+
+const TABS = [
+  { id: 'all', title: 'All', posthog: 'all_listings' },
+  { id: 'bounties', title: 'Bounties', posthog: 'bounties_listings' },
+  { id: 'projects', title: 'Projects', posthog: 'projects_listings' },
+] as const;
+
+interface ListingTabTriggerProps {
+  isActive: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  isPro?: boolean;
+}
+
+const ListingTabTrigger = ({
+  isActive,
+  onClick,
+  children,
+  isPro,
+}: ListingTabTriggerProps) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      'group ring-offset-background relative inline-flex items-center justify-center rounded-md px-2 py-1 text-sm font-medium whitespace-nowrap transition-all',
+      isPro ? 'hover:text-zinc-700' : 'hover:text-brand-grey',
+      isActive && [
+        isPro ? 'text-zinc-700' : 'text-brand-grey',
+        isPro
+          ? 'after:absolute after:bottom-[-5px] after:left-0 after:h-px after:w-full after:bg-zinc-700 md:after:bottom-[-9px]'
+          : 'after:bg-brand-grey/80 after:absolute after:bottom-[-5px] after:left-0 after:h-px after:w-full md:after:bottom-[-9px]',
+      ],
+      !isActive && 'text-slate-500',
+    )}
+  >
+    {children}
+  </button>
+);
+
+interface ListingTabsProps {
+  type: ListingContext;
+  activeTab: ListingTab;
+  handleTabChange: (tabId: ListingTab, posthog: string) => void;
+  isPro?: boolean;
+}
+
+export const ListingTabs = ({
+  type,
+  activeTab,
+  handleTabChange,
+  isPro,
+}: ListingTabsProps) => {
+  return (
+    <div className="flex items-center gap-2">
+      {TABS.map((tab) => (
+        <ListingTabTrigger
+          isPro={isPro}
+          key={tab.id}
+          isActive={activeTab === tab.id}
+          onClick={() => handleTabChange(tab.id, tab.posthog)}
+        >
+          <span>{tab.title}</span>
+        </ListingTabTrigger>
+      ))}
+      {type === 'home' &&
+        HACKATHONS.map((hackathon) => (
+          <ListingTabTrigger
+            isPro={isPro}
+            key={hackathon.slug}
+            isActive={activeTab === hackathon.slug}
+            onClick={() =>
+              handleTabChange(
+                hackathon.slug as ListingTab,
+                `${hackathon.slug}_navpill`,
+              )
+            }
+          >
+            <ExternalImage
+              src={hackathon.logo}
+              alt={hackathon.label}
+              className="my-[0.10rem] h-4 scale-130 object-contain"
+            />
+          </ListingTabTrigger>
+        ))}
+    </div>
+  );
+};

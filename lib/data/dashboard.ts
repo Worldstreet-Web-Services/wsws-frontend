@@ -35,7 +35,7 @@ export const HOLDINGS: Holding[] = [
     price: "$2,412",
     chg: "+0.3%",
     value: "$7,477",
-    bg: "linear-gradient(135deg,#d0d0d4,#88888e)",
+    bg: "linear-gradient(135deg,#E7C97C,#9c7d2e)",
   },
   {
     sym: "OUSG",
@@ -44,7 +44,7 @@ export const HOLDINGS: Holding[] = [
     price: "$1.04",
     chg: "+0.01%",
     value: "$6,448",
-    bg: "linear-gradient(135deg,#d4d4d8,#a2a2a8)",
+    bg: "linear-gradient(135deg,#A78BFA,#6d5bd0)",
   },
   {
     sym: "$",
@@ -114,7 +114,7 @@ export const MARKETS: Market[] = [
     price: "$2,412",
     chg: "+0.3%",
     class: "Commodity",
-    bg: "linear-gradient(135deg,#d0d0d4,#88888e)",
+    bg: "linear-gradient(135deg,#E7C97C,#9c7d2e)",
   },
   {
     sym: "OUSG",
@@ -123,7 +123,7 @@ export const MARKETS: Market[] = [
     price: "$1.04",
     chg: "+0.01%",
     class: "Treasury",
-    bg: "linear-gradient(135deg,#d4d4d8,#a2a2a8)",
+    bg: "linear-gradient(135deg,#A78BFA,#6d5bd0)",
   },
   {
     sym: "ETH",
@@ -208,7 +208,7 @@ export const PREDICTIONS: Prediction[] = [
   {
     tag: "Sports",
     vol: "$690k vol",
-    q: "Will the next World Cup final go to penalties?",
+    q: "Will the next championship final go to penalties?",
     yes: "22¢",
     no: "78¢",
     pct: 22,

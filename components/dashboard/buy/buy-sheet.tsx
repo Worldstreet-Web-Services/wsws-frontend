@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -25,15 +24,14 @@ const MIN_USD = 1;
 const PRESETS = [10, 50, 100];
 const DECIMAL = /^\d*\.?\d*$/;
 
-// Plain-language order status, no bridging or settlement jargon. Values are
-// message keys in the buySell namespace.
-const STAGE_KEY: Record<DepositStage, string> = {
-  waiting: "stagePlacingOrder",
-  detected: "stagePaymentReceived",
-  processing: "stageAlmostThere",
-  settled: "stageAllDone",
-  refunded: "stageMoneyReturned",
-  failed: "stageOrderFailed",
+// Plain-language order status, no bridging or settlement jargon.
+const STAGE_COPY: Record<DepositStage, string> = {
+  waiting: "Placing your order",
+  detected: "Payment received",
+  processing: "Almost there",
+  settled: "All done",
+  refunded: "Money returned to your balance",
+  failed: "Your order didn't go through",
 };
 
 interface BuySheetProps {
@@ -42,7 +40,6 @@ interface BuySheetProps {
 }
 
 export function BuySheet({ payload, onClose }: BuySheetProps) {
-  const t = useTranslations("buySell");
   const portfolio = usePortfolio();
   const gas = useGasStatus("ethereum");
   const destinations = useBuyDestinations();
@@ -115,17 +112,17 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     if (settledRef.current) return;
     if (stage === "settled") {
       settledRef.current = true;
-      toast.success(t("boughtToast", { name: payload.name }), { id: toastRef.current });
+      toast.success(`You bought ${payload.name}`, { id: toastRef.current });
       void portfolio.refetch();
     } else if (stage === "failed" || stage === "refunded") {
       settledRef.current = true;
-      toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
+      toast.error("The purchase didn't complete — you were refunded.", { id: toastRef.current });
     }
-  }, [stage, payload.name, portfolio, t]);
+  }, [stage, payload.name, portfolio]);
 
   const confirm = async () => {
     if (!route) return;
-    toastRef.current = toast.loading(t("buyingToast", { name: payload.name }));
+    toastRef.current = toast.loading(`Buying ${payload.name}…`);
     try {
       const result = await buy.mutateAsync({
         route,
@@ -136,7 +133,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       setRequestId(result.requestId);
     } catch {
       // The detailed message is surfaced from buy.error below; resolve the toast.
-      toast.error(t("buyFailedToast", { name: payload.name }), { id: toastRef.current });
+      toast.error(`Couldn't buy ${payload.name}. Try again.`, { id: toastRef.current });
     }
   };
 
@@ -144,10 +141,10 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
   if (requestId) {
     const failed = stage === "failed" || stage === "refunded";
     const done = stage === "settled";
-    const color = failed ? "#f6a5a5" : done ? "#7ce7b0" : "#d4d4d8";
+    const color = failed ? "#f6a5a5" : done ? "#7ce7b0" : "#a78bfa";
     return (
       <div>
-        <Eyebrow>{done ? t("allDone") : t("buying")}</Eyebrow>
+        <Eyebrow>{done ? "All done" : "Buying"}</Eyebrow>
         <div className="mt-3 flex items-center gap-[13px]">
           <AssetIcon sym={payload.symbol} bg="#26262b" size={44} logo={payload.logo} />
           <div className="min-w-0 flex-1">
@@ -157,21 +154,20 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
         </div>
 
         <div className="ws-inset mt-4 p-4">
-          <div className="mb-2.5 text-[13px] font-medium text-white">{t(STAGE_KEY[stage])}</div>
+          <div className="mb-2.5 text-[13px] font-medium text-white">{STAGE_COPY[stage]}</div>
           <ProgressBar pct={progress.pct} color={color} />
           {done ? (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
-              {bought
-                ? t("amountInAccount", { amount: bought, symbol: payload.symbol })
-                : t("assetInAccount", { name: payload.name })}
+              {bought ? `${bought} ${payload.symbol} ` : `Your ${payload.name} `}
+              is now in your account.
             </p>
           ) : failed ? (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
-              {t("orderFailedBody")}
+              We couldn&apos;t complete your order. Your money has been returned to your balance.
             </p>
           ) : (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
-              {t("takesAMoment")}
+              This usually takes a moment. You can close this and it&apos;ll keep going.
             </p>
           )}
         </div>
@@ -180,7 +176,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           onClick={onClose}
           className="text-ink mt-5 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90"
         >
-          {t("done")}
+          Done
         </button>
       </div>
     );
@@ -204,7 +200,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
   // Order form.
   return (
     <div>
-      <Eyebrow>{t("buy")}</Eyebrow>
+      <Eyebrow>Buy</Eyebrow>
       <div className="mt-3 flex items-center gap-[13px]">
         <AssetIcon sym={payload.symbol} bg="#26262b" size={44} logo={payload.logo} />
         <div className="min-w-0 flex-1">
@@ -215,12 +211,12 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
 
       <div className="ws-inset mt-4 p-[15px]">
         <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
-          <span>{t("amount")}</span>
+          <span>Amount</span>
           <button
             onClick={() => setAmount(String(balance))}
             className="tnum cursor-pointer text-white/55 hover:text-white"
           >
-            {t("balanceUsd", { amount: formatAmount(balance) })}
+            Balance ${formatAmount(balance)}
           </button>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -248,7 +244,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[13.5px] font-normal">
-        <span className="text-white/55">{t("youGetAbout")}</span>
+        <span className="text-white/55">You get about</span>
         <span className="tnum text-white">{preview ? `${preview} ${payload.symbol}` : "—"}</span>
       </div>
 
@@ -264,12 +260,12 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
 
       {noFee ? (
         <p className="mt-3 text-[12.5px] leading-[1.5] font-normal text-white/55">
-          {t("needGasFee", { symbol: "ETH", network: "Base" })}
+          You&apos;ll need a little ETH on Base to cover the network fee. Add some, then try again.
         </p>
       ) : null}
       {buy.error ? (
         <p className="text-down mt-3 text-[13px] font-normal">
-          {friendlyError(buy.error, t("purchaseFailedFallback"))}
+          {friendlyError(buy.error, "We couldn't complete your purchase. Please try again.")}
         </p>
       ) : null}
 
@@ -279,16 +275,16 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
         className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {!route
-          ? t("unavailable")
+          ? "Unavailable"
           : value <= 0
-            ? t("enterAmount")
+            ? "Enter an amount"
             : belowMin
-              ? t("minimumUsd", { amount: MIN_USD })
+              ? `Minimum $${MIN_USD}`
               : notEnough
-                ? t("notEnoughBalance")
+                ? "Not enough balance"
                 : buy.isPending
-                  ? t("confirming")
-                  : t("buyToken", { name: payload.name })}
+                  ? "Confirming…"
+                  : `Buy ${payload.name}`}
       </button>
     </div>
   );

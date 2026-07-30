@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,7 +23,24 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@earn/prisma": [
+        "./apps/earn/src/prisma.ts"
+      ],
+      "@earn/prisma/*": [
+        "./apps/earn/src/generated/prisma/*"
+      ],
+      "@earn/generated/*": [
+        "./apps/earn/src/generated/*"
+      ],
+      "@/*": [
+        "./*"
+      ],
+      "@earn/*": [
+        "./apps/earn/src/*"
+      ],
+      "@games/*": [
+        "./apps/games/src/*"
+      ]
     }
   },
   "include": [
@@ -28,7 +49,18 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    ".next-dev/types/**/*.ts",
+    ".next-dev/dev/types/**/*.ts",
+    ".next-build/types/**/*.ts",
+    ".next-build/dev/types/**/*.ts",
+    ".next-dev-api/types/**/*.ts",
+    ".next-dev-api/dev/types/**/*.ts",
+    ".next-turbo/types/**/*.ts",
+    ".next-turbo/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "casino-service"]
+  "exclude": [
+    "node_modules",
+    "apps/earn"
+  ]
 }

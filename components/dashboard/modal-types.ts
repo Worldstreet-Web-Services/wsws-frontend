@@ -1,5 +1,3 @@
-import type { DepositPrefill } from "@/lib/voice/intent";
-
 export interface StatLine {
   k: string;
   v: string;
@@ -80,9 +78,8 @@ export type DashboardModal =
   | { type: "buy"; buy: BuyPayload }
   | { type: "sell"; sell: SellPayload }
   | { type: "rwaTrade"; rwaTrade: RwaTradePayload }
-  | { type: "funds"; deposit?: DepositPrefill }
+  | { type: "funds" }
   | { type: "withdraw" }
-  | { type: "crossBorder" }
   | { type: "account" }
   | { type: "done"; title: string; msg: string }
   | null;

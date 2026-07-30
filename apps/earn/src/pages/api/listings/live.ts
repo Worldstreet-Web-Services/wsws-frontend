@@ -1,0 +1,96 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { type EnumBountyTypeFilter } from '@earn/prisma/commonInputTypes';
+import { type BountyType } from '@earn/prisma/enums';
+import { type BountiesFindManyArgs } from '@earn/prisma/models/Bounties';
+import { getChapterRegions } from '@earn/utils/chapterRegion';
+
+import { getPrivyToken } from '@earn/features/auth/utils/getPrivyToken';
+import { listingSelect } from '@earn/features/listings/constants/schema';
+import {
+  filterRegionCountry,
+  getCombinedRegion,
+  getParentRegions,
+} from '@earn/features/listings/utils/region';
+
+export default async function listings(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  const params = req.query;
+
+  const type = params.type as EnumBountyTypeFilter | BountyType | undefined;
+  const take = params.take ? parseInt(params.take as string, 10) : 10;
+  const deadline = params.deadline as string;
+  const exclusiveSponsorId = params.exclusiveSponsorId as string | undefined;
+  let excludeIds = params['excludeIds[]'];
+  if (typeof excludeIds === 'string') {
+    excludeIds = [excludeIds];
+  }
+
+  const privyDid = await getPrivyToken(req);
+  let userRegion;
+  let userLocation;
+  if (privyDid) {
+    const chapterRegions = await getChapterRegions();
+    const user = await prisma.user.findFirst({
+      where: { privyDid },
+      select: { id: true, location: true, isBlocked: true },
+    });
+
+    if (user?.isBlocked) {
+      logger.warn(`Blocked user attempted listing discovery: ${user.id}`);
+      return res.status(403).json({ error: 'User is blocked' });
+    }
+
+    userRegion = user?.location
+      ? getCombinedRegion(user?.location, true, chapterRegions)
+      : undefined;
+    userLocation = user?.location;
+  }
+
+  const listingQueryOptions: BountiesFindManyArgs = {
+    where: {
+      id: {
+        notIn: excludeIds,
+      },
+      isPublished: true,
+      isActive: true,
+      isPrivate: false,
+      isArchived: false,
+      agentAccess: { not: 'AGENT_ONLY' },
+      status: 'OPEN',
+      deadline: { gte: deadline },
+      type: type || { in: ['bounty', 'project'] },
+      region: {
+        in: userRegion?.name
+          ? [
+              'Global',
+              userRegion.name,
+              ...(filterRegionCountry(userRegion, userLocation || '').country ||
+                []),
+              ...(getParentRegions(userRegion) || []),
+            ]
+          : ['Global'],
+      },
+      sponsorId: exclusiveSponsorId,
+    },
+    select: listingSelect,
+    take,
+    orderBy: [{ deadline: 'asc' }, { winnersAnnouncedAt: 'desc' }],
+  };
+
+  try {
+    const listings = await prisma.bounties.findMany(listingQueryOptions);
+    res.status(200).json(listings);
+  } catch (error) {
+    logger.error(error);
+
+    res.status(400).json({
+      error,
+      message: 'Error occurred while fetching listings',
+    });
+  }
+}

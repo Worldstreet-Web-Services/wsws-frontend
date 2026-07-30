@@ -1,0 +1,542 @@
+import type { z } from 'zod';
+
+import { countries } from '@earn/constants/country';
+import { type JsonValue } from '@earn/prisma/internal/prismaNamespace';
+import {
+  type BountiesOrderByWithRelationInput,
+  type BountiesWhereInput,
+} from '@earn/prisma/models/Bounties';
+import {
+  findChapterByRegionInput,
+  getRegionsForChapterPage,
+  getRegionsForCountryPageUsingChapters,
+  getRegionsForMultiCountryRegionPageUsingChapters,
+  getRegionsForUserLocationUsingChapters,
+} from '@earn/utils/chapterRegion';
+
+import { HACKATHONS } from '@earn/features/hackathon/constants/hackathons';
+import {
+  type ListingCategorySchema,
+  type ListingStatusSchema,
+  type QueryParamsSchema,
+} from '@earn/features/listings/constants/schema';
+
+import { getCountryNameFromSlug } from './parse-opportunity-tags';
+import { findSkillBySlug } from './skill';
+
+type BuildListingQueryArgs = z.infer<typeof QueryParamsSchema>;
+
+interface ListingQueryResult {
+  readonly where: BountiesWhereInput;
+  readonly orderBy:
+    | BountiesOrderByWithRelationInput
+    | BountiesOrderByWithRelationInput[];
+  readonly take?: number;
+}
+
+function getSkillFilter(
+  category: z.infer<typeof ListingCategorySchema>,
+): BountiesWhereInput | null {
+  if (category === 'All' || category === 'For You') {
+    return null;
+  }
+
+  const filterToSkillsMap: Record<string, string[]> = {
+    Development: ['Frontend', 'Backend', 'Blockchain', 'Mobile'],
+    Design: ['Design'],
+    Content: ['Content'],
+    Other: ['Other', 'Growth', 'Community'],
+  };
+
+  const skillsToFilter = filterToSkillsMap[category] || [];
+
+  if (skillsToFilter.length === 0) {
+    return null;
+  }
+
+  if (category === 'Development' || category === 'Other') {
+    return {
+      OR: skillsToFilter.map((skill) => ({
+        skills: {
+          path: '$[*].skills',
+          array_contains: [skill],
+        },
+      })),
+    };
+  } else {
+    return {
+      skills: {
+        path: '$[*].skills',
+        array_contains: skillsToFilter,
+      },
+    };
+  }
+}
+
+function getStatusSpecificWhereClauses(
+  status: z.infer<typeof ListingStatusSchema>,
+): BountiesWhereInput | null {
+  const now = new Date();
+  switch (status) {
+    case 'all':
+      return null;
+    case 'open':
+      return {
+        isWinnersAnnounced: false,
+        OR: [{ deadline: null }, { deadline: { gte: now } }],
+      };
+    case 'review':
+      return {
+        isWinnersAnnounced: false,
+        deadline: { lt: now },
+      };
+    case 'completed':
+      return {
+        isWinnersAnnounced: true,
+      };
+    default:
+      return null;
+  }
+}
+
+function getOrderBy(
+  args: BuildListingQueryArgs,
+  status: z.infer<typeof ListingStatusSchema>,
+): BountiesOrderByWithRelationInput | BountiesOrderByWithRelationInput[] {
+  const { sortBy, order } = args;
+  const oppositeOrder = order === 'asc' ? 'desc' : 'asc';
+
+  let primarySort: BountiesOrderByWithRelationInput;
+
+  switch (sortBy) {
+    case 'Status':
+      return [
+        { isWinnersAnnounced: 'asc' },
+        { deadline: { sort: 'desc', nulls: 'first' } },
+      ];
+
+    case 'Date':
+      if (status === 'review') {
+        primarySort = { deadline: { sort: oppositeOrder, nulls: 'last' } };
+      } else if (status === 'completed') {
+        primarySort = {
+          winnersAnnouncedAt: { sort: oppositeOrder, nulls: 'last' },
+        };
+      } else {
+        primarySort = { deadline: { sort: order, nulls: 'last' } };
+      }
+      break;
+
+    case 'Prize':
+      primarySort = { usdValue: { sort: order, nulls: 'last' } };
+      break;
+
+    case 'Submissions':
+      primarySort = { Submission: { _count: order } };
+      break;
+
+    default:
+      primarySort = { deadline: { sort: order, nulls: 'last' } };
+      break;
+  }
+
+  // add isFeatured prioritization only for default sorting (date + asc) and open or all status
+  const isDefaultSort =
+    sortBy === 'Date' &&
+    order === 'asc' &&
+    (status === 'open' || status === 'all');
+
+  return isDefaultSort ? [{ isFeatured: 'desc' }, primarySort] : primarySort;
+}
+
+async function getUserRegionFilter(
+  userLocation: string | null,
+): Promise<string[]> {
+  return getRegionsForUserLocationUsingChapters(userLocation);
+}
+
+export async function buildListingQuery(
+  args: BuildListingQueryArgs,
+  user: {
+    id: string;
+    isTalentFilled: boolean;
+    location: string | null;
+    skills: JsonValue;
+  } | null,
+): Promise<ListingQueryResult> {
+  const { tab, category, status, context, region, sponsor, skill } = args;
+  const effectiveCategory =
+    context === 'bookmarks' && category === 'For You' ? 'All' : category;
+
+  const agentAccessFilter: BountiesWhereInput['agentAccess'] =
+    context === 'agents'
+      ? { in: ['AGENT_ALLOWED', 'AGENT_ONLY'] }
+      : { not: 'AGENT_ONLY' };
+
+  const where: BountiesWhereInput = {
+    isPublished: true,
+    isActive: true,
+    isArchived: false,
+    isPrivate: false,
+    agentAccess: agentAccessFilter,
+    hackathonprize: false,
+  };
+
+  const andConditions: BountiesWhereInput[] = [];
+
+  if (context === 'agents') {
+    andConditions.push({
+      sponsor: {
+        isVerified: true,
+      },
+    });
+  }
+
+  if (context === 'home') {
+    andConditions.push({
+      language: { in: ['eng', 'sco'] },
+      OR: [
+        { compensationType: 'fixed', usdValue: { gt: 100 } },
+        { compensationType: 'range', maxRewardAsk: { gt: 100 } },
+        { compensationType: 'variable' },
+      ],
+    });
+  }
+
+  if (user?.isTalentFilled && (context === 'all' || context === 'home')) {
+    where.region = {
+      in: await getUserRegionFilter(user.location),
+    };
+  }
+
+  if (effectiveCategory === 'For You') {
+    const userSkills =
+      (user?.skills as { skills: string }[] | null)?.map(
+        (skill) => skill.skills,
+      ) || [];
+
+    const forYouConditions: BountiesWhereInput[] = [];
+
+    if (user?.id) {
+      forYouConditions.push({
+        SubscribeBounty: { some: { userId: user.id } },
+      });
+    }
+
+    if (userSkills.length > 0) {
+      const skillConditions = userSkills.map((skill) => ({
+        skills: {
+          path: '$[*].skills',
+          array_contains: [skill],
+        },
+      }));
+      forYouConditions.push(...skillConditions);
+    }
+
+    forYouConditions.push({
+      isFeatured: true,
+    });
+
+    if (forYouConditions.length > 0) {
+      andConditions.push({ OR: forYouConditions });
+    }
+  }
+
+  if ((context === 'region' || context === 'region-all') && region) {
+    const chapter = await findChapterByRegionInput(region);
+
+    if (chapter) {
+      const regionList = await getRegionsForChapterPage(chapter.region);
+      andConditions.push({
+        OR: [
+          {
+            region: {
+              in: regionList,
+            },
+          },
+          {
+            sponsor: {
+              name: chapter.name,
+            },
+          },
+        ],
+      });
+    } else {
+      const country = countries.find(
+        (c) => c.name.toLowerCase() === region.toLowerCase(),
+      );
+
+      if (country) {
+        if (
+          country.region &&
+          country.regions &&
+          Array.isArray(country.regions)
+        ) {
+          // Multi-country region page (EU, GCC, etc.)
+          const regionList =
+            await getRegionsForMultiCountryRegionPageUsingChapters(
+              country.name,
+            );
+          andConditions.push({
+            OR: [
+              {
+                region: {
+                  in: regionList,
+                },
+              },
+            ],
+          });
+        } else {
+          // Regular country page
+          const regionList = await getRegionsForCountryPageUsingChapters(
+            country.name,
+          );
+          andConditions.push({
+            OR: [
+              {
+                region: {
+                  in: regionList,
+                },
+              },
+            ],
+          });
+        }
+      } else {
+        // Fallback for unknown region
+        andConditions.push({
+          OR: [
+            {
+              region: {
+                in: [
+                  region.charAt(0).toUpperCase() + region.slice(1),
+                  'Global',
+                ],
+              },
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  if (context === 'sponsor' && sponsor) {
+    const sponsorKey = sponsor.toLowerCase();
+
+    where.sponsor = {
+      slug: sponsorKey,
+    };
+
+    // if (!!sponsorInfo?.showPrivates) {
+    //   delete where.isPrivate;
+    // } else {
+    //   where.isPrivate = false;
+    // }
+  }
+
+  if (context === 'bookmarks') {
+    if (!user?.id) {
+      throw new Error('Bookmarks context requires an authenticated user');
+    }
+
+    andConditions.push({
+      SubscribeBounty: {
+        some: {
+          userId: user.id,
+          isArchived: false,
+        },
+      },
+    });
+  }
+
+  if ((context === 'skill' || context === 'skill-all') && skill) {
+    const skillInfo = findSkillBySlug(skill);
+
+    if (skillInfo) {
+      if (skillInfo.type === 'parent') {
+        // Filter by parent skill
+        andConditions.push({
+          skills: {
+            path: '$[*].skills',
+            array_contains: [skillInfo.name],
+          },
+        });
+      } else {
+        // Filter by subskill
+        andConditions.push({
+          skills: {
+            path: '$[*].subskills',
+            array_contains: [skillInfo.name],
+          },
+        });
+      }
+    }
+  }
+
+  if (context === 'pro') {
+    where.isPro = true;
+  }
+
+  // Handle opportunity context - supports region, skill, category, and type filters
+  if (context === 'opportunity') {
+    // Region filter (same logic as region context)
+    if (region) {
+      // Convert slug to proper name for lookup (e.g., 'european-union' -> 'European Union')
+      const regionName = getCountryNameFromSlug(region);
+
+      const chapter = await findChapterByRegionInput(region);
+
+      if (chapter) {
+        const regionList = await getRegionsForChapterPage(chapter.region);
+        andConditions.push({
+          OR: [
+            {
+              region: {
+                in: regionList,
+              },
+            },
+            {
+              sponsor: {
+                name: chapter.name,
+              },
+            },
+          ],
+        });
+      } else {
+        const country = countries.find(
+          (c) => c.name.toLowerCase() === regionName.toLowerCase(),
+        );
+
+        if (country) {
+          if (
+            country.region &&
+            country.regions &&
+            Array.isArray(country.regions)
+          ) {
+            // Multi-country region page (EU, GCC, etc.)
+            const regionList =
+              await getRegionsForMultiCountryRegionPageUsingChapters(
+                country.name,
+              );
+            andConditions.push({
+              OR: [
+                {
+                  region: {
+                    in: regionList,
+                  },
+                },
+              ],
+            });
+          } else {
+            // Regular country page
+            const regionList = await getRegionsForCountryPageUsingChapters(
+              country.name,
+            );
+            andConditions.push({
+              OR: [
+                {
+                  region: {
+                    in: regionList,
+                  },
+                },
+              ],
+            });
+          }
+        } else {
+          // Fallback for unknown region - use the converted name
+          andConditions.push({
+            OR: [
+              {
+                region: {
+                  in: [regionName, 'Global'],
+                },
+              },
+            ],
+          });
+        }
+      }
+    }
+
+    // Skill filter (same logic as skill context)
+    if (skill) {
+      const skillInfo = findSkillBySlug(skill);
+
+      if (skillInfo) {
+        if (skillInfo.type === 'parent') {
+          // Filter by parent skill
+          andConditions.push({
+            skills: {
+              path: '$[*].skills',
+              array_contains: [skillInfo.name],
+            },
+          });
+        } else {
+          // Filter by subskill
+          andConditions.push({
+            skills: {
+              path: '$[*].subskills',
+              array_contains: [skillInfo.name],
+            },
+          });
+        }
+      }
+    }
+  }
+
+  const standardTabs = ['all', 'bounties', 'projects'];
+
+  if (standardTabs.includes(tab)) {
+    switch (tab) {
+      case 'bounties':
+        where.type = 'bounty';
+        break;
+      case 'projects':
+        where.type = 'project';
+        break;
+      case 'all':
+        if (context === 'agents') {
+          where.type = { in: ['bounty', 'project', 'hackathon'] };
+        } else {
+          where.OR = [
+            { type: { not: 'hackathon' } },
+            { type: 'hackathon', isFeatured: true },
+          ];
+        }
+        break;
+    }
+  } else if (HACKATHONS.some((hackathon) => hackathon.slug === tab)) {
+    where.type = 'hackathon';
+    where.Hackathon = {
+      slug: tab,
+    };
+  }
+
+  const statusWhereClauses = getStatusSpecificWhereClauses(status);
+  if (statusWhereClauses) {
+    andConditions.push(statusWhereClauses);
+  }
+
+  const categoryToFilter =
+    context === 'category' ||
+    context === 'category-all' ||
+    context === 'opportunity'
+      ? category
+      : effectiveCategory;
+
+  const skillFilter = getSkillFilter(categoryToFilter);
+  if (skillFilter) {
+    andConditions.push(skillFilter);
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  const orderBy = getOrderBy(args, status);
+  const takeValue = context === 'home' || context === 'region' ? 10 : undefined;
+
+  return {
+    where,
+    orderBy,
+    take: takeValue,
+  };
+}

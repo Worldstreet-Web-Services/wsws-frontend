@@ -3,10 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { useTranslations } from "next-intl";
 import { Wordmark } from "@/components/ui/wordmark";
-import { ArkMark } from "@/components/ui/ark-mark";
-import { BRAND } from "@/lib/brand";
 import { LockIcon } from "@/components/ui/icons";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { EmailForm } from "@/components/auth/email-form";
@@ -16,7 +13,6 @@ import { useEnsureWallets } from "@/hooks/use-ensure-wallets";
 import { hasEmbeddedWallet } from "@/lib/user";
 
 export default function AuthPage() {
-  const t = useTranslations("auth");
   const { ready, authenticated, user } = usePrivy();
   const ensureWallets = useEnsureWallets();
   const router = useRouter();
@@ -44,24 +40,26 @@ export default function AuthPage() {
         <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-9 sm:py-12">
           <div className="mb-[26px] inline-flex items-center gap-[9px] self-start rounded-full border border-white/14 bg-white/6 py-[5px] pr-3.5 pl-1.5">
             <span className="text-ink rounded-full bg-white px-2.5 py-[3px] text-[11px] font-semibold">
-              {t("beta")}
+              Beta
             </span>
-            <span className="pr-1 text-[13px] text-white/90">{t("earlyAccess")}</span>
+            <span className="pr-1 text-[13px] text-white/90">Early access is open</span>
           </div>
 
           <h1 className="ws-display text-[clamp(38px,4.6vw,56px)] leading-none tracking-[-0.03em]">
-            {t("welcome")} <span className="text-accent">{BRAND}</span>
+            Welcome to <span className="text-accent">World Street</span>
           </h1>
           <p className="mt-4 max-w-[38ch] text-[15.5px] leading-[1.55] text-white/72">
-            {t("tagline")}
+            Sign in to own stocks, gold, crypto and real-world assets from one self-custody account.
           </p>
 
           {signingIn ? (
             <div className="mt-[34px] flex items-center gap-3 rounded-[14px] border border-white/14 bg-white/6 p-4">
-              <span className="animate-pulse">
-                <ArkMark height={18} />
+              <span className="grid h-8 w-8 animate-pulse place-items-center rounded-full border border-white/18 bg-white/8">
+                <span className="ws-display text-accent text-[17px] leading-none">w</span>
               </span>
-              <span className="text-sm text-white/80">{t("signingIn")}</span>
+              <span className="text-sm text-white/80">
+                Signing you in and setting up your wallet…
+              </span>
             </div>
           ) : (
             <>
@@ -71,7 +69,7 @@ export default function AuthPage() {
 
               <div className="my-[22px] flex items-center gap-3.5">
                 <span className="h-px flex-1 bg-white/10" />
-                <span className="text-xs tracking-[0.04em] text-white/40">{t("or")}</span>
+                <span className="text-xs tracking-[0.04em] text-white/40">OR</span>
                 <span className="h-px flex-1 bg-white/10" />
               </div>
 
@@ -83,24 +81,20 @@ export default function AuthPage() {
 
           <div className="mt-[26px] flex items-center gap-2 text-xs text-white/40">
             <LockIcon className="text-white/40" />
-            {t("secured")} <span className="font-medium text-white/70">Privy</span>
+            Secured &amp; self-custodial · Protected by{" "}
+            <span className="font-medium text-white/70">Privy</span>
           </div>
         </div>
 
         <p className="mx-auto max-w-[420px] text-center text-xs leading-normal text-white/35">
-          {t.rich("agree", {
-            brand: BRAND,
-            terms: (chunks) => (
-              <a href="#" className="text-white/60 underline">
-                {chunks}
-              </a>
-            ),
-            privacy: (chunks) => (
-              <a href="#" className="text-white/60 underline">
-                {chunks}
-              </a>
-            ),
-          })}
+          By continuing you agree to World Street&apos;s{" "}
+          <a href="#" className="text-white/60 underline">
+            Terms
+          </a>{" "}
+          and{" "}
+          <a href="#" className="text-white/60 underline">
+            Privacy Policy
+          </a>
           .
         </p>
       </div>

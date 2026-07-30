@@ -1,7 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { ChevronLeftIcon, ChartBarsIcon } from "@/components/ui/icons";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 import { isClaimable } from "@/lib/prediction";
 import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
 
@@ -50,39 +49,23 @@ export function PositionsPanel({
   onCashOut,
   cashingOut,
 }: PositionsPanelProps) {
-  const t = useTranslations("prediction");
   return (
-    <div className="ws-card relative mt-7 overflow-hidden sm:mt-9">
-      {/* Accent wash across the header so this section reads as a distinct
-          "your money" area, not another market tile. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[92px] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]"
-      />
-      <div className="relative flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3.5">
-          <span className="bg-accent/16 text-accent grid h-12 w-12 shrink-0 place-items-center rounded-[14px]">
-            <ChartBarsIcon size={24} />
-          </span>
-          <div className="min-w-0">
-            <span className="ws-display text-[21px] tracking-[-0.01em]">{t("positionsTitle")}</span>
-            <div className="tnum mt-0.5 text-[13px] font-normal text-white/60">
-              {available != null
-                ? t("availableToBet", { amount: `$${available.toFixed(2)}` })
-                : t("positionsSubtitle")}
+    <div className="ws-card mt-4 overflow-hidden">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 sm:px-6">
+        <div className="min-w-0">
+          <span className="ws-display text-[18px]">Your positions</span>
+          {available != null ? (
+            <div className="tnum mt-0.5 text-[12px] font-normal text-white/50">
+              ${available.toFixed(2)} available to bet
             </div>
-          </div>
+          ) : null}
         </div>
         <button
           onClick={onRefresh}
           disabled={loading}
-          className={
-            loaded
-              ? "shrink-0 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white/80 hover:text-white disabled:opacity-50"
-              : "text-ink shrink-0 cursor-pointer rounded-xl bg-white px-5 py-2.5 font-sans text-[13px] font-semibold hover:opacity-90 disabled:opacity-50"
-          }
+          className="cursor-pointer rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-[12.5px] font-medium text-white/75 hover:text-white disabled:opacity-50"
         >
-          {loading ? t("loading") : loaded ? t("refresh") : t("loadPositions")}
+          {loading ? "Loading…" : loaded ? "Refresh" : "Load positions"}
         </button>
       </div>
 
@@ -92,7 +75,7 @@ export function PositionsPanel({
         </div>
       ) : loaded && positions.length === 0 ? (
         <div className="border-t border-white/6 px-6 py-6 text-center text-[13px] font-normal text-white/45">
-          {t("noPositions")}
+          No open positions yet.
         </div>
       ) : positions.length > 0 ? (
         positions.map((raw, i) => {
@@ -106,14 +89,14 @@ export function PositionsPanel({
             >
               <div className="min-w-0">
                 <div className="truncate font-sans text-[13.5px] font-medium">
-                  {p.title ?? t("marketFallback")}
+                  {p.title ?? "Market"}
                 </div>
                 <div className="flex items-center gap-1 text-xs font-normal text-white/50">
                   <span className="truncate">
-                    {p.outcome ?? "—"} · {t("sharesCount", { count: num(p.size).toFixed(2) })}
+                    {p.outcome ?? "—"} · {num(p.size).toFixed(2)} shares
                   </span>
                   <span className="text-accent inline-flex shrink-0 items-center">
-                    · {t("viewSlip")}
+                    · View slip
                     <ChevronLeftIcon size={12} className="-scale-x-100" />
                   </span>
                 </div>
@@ -127,13 +110,13 @@ export function PositionsPanel({
                   disabled={claiming}
                   className="border-accent/45 bg-accent/12 cursor-pointer rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-white disabled:opacity-60"
                 >
-                  {claiming ? t("claiming") : t("claim")}
+                  {claiming ? "Claiming…" : "Claim"}
                 </button>
               ) : p.redeemable ? (
                 // Resolved but worth nothing — the losing side. Say so plainly
                 // instead of showing a bare $0.00.
                 <span className="text-down text-right text-[12.5px] font-medium">
-                  {t("resolvedNoWin")}
+                  Resolved · no win
                 </span>
               ) : (
                 <span className="tnum text-right font-sans text-sm font-medium">
@@ -148,14 +131,14 @@ export function PositionsPanel({
       {loaded && cashable != null && cashable > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 px-4 py-3.5 sm:px-6">
           <span className="text-[12.5px] font-normal text-white/55">
-            {t("cashOutTo", { amount: `$${cashable.toFixed(2)}` })}
+            Cash out ${cashable.toFixed(2)} to USDC on Base
           </span>
           <button
             onClick={onCashOut}
             disabled={cashingOut}
             className="text-ink cursor-pointer rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {cashingOut ? t("cashingOut") : t("cashOut")}
+            {cashingOut ? "Cashing out…" : "Cash out"}
           </button>
         </div>
       ) : null}

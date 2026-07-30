@@ -1,0 +1,303 @@
+import { zodResolver } from '@earn/lib/zodResolver';
+import { Check, Loader2, XCircle } from 'lucide-react';
+import { useRouter } from 'next/router';
+import posthog from 'posthog-js';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+
+import { ImageUploader } from '@earn/components/shared/ImageUploader';
+import { Button } from '@earn/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@earn/components/ui/form';
+import { FormFieldWrapper } from '@earn/components/ui/form-field-wrapper';
+import { Input } from '@earn/components/ui/input';
+import { api } from '@earn/lib/api';
+import { useUser } from '@earn/store/user';
+
+import { extractSocialUsername } from '@earn/features/social/utils/extractUsername';
+import {
+  type NewTalentFormData,
+  newTalentSchema,
+  socialSuperRefine,
+} from '@earn/features/talent/schema';
+
+import { LocationField } from './fields/Location';
+import { SkillsField } from './fields/Skills';
+import { SocialsField } from './fields/Socials';
+import { UsernameField } from './fields/Username';
+export const TalentForm = () => {
+  const router = useRouter();
+  const { user, refetchUser } = useUser();
+
+  const form = useForm<NewTalentFormData>({
+    resolver: zodResolver(
+      newTalentSchema.superRefine((data, ctx) => socialSuperRefine(data, ctx)),
+    ),
+    mode: 'onBlur',
+  });
+  const {
+    control,
+    formState: { errors },
+    getValues,
+    reset,
+  } = form;
+
+  const [isLoading, setisLoading] = useState<boolean>(false);
+  const [isGooglePhoto, setIsGooglePhoto] = useState<boolean>(
+    user?.photo?.includes('googleusercontent.com') || false,
+  );
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const [skillsRefreshKey, setSkillsRefreshKey] = useState<number>(0);
+  const [isUsernameValidating, setUsernameValidating] = useState(false);
+
+  const [referralCode, setReferralCode] = useState<string>('');
+  const [isReferralValid, setIsReferralValid] = useState<boolean | null>(null);
+  const [isReferralChecking, setIsReferralChecking] = useState<boolean>(false);
+
+  const hasLockedReferralCode = useMemo(() => {
+    const queryCode = router.query.code;
+    return typeof queryCode === 'string' && queryCode.trim().length > 0;
+  }, [router.query.code]);
+
+  useEffect(() => {
+    const queryCode = router.query.code;
+    if (typeof queryCode === 'string' && queryCode.trim().length > 0) {
+      setReferralCode(queryCode.trim().toUpperCase());
+    }
+  }, [router.query.code]);
+
+  useEffect(() => {
+    if (!referralCode) {
+      setIsReferralValid(null);
+      return;
+    }
+    setIsReferralChecking(true);
+    let ignore = false;
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await api.get('/api/user/referral/verify', {
+          params: { code: referralCode },
+        });
+        if (!ignore) setIsReferralValid(!!res.data?.valid);
+      } catch {
+        if (!ignore) setIsReferralValid(false);
+      } finally {
+        if (!ignore) setIsReferralChecking(false);
+      }
+    }, 400);
+    return () => {
+      ignore = true;
+      clearTimeout(timeout);
+    };
+  }, [referralCode]);
+
+  const handleReferralCodeChange = (value: string): void => {
+    const next = value.toUpperCase();
+    setReferralCode(next);
+  };
+
+  useEffect(() => {
+    if (user) {
+      const currentLocation = getValues('location');
+      const userLocation = newTalentSchema.shape.location.safeParse(
+        user?.location,
+      ).data;
+
+      reset({
+        username: user?.username,
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        skills: newTalentSchema.shape.skills.safeParse(user?.skills).data,
+        photo: user?.photo,
+        location: userLocation || currentLocation,
+        discord: user.discord || undefined,
+        github: extractSocialUsername('github', user.github || '') || undefined,
+        twitter:
+          extractSocialUsername('twitter', user.twitter || '') || undefined,
+        linkedin:
+          extractSocialUsername('linkedin', user.linkedin || '') || undefined,
+        telegram:
+          extractSocialUsername('telegram', user.telegram || '') || undefined,
+        website: user.website || undefined,
+      });
+      setSkillsRefreshKey((s) => s + 1);
+    }
+  }, [user, getValues, reset]);
+
+  const isForcedRedirect = useMemo(() => {
+    return router.query.type === 'forced';
+  }, [router, user]);
+
+  const TitleArray = {
+    title: isForcedRedirect ? 'Finish Your Profile' : 'Complete your Profile',
+    subTitle: isForcedRedirect
+      ? 'It takes less than a minute to start earning in global standards. '
+      : 'We’ll tailor your Earn experience based on your profile',
+  };
+
+  const isSubmitDisabled = useMemo(() => {
+    return isLoading || isUsernameValidating;
+  }, [isLoading, isUsernameValidating]);
+
+  const onSubmit = async (data: NewTalentFormData) => {
+    if (isSubmitDisabled) return false;
+    if (errors.username?.message) {
+      form.setFocus('username');
+      return;
+    }
+
+    setisLoading(true);
+    posthog.capture('finish profile_talent');
+
+    return toast.promise(
+      async () => {
+        try {
+          const photoUrl =
+            uploadedPhotoUrl || (isGooglePhoto ? user?.photo : data.photo);
+
+          await api.post('/api/user/complete-profile/', {
+            ...data,
+            referralCode: referralCode || undefined,
+            photo: photoUrl,
+          });
+          if (user) posthog.identify(user.email);
+
+          await refetchUser();
+          return true;
+        } catch (error) {
+          console.error('Error:', error);
+          throw error;
+        } finally {
+          setisLoading(false);
+        }
+      },
+      {
+        loading: 'Creating your profile...',
+        success: 'Your profile has been created successfully!',
+        error: 'Failed to create your profile.',
+      },
+    );
+  };
+
+  return (
+    <div className="">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} style={{ width: '100%' }}>
+          <div className="mt-4 mb-3 flex flex-col text-left sm:mb-4 2xl:mt-8">
+            <h1 className="font-sans text-lg font-medium md:text-2xl">
+              {TitleArray?.title}
+            </h1>
+            <p className="text-base text-slate-500 md:text-lg">
+              {TitleArray?.subTitle}
+            </p>
+          </div>
+          <div className="mb-3 flex items-start gap-4 sm:mb-4">
+            <FormField
+              name="photo"
+              control={control}
+              render={({ field }) => (
+                <FormItem className="mt-auto w-fit">
+                  <FormLabel className="sr-only">Profile Picture</FormLabel>
+                  <FormControl>
+                    <ImageUploader
+                      source="user"
+                      variant="avatar"
+                      defaultValue={field.value || undefined}
+                      onChange={(result) => {
+                        setIsGooglePhoto(false);
+                        setUploadedPhotoUrl(result.secureUrl);
+                        field.onChange(result.secureUrl);
+                      }}
+                      onReset={() => {
+                        setIsGooglePhoto(false);
+                        setUploadedPhotoUrl(null);
+                        field.onChange('');
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage className="mt-1" />
+                </FormItem>
+              )}
+            />
+            <FormFieldWrapper
+              label="First Name"
+              name="firstName"
+              control={control}
+              isRequired
+              className="gap-1 sm:gap-2"
+            >
+              <Input maxLength={100} placeholder="First Name" />
+            </FormFieldWrapper>
+            <FormFieldWrapper
+              label="Last Name"
+              name="lastName"
+              control={control}
+              isRequired
+              className="gap-1 sm:gap-2"
+            >
+              <Input maxLength={100} placeholder="Last Name" />
+            </FormFieldWrapper>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:gap-2">
+            <UsernameField setUsernameValidating={setUsernameValidating} />
+            <LocationField />
+          </div>
+
+          <SkillsField skillsRefreshKey={skillsRefreshKey} />
+          <SocialsField />
+
+          <div className="mt-6 flex w-full items-center justify-between gap-3">
+            <p className="text-[0.85rem] text-slate-600 sm:text-[0.9rem]">
+              {hasLockedReferralCode
+                ? 'Referral code'
+                : 'Have a Referral Code?'}
+            </p>
+            <div className="relative w-32">
+              <Input
+                placeholder="Enter code"
+                value={referralCode}
+                onChange={(e) => handleReferralCodeChange(e.target.value)}
+                className="pr-9 disabled:cursor-not-allowed disabled:opacity-100"
+                maxLength={10}
+                inputMode="text"
+                autoComplete="off"
+                spellCheck={false}
+                readOnly={hasLockedReferralCode}
+                disabled={hasLockedReferralCode}
+              />
+              {referralCode && isReferralChecking && (
+                <Loader2 className="absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+              )}
+              {referralCode &&
+                !isReferralChecking &&
+                isReferralValid === true && (
+                  <Check className="absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+                )}
+              {referralCode &&
+                !isReferralChecking &&
+                isReferralValid === false && (
+                  <XCircle className="absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-rose-500" />
+                )}
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="mt-5 mb-12 w-full sm:mt-8"
+            disabled={isSubmitDisabled}
+          >
+            Create Profile
+          </Button>
+        </form>
+      </Form>
+    </div>
+  );
+};

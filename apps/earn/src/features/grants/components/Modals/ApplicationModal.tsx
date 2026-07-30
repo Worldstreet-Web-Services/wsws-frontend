@@ -1,0 +1,1473 @@
+import { zodResolver } from '@earn/lib/zodResolver';
+import { useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { Check, Loader2, Lock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { type z } from 'zod';
+
+import { Button } from '@earn/components/ui/button';
+import { Checkbox } from '@earn/components/ui/checkbox';
+import { DateTimePicker } from '@earn/components/ui/datetime-picker';
+import { DialogTitle } from '@earn/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@earn/components/ui/form';
+import { FormFieldWrapper } from '@earn/components/ui/form-field-wrapper';
+import { Input } from '@earn/components/ui/input';
+import { Progress } from '@earn/components/ui/progress';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@earn/components/ui/sheet';
+import { useDisclosure } from '@earn/hooks/use-disclosure';
+import { api } from '@earn/lib/api';
+import { type GrantApplicationModel } from '@earn/prisma/models/GrantApplication';
+import { useUser } from '@earn/store/user';
+import { cn } from '@earn/utils/cn';
+import { dayjs } from '@earn/utils/dayjs';
+
+import { usePopupAuth } from '@earn/features/auth/hooks/use-popup-auth';
+import { sanitizeGrantApplicationHtml } from '@earn/features/grants/utils/sanitizeGrantApplicationHtml';
+import { SubmissionTerms } from '@earn/features/listings/components/Submission/SubmissionTerms';
+import { SocialInput } from '@earn/features/social/components/SocialInput';
+import { XVerificationModal } from '@earn/features/social/components/XVerificationModal';
+import { extractSocialUsername } from '@earn/features/social/utils/extractUsername';
+import { twitterRegex } from '@earn/features/social/utils/regex';
+import {
+  extractXHandle,
+  isHandleVerified,
+} from '@earn/features/social/utils/x-verification';
+
+import { userApplicationQuery } from '../../queries/user-application';
+import { type Grant, type GrantQuestion } from '../../types';
+import {
+  grantApplicationSchema,
+  normalizeGrantQuestionLinkAnswer,
+} from '../../utils/grantApplicationSchema';
+import {
+  AGENTIC_ENGINEERING_GRANT_COPY,
+  extractLumaEventSlug,
+  getGrantFixedAsk,
+  getLumaDisplayValue,
+  isAgenticEngineeringGrant,
+  LUMA_LABEL,
+  ST_GRANT_COPY,
+} from '../../utils/stGrant';
+import {
+  WALLET_ADDRESS_CONFLICT_CODE,
+  WALLET_ADDRESS_CONFLICT_MESSAGE,
+} from '../../utils/walletAddressOwnership.constants';
+
+const getSteps = (isST: boolean) => [
+  { title: 'Basics' },
+  { title: 'Details' },
+  { title: isST ? 'Outcomes' : 'Milestones' },
+];
+
+type FormData = z.infer<ReturnType<typeof grantApplicationSchema>>;
+
+interface Props {
+  grant: Grant;
+  grantApplication: GrantApplicationModel | undefined;
+  modalRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}
+
+export const ApplicationModal = ({
+  grant,
+  grantApplication,
+  modalRef,
+  onClose,
+}: Props) => {
+  const { user, refetchUser } = useUser();
+
+  const [activeStep, setActiveStep] = useState(0);
+  const [isTOSModalOpen, setIsTOSModalOpen] = useState(false);
+  const [acknowledgementAccepted, setAcknowledgementAccepted] = useState(false);
+  const [acknowledgementError, setAcknowledgementError] = useState('');
+  const [feedbackAcknowledgementAccepted, setFeedbackAcknowledgementAccepted] =
+    useState(false);
+  const [feedbackAcknowledgementError, setFeedbackAcknowledgementError] =
+    useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const verificationModal = useDisclosure();
+  const [verificationStatus, setVerificationStatus] = useState<
+    'loading' | 'error'
+  >('loading');
+  const [verificationHandle, setVerificationHandle] = useState<string | null>(
+    null,
+  );
+
+  const { id, token, minReward, maxReward, questions, isPro } = grant;
+  const tokenLabel = token ?? 'token';
+  const isUserPro = user?.isPro;
+  const isProGrant = isPro && isUserPro;
+  const isNotEligibleForPro = isPro && !isUserPro;
+  const isST = grant.isST === true;
+  const isAgenticEngineering = isAgenticEngineeringGrant(grant);
+  const applicationCopy = isST
+    ? ST_GRANT_COPY.application
+    : isAgenticEngineering
+      ? AGENTIC_ENGINEERING_GRANT_COPY.application
+      : null;
+  const fixedAsk = getGrantFixedAsk(grant);
+  const steps = getSteps(isST);
+
+  const dynamicResolver = useMemo(
+    () =>
+      zodResolver(
+        grantApplicationSchema(
+          minReward || 1,
+          maxReward || 1,
+          token || 'USDC',
+          grant.questions,
+          user,
+          isST,
+          isAgenticEngineering,
+        ),
+      ),
+    [
+      minReward,
+      maxReward,
+      token,
+      grant.questions,
+      user,
+      isST,
+      isAgenticEngineering,
+    ],
+  );
+
+  const [isLoading, setIsLoading] = useState(false);
+  const form = useForm<FormData>({
+    resolver: dynamicResolver,
+    defaultValues: {
+      projectTitle: grantApplication?.projectTitle || '',
+      projectOneLiner: grantApplication?.projectOneLiner || '',
+      ask: fixedAsk || grantApplication?.ask || undefined,
+      walletAddress: grantApplication?.walletAddress,
+      projectDetails: grantApplication?.projectDetails || '',
+      projectTimeline: grantApplication?.projectTimeline
+        ? dayjs(grantApplication?.projectTimeline, 'D MMMM YYYY').format(
+            'YYYY-MM-DD',
+          )
+        : '',
+      proofOfWork: grantApplication?.proofOfWork || '',
+      milestones: grantApplication?.milestones || '',
+      kpi: grantApplication?.kpi || '',
+      twitter: grantApplication?.twitter
+        ? extractSocialUsername('twitter', grantApplication?.twitter) || ''
+        : extractSocialUsername('twitter', user?.twitter || '') || '',
+      github: grantApplication?.github
+        ? extractSocialUsername('github', grantApplication?.github) || ''
+        : extractSocialUsername('github', user?.github || '') || '',
+      telegram: extractSocialUsername('telegram', user?.telegram || '') || '',
+      answers:
+        Array.isArray(questions) && questions.length > 0
+          ? questions.map((q: GrantQuestion) => ({
+              question: q.question,
+              answer:
+                (
+                  grantApplication?.answers as Array<{
+                    question: string;
+                    answer: string;
+                  }>
+                )?.find((a) => a.question === q.question)?.answer || '',
+            }))
+          : [],
+      lumaLink: (grantApplication as any)?.lumaLink || '',
+      expenseBreakdown: (grantApplication as any)?.expenseBreakdown || '',
+    },
+  });
+
+  const twitterValue = form.watch('twitter');
+
+  const normalizedTwitterValue = useMemo(
+    () => (twitterValue || '').trim(),
+    [twitterValue],
+  );
+
+  const isPlainUsernameValid = useMemo(() => {
+    return /^[A-Za-z0-9_]{1,15}$/.test(normalizedTwitterValue);
+  }, [normalizedTwitterValue]);
+
+  const isProfileUrlValid = useMemo(() => {
+    return twitterRegex.test(normalizedTwitterValue);
+  }, [normalizedTwitterValue]);
+
+  const isValidXProfileInput = useMemo(() => {
+    if (!normalizedTwitterValue) return false;
+    return isPlainUsernameValid || isProfileUrlValid;
+  }, [normalizedTwitterValue, isPlainUsernameValid, isProfileUrlValid]);
+
+  const xHandleForVerification = useMemo(() => {
+    if (!isValidXProfileInput) return null;
+    const urlToParse = isPlainUsernameValid
+      ? `https://x.com/${normalizedTwitterValue}`
+      : normalizedTwitterValue;
+    return extractXHandle(urlToParse);
+  }, [isValidXProfileInput, isPlainUsernameValid, normalizedTwitterValue]);
+
+  const needsXVerification = useMemo(() => {
+    if (!xHandleForVerification) return false;
+    const verifiedHandles = user?.linkedTwitter || [];
+    return !isHandleVerified(xHandleForVerification, verifiedHandles);
+  }, [xHandleForVerification, user?.linkedTwitter]);
+
+  const isXVerified = useMemo(() => {
+    if (!xHandleForVerification) return false;
+    const verifiedHandles = user?.linkedTwitter || [];
+    return isHandleVerified(xHandleForVerification, verifiedHandles);
+  }, [xHandleForVerification, user?.linkedTwitter]);
+
+  useEffect(() => {
+    if (twitterValue && !isValidXProfileInput) {
+      form.setError('twitter', {
+        type: 'manual',
+        message: 'Please add a valid X profile link',
+      });
+      return;
+    }
+
+    if (isValidXProfileInput && needsXVerification) {
+      form.setError('twitter', {
+        type: 'manual',
+        message: 'We need to verify that you own this X account',
+      });
+      return;
+    }
+
+    form.clearErrors('twitter');
+  }, [twitterValue, isValidXProfileInput, needsXVerification, form]);
+
+  const { signIn: popupSignIn } = usePopupAuth();
+
+  const handleVerifyClick = async () => {
+    if (!isValidXProfileInput) {
+      form.setError('twitter', {
+        type: 'manual',
+        message: 'Please add a valid X profile link',
+      });
+      return;
+    }
+
+    const urlToParse = isPlainUsernameValid
+      ? `https://x.com/${normalizedTwitterValue}`
+      : normalizedTwitterValue;
+    const handle = extractXHandle(urlToParse);
+    if (!handle) return;
+
+    try {
+      setVerificationStatus('loading');
+      setVerificationHandle(handle);
+      verificationModal.onOpen();
+
+      const success = await popupSignIn('twitter');
+
+      if (success) {
+        let attempts = 0;
+        const maxAttempts = 5;
+        const pollForUpdate = async (): Promise<boolean> => {
+          const { data: freshUser } = await refetchUser();
+
+          const currentVerifiedHandles = freshUser?.linkedTwitter || [];
+          const isNowVerified = isHandleVerified(
+            handle,
+            currentVerifiedHandles,
+          );
+
+          if (isNowVerified) {
+            form.trigger('twitter');
+            setVerificationHandle(null);
+            verificationModal.onClose();
+            return true;
+          }
+
+          attempts++;
+          if (attempts >= maxAttempts) {
+            setVerificationStatus('error');
+            return false;
+          }
+
+          const delay = Math.min(500 * Math.pow(2, attempts - 1), 5000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return pollForUpdate();
+        };
+
+        await pollForUpdate();
+      } else {
+        setVerificationStatus('error');
+      }
+    } catch (error: any) {
+      console.error('X verification failed:', error);
+      setVerificationStatus('error');
+    }
+  };
+
+  const queryClient = useQueryClient();
+
+  const validateAcknowledgement = () => {
+    if (grantApplication) {
+      setAcknowledgementError('');
+      setFeedbackAcknowledgementError('');
+      return true;
+    }
+    let isValid = true;
+    if (!acknowledgementAccepted) {
+      setAcknowledgementError('Acknowledgement required');
+      isValid = false;
+    } else {
+      setAcknowledgementError('');
+    }
+    if (!feedbackAcknowledgementAccepted) {
+      setFeedbackAcknowledgementError('Acknowledgement required');
+      isValid = false;
+    } else {
+      setFeedbackAcknowledgementError('');
+    }
+    return isValid;
+  };
+
+  const submitApplication = async (data: FormData) => {
+    setIsLoading(true);
+    try {
+      const {
+        projectTitle,
+        projectOneLiner,
+        ask,
+        walletAddress,
+        projectDetails,
+        projectTimeline,
+        proofOfWork,
+        milestones,
+        kpi,
+        twitter,
+        github,
+        answers,
+        telegram,
+        lumaLink,
+        expenseBreakdown,
+      } = data as FormData & { lumaLink?: string; expenseBreakdown?: string };
+
+      const apiAction = grantApplication ? 'update' : 'create';
+
+      await api.post(`/api/grant-application/${apiAction}/`, {
+        grantId: id,
+        projectTitle,
+        projectOneLiner,
+        projectDetails,
+        projectTimeline,
+        proofOfWork,
+        milestones,
+        kpi,
+        walletAddress,
+        ask: fixedAsk || ask || null,
+        twitter,
+        github,
+        answers:
+          answers?.map((answer, index) => {
+            const question = questions?.[index];
+            return {
+              ...answer,
+              question: question?.question ?? answer.question,
+              optional: question?.optional,
+              type: question?.type,
+              answer:
+                question?.type === 'link' && answer.answer
+                  ? normalizeGrantQuestionLinkAnswer(answer.answer)
+                  : answer.answer,
+            };
+          }) || [],
+        telegram: telegram || user?.telegram || '',
+        ...(isST && {
+          lumaLink,
+          expenseBreakdown,
+        }),
+      });
+
+      form.reset();
+      await queryClient.invalidateQueries({
+        queryKey: userApplicationQuery(id).queryKey,
+      });
+
+      await refetchUser();
+
+      toast.success(
+        grantApplication
+          ? 'Application updated successfully!'
+          : 'Application submitted successfully!',
+      );
+
+      onClose();
+    } catch (e) {
+      setIsLoading(false);
+      const serverMessage = axios.isAxiosError(e)
+        ? e.response?.data?.message || e.response?.data?.error
+        : undefined;
+
+      if (
+        axios.isAxiosError(e) &&
+        e.response?.data?.code === WALLET_ADDRESS_CONFLICT_CODE
+      ) {
+        const walletErrorMessage =
+          serverMessage || WALLET_ADDRESS_CONFLICT_MESSAGE;
+        form.setError('walletAddress', {
+          type: 'server',
+          message: walletErrorMessage,
+        });
+        toast.error(walletErrorMessage);
+        return;
+      }
+
+      toast.error(
+        serverMessage ||
+          'Failed to submit application. Please try again or contact support.',
+      );
+    }
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const fieldsToValidate: Record<
+      number,
+      (
+        | keyof FormData
+        | `answers.${number}.answer`
+        | 'lumaLink'
+        | 'expenseBreakdown'
+      )[]
+    > = {
+      0: [
+        'projectTitle',
+        'projectOneLiner',
+        'walletAddress',
+        ...(isAgenticEngineering ? [] : ['ask' as keyof FormData]),
+        'telegram',
+      ],
+      1: [
+        'projectDetails',
+        ...(isST ? [] : ['projectTimeline' as keyof FormData]),
+        ...(isST ? [] : ['proofOfWork' as keyof FormData]),
+        'twitter',
+        ...(isST ? [] : ['github' as keyof FormData]),
+        ...(isST ? ['lumaLink' as const, 'expenseBreakdown' as const] : []),
+        ...(questions?.map(
+          (_: GrantQuestion, index: number) =>
+            `answers.${index}.answer` as const,
+        ) || []),
+      ],
+      2: [
+        ...(isAgenticEngineering ? [] : ['milestones' as keyof FormData]),
+        ...(isST || isAgenticEngineering ? [] : ['kpi' as keyof FormData]),
+      ],
+    };
+
+    form.trigger(fieldsToValidate[activeStep] as any).then((isValid) => {
+      if (isValid) {
+        const nextStep = activeStep + 1;
+        setActiveStep(nextStep);
+        if (modalRef.current) {
+          modalRef.current.scrollTop = 0;
+        }
+      }
+    });
+  };
+
+  const handleBack = () => {
+    const nextStep = activeStep - 1;
+    setActiveStep(nextStep);
+    if (modalRef.current) {
+      modalRef.current.scrollTop = 0;
+    }
+  };
+
+  const handleAutoFill = () => {
+    form.setValue('walletAddress', user?.walletAddress || '');
+  };
+
+  const currentWalletAddress = form.watch('walletAddress');
+  const isSameAsEmbeddedWallet =
+    currentWalletAddress?.toLowerCase() === user?.walletAddress?.toLowerCase();
+
+  const isSuperteamSponsor = grant.sponsor?.name
+    ?.toLowerCase()
+    .match(/superteam|world street/);
+
+  const date = dayjs().format('YYYY-MM-DD');
+  const telegramPreviewValue = form.getValues('telegram') || '';
+  const twitterPreviewValue = form.getValues('twitter') || '';
+  const githubPreviewValue = form.getValues('github') || '';
+  const lumaPreviewValue = form.getValues('lumaLink') || '';
+  const telegramPreviewHref = telegramPreviewValue.startsWith('http')
+    ? telegramPreviewValue
+    : `https://t.me/${telegramPreviewValue.replace('@', '')}`;
+  const twitterPreviewHref = twitterPreviewValue.startsWith('http')
+    ? twitterPreviewValue
+    : `https://x.com/${twitterPreviewValue.replace('@', '')}`;
+  const githubPreviewHref = githubPreviewValue.startsWith('http')
+    ? githubPreviewValue
+    : `https://github.com/${githubPreviewValue}`;
+  const lumaPreviewHref = lumaPreviewValue.startsWith('http')
+    ? lumaPreviewValue
+    : `https://lu.ma/${lumaPreviewValue}`;
+
+  return (
+    <div
+      className={cn(
+        'p-6 pb-0',
+        'max-sm:[&_input]:text-base',
+        'max-sm:[&_.ProseMirror]:px-3!',
+        'max-sm:[&_.ProseMirror]:py-0!',
+        'max-sm:[&_.ProseMirror]:text-base!',
+        'max-sm:[&_.ProseMirror_*]:text-base!',
+      )}
+    >
+      <DialogTitle className="text-lg tracking-normal text-slate-700 sm:text-xl">
+        {applicationCopy?.title ?? 'Grant Application'}
+        <p className="mt-1 text-sm font-normal text-slate-500">
+          {applicationCopy?.subtitle ??
+            "If you're working on a project that will help the sponsor's ecosystem grow, apply with your proposal here and we'll respond soon!"}
+        </p>
+        <Progress
+          className={cn(
+            'mt-6 h-[2px] bg-slate-200',
+            isProGrant && '[&>div]:bg-zinc-800',
+          )}
+          value={(activeStep / steps.length) * 100 + 33}
+        />
+        <div className="mt-3 flex w-full items-center justify-between">
+          {steps.map((step, i) => (
+            <div
+              className="flex items-center gap-1.5 text-sm sm:text-base"
+              key={i}
+            >
+              <span
+                className={cn(
+                  'flex h-6 w-6 items-center justify-center rounded-full border text-sm',
+                  i < activeStep
+                    ? 'border-transparent'
+                    : i - 1 < activeStep
+                      ? 'border-slate-500'
+                      : 'border-slate-300',
+                  i < activeStep
+                    ? isProGrant
+                      ? 'bg-zinc-800'
+                      : 'bg-brand-grey'
+                    : 'bg-transparent',
+                  i - 1 < activeStep ? 'text-slate-500' : 'text-slate-400',
+                  i - 1 < activeStep ? 'font-medium' : 'font-normal',
+                )}
+              >
+                {i < activeStep ? (
+                  <Check className="h-4 w-4 text-white" />
+                ) : (
+                  i + 1
+                )}
+              </span>
+              <span
+                className={cn(
+                  'text-md',
+                  i - 1 < activeStep ? 'text-slate-600' : 'text-slate-500',
+                  i - 1 < activeStep ? 'font-medium' : 'font-normal',
+                )}
+              >
+                {step.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      </DialogTitle>
+      <div
+        className="flex max-h-[30rem] flex-col items-start gap-3 pt-3 pb-4 sm:px-1 md:max-h-[50rem]"
+        ref={modalRef}
+      >
+        <Form {...form}>
+          <form
+            style={{ width: '100%' }}
+            onSubmit={form.handleSubmit(
+              (data) => {
+                if (activeStep === steps.length - 1) {
+                  if (!validateAcknowledgement()) {
+                    return;
+                  }
+                  submitApplication(data);
+                }
+              },
+              () => {
+                if (
+                  activeStep === steps.length - 1 &&
+                  !validateAcknowledgement()
+                ) {
+                }
+              },
+            )}
+          >
+            {activeStep === 0 && (
+              <div className="mb-5 flex flex-col gap-4">
+                <FormFieldWrapper
+                  control={form.control}
+                  name="projectTitle"
+                  label={applicationCopy?.projectTitle.label ?? 'Project Title'}
+                  description={
+                    applicationCopy?.projectTitle.description ??
+                    'What should we call your project?'
+                  }
+                  isRequired
+                  isPro={isProGrant}
+                >
+                  <Input
+                    placeholder={
+                      applicationCopy?.projectTitle.placeholder ??
+                      'Project Title'
+                    }
+                  />
+                </FormFieldWrapper>
+
+                <FormFieldWrapper
+                  control={form.control}
+                  name="projectOneLiner"
+                  label={
+                    applicationCopy?.projectOneLiner.label ??
+                    'One-Liner Description'
+                  }
+                  description={
+                    applicationCopy?.projectOneLiner.description ??
+                    'Describe your idea in one sentence.'
+                  }
+                  isRequired
+                  isPro={isProGrant}
+                >
+                  <Input
+                    placeholder={
+                      applicationCopy?.projectOneLiner.placeholder ??
+                      'Sum up your project in one sentence'
+                    }
+                  />
+                </FormFieldWrapper>
+
+                {!isAgenticEngineering && (
+                  <FormFieldWrapper
+                    control={form.control}
+                    name="ask"
+                    label={
+                      applicationCopy?.ask?.label ??
+                      "What is the total grant amount you'd like to apply for?"
+                    }
+                    description={applicationCopy?.ask?.description}
+                    isRequired
+                    isTokenInput
+                    token={token}
+                    isPro={isProGrant}
+                  />
+                )}
+
+                {!grantApplication && (
+                  <SocialInput
+                    name="telegram"
+                    socialName={'telegram'}
+                    placeholder=""
+                    required
+                    formLabel={
+                      applicationCopy?.telegram.label ??
+                      'Your Telegram username'
+                    }
+                    formDescription={applicationCopy?.telegram.description}
+                    control={form.control}
+                    height="h-9"
+                    showIcon={false}
+                    isPro={isProGrant}
+                  />
+                )}
+                <FormField
+                  control={form.control}
+                  name={'walletAddress'}
+                  render={({ field }) => (
+                    <FormItem className={cn('flex flex-col gap-2')}>
+                      <div>
+                        <FormLabel isRequired>
+                          {applicationCopy?.walletAddress.label ??
+                            'Your Wallet Address'}
+                        </FormLabel>
+                        <FormDescription>
+                          {applicationCopy?.walletAddress.description ? (
+                            applicationCopy.walletAddress.description
+                          ) : isSuperteamSponsor ? (
+                            <>
+                              This is where you will receive your rewards if you
+                              win.{' '}
+                              <span className="font-semibold">
+                                Make sure this address can accept {tokenLabel}.
+                              </span>
+                            </>
+                          ) : (
+                            'This is where you will receive your rewards if you win.'
+                          )}
+                        </FormDescription>
+                      </div>
+                      <div>
+                        <FormControl>
+                          <Input
+                            placeholder="Add your wallet address"
+                            className={cn(
+                              isProGrant && 'focus-visible:ring-zinc-400',
+                            )}
+                            {...field}
+                          />
+                        </FormControl>
+                        {!isSameAsEmbeddedWallet && (
+                          <p className="pt-0.5 text-xs text-slate-500">
+                            <span
+                              className="cursor-pointer underline"
+                              onClick={handleAutoFill}
+                            >
+                              Click here
+                            </span>{' '}
+                            to auto-fill this field with your Earn embedded
+                            wallet address
+                          </p>
+                        )}
+                        <FormMessage className="pt-1" />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+            {activeStep === 1 && (
+              <div className="mb-5 flex flex-col gap-4">
+                <FormFieldWrapper
+                  control={form.control}
+                  name="projectDetails"
+                  label={
+                    applicationCopy?.projectDetails.label ?? 'Project Details'
+                  }
+                  description={
+                    applicationCopy?.projectDetails.description ??
+                    "What is the problem you're trying to solve, and how you're going to solve it?"
+                  }
+                  isRequired
+                  isRichEditor
+                  richEditorPlaceholder={
+                    applicationCopy?.projectDetails.placeholder ??
+                    'Describe the problem & solution'
+                  }
+                  isPro={isProGrant}
+                />
+
+                {isST && (
+                  <FormField
+                    control={form.control}
+                    name="lumaLink"
+                    render={({ field }) => (
+                      <FormItem className={cn('flex flex-col gap-2')}>
+                        <div>
+                          <FormLabel isRequired>
+                            {ST_GRANT_COPY.application.lumaLink!.label}
+                          </FormLabel>
+                          <FormDescription>
+                            {ST_GRANT_COPY.application.lumaLink!.description}
+                          </FormDescription>
+                        </div>
+                        <div>
+                          <FormControl>
+                            <div className="flex h-10.75 items-center">
+                              <div className="flex h-full items-center justify-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-xs font-medium text-slate-600 shadow-xs md:justify-start md:text-sm">
+                                {LUMA_LABEL}
+                              </div>
+                              <Input
+                                className={cn(
+                                  'h-full rounded-l-none',
+                                  isProGrant && 'focus-visible:ring-zinc-400',
+                                )}
+                                placeholder={
+                                  ST_GRANT_COPY.application.lumaLink!
+                                    .placeholder
+                                }
+                                value={getLumaDisplayValue(field.value || '')}
+                                onChange={(e) => {
+                                  const value = e.currentTarget.value;
+                                  const slug = extractLumaEventSlug(value);
+                                  field.onChange(slug || value);
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="pt-1" />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {!isST && (
+                  <FormField
+                    control={form.control}
+                    name="projectTimeline"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col gap-2">
+                        <div>
+                          <FormLabel isRequired>
+                            {applicationCopy?.projectTimeline?.label
+                              ? `${applicationCopy.projectTimeline.label} (in ${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+                              : `Deadline (in ${Intl.DateTimeFormat().resolvedOptions().timeZone})`}
+                          </FormLabel>
+                          <FormDescription>
+                            {applicationCopy?.projectTimeline?.description ??
+                              'What is the expected completion date for the project?'}
+                          </FormDescription>
+                        </div>
+                        <div>
+                          <FormControl>
+                            <DateTimePicker
+                              value={
+                                field.value
+                                  ? dayjs(field.value, 'YYYY-MM-DD').toDate()
+                                  : undefined
+                              }
+                              onChange={(selectedDate) => {
+                                if (selectedDate) {
+                                  field.onChange(
+                                    dayjs(selectedDate).format('YYYY-MM-DD'),
+                                  );
+                                } else {
+                                  field.onChange(undefined);
+                                }
+                              }}
+                              min={dayjs(date, 'YYYY-MM-DD').toDate()}
+                              hideTime={true}
+                              minDateTooltipContent="Deadline cannot be in the past"
+                              defaultDisplayValue="Pick a date"
+                              isPro={isProGrant}
+                            />
+                          </FormControl>
+                          <FormMessage className="pt-1" />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormFieldWrapper
+                  control={form.control}
+                  name="proofOfWork"
+                  label={applicationCopy?.proofOfWork.label ?? 'Proof of Work'}
+                  description={
+                    applicationCopy?.proofOfWork.description ??
+                    'Include links to your best work that will make the community trust you to execute on this project.'
+                  }
+                  isRequired={!isST}
+                  isRichEditor
+                  richEditorPlaceholder={
+                    applicationCopy?.proofOfWork.placeholder ??
+                    'Provide links to your portfolio or previous work'
+                  }
+                  isPro={isProGrant}
+                />
+
+                <SocialInput
+                  name="twitter"
+                  socialName={'twitter'}
+                  placeholder="@StarkIndustries"
+                  required
+                  formLabel={
+                    applicationCopy?.twitter.label ?? 'Personal X Profile'
+                  }
+                  formDescription={applicationCopy?.twitter.description}
+                  control={form.control}
+                  height="h-9"
+                  showVerification
+                  needsVerification={needsXVerification}
+                  isVerified={isXVerified}
+                  onVerify={handleVerifyClick}
+                  isPro={isProGrant}
+                />
+
+                {!isST && (
+                  <SocialInput
+                    name="github"
+                    socialName={'github'}
+                    placeholder="TonyStark"
+                    formLabel={
+                      applicationCopy?.github?.label ??
+                      'Personal Github Profile'
+                    }
+                    formDescription={
+                      applicationCopy?.github?.description ??
+                      'If this is a dev-based grant, please add your best github profile here.'
+                    }
+                    control={form.control}
+                    height="h-9"
+                    isPro={isProGrant}
+                  />
+                )}
+
+                {isST && (
+                  <FormFieldWrapper
+                    control={form.control}
+                    name="expenseBreakdown"
+                    label={ST_GRANT_COPY.application.expenseBreakdown!.label}
+                    description={
+                      ST_GRANT_COPY.application.expenseBreakdown!.description
+                    }
+                    isRequired
+                    isRichEditor
+                    richEditorPlaceholder={
+                      ST_GRANT_COPY.application.expenseBreakdown!.placeholder
+                    }
+                    isPro={isProGrant}
+                  />
+                )}
+
+                {questions?.map((question: GrantQuestion, index: number) => {
+                  if (question.type === 'link') {
+                    return (
+                      <FormField
+                        key={question.order ?? index}
+                        control={form.control}
+                        name={`answers.${index}.answer`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col gap-2">
+                            <div className="min-w-0">
+                              <FormLabel
+                                isRequired={!question.optional}
+                                className="[overflow-wrap:anywhere]"
+                              >
+                                {question.question}
+                              </FormLabel>
+                            </div>
+                            <div>
+                              <FormControl>
+                                <div className="flex h-9 items-center">
+                                  <div className="flex h-full items-center justify-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-xs font-medium text-slate-600 shadow-xs md:justify-start md:text-sm">
+                                    https://
+                                  </div>
+                                  <Input
+                                    className={cn(
+                                      'h-full rounded-l-none',
+                                      isProGrant &&
+                                        'focus-visible:ring-zinc-400',
+                                    )}
+                                    placeholder="Add a link..."
+                                    value={
+                                      field.value?.replace(
+                                        /^https?:\/\//i,
+                                        '',
+                                      ) || ''
+                                    }
+                                    onChange={(e) => {
+                                      const value =
+                                        e.currentTarget.value.replace(
+                                          /^https?:\/\//i,
+                                          '',
+                                        );
+                                      field.onChange(
+                                        value ? `https://${value}` : '',
+                                      );
+                                    }}
+                                    autoComplete="off"
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage className="pt-1" />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    );
+                  }
+
+                  return (
+                    <FormFieldWrapper
+                      key={question.order ?? index}
+                      control={form.control}
+                      name={`answers.${index}.answer`}
+                      label={question.question}
+                      isRequired={!question.optional}
+                      isRichEditor
+                      isPro={isProGrant}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            {activeStep === 2 && (
+              <div className="mb-5 flex flex-col gap-5">
+                <FormFieldWrapper
+                  control={form.control}
+                  name="milestones"
+                  label={
+                    applicationCopy?.milestones.label ?? 'Goals and Milestones'
+                  }
+                  description={
+                    applicationCopy?.milestones.description ??
+                    'List down the things you hope to achieve by the end of project duration.'
+                  }
+                  isRequired={!isAgenticEngineering}
+                  isRichEditor
+                  richEditorPlaceholder={
+                    applicationCopy?.milestones.placeholder ??
+                    'Outline your project goals and milestones'
+                  }
+                  isPro={isProGrant}
+                />
+
+                {!isST && (
+                  <FormFieldWrapper
+                    control={form.control}
+                    name="kpi"
+                    label={
+                      applicationCopy?.kpi?.label ??
+                      'Primary Key Performance Indicator'
+                    }
+                    description={
+                      applicationCopy?.kpi?.description ??
+                      'What metric will you track to indicate success/failure of the project? At what point will it be a success? Could be anything, e.g. installs, users, views, TVL, etc.'
+                    }
+                    isRequired={!isAgenticEngineering}
+                    isRichEditor
+                    richEditorPlaceholder={
+                      applicationCopy?.kpi?.placeholder ??
+                      "What's the key metric for success"
+                    }
+                    isPro={isProGrant}
+                  />
+                )}
+                {!grantApplication && (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="acknowledgement"
+                        className={cn(
+                          'mt-1',
+                          isProGrant
+                            ? 'border-zinc-400 data-[state=checked]:border-zinc-800 data-[state=checked]:bg-zinc-800'
+                            : 'data-[state=checked]:border-brand-grey data-[state=checked]:bg-brand-grey',
+                        )}
+                        checked={acknowledgementAccepted}
+                        onCheckedChange={(checked) => {
+                          setAcknowledgementAccepted(checked as boolean);
+                          if (checked) {
+                            setAcknowledgementError('');
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="acknowledgement"
+                        className="text-xs text-slate-500"
+                      >
+                        {applicationCopy?.acknowledgement ??
+                          'To receive grant funding, you may need to send proofs of milestone completion and of outcomes that reflect your application and this grant listing.'}
+                        <span className="text-red-500">*</span>
+                      </label>
+                    </div>
+                    {acknowledgementError && (
+                      <FormMessage>{acknowledgementError}</FormMessage>
+                    )}
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="feedback-acknowledgement"
+                        className={cn(
+                          'mt-1',
+                          isProGrant
+                            ? 'border-zinc-400 data-[state=checked]:border-zinc-800 data-[state=checked]:bg-zinc-800'
+                            : 'data-[state=checked]:border-brand-grey data-[state=checked]:bg-brand-grey',
+                        )}
+                        checked={feedbackAcknowledgementAccepted}
+                        onCheckedChange={(checked) => {
+                          setFeedbackAcknowledgementAccepted(
+                            checked as boolean,
+                          );
+                          if (checked) {
+                            setFeedbackAcknowledgementError('');
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="feedback-acknowledgement"
+                        className="text-xs text-slate-500"
+                      >
+                        I understand that sponsors will not be able to send
+                        individual feedback to applicants. I have factored this
+                        in before applying to avoid disappointment.
+                        <span className="text-red-500">*</span>
+                      </label>
+                    </div>
+                    {feedbackAcknowledgementError && (
+                      <FormMessage>{feedbackAcknowledgementError}</FormMessage>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <Sheet open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+              <SheetContent
+                side="right"
+                className="z-[100] w-full overflow-y-auto bg-white sm:max-w-xl"
+              >
+                <SheetHeader className="mb-6">
+                  <SheetTitle>Application Preview</SheetTitle>
+                </SheetHeader>
+                <div className="mb-5 flex flex-col gap-5 text-sm">
+                  <div>
+                    <h3 className="mb-2 font-semibold text-slate-800">
+                      Basics
+                    </h3>
+                    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+                      <div>
+                        <span className="font-medium text-slate-500">
+                          Project Title:
+                        </span>
+                        <p className="mt-1">{form.getValues('projectTitle')}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-slate-500">
+                          One-Liner:
+                        </span>
+                        <p className="mt-1">
+                          {form.getValues('projectOneLiner')}
+                        </p>
+                      </div>
+                      {!isAgenticEngineering && form.getValues('ask') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Ask Amount:
+                          </span>
+                          <p className="mt-1">
+                            {form.getValues('ask')} {tokenLabel}
+                          </p>
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium text-slate-500">
+                          Wallet Address:
+                        </span>
+                        <p className="mt-1 break-all">
+                          {form.getValues('walletAddress')}
+                        </p>
+                      </div>
+                      {telegramPreviewValue && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Telegram:
+                          </span>
+                          <p className="mt-1">
+                            <a
+                              href={telegramPreviewHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-brand-grey hover:underline"
+                            >
+                              {telegramPreviewValue}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="mb-2 font-semibold text-slate-800">
+                      Details
+                    </h3>
+                    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+                      <div>
+                        <span className="font-medium text-slate-500">
+                          Project Details:
+                        </span>
+                        <div
+                          className="prose prose-sm mt-1 max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeGrantApplicationHtml(
+                              form.getValues('projectDetails') || '',
+                            ),
+                          }}
+                        />
+                      </div>
+                      {!isST && form.getValues('projectTimeline') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Deadline:
+                          </span>
+                          <p className="mt-1">
+                            {form.getValues('projectTimeline')}
+                          </p>
+                        </div>
+                      )}
+                      {form.getValues('proofOfWork') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Proof of Work:
+                          </span>
+                          <div
+                            className="prose prose-sm mt-1 max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeGrantApplicationHtml(
+                                form.getValues('proofOfWork') || '',
+                              ),
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="flex gap-4">
+                        {twitterPreviewValue && (
+                          <div>
+                            <span className="font-medium text-slate-500">
+                              Twitter:
+                            </span>
+                            <p className="mt-1">
+                              <a
+                                href={twitterPreviewHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-brand-grey hover:underline"
+                              >
+                                {twitterPreviewValue}
+                              </a>
+                            </p>
+                          </div>
+                        )}
+                        {!isST && githubPreviewValue && (
+                          <div>
+                            <span className="font-medium text-slate-500">
+                              Github:
+                            </span>
+                            <p className="mt-1">
+                              <a
+                                href={githubPreviewHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-brand-grey hover:underline"
+                              >
+                                {githubPreviewValue}
+                              </a>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      {isST && lumaPreviewValue && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Luma Event:
+                          </span>
+                          <p className="mt-1">
+                            <a
+                              href={lumaPreviewHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-brand-grey hover:underline"
+                            >
+                              {getLumaDisplayValue(lumaPreviewValue)}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      {isST && form.getValues('expenseBreakdown') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            Expense Breakdown:
+                          </span>
+                          <div
+                            className="prose prose-sm mt-1 max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeGrantApplicationHtml(
+                                form.getValues('expenseBreakdown') || '',
+                              ),
+                            }}
+                          />
+                        </div>
+                      )}
+                      {(questions?.length ?? 0) > 0 &&
+                        questions?.map((q, i) => {
+                          const answerValue =
+                            form.getValues(`answers.${i}.answer`) || '';
+                          const answerHref = answerValue.startsWith('http')
+                            ? answerValue
+                            : `https://${answerValue}`;
+
+                          return (
+                            <div key={i}>
+                              <span className="font-medium text-slate-500">
+                                {q.question}
+                              </span>
+                              {q.type === 'link' ? (
+                                <p className="mt-1">
+                                  {answerValue ? (
+                                    <a
+                                      href={answerHref}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-brand-grey hover:underline"
+                                    >
+                                      {answerValue}
+                                    </a>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </p>
+                              ) : (
+                                <div
+                                  className="prose prose-sm mt-1 max-w-none"
+                                  dangerouslySetInnerHTML={{
+                                    __html:
+                                      sanitizeGrantApplicationHtml(answerValue),
+                                  }}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="mb-2 font-semibold text-slate-800">
+                      {isST ? 'Outcomes' : 'Milestones'}
+                    </h3>
+                    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+                      {form.getValues('milestones') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            {isST
+                              ? 'Expected Outcomes:'
+                              : 'Goals and Milestones:'}
+                          </span>
+                          <div
+                            className="prose prose-sm mt-1 max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeGrantApplicationHtml(
+                                form.getValues('milestones') || '',
+                              ),
+                            }}
+                          />
+                        </div>
+                      )}
+                      {!isST && form.getValues('kpi') && (
+                        <div>
+                          <span className="font-medium text-slate-500">
+                            KPI:
+                          </span>
+                          <div
+                            className="prose prose-sm mt-1 max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeGrantApplicationHtml(
+                                form.getValues('kpi') || '',
+                              ),
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <div className="mt-8 flex gap-2">
+              {activeStep > 0 && (
+                <Button
+                  className="ph-no-capture w-full text-slate-500"
+                  onClick={handleBack}
+                  variant="ghost"
+                  type="button"
+                >
+                  Back
+                </Button>
+              )}
+              {activeStep === steps.length - 1 ? (
+                <>
+                  <Button
+                    className={cn(
+                      'ph-no-capture w-full',
+                      isProGrant &&
+                        'border-zinc-800 text-zinc-800 hover:bg-zinc-100',
+                    )}
+                    onClick={() => setIsPreviewOpen(true)}
+                    variant="outline"
+                    type="button"
+                  >
+                    Preview
+                  </Button>
+                  <Button
+                    className={cn(
+                      'ph-no-capture w-full',
+                      isNotEligibleForPro
+                        ? 'bg-zinc-300 text-zinc-700 disabled:opacity-100'
+                        : isProGrant && 'bg-zinc-800 hover:bg-black',
+                    )}
+                    disabled={isLoading || (isPro && !isUserPro)}
+                    type="submit"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <span>Applying...</span>
+                      </>
+                    ) : isNotEligibleForPro ? (
+                      <span className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        <span>Not Eligible</span>
+                      </span>
+                    ) : grantApplication ? (
+                      <span>Update</span>
+                    ) : (
+                      'Apply'
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className={cn(
+                    'ph-no-capture w-full',
+                    isProGrant && 'bg-zinc-800 hover:bg-black',
+                  )}
+                  onClick={handleNext}
+                  type="button"
+                >
+                  Continue
+                </Button>
+              )}
+            </div>
+          </form>
+        </Form>
+        <p className="-mt-1 w-full pb-6 text-center text-xs text-slate-400 sm:mt-1 sm:text-sm lg:mt-3">
+          By applying for this grant, you agree to our{' '}
+          <button
+            onClick={() => setIsTOSModalOpen(true)}
+            className="cursor-pointer underline underline-offset-2"
+            rel="noopener noreferrer"
+            type="button"
+          >
+            Terms of Use
+          </button>
+          .
+        </p>
+      </div>
+      {grant?.sponsor?.name && (
+        <SubmissionTerms
+          entityName={grant.sponsor.entityName}
+          isOpen={isTOSModalOpen}
+          onClose={() => setIsTOSModalOpen(false)}
+          sponsorName={grant.sponsor.name}
+        />
+      )}
+      <XVerificationModal
+        isOpen={verificationModal.isOpen}
+        onClose={() => {
+          setVerificationHandle(null);
+          verificationModal.onClose();
+        }}
+        status={verificationStatus}
+        handle={verificationHandle}
+      />
+    </div>
+  );
+};

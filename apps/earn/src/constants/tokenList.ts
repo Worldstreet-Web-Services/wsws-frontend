@@ -1,0 +1,143 @@
+'use client';
+
+import { type ReactNode, useEffect, useSyncExternalStore } from 'react';
+
+import { fetchEarnJson } from '@earn/lib/earn-fetch';
+
+export interface Token {
+  tokenName: string;
+  tokenSymbol: string;
+  mintAddress: string;
+  icon: string;
+  decimals: number;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+type TokenListApiResponse = {
+  tokens: Token[];
+};
+
+const DEFAULT_TOKEN_ICON = '/assets/dollar.svg';
+
+const listeners = new Set<() => void>();
+
+let tokenListState: Token[] = [];
+let tokenListPromise: Promise<Token[]> | null = null;
+
+const notifyListeners = () => {
+  for (const listener of listeners) {
+    listener();
+  }
+};
+
+export let tokenList: Token[] = [];
+
+const setTokenList = (tokens: Token[]) => {
+  tokenListState = tokens;
+  tokenList = tokens;
+  notifyListeners();
+};
+
+export const addTokenToList = (token: Token) => {
+  const existingTokenIndex = tokenListState.findIndex(
+    (currentToken) => currentToken.mintAddress === token.mintAddress,
+  );
+
+  if (existingTokenIndex >= 0) {
+    const nextTokens = [...tokenListState];
+    nextTokens[existingTokenIndex] = token;
+    setTokenList(nextTokens);
+    return;
+  }
+
+  setTokenList([...tokenListState, token]);
+};
+
+const getTokenListSnapshot = () => tokenListState;
+
+const subscribeToTokenList = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+export async function loadTokenList(force = false): Promise<Token[]> {
+  if (!force && tokenListState.length > 0) {
+    return tokenListState;
+  }
+
+  if (!force && tokenListPromise) {
+    return tokenListPromise;
+  }
+
+  tokenListPromise = fetchEarnJson<TokenListApiResponse>('/api/tokens', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+    .then((data) => {
+      const tokens = Array.isArray(data.tokens) ? data.tokens : [];
+      setTokenList(tokens);
+      return tokens;
+    })
+    .finally(() => {
+      tokenListPromise = null;
+    });
+
+  return tokenListPromise;
+}
+
+const getTokenBySymbolSync = (symbol?: string | null) =>
+  tokenListState.find((token) => token.tokenSymbol === symbol);
+
+export async function getTokenBySymbol(symbol?: string | null) {
+  if (!symbol) return undefined;
+  const existingToken = getTokenBySymbolSync(symbol);
+  if (existingToken) return existingToken;
+
+  const tokens = await loadTokenList();
+  return tokens.find((token) => token.tokenSymbol === symbol);
+}
+
+export function useTokenList(): Token[] {
+  const tokens = useSyncExternalStore(
+    subscribeToTokenList,
+    getTokenListSnapshot,
+    getTokenListSnapshot,
+  );
+
+  useEffect(() => {
+    void loadTokenList();
+  }, []);
+
+  return tokens;
+}
+
+export const useToken = (symbol?: string | null) => {
+  const tokens = useTokenList();
+  return tokens.find((token) => token.tokenSymbol === symbol);
+};
+
+export const useTokenByMintAddress = (mintAddress?: string | null) => {
+  const tokens = useTokenList();
+  return tokens.find((token) => token.mintAddress === mintAddress);
+};
+
+export function useTokenLookup() {
+  const tokens = useTokenList();
+
+  return {
+    tokens,
+    getBySymbol: (symbol?: string | null) =>
+      tokens.find((token) => token.tokenSymbol === symbol),
+    getByMintAddress: (mintAddress?: string | null) =>
+      tokens.find((token) => token.mintAddress === mintAddress),
+    getIcon: (symbol?: string | null) =>
+      tokens.find((token) => token.tokenSymbol === symbol)?.icon ??
+      DEFAULT_TOKEN_ICON,
+  };
+}
+
+export function TokenListProvider({ children }: { children: ReactNode }) {
+  useTokenList();
+  return children;
+}

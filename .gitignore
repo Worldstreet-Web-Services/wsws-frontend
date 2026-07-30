@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
+.pnpm-store/
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -15,6 +16,10 @@
 
 # next.js
 /.next/
+/.next-build/
+/.next-dev/
+/.next-dev-api/
+/.next-turbo/
 /out/
 
 # production

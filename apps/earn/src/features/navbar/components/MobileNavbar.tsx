@@ -1,0 +1,133 @@
+import { usePrivy } from '@privy-io/react-auth';
+import { Gift, Menu } from 'lucide-react';
+import Link from 'next/link';
+import posthog from 'posthog-js';
+
+import { Button } from '@earn/components/ui/button';
+import { LocalImage } from '@earn/components/ui/local-image';
+import { useDisclosure } from '@earn/hooks/use-disclosure';
+import { useCreditBalance } from '@earn/store/credit';
+import { useUser } from '@earn/store/user';
+import { cn } from '@earn/utils/cn';
+
+import { CreditIcon } from '@earn/features/credits/icon/credit';
+import { MobileDrawer } from './MobileDrawer';
+
+interface Props {
+  onLoginOpen: () => void;
+  onCreditOpen: () => void;
+  onReferralOpen: () => void;
+}
+
+// const AnnouncementBar = dynamic(() =>
+//   import('@earn/features/navbar').then((mod) => mod.AnnouncementBar),
+// );
+
+export const MobileNavbar = ({
+  onLoginOpen,
+  onCreditOpen,
+  onReferralOpen,
+}: Props) => {
+  const {
+    isOpen: isDrawerOpen,
+    onOpen: onDrawerOpen,
+    onClose: onDrawerClose,
+  } = useDisclosure();
+
+  const { authenticated, ready } = usePrivy();
+
+  const { user } = useUser();
+  const { creditBalance } = useCreditBalance();
+
+  const openCreditDrawer = () => {
+    posthog.capture('open_credits');
+    onCreditOpen();
+  };
+
+  const openDrawer = () => {
+    onDrawerOpen();
+    posthog.capture('open_mobile nav');
+  };
+
+  return (
+    <>
+      {/* {router.pathname === '/' && <AnnouncementBar />} */}
+      <div className="sticky top-0 z-50">
+        <div className="flex min-h-12 items-center justify-between border-b border-black/20 bg-white px-1 py-1 lg:hidden">
+          <div className="flex items-center gap-3">
+            <div onClick={openDrawer} className="ml-1 cursor-pointer">
+              <Menu className="size-5 text-gray-400" />
+            </div>
+            <Link
+              href="/earn"
+              className="flex items-center hover:no-underline"
+              onClick={() => {
+                posthog.capture('homepage logo click_universal');
+              }}
+            >
+              <LocalImage
+                className="h-9 cursor-pointer object-contain"
+                alt="TSION Earn"
+                src="/assets/tsion-logo.png"
+                loading="eager"
+              />
+            </Link>
+          </div>
+
+          <MobileDrawer
+            isDrawerOpen={isDrawerOpen}
+            onDrawerClose={onDrawerClose}
+            onLoginOpen={onLoginOpen}
+          />
+
+          <div className="flex items-center gap-1">
+            {ready && authenticated && user?.isTalentFilled && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'text-brand-grey hover:text-brand-grey bg-indigo-50 text-xs font-semibold hover:bg-indigo-100',
+                    user?.isPro
+                      ? 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300 hover:text-zinc-700'
+                      : 'bg-indigo-50 text-xs font-semibold hover:bg-indigo-100',
+                  )}
+                  onClick={onReferralOpen}
+                >
+                  <Gift />
+                  <span>Free Credits</span>
+                </Button>
+                <div className="relative">
+                  <div
+                    className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-slate-500 transition-all duration-100 hover:bg-slate-100 hover:text-slate-700 md:gap-2"
+                    onClick={openCreditDrawer}
+                  >
+                    <CreditIcon
+                      className={cn(
+                        'size-4.5',
+                        user?.isPro ? 'text-zinc-600' : 'text-brand-grey',
+                      )}
+                    />
+                    <p className="text-sm font-medium">{creditBalance}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {ready && !authenticated && (
+            <Button
+              variant="ghost"
+              className="ph-no-capture text-brand-grey mr-2 text-base"
+              onClick={() => {
+                posthog.capture('login_navbar');
+                onLoginOpen();
+              }}
+            >
+              Login
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};

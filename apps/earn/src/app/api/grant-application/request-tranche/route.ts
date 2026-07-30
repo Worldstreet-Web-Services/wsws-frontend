@@ -1,0 +1,139 @@
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+import logger from '@earn/lib/logger';
+import { LockNotAcquiredError, withRedisLock } from '@earn/lib/with-redis-lock';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { getUserSession } from '@earn/features/auth/utils/getUserSession';
+import {
+  createTranche,
+  TRANCHE_APPLICATION_UNAUTHORIZED_MESSAGE,
+} from '@earn/features/grants/utils/createTranche';
+import {
+  WALLET_ADDRESS_CONFLICT_CODE,
+  WALLET_ADDRESS_CONFLICT_MESSAGE,
+} from '@earn/features/grants/utils/walletAddressOwnership.constants';
+
+export async function POST(request: Request) {
+  try {
+    const session = await getUserSession(await headers());
+
+    if (session.error || !session.data) {
+      return NextResponse.json(
+        { error: session.error },
+        { status: session.status },
+      );
+    }
+
+    const { userId } = session.data;
+    const body = await request.json();
+    const {
+      applicationId,
+      helpWanted,
+      projectUpdate,
+      walletAddress,
+      eventPictures,
+      eventReceipts,
+      attendeeCount,
+      socialPost,
+      colosseumLink,
+      githubRepo,
+      aiReceipt,
+      aiReceipts,
+    } = body;
+
+    logger.debug(`Request body: ${safeStringify(body)}`);
+    logger.debug(`User ID: ${userId}`);
+
+    if (!applicationId) {
+      return NextResponse.json(
+        { message: 'Application ID is required' },
+        { status: 400 },
+      );
+    }
+
+    if (!walletAddress) {
+      return NextResponse.json(
+        { message: 'Wallet address is required' },
+        { status: 400 },
+      );
+    }
+
+    try {
+      await withRedisLock(
+        `locks:create-tranche:${applicationId}`,
+        async () => {
+          await createTranche({
+            applicationId,
+            requesterUserId: userId,
+            helpWanted,
+            update: projectUpdate,
+            walletAddress,
+            eventPictures,
+            eventReceipts,
+            attendeeCount,
+            socialPost,
+            colosseumLink,
+            githubRepo,
+            aiReceipts:
+              Array.isArray(aiReceipts) && aiReceipts.length > 0
+                ? aiReceipts
+                : typeof aiReceipt === 'string' && aiReceipt.trim()
+                  ? [aiReceipt]
+                  : undefined,
+          });
+        },
+        { ttlSeconds: 300 },
+      );
+
+      return NextResponse.json({
+        message: 'Tranche requested successfully',
+      });
+    } catch (error: any) {
+      if (error instanceof LockNotAcquiredError) {
+        return NextResponse.json(
+          {
+            error: 'Tranche creation already in progress',
+            message: `Tranche creation is already being processed for application with id=${applicationId}.`,
+          },
+          { status: 409 },
+        );
+      }
+      if (error.message === WALLET_ADDRESS_CONFLICT_MESSAGE) {
+        return NextResponse.json(
+          {
+            code: WALLET_ADDRESS_CONFLICT_CODE,
+            error: WALLET_ADDRESS_CONFLICT_MESSAGE,
+            message: WALLET_ADDRESS_CONFLICT_MESSAGE,
+          },
+          { status: 409 },
+        );
+      }
+      if (error.message === TRANCHE_APPLICATION_UNAUTHORIZED_MESSAGE) {
+        return NextResponse.json(
+          {
+            error: TRANCHE_APPLICATION_UNAUTHORIZED_MESSAGE,
+            message: TRANCHE_APPLICATION_UNAUTHORIZED_MESSAGE,
+          },
+          { status: 403 },
+        );
+      }
+      return NextResponse.json(
+        {
+          error: error.message,
+          message: 'Error occurred while creating tranche.',
+        },
+        { status: 500 },
+      );
+    }
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: error.message,
+        message: 'Error occurred while creating tranche.',
+      },
+      { status: 500 },
+    );
+  }
+}

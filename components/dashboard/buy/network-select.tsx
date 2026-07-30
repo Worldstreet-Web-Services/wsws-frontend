@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { CoinBadge } from "@/components/ui/coin-badge";
 import { CheckIcon, ChevronLeftIcon } from "@/components/ui/icons";
 import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
@@ -48,7 +47,6 @@ interface NetworkSelectProps {
 // picker when there is more than one option; a single-network asset is a static
 // row with no chooser.
 export function NetworkSelect({ options, selected, onOpen }: NetworkSelectProps) {
-  const t = useTranslations("buySell");
   const current = options.find((o) => o.chainId === selected) ?? options[0];
   if (!current) return null;
   const single = options.length <= 1;
@@ -65,7 +63,7 @@ export function NetworkSelect({ options, selected, onOpen }: NetworkSelectProps)
       <Glyph name={current.name} logoUrl={current.logoUrl} />
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] font-normal tracking-[0.04em] text-white/45 uppercase">
-          {t("network")}
+          Network
         </span>
         <span className="block truncate font-sans text-[14px] font-medium text-white">
           {current.name}
@@ -87,10 +85,9 @@ interface NetworkPickerProps {
 // sheet pattern: a back header plus the full list of networks. Same on mobile and
 // desktop, so it never overflows the modal.
 export function NetworkPicker({ options, selected, onSelect, onBack }: NetworkPickerProps) {
-  const t = useTranslations("buySell");
   return (
     <div>
-      <SheetNav title={t("chooseNetwork")} onBack={onBack} />
+      <SheetNav title="Choose a network" onBack={onBack} />
       <div className="flex flex-col gap-1.5">
         {options.map((o) => {
           const on = o.chainId === selected;

@@ -1,7 +1,20 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// The vault game now lives inside the Casino hub as "Last Man Standing". This
-// route sticks around so old links and bookmarks keep working.
+import { useMemo } from "react";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { VaultSection } from "@/components/dashboard/sections/vault-section";
+import { buildNav } from "@/components/dashboard/nav-items";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { loadInterest } from "@/lib/preferences";
+
 export default function VaultPage() {
-  redirect("/casino/last-standing");
+  const nav = useMemo(() => buildNav(loadInterest()), []);
+
+  return (
+    <AuthGuard>
+      <DashboardShell nav={nav} activeSection="vault">
+        <VaultSection />
+      </DashboardShell>
+    </AuthGuard>
+  );
 }

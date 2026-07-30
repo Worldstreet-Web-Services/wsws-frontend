@@ -1,0 +1,19 @@
+import * as z from 'zod';
+
+import { validateWalletAddress } from '@earn/utils/validateWalletAddress';
+
+const walletErrorMessage = 'The wallet address you entered is invalid';
+
+export const withdrawFormSchema = z.object({
+  tokenAddress: z.string().min(1, 'Please select a token'),
+  amount: z
+    .string()
+    .refine((val) => !isNaN(Number(val)), 'Amount must be a number')
+    .refine((val) => Number(val) > 0, 'Amount must be greater than 0'),
+  recipientAddress: z
+    .string()
+    .min(8, walletErrorMessage)
+    .refine((val) => validateWalletAddress(val), walletErrorMessage),
+});
+
+export type WithdrawFormData = z.infer<typeof withdrawFormSchema>;

@@ -1,0 +1,98 @@
+import type { NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { type NextApiRequestWithSponsor } from '@earn/features/auth/types';
+import { checkGrantSponsorAuth } from '@earn/features/auth/utils/checkGrantSponsorAuth';
+import { withSponsorAuth } from '@earn/features/auth/utils/withSponsorAuth';
+
+async function handler(req: NextApiRequestWithSponsor, res: NextApiResponse) {
+  const userId = req.userId;
+
+  logger.debug(`Request query: ${safeStringify(req.query)}`);
+
+  const params = req.query;
+  const slug = params.slug as string;
+
+  try {
+    logger.info(`Fetching grant details for slug: ${slug} for user: ${userId}`);
+
+    const grant = await prisma.grants.findFirst({
+      where: { slug },
+      include: { sponsor: true, poc: true, GrantApplication: true },
+    });
+
+    const grantTrancheCount = await prisma.grantTranche.count({
+      where: { grantId: grant?.id },
+    });
+
+    if (!grant) {
+      logger.info(`Grant with slug=${slug} not found for user=${userId}`);
+      return res.status(404).json({
+        message: `Grant with slug=${slug} not found.`,
+      });
+    }
+
+    const { error } = await checkGrantSponsorAuth(req.userSponsorId, grant.id);
+    if (error) {
+      const canAccessRequestedSponsor =
+        error.sponsorId &&
+        (req.role === 'GOD' ||
+          !!(await prisma.userSponsors.findFirst({
+            where: {
+              userId: req.userId as string,
+              sponsorId: error.sponsorId,
+            },
+            select: {
+              sponsorId: true,
+            },
+          })));
+
+      const response: {
+        error: string;
+        sponsorId?: string;
+      } = {
+        error: error.message,
+      };
+      if (canAccessRequestedSponsor && error.sponsorId) {
+        response.sponsorId = error.sponsorId;
+      }
+      return res.status(error.status).json(response);
+    }
+
+    const totalApplications = grant.GrantApplication.length;
+    const approvedAmountTotal = grant.GrantApplication.reduce(
+      (sum, application) => {
+        if (
+          application.applicationStatus !== 'Approved' &&
+          application.applicationStatus !== 'Completed'
+        ) {
+          return sum;
+        }
+
+        return sum + (application.approvedAmountInUSD || 0);
+      },
+      0,
+    );
+
+    logger.info(`Grant details fetched successfully for slug=${slug}`);
+    return res.status(200).json({
+      ...grant,
+      approvedAmountTotal,
+      totalApplications,
+      grantTrancheCount,
+    });
+  } catch (error: any) {
+    logger.error(
+      `Error fetching grant with slug=${slug} for user=${userId}: ${safeStringify(error)}`,
+    );
+    return res.status(400).json({
+      error: error.message,
+      message: `Error occurred while fetching grant with slug=${slug}.`,
+    });
+  }
+}
+
+export default withSponsorAuth(handler);

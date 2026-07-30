@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { SectionChips } from "@/components/dashboard/section-chips";
@@ -8,7 +9,7 @@ import { DashboardFooter } from "@/components/dashboard/dashboard-footer";
 import { AccountModal } from "@/components/dashboard/modals/account-modal";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
-import { useAppNavigate } from "@/hooks/use-app-navigate";
+import { scrollToSection } from "@/lib/scroll";
 import type { NavItem } from "@/components/dashboard/nav-items";
 import type { SectionId } from "@/lib/sections";
 
@@ -20,14 +21,16 @@ interface DashboardShellProps {
 
 // The persistent chrome around every top-level app screen: sidebar, topbar,
 // mobile section chips, footer, and the account modal. Shared by /dashboard
-// (the scroll-spy sections) and any standalone section page like /casino, so
+// (the scroll-spy sections) and any standalone section page like /vault, so
 // moving between them feels like one app, not a different shell per page.
 //
-// Every nav target is dispatched through one function: "casino" is a real
-// route, so it always navigates there; everything else is a scroll-spy
+// Every nav target is dispatched through one function. Standalone sections are
+// real routes, so they navigate there; everything else is a scroll-spy
 // anchor that only exists on /dashboard, so it scrolls in-page when already
 // there and otherwise navigates to /dashboard#id first.
 export function DashboardShell({ nav, activeSection, children }: DashboardShellProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
 
   // Warm the deposit network/token catalog into the store as soon as the user
@@ -36,7 +39,20 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
   // on click.
   usePrefetchDepositCatalog();
 
-  const navigate = useAppNavigate();
+  const navigate = useCallback(
+    (id: string) => {
+      if (id === "vault" || id === "earn") {
+        router.push(`/${id}`);
+        return;
+      }
+      if (pathname === "/dashboard") {
+        scrollToSection(id);
+      } else {
+        router.push(`/dashboard#${id}`);
+      }
+    },
+    [router, pathname]
+  );
 
   return (
     <div className="min-h-screen bg-black">

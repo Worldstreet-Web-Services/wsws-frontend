@@ -12,8 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // The casino service is a separate Node package with its own tooling.
-    "casino-service/**",
+    "apps/earn/**",
   ]),
 ]);
 

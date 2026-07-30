@@ -1,0 +1,579 @@
+import { AlertCircle, ChevronDown, Loader2, Pin, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import posthog from 'posthog-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { VerifiedBadge } from '@earn/components/shared/VerifiedBadge';
+import { Alert, AlertDescription, AlertTitle } from '@earn/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@earn/components/ui/alert-dialog';
+import { Button } from '@earn/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@earn/components/ui/dropdown-menu';
+import { URL_REGEX } from '@earn/constants/URL_REGEX';
+import { useDisclosure } from '@earn/hooks/use-disclosure';
+import { useMediaQuery } from '@earn/hooks/use-media-query';
+import { type Comment as IComment } from '@earn/interface/comments';
+import { type User } from '@earn/interface/user';
+import { api } from '@earn/lib/api';
+import { CommentRefType } from '@earn/prisma/enums';
+import { useUser } from '@earn/store/user';
+import { cn } from '@earn/utils/cn';
+import { dayjs } from '@earn/utils/dayjs';
+import { getURL } from '@earn/utils/validUrl';
+
+import { AgentBadge } from '@earn/features/agents/components/AgentBadge';
+import { AuthWrapper } from '@earn/features/auth/components/AuthWrapper';
+import { ProBadge } from '@earn/features/pro/components/ProBadge';
+import { EarnAvatar } from '@earn/features/talent/components/EarnAvatar';
+
+import { formatFromNow } from '../utils';
+import { CommentParser } from './CommentParser';
+import { UserSuggestionTextarea } from './UserSuggestionTextarea';
+
+interface Props {
+  comment: IComment;
+  poc: User | undefined;
+  refId: string;
+  refType: CommentRefType;
+  sponsorId: string | undefined;
+  defaultSuggestions: Map<string, User>;
+  deleteComment: (commentId: string) => Promise<void>;
+  pinComment?: (commentId: string, isPinned: boolean) => Promise<void>;
+  listingSlug: string;
+  listingType: string;
+  isAnnounced: boolean;
+  isReply?: boolean;
+  addNewReply?: (msg: string) => Promise<void>;
+  isVerified?: boolean;
+  isTemplate?: boolean;
+  isDisabled?: boolean;
+  isListingAndUserPro?: boolean;
+}
+
+export const Comment = ({
+  comment,
+  sponsorId,
+  refId,
+  refType,
+  poc,
+  deleteComment,
+  pinComment,
+  defaultSuggestions,
+  addNewReply,
+  listingType,
+  listingSlug,
+  isReply = false,
+  isAnnounced,
+  isVerified = false,
+  isTemplate = false,
+  isDisabled = false,
+  isListingAndUserPro = false,
+}: Props) => {
+  const { user } = useUser();
+
+  const {
+    isOpen: deleteIsOpen,
+    onOpen: deleteOnOpen,
+    onClose: deleteOnClose,
+  } = useDisclosure();
+  const {
+    isOpen: pinIsOpen,
+    onOpen: pinOnOpen,
+    onClose: pinOnClose,
+  } = useDisclosure();
+  const [showReplyInput, setShowReplyInput] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
+  const [replies, setReplies] = useState(comment?.replies ?? []);
+  const [newReply, setNewReply] = useState('');
+  const [newReplyLoading, setNewReplyLoading] = useState(false);
+  const [newReplyError, setNewReplyError] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const cancelRef = useRef<any>(null);
+
+  const containsLink = newReply
+    .split(/\s+/)
+    .some((part) => URL_REGEX.test(part));
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(`comment-${refId}-${comment.id}`);
+    if (saved) {
+      setNewReply(saved);
+      setShowReplies(true);
+      setShowReplyInput(true);
+    }
+  }, []);
+
+  const deleteReplyLvl1 = async (replyId: string) => {
+    posthog.capture('delete_comment');
+    const replyIndex = replies.findIndex((reply) => reply.id === replyId);
+    if (replyIndex > -1) {
+      await api.delete(`/api/comment/${replyId}/delete`);
+      setReplies((prevReplies) => {
+        const newReplies = [...prevReplies];
+        newReplies.splice(replyIndex, 1);
+        return newReplies;
+      });
+    } else {
+      throw new Error('Reply not found');
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    setDeleteError(false);
+    try {
+      await deleteComment(comment.id);
+      setDeleteLoading(false);
+      deleteOnClose();
+    } catch (e) {
+      console.log('error - ', e);
+      setDeleteError(true);
+      setDeleteLoading(false);
+    }
+  };
+
+  const handlePin = async () => {
+    setPinLoading(true);
+    setPinError(false);
+    try {
+      await pinComment?.(comment.id, !comment.isPinned);
+      setPinLoading(false);
+      pinOnClose();
+    } catch (e) {
+      console.log('error - ', e);
+      setPinError(true);
+      setPinLoading(false);
+    }
+  };
+
+  const addNewReplyLvl1 = async (msg: string) => {
+    posthog.capture('publish_comment');
+    setNewReplyError(false);
+    const newReplyData = await api.post(`/api/comment/create`, {
+      message: msg,
+      refType: refType,
+      refId: refId,
+      replyToId: comment?.id ?? null,
+      replyToUserId: comment?.authorId ?? null,
+      pocId: poc?.id,
+    });
+    setReplies((prevReplies) => [...prevReplies, newReplyData.data]);
+    setShowReplies(true);
+  };
+
+  const date = formatFromNow(dayjs(comment?.createdAt).fromNow());
+
+  const handleSubmit = async () => {
+    try {
+      setNewReplyLoading(true);
+      setNewReplyError(false);
+
+      if (addNewReply) {
+        await addNewReply(newReply);
+      } else {
+        await addNewReplyLvl1(newReply);
+      }
+
+      setNewReply('');
+      setNewReplyLoading(false);
+      setShowReplyInput(false);
+    } catch (e) {
+      console.log('error - ', e);
+      setNewReplyError(true);
+      setNewReplyLoading(false);
+    }
+  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (newReply && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [newReply, handleSubmit],
+  );
+
+  useEffect(() => {
+    if (newReply) {
+      sessionStorage.setItem(`comment-${refId}-${comment.id}`, newReply);
+    } else {
+      sessionStorage.removeItem(`comment-${refId}-${comment.id}`);
+    }
+  }, [newReply]);
+
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isPoc = poc?.id === user?.id;
+  const showDropdown = showOptions || isMobile;
+
+  return (
+    <>
+      <div
+        key={comment.id}
+        className={cn('flex w-full items-start gap-3 overflow-visible')}
+        onMouseEnter={() => {
+          if (!isMobile) setShowOptions(true);
+        }}
+        onMouseLeave={() => {
+          if (!isMobile) setShowOptions(false);
+        }}
+      >
+        <Link
+          href={`${getURL()}earn/t/${comment?.author?.username}`}
+          className={cn('block', isReply ? 'w-8' : 'w-10')}
+          tabIndex={-1}
+          target="_blank"
+        >
+          <EarnAvatar
+            className={cn(isReply ? 'h-7 w-7' : 'h-9 w-9')}
+            id={comment?.author?.id}
+            avatar={comment?.author?.photo}
+          />
+        </Link>
+
+        <div className="flex w-full flex-col items-start">
+          <div className="flex flex-wrap items-center gap-x-2">
+            <div className="flex items-end gap-2">
+              <Link
+                href={`${getURL()}earn/t/${comment?.author?.username}`}
+                className="hover:underline"
+                tabIndex={-1}
+                target="_blank"
+              >
+                <p className="text-sm font-medium text-slate-800 md:text-base">
+                  {`${comment?.author?.firstName} ${comment?.author?.lastName}`}
+                </p>
+              </Link>
+            </div>
+
+            <span className="flex items-center gap-2">
+              {comment?.author?.currentSponsorId === sponsorId && (
+                <p className="flex items-center gap-0.5 pb-0.5 text-xs font-medium text-blue-500 md:text-sm">
+                  {isVerified && <VerifiedBadge />}
+                  Sponsor
+                </p>
+              )}
+              {comment?.author?.currentSponsorId !== sponsorId &&
+                comment?.author?.isAgent && (
+                  <AgentBadge
+                    containerClassName="bg-slate-900 px-2 py-[3px] gap-[3px]"
+                    iconClassName="size-2 md:size-2 text-slate-200"
+                    textClassName="text-[8px] md:text-[9px] font-medium text-white"
+                  />
+                )}
+              {comment?.author?.currentSponsorId !== sponsorId &&
+                !comment?.author?.isAgent &&
+                comment?.author?.isPro && (
+                  <ProBadge
+                    containerClassName="bg-zinc-700 px-2 py-[3px] gap-[3px]"
+                    iconClassName="size-2 md:size-2 text-zinc-400"
+                    textClassName="text-[8px] md:text-[9px] font-medium text-white"
+                  />
+                )}
+              {comment.isPinned && (
+                <p className="flex items-center gap-0.5 pb-0.5 text-xs font-medium text-slate-500 md:text-sm">
+                  <Pin className="h-3 w-3" />
+                  <span className="hidden md:inline">Pinned</span>
+                </p>
+              )}
+              <p className="pb-0.5 text-xs font-medium text-slate-400 md:text-sm">
+                {date}
+              </p>
+            </span>
+          </div>
+          <p className="mt-0 max-w-[15rem] overflow-clip pb-2 text-sm text-slate-500 sm:max-w-[20rem] md:max-w-[17rem] md:text-base lg:max-w-[29rem] xl:max-w-[46rem]">
+            <CommentParser
+              isAnnounced={isAnnounced}
+              type={comment.type}
+              submissionId={comment.submissionId}
+              value={comment?.message}
+              isListingAndUserPro={isListingAndUserPro}
+            />
+          </p>
+          <div className="flex gap-2 overflow-visible">
+            {replies?.length > 0 && (
+              <button
+                onClick={() => setShowReplies((prev) => !prev)}
+                className={cn(
+                  'relative -left-3 flex items-center text-xs font-medium md:text-sm',
+                  isListingAndUserPro
+                    ? 'text-zinc-800 hover:text-zinc-900'
+                    : 'text-brand-grey hover:text-brand-grey-dark',
+                )}
+              >
+                <ChevronDown className="mr-1 h-4 w-4" />
+                <span className="mr-1">{replies?.length}</span>
+                {replies?.length === 1 ? (
+                  <span>Reply</span>
+                ) : (
+                  <span>Replies</span>
+                )}
+              </button>
+            )}
+            <Button
+              variant={'link'}
+              size="sm"
+              onClick={() => setShowReplyInput((prev) => !prev)}
+              className="-left-3 h-auto p-0 text-xs font-medium text-slate-500 hover:text-slate-600 hover:no-underline md:text-sm"
+              disabled={isDisabled}
+            >
+              Reply
+            </Button>
+          </div>
+          <div
+            className={cn(
+              'w-full transition-all duration-200',
+              !showReplyInput && 'hidden',
+            )}
+          >
+            <div className="mb-4 flex w-full flex-col gap-4 pt-4">
+              <div className="flex w-full gap-3">
+                <EarnAvatar
+                  className="h-7 w-7"
+                  id={user?.id}
+                  avatar={user?.photo}
+                />
+                <UserSuggestionTextarea
+                  autoFocusOn={showReplyInput}
+                  defaultSuggestions={defaultSuggestions}
+                  placeholder="Write a comment"
+                  value={newReply}
+                  setValue={setNewReply}
+                  variant="flushed"
+                  onKeyDown={handleKeyDown}
+                  isListingAndUserPro={isListingAndUserPro}
+                />
+              </div>
+              {containsLink && refType === CommentRefType.BOUNTY && (
+                <p className="mt-1 text-sm text-red-500">
+                  If this is your submission link, do not add it as a comment
+                  since it might be plagiarised. Your submission needs to be
+                  added to the submission form above to be considered.
+                </p>
+              )}
+              {!!newReplyError && (
+                <p className="my-0 mt-4 text-xs text-red-500">
+                  Error in adding your comment! Please try again!
+                </p>
+              )}
+              <div
+                className={cn(
+                  'flex w-full justify-end gap-4 transition-all duration-200',
+                  !newReply && 'hidden',
+                )}
+              >
+                <AuthWrapper
+                  showCompleteProfileModal
+                  allowSponsor
+                  completeProfileModalBodyText={
+                    'Please complete your profile before commenting on the listing.'
+                  }
+                >
+                  <Button
+                    className="h-auto bg-slate-200 px-5 py-2 text-xs text-slate-800 hover:bg-slate-300 active:bg-slate-400 disabled:opacity-50"
+                    disabled={
+                      newReplyLoading || !newReply || isTemplate || isDisabled
+                    }
+                    onClick={handleSubmit}
+                  >
+                    {newReplyLoading ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <span>Adding...</span>
+                      </span>
+                    ) : (
+                      <span>Reply</span>
+                    )}
+                  </Button>
+                </AuthWrapper>
+              </div>
+            </div>
+          </div>
+          <div
+            className={cn(
+              'w-full transition-all duration-200',
+              !showReplies && 'hidden',
+            )}
+          >
+            <div className="flex w-full flex-col gap-4 pt-3">
+              {replies.map((reply) => (
+                <Comment
+                  poc={poc}
+                  isAnnounced={isAnnounced}
+                  listingSlug={listingSlug}
+                  listingType={listingType}
+                  defaultSuggestions={defaultSuggestions}
+                  deleteComment={deleteReplyLvl1}
+                  addNewReply={addNewReplyLvl1}
+                  isReply
+                  key={reply.id}
+                  refType={refType}
+                  sponsorId={sponsorId}
+                  comment={reply}
+                  refId={refId}
+                  isListingAndUserPro={isListingAndUserPro}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'transition-opacity duration-200',
+            showDropdown &&
+              (comment.authorId === user?.id || (isPoc && !isReply))
+              ? 'opacity-100'
+              : 'pointer-events-none opacity-0',
+          )}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="px-2">
+                <svg
+                  width="3"
+                  height="12"
+                  viewBox="0 0 3 12"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="text-slate-400"
+                >
+                  <path
+                    d="M1.5 3C2.325 3 3 2.325 3 1.5C3 0.675 2.325 0 1.5 0C0.675 0 0 0.675 0 1.5C0 2.325 0.675 3 1.5 3ZM1.5 4.5C0.675 4.5 0 5.175 0 6C0 6.825 0.675 7.5 1.5 7.5C2.325 7.5 3 6.825 3 6C3 5.175 2.325 4.5 1.5 4.5ZM1.5 9C0.675 9 0 9.675 0 10.5C0 11.325 0.675 12 1.5 12C2.325 12 3 11.325 3 10.5C3 9.675 2.325 9 1.5 9Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-[10rem] p-1" align="end">
+              {isPoc && !isReply && (
+                <DropdownMenuItem
+                  className="ph-no-capture rounded-sm text-sm font-medium text-slate-600 md:text-base"
+                  onClick={pinOnOpen}
+                  tabIndex={-1}
+                >
+                  <Pin className="h-3 w-3" />
+                  {comment.isPinned ? 'Unpin' : 'Pin'} Comment
+                </DropdownMenuItem>
+              )}
+              {comment.authorId === user?.id && (
+                <DropdownMenuItem
+                  className="ph-no-capture rounded-sm text-sm font-medium text-slate-600 md:text-base"
+                  onClick={deleteOnOpen}
+                  tabIndex={-1}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <AlertDialog open={deleteIsOpen} onOpenChange={deleteOnClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">
+              Delete Comment
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+
+          <AlertDialogDescription>
+            Are you sure? You can&apos;t undo this action.
+            {deleteError && (
+              <Alert variant="destructive" className="mt-3 rounded-md">
+                <AlertCircle className="h-4 w-4" />
+                <div className="flex flex-col gap-2">
+                  <AlertTitle>Failed to delete comment</AlertTitle>
+                  <AlertDescription className="self-start">
+                    Please try again later.
+                  </AlertDescription>
+                </div>
+              </Alert>
+            )}
+          </AlertDialogDescription>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button ref={cancelRef} onClick={deleteOnClose} variant="ghost">
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <Button
+              className={cn('ph-no-capture', 'ml-0 md:ml-3')}
+              disabled={deleteLoading}
+              onClick={handleDelete}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <span>Delete</span>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={pinIsOpen} onOpenChange={pinOnClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {comment.isPinned ? 'Unpin' : 'Pin'} Comment
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {comment.isPinned
+                ? 'Are you sure you want to unpin this comment?'
+                : 'Are you sure you want to pin this comment?'}
+              {pinError && (
+                <Alert variant="destructive" className="mt-3 rounded-md">
+                  <AlertCircle className="h-4 w-4" />
+                  <div className="flex flex-col gap-2">
+                    <AlertTitle>Failed to pin comment</AlertTitle>
+                    <AlertDescription className="self-start">
+                      Please try again later.
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button onClick={pinOnClose} variant="ghost">
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <Button variant="default" onClick={handlePin} disabled={pinLoading}>
+              {pinLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {comment.isPinned ? 'Unpinning...' : 'Pinning...'}
+                </>
+              ) : comment.isPinned ? (
+                'Unpin'
+              ) : (
+                'Pin'
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};

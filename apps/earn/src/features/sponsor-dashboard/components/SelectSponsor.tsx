@@ -1,0 +1,216 @@
+import { atom, useSetAtom } from 'jotai';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { components } from 'react-select';
+import AsyncSelect from 'react-select/async';
+
+import { VerifiedBadge } from '@earn/components/shared/VerifiedBadge';
+import type { SponsorType } from '@earn/interface/sponsor';
+import { api } from '@earn/lib/api';
+import { useUpdateUser, useUser } from '@earn/store/user';
+
+import { EarnAvatar } from '@earn/features/talent/components/EarnAvatar';
+
+interface SponsorOptionType extends SponsorType {
+  role?: string;
+}
+
+interface SponsorOption {
+  value: string;
+  label: string;
+  sponsor: SponsorOptionType;
+}
+
+export const hackathonSponsorAtom = atom<string | null>(null);
+
+export function SelectSponsor({
+  type,
+  isExpanded = false,
+}: {
+  type?: string;
+  isExpanded?: boolean;
+}) {
+  const { user } = useUser();
+  const updateUser = useUpdateUser();
+  const router = useRouter();
+
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorOption | null>(
+    null,
+  );
+  const [isSwitchingSponsor, setIsSwitchingSponsor] = useState(false);
+  const setHackathonSponsor = useSetAtom(hackathonSponsorAtom);
+
+  useEffect(() => {
+    if (type !== 'hackathon' && user?.currentSponsor?.id) {
+      setSelectedSponsor({
+        value: user?.currentSponsor?.id,
+        label: user?.currentSponsor?.name,
+        sponsor: user?.currentSponsor,
+      });
+    }
+  }, [user]);
+
+  const loadSponsors = (
+    inputValue: string,
+    callback: (options: SponsorOption[]) => void,
+  ) => {
+    api
+      .get(`/api/sponsors/list/`, {
+        params: {
+          searchString: inputValue,
+        },
+      })
+      .then((response) => {
+        const options = [...(response?.data || [])];
+        callback(options);
+      });
+  };
+
+  const updateSponsor = async (sponsorId: string) => {
+    try {
+      setIsSwitchingSponsor(true);
+      await updateUser.mutateAsync({ currentSponsorId: sponsorId });
+      return true;
+    } catch (error) {
+      console.error(error);
+      setIsSwitchingSponsor(false);
+      return false;
+    }
+  };
+
+  const handleChange = async (option?: any) => {
+    if (!option || isSwitchingSponsor) return;
+
+    if (type === 'hackathon') {
+      setHackathonSponsor(option.value);
+      setSelectedSponsor(option);
+    } else {
+      setSelectedSponsor(option);
+      const didSwitch = await updateSponsor(option.value);
+      if (!didSwitch) return;
+
+      if (router.asPath.startsWith('/earn/dashboard/')) {
+        window.location.assign('/earn/dashboard/listings/');
+        return;
+      }
+
+      window.location.reload();
+    }
+  };
+
+  const SingleValue = (props: any) => {
+    const { data, selectProps } = props;
+
+    if (selectProps.menuIsOpen) {
+      return <components.SingleValue {...props}></components.SingleValue>;
+    }
+
+    return (
+      <components.SingleValue {...props}>
+        <div className="flex items-center py-1">
+          <EarnAvatar
+            id={data?.sponsor?.name}
+            avatar={data?.sponsor?.logo}
+            className="h-6 w-6 rounded-sm"
+          />
+          <div className="ml-2 hidden md:block">
+            <div className="flex">
+              <p className="text-sm text-slate-800">{data?.sponsor?.name}</p>
+            </div>
+            <p className="text-xs text-slate-400">{data?.sponsor?.role}</p>
+          </div>
+        </div>
+      </components.SingleValue>
+    );
+  };
+
+  const Option = (props: any) => {
+    const { data } = props;
+    return (
+      <components.Option {...props}>
+        <div className="flex items-center">
+          <EarnAvatar
+            id={data?.sponsor?.name}
+            avatar={data?.sponsor?.logo}
+            className="rounded-sm"
+          />
+          <div className="ml-2 hidden md:block">
+            <div className="flex flex-wrap items-center">
+              <p className="text-sm text-slate-800">{data?.sponsor?.name}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-slate-400">{data?.sponsor?.role}</p>
+              {data?.sponsor?.isVerified && <VerifiedBadge />}
+            </div>
+          </div>
+        </div>
+      </components.Option>
+    );
+  };
+
+  return (
+    <AsyncSelect
+      components={{ SingleValue, Option }}
+      value={selectedSponsor}
+      onChange={(e) => handleChange(e)}
+      placeholder="Select Sponsor"
+      loadOptions={loadSponsors}
+      defaultOptions
+      isDisabled={isSwitchingSponsor}
+      isClearable={false}
+      isSearchable={true}
+      autoFocus={false}
+      styles={{
+        control: (baseStyles) => ({
+          ...baseStyles,
+          cursor: 'pointer',
+          fontSize: '14px',
+          borderColor: '#cbd5e1',
+          '&:hover': {
+            borderColor: '#6c737b',
+          },
+          minHeight: '46px',
+          flexWrap: 'nowrap',
+        }),
+        dropdownIndicator: (base) => ({
+          ...base,
+          color: '#cbd5e1',
+          '&:hover': {
+            color: '#94a3b8',
+          },
+          display: isExpanded ? 'block' : 'none',
+        }),
+        indicatorSeparator: (base) => ({
+          ...base,
+          backgroundColor: 'transparent',
+          width: 0,
+        }),
+        option: (base, state) => ({
+          ...base,
+          backgroundColor: state.isSelected ? '#e2e8f0' : 'white',
+          '&:hover': {
+            backgroundColor: '#f1f5f9',
+          },
+        }),
+        menuList: (base) => ({
+          ...base,
+          overflowX: 'hidden',
+
+          '::-webkit-scrollbar': {
+            width: 'calc(var(--spacing) * 1.5)',
+          },
+          '::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '::-webkit-scrollbar-thumb': {
+            background: 'var(--color-slate-300)',
+            borderRadius: '0.35rem',
+          },
+          '::-webkit-scrollbar-thumb:hover': {
+            background: 'var(--color-slate-300)',
+          },
+        }),
+      }}
+    />
+  );
+}

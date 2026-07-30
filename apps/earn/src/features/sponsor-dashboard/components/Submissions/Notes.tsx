@@ -1,0 +1,178 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAtom, useSetAtom } from 'jotai';
+import debounce from 'lodash.debounce';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { type SubmissionWithUser } from '@earn/interface/submission';
+import { api } from '@earn/lib/api';
+import { Wand } from '@earn/svg/wand';
+import { cn } from '@earn/utils/cn';
+
+import { type ProjectApplicationAi } from '@earn/features/listings/types';
+
+import { isStateUpdatingAtom, selectedSubmissionAtom } from '../../atoms';
+import { getTextCharacterCount } from '../../utils/convertTextToNotesHTML';
+import { NotesRichEditor } from '../NotesRichEditor';
+
+const MAX_CHARACTERS = 1000;
+
+type Props = {
+  slug: string | undefined;
+};
+
+export const Notes = ({ slug }: Props) => {
+  const [selectedSubmission, setSelectedSubmission] = useAtom(
+    selectedSubmissionAtom,
+  );
+  const setNotesUpdating = useSetAtom(isStateUpdatingAtom);
+  const [notes, setNotes] = useState(() => selectedSubmission?.notes);
+
+  const queryClient = useQueryClient();
+  const submissionId = useMemo(
+    () => selectedSubmission?.id,
+    [selectedSubmission],
+  );
+
+  const { mutate: updateNotes, isPending: isSaving } = useMutation({
+    mutationFn: (content: string) =>
+      api.post('/api/sponsor-dashboard/submission/update-notes', {
+        id: submissionId,
+        notes: content,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.setQueriesData<SubmissionWithUser[]>(
+        {
+          predicate: (query) =>
+            query.queryKey[0] === 'sponsor-submissions' &&
+            query.queryKey.includes(slug),
+        },
+        (old) => {
+          if (!old) return old;
+          const data = old?.map((submission) =>
+            submission.id === submissionId
+              ? { ...submission, notes: variables }
+              : submission,
+          );
+          return data;
+        },
+      );
+      if (selectedSubmission) {
+        setSelectedSubmission({
+          ...selectedSubmission,
+          notes: variables,
+        });
+      }
+    },
+    onError: (error) => {
+      console.error('Error saving notes:', error);
+    },
+    onSettled: () => {
+      setNotesUpdating(false);
+    },
+  });
+
+  const debouncedUpdateNotesRef = useRef<
+    ReturnType<typeof debounce> | undefined
+  >(undefined);
+  const previousSubmissionIdRef = useRef<string | undefined>(
+    selectedSubmission?.id,
+  );
+
+  useEffect(() => {
+    debouncedUpdateNotesRef.current = debounce(
+      (content: string) => updateNotes(content),
+      1000,
+    );
+
+    return () => {
+      debouncedUpdateNotesRef.current?.cancel();
+    };
+  }, [submissionId, updateNotes]);
+
+  // Sync notes when submission changes (only when ID changes, not on every render)
+  useEffect(() => {
+    if (previousSubmissionIdRef.current !== selectedSubmission?.id) {
+      previousSubmissionIdRef.current = selectedSubmission?.id;
+      // Setting state here is necessary to sync local state when submission changes
+      // The editor component has a key prop that will remount it when ID changes
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotes(selectedSubmission?.notes);
+    }
+  }, [selectedSubmission?.id, selectedSubmission?.notes]);
+
+  const handleChange = (value: string) => {
+    // Extract plain text for character counting
+    const textLength = getTextCharacterCount(value);
+
+    if (textLength <= MAX_CHARACTERS) {
+      if (selectedSubmission) {
+        setSelectedSubmission({
+          ...selectedSubmission,
+          notes: value,
+        });
+      }
+      setNotes(value);
+      debouncedUpdateNotesRef.current?.(value);
+      setNotesUpdating(true);
+    }
+  };
+
+  useEffect(() => {
+    // Only update notes when submission ID changes (not when notes content changes)
+    if (previousSubmissionIdRef.current !== selectedSubmission?.id) {
+      previousSubmissionIdRef.current = selectedSubmission?.id;
+      // Use setTimeout to defer state update and avoid cascading renders
+      const timeoutId = setTimeout(() => {
+        setNotes(selectedSubmission?.notes);
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+    // Return no-op cleanup function if condition is false
+    return () => {};
+  }, [selectedSubmission?.id, selectedSubmission?.notes]);
+
+  const isAiCommited = useMemo(
+    () => (selectedSubmission?.ai as ProjectApplicationAi)?.commited,
+    [selectedSubmission],
+  );
+
+  return (
+    <div className="flex w-full flex-col items-start rounded-xl border border-slate-200 py-5 pr-1 pl-4">
+      <div
+        className={cn(
+          'mb-2 flex w-full items-center justify-between pr-3 text-slate-400',
+          isAiCommited && 'text-slate-600',
+        )}
+      >
+        <div className="flex items-center gap-1">
+          {isAiCommited && <Wand />}
+          <span className="font-extrabold">Notes</span>
+        </div>
+        {isSaving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <span className="text-[10px]">Auto-saved</span>
+        )}
+      </div>
+      <div
+        key={submissionId + (selectedSubmission?.label || 'label')}
+        className="h-full w-full"
+      >
+        <NotesRichEditor
+          className="h-full max-h-[25rem] min-h-[25rem] w-full resize-none !border-0 py-0 text-sm whitespace-pre-wrap text-slate-500 !shadow-none !ring-0 placeholder:text-slate-400 focus:!border-0 focus:!shadow-none focus:!ring-0 focus:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 focus-visible:!outline-hidden"
+          key={submissionId + (selectedSubmission?.label || 'label')}
+          id={submissionId + (selectedSubmission?.label || 'label')}
+          onChange={handleChange}
+          placeholder="• Start typing notes here"
+          value={notes || ''}
+          maxLength={MAX_CHARACTERS}
+        />
+      </div>
+
+      <p className="mt-1 w-full text-right text-xs text-slate-400">
+        {notes ? getTextCharacterCount(notes) : 0}/{MAX_CHARACTERS}
+      </p>
+    </div>
+  );
+};

@@ -18,7 +18,7 @@ export interface TwistingRibbonProps extends React.HTMLAttributes<HTMLDivElement
   waveAmplitude?: number;
   /** Number of full twists along the ribbon length (default 6) */
   twistCycles?: number;
-  /** Custom colors for light mode (accepts hex strings like "#b4b4ba") */
+  /** Custom colors for light mode (accepts hex strings like "#ff3c0a") */
   lightColors?: RibbonColors;
   /** Custom colors for dark mode (accepts hex strings like "#1e2024") */
   darkColors?: RibbonColors;
@@ -79,11 +79,10 @@ export function TwistingRibbon({
 
     // Violet-on-black palette shared by both branches (dimmed to sit quietly
     // behind copy).
-    // Ark monochrome: a silver ribbon face with darker greyscale folds.
-    const V_FACE: [number, number, number] = [180, 180, 186];
-    const V_FOLD_A: [number, number, number] = [58, 58, 62];
-    const V_FOLD_B: [number, number, number] = [34, 34, 38];
-    const V_FOLD_C: [number, number, number] = [150, 150, 156];
+    const V_FACE: [number, number, number] = [96, 72, 180];
+    const V_FOLD_A: [number, number, number] = [46, 26, 100];
+    const V_FOLD_B: [number, number, number] = [24, 34, 84];
+    const V_FOLD_C: [number, number, number] = [128, 104, 196];
 
     const L_COLOR_FACE = lightColors?.face ? hexToRgb(lightColors.face) : V_FACE;
     const L_COLOR_FOLD_A = lightColors?.foldA ? hexToRgb(lightColors.foldA) : V_FOLD_A;

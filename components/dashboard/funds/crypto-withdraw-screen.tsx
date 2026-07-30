@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
 import { DepositStatus } from "@/components/dashboard/funds/deposit-status";
@@ -71,19 +70,18 @@ const ADDRESS_KIND_LABEL: Record<AddressKind, string> = {
 // Turn a raw Dextopus quote failure into something a user can act on. The
 // provider reports an unroutable destination/recipient as the generic "No
 // deposit quote available", so we translate rather than show it verbatim.
-// Provider error messages we cannot classify pass through untranslated.
-function quoteErrorMessage(error: unknown, t: (key: string) => string): string {
+function quoteErrorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message.toLowerCase() : "";
   if (raw.includes("no deposit quote") || raw.includes("not supported")) {
-    return t("quoteNoRoute");
+    return "We couldn't get a quote to this destination. Double-check the address, or try a different token or network.";
   }
   if (raw.includes("minimum") || raw.includes("too low") || raw.includes("too small")) {
-    return t("quoteBelowMinimum");
+    return "That amount is below the minimum for this route. Try a larger amount.";
   }
   if (raw.includes("too many requests") || raw.includes("rate limit")) {
-    return t("quoteRateLimited");
+    return "Too many quote requests just now. Wait a moment and try again.";
   }
-  return error instanceof Error ? error.message : t("quoteFailed");
+  return error instanceof Error ? error.message : "Couldn't get a quote for this withdrawal.";
 }
 
 // Collapsed row a picker shrinks to after a selection: its glyph + label with
@@ -97,7 +95,6 @@ function SelectedRow({
   title: string;
   onChange: () => void;
 }) {
-  const t = useTranslations("fundsFlow");
   return (
     <button
       onClick={onChange}
@@ -107,7 +104,7 @@ function SelectedRow({
       <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-medium text-white">
         {title}
       </span>
-      <span className="text-accent shrink-0 text-[12.5px] font-medium">{t("change")}</span>
+      <span className="text-accent shrink-0 text-[12.5px] font-medium">Change</span>
     </button>
   );
 }
@@ -122,7 +119,6 @@ interface CryptoWithdrawScreenProps {
 // through Dextopus, which converts and settles the destination token under the
 // hood, auto-refunding to the wallet if it can't complete.
 export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
-  const t = useTranslations("fundsFlow");
   const { user } = usePrivy();
   const { tokens } = usePortfolio();
   const { sendToken } = useSendToken();
@@ -270,9 +266,9 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
 
   const status = useDepositStatus(depositRequestId);
   useTerminalToast(status.data, depositRequestId, {
-    settled: t("withdrawalSettled"),
-    failed: t("withdrawalFailedRefunded"),
-    refunded: t("withdrawalRefunded"),
+    settled: "Withdrawal settled",
+    failed: "Withdrawal failed, funds were refunded",
+    refunded: "Withdrawal refunded",
   });
 
   // The immediate tx is always the USDC send on Base.
@@ -296,7 +292,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
     setSubmitting(true);
     // One processing toast that resolves in place; dismissed if we bail on a
     // validation check before anything is actually sent.
-    const toastId = toast.loading(t("sendingWithdrawal"));
+    const toastId = toast.loading("Sending your withdrawal…");
     try {
       const sendAmount = toBaseUnits(amount, SOURCE.decimals);
       if (isDirectSend) {
@@ -308,11 +304,11 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
           amount: sendAmount,
         });
         setTxHash(hash);
-        toast.success(t("withdrewAmount", { amount: formatAmount(value) }), { id: toastId });
+        toast.success(`Withdrew ${formatAmount(value)} USDC`, { id: toastId });
         return;
       }
       if (!refundTo) {
-        setError(t("baseWalletNotReady"));
+        setError("Your Base wallet isn't ready yet.");
         toast.dismiss(toastId);
         return;
       }
@@ -320,7 +316,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       // bound to the exact amount we're about to send.
       const fresh = await quote.refetch();
       if (fresh.isError || !fresh.data) {
-        setError(quoteErrorMessage(fresh.error, t));
+        setError(quoteErrorMessage(fresh.error));
         toast.dismiss(toastId);
         return;
       }
@@ -334,16 +330,12 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       setTxHash(hash);
       setDepositRequestId(fresh.data.depositRequestId);
       toast.success(
-        t("sendingConversion", {
-          amount: formatAmount(value),
-          symbol: selectedDestination.symbol,
-          chain: destChainLabel,
-        }),
+        `Sending ${formatAmount(value)} USDC → ${selectedDestination.symbol} on ${destChainLabel}…`,
         { id: toastId }
       );
     } catch (e) {
-      setError(friendlyError(e, t("withdrawalNotSentFallback")));
-      toast.error(t("withdrawalNotSent"), { id: toastId });
+      setError(friendlyError(e, "The withdrawal wasn't sent. Please try again."));
+      toast.error("Withdrawal was not sent.", { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -352,18 +344,11 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
   if (txHash) {
     return (
       <div>
-        <SheetNav
-          title={t("withdrawalSentTitle")}
-          subtitle={t("withdrawalSentSubtitle", { amount })}
-          onBack={onBack}
-        />
+        <SheetNav title="Withdrawal sent" subtitle={`${amount} USDC on its way.`} onBack={onBack} />
         <div className="border-accent/20 bg-accent/8 mt-1 rounded-[14px] border px-4 py-4 text-[13px] leading-normal font-normal text-white/80">
           {isDirectSend
-            ? t("directSendNote", { chain: destChainLabel })
-            : t("convertSendNote", {
-                symbol: selectedDestination?.symbol ?? "",
-                chain: destChainLabel,
-              })}
+            ? `Your USDC is on its way to the address on ${destChainLabel}.`
+            : `Converting to ${selectedDestination?.symbol ?? ""} and sending to the address on ${destChainLabel}.`}
         </div>
         {originExplorerUrl ? (
           <a
@@ -372,12 +357,10 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
             rel="noopener noreferrer"
             className="tnum text-accent mt-3 block text-[12px] font-normal break-all underline"
           >
-            {t("txLabel", { hash: txHash })}
+            Tx {txHash}
           </a>
         ) : (
-          <p className="tnum mt-3 text-[12px] font-normal break-all text-white/45">
-            {t("txLabel", { hash: txHash })}
-          </p>
+          <p className="tnum mt-3 text-[12px] font-normal break-all text-white/45">Tx {txHash}</p>
         )}
         {depositRequestId ? (
           <DepositStatus
@@ -397,7 +380,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
                 rel="noopener noreferrer"
                 className="tnum text-accent text-[12px] font-normal break-all underline"
               >
-                {t("viewOnChain", { chain: destChainLabel })}
+                View on {destChainLabel}
               </a>
             ))}
           </div>
@@ -406,7 +389,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
           onClick={onBack}
           className="mt-4 w-full cursor-pointer rounded-[14px] border border-white/12 bg-white/5 p-3 font-sans text-[14px] font-medium text-white hover:bg-white/10"
         >
-          {t("done")}
+          Done
         </button>
       </div>
     );
@@ -415,20 +398,20 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
   return (
     <div>
       <SheetNav
-        title={t("withdrawCryptoTitle")}
-        subtitle={t("withdrawCryptoSubtitle")}
+        title="Withdraw crypto"
+        subtitle="Send your USDC to any wallet, on any chain."
         onBack={onBack}
       />
 
       <div className="ws-inset mt-1 flex items-center justify-between px-4 py-3.5">
-        <span className="text-[13px] font-normal text-white/55">{t("availableBalance")}</span>
+        <span className="text-[13px] font-normal text-white/55">Available balance</span>
         <span className="ws-display tnum text-[20px] text-white">
           {formatAmount(balance)} <span className="text-[14px] text-white/60">USDC</span>
         </span>
       </div>
 
       <div className="mt-3">
-        <div className="mb-2 text-xs font-normal text-white/55">{t("withdrawAs")}</div>
+        <div className="mb-2 text-xs font-normal text-white/55">Withdraw as</div>
         {destSymbol && !tokenOpen ? (
           <SelectedRow
             glyph={
@@ -461,7 +444,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
 
       {destSymbol ? (
         <div className="mt-3">
-          <div className="mb-2 text-xs font-normal text-white/55">{t("onNetwork")}</div>
+          <div className="mb-2 text-xs font-normal text-white/55">On network</div>
           {destChainId !== null && !networkOpen ? (
             <SelectedRow
               glyph={
@@ -509,32 +492,27 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       {selectedDestination ? (
         <div className="ws-inset mt-3 p-[15px]">
           <div className="mb-2 text-xs font-normal text-white/55">
-            {destChainLabel
-              ? t("destinationAddressWithChain", { chain: destChainLabel })
-              : t("destinationAddress")}
+            Destination address{destChainLabel ? ` (${destChainLabel})` : ""}
           </div>
           <input
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            placeholder={t("pasteAddress")}
+            placeholder="Paste a wallet address"
             spellCheck={false}
             className="tnum w-full border-none bg-transparent text-[14px] break-all text-white outline-none"
           />
           {to.trim().length > 0 ? (
             <div className="mt-1.5 text-[11px] font-normal text-white/45">
               {detectedKind
-                ? t("detectedAddress", { kind: ADDRESS_KIND_LABEL[detectedKind] })
-                : t("unrecognizedAddress")}
+                ? `Detected: ${ADDRESS_KIND_LABEL[detectedKind]} address`
+                : "Unrecognized address format"}
             </div>
           ) : null}
           {to.trim().length > 0 && !addrOk ? (
             <div className="text-down mt-1 text-[12px] font-normal">
               {requiredKind
-                ? t("addressKindMismatch", {
-                    kind: ADDRESS_KIND_LABEL[requiredKind],
-                    chain: destChainLabel,
-                  })
-                : t("pickDestinationFirst")}
+                ? `This doesn't look like a ${ADDRESS_KIND_LABEL[requiredKind]} address, needed for ${destChainLabel}.`
+                : "Pick a destination network first."}
             </div>
           ) : null}
         </div>
@@ -543,12 +521,12 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       {selectedDestination ? (
         <div className="ws-inset mt-2 p-[15px]">
           <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
-            <span>{t("amount")}</span>
+            <span>Amount</span>
             <button
               onClick={() => setAmount(String(balance))}
               className="tnum cursor-pointer text-white/55 hover:text-white"
             >
-              {t("maxBalance", { amount: formatAmount(balance) })}
+              Max {formatAmount(balance)} USDC
             </button>
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -562,7 +540,9 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
             <span className="shrink-0 font-sans text-[14px] font-medium text-white/70">USDC</span>
           </div>
           {overBalance ? (
-            <div className="text-down mt-1.5 text-[12px] font-normal">{t("overBalanceUsdc")}</div>
+            <div className="text-down mt-1.5 text-[12px] font-normal">
+              More than your USDC balance
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -570,13 +550,13 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       {/* Live conversion preview. */}
       {selectedDestination && value > 0 && addrOk && !overBalance ? (
         <div className="ws-inset mt-2 flex items-center justify-between px-4 py-3 text-[12.5px] font-normal">
-          <span className="text-white/55">{t("recipientGets")}</span>
+          <span className="text-white/55">Recipient gets</span>
           {isDirectSend ? (
             <span className="tnum text-white/85">≈ {previewOut}</span>
           ) : quote.isError ? (
-            <span className="text-down">{t("unavailable")}</span>
+            <span className="text-down">Unavailable</span>
           ) : quote.isFetching || !quote.data ? (
-            <span className="text-white/45">{t("gettingRate")}</span>
+            <span className="text-white/45">Getting rate…</span>
           ) : (
             <span className="tnum text-white/85">≈ {previewOut}</span>
           )}
@@ -585,7 +565,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
 
       {quoteInput && quote.isError ? (
         <div className="border-down/25 bg-down/10 mt-2 rounded-[14px] border px-4 py-3 text-[12.5px] font-normal text-white/75">
-          {quoteErrorMessage(quote.error, t)}
+          {quoteErrorMessage(quote.error)}
         </div>
       ) : null}
 
@@ -597,10 +577,10 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
         className="text-ink mt-[18px] w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting
-          ? t("sending")
+          ? "Sending…"
           : quoteInput && quote.isFetching
-            ? t("gettingRate")
-            : t("withdrawUsdc")}
+            ? "Getting rate…"
+            : "Withdraw USDC"}
       </button>
     </div>
   );

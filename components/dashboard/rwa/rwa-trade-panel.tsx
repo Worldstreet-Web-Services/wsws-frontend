@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { ArrowDownIcon } from "@/components/ui/icons";
@@ -85,9 +84,6 @@ interface RwaTradePanelProps {
   bare?: boolean;
   // Which side to open on. Defaults to buy; holdings open it on sell.
   initialMode?: Mode;
-  // Pre-fill the amount, e.g. from a spoken "buy $10 of Ondo". The user still
-  // reviews and confirms — we only stage the form.
-  initialAmount?: string;
 }
 
 // Buy and sell surface for one RWA. Both directions run a live debounced quote,
@@ -96,13 +92,7 @@ interface RwaTradePanelProps {
 // spends the held RWA (sized at the on-chain decimals its balance carries) for
 // USDC. Sell is offered only where we can see the balance, so it is never
 // presented for a size or a token we cannot verify.
-export function RwaTradePanel({
-  asset,
-  bare = false,
-  initialMode = "buy",
-  initialAmount = "",
-}: RwaTradePanelProps) {
-  const t = useTranslations("rwa");
+export function RwaTradePanel({ asset, bare = false, initialMode = "buy" }: RwaTradePanelProps) {
   const { user } = usePrivy();
   const portfolio = usePortfolio();
   const { mutateAsync: quoteAsync } = useRwaQuote();
@@ -110,7 +100,7 @@ export function RwaTradePanel({
   const execute = useExecuteRwa();
 
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [amount, setAmount] = useState(initialAmount);
+  const [amount, setAmount] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [quote, setQuote] = useState<RwaQuote | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -270,14 +260,14 @@ export function RwaTradePanel({
     if (gasKnown && gas === false) {
       setNotice({
         kind: "gas",
-        message: t("gasNeeded", { symbol: gasSymbolForChain(asset.chain) }),
+        message: `You need a little ${gasSymbolForChain(asset.chain)} for the network fee`,
       });
       return;
     }
 
     const taker = getWalletAddress(user, asset.chain === "solana" ? "solana" : "ethereum");
     if (!taker) {
-      setNotice({ kind: "error", message: t("connectWallet") });
+      setNotice({ kind: "error", message: "Connect your wallet to trade" });
       return;
     }
 
@@ -286,22 +276,13 @@ export function RwaTradePanel({
     setSignStep(null);
     // One processing toast that resolves in place. Signing is headless on Base
     // (gasless), so this plus the panel's confirming state is the feedback.
-    const toastId = toast.loading(
-      isBuy
-        ? t("buyingSymbol", { symbol: asset.symbol })
-        : t("sellingSymbol", { symbol: asset.symbol })
-    );
+    const toastId = toast.loading(`${isBuy ? "Buying" : "Selling"} ${asset.symbol}…`);
     try {
       const action = await withTransientRetry(() => buildAsync({ ...req, taker, simulate: true }));
       await execute(action, (index, step) => {
         setSignStep({ index, total: action.steps.length, label: step.description });
       });
-      toast.success(
-        isBuy
-          ? t("boughtSymbol", { symbol: asset.symbol })
-          : t("soldSymbol", { symbol: asset.symbol }),
-        { id: toastId }
-      );
+      toast.success(`${isBuy ? "Bought" : "Sold"} ${asset.symbol}`, { id: toastId });
       await portfolio.refetch();
       setSignStep(null);
       setPhase("done");
@@ -329,10 +310,10 @@ export function RwaTradePanel({
   const canConfirm = phase === "quoted" && quote != null && !confirming;
 
   const sellBlockedMessage = !sellable
-    ? t("sellChains")
+    ? "Selling is available on Base, Arbitrum, Polygon and Solana."
     : portfolio.loading
-      ? t("checkingBalance")
-      : t("noHoldingsToSell", { symbol: asset.symbol });
+      ? "Checking your balance…"
+      : `You don't hold any ${asset.symbol} to sell.`;
 
   return (
     <div
@@ -357,13 +338,13 @@ export function RwaTradePanel({
           <button
             key={m}
             onClick={() => switchMode(m)}
-            className={`cursor-pointer rounded-[10px] p-2.5 font-sans text-sm font-semibold transition-colors ${
+            className={`cursor-pointer rounded-[10px] p-2.5 font-sans text-sm font-semibold capitalize transition-colors ${
               mode === m
-                ? "bg-accent/18 shadow-[inset_0_0_0_1px_rgba(255, 255, 255, 0.35)] text-white"
+                ? "bg-accent/18 text-white shadow-[inset_0_0_0_1px_rgba(167,139,250,0.35)]"
                 : "bg-transparent text-white/55 hover:text-white"
             }`}
           >
-            {m === "buy" ? t("buy") : t("sell")}
+            {m}
           </button>
         ))}
       </div>
@@ -372,8 +353,8 @@ export function RwaTradePanel({
         <div className="ws-inset p-[18px] text-center">
           <div className="font-sans text-[14px] font-semibold text-white/85">
             {sellable
-              ? t("noSymbolToSell", { symbol: asset.symbol })
-              : t("sellingOnChain", { symbol: asset.symbol, chain: chainLabel(asset.chain) })}
+              ? `No ${asset.symbol} to sell`
+              : `Selling ${asset.symbol} on ${chainLabel(asset.chain)}`}
           </div>
           <p className="mx-auto mt-1.5 max-w-[34ch] text-[12.5px] font-normal text-white/55">
             {sellBlockedMessage}
@@ -381,28 +362,30 @@ export function RwaTradePanel({
         </div>
       ) : phase === "done" ? (
         <div className="ws-inset p-[18px] text-center">
-          <div className="text-up font-sans text-[15px] font-semibold">{t("orderFilled")}</div>
+          <div className="text-up font-sans text-[15px] font-semibold">Order filled</div>
           <p className="mx-auto mt-1.5 max-w-[34ch] text-[12.5px] font-normal text-white/55">
-            {isBuy ? t("buySettled", { name: asset.name }) : t("sellSettled", { name: asset.name })}
+            {isBuy
+              ? `Your ${asset.name} buy settled and is landing in your portfolio.`
+              : `Your ${asset.name} sale settled and the USDC is landing in your portfolio.`}
           </p>
           <button
             onClick={reset}
             className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-[13px] font-sans text-[14px] font-semibold hover:opacity-90"
           >
-            {isBuy ? t("buyMore") : t("sellMore")}
+            {isBuy ? "Buy more" : "Sell more"}
           </button>
         </div>
       ) : (
         <>
           <div className="ws-inset relative p-[15px]">
             <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
-              <span>{t("youPay")}</span>
+              <span>You pay</span>
               {spendBalance > 0 ? (
                 <button
                   onClick={() => setPct(1)}
                   className="tnum cursor-pointer text-white/55 hover:text-white"
                 >
-                  {t("balanceOf", { amount: formatAmount(spendBalance), symbol: spendSymbol })}
+                  Balance {formatAmount(spendBalance)} {spendSymbol}
                 </button>
               ) : (
                 <span>≈ {usdValue > 0 ? formatUsd(usdValue) : "$0"}</span>
@@ -467,7 +450,7 @@ export function RwaTradePanel({
                   disabled={spendBalance <= 0}
                   className="flex-1 cursor-pointer rounded-lg border border-white/10 bg-white/4 py-1.5 font-sans text-[12px] font-medium text-white/70 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {pct === 1 ? t("max") : `${pct * 100}%`}
+                  {pct === 1 ? "Max" : `${pct * 100}%`}
                 </button>
               ))}
             </div>
@@ -481,7 +464,7 @@ export function RwaTradePanel({
 
           <div className="ws-inset p-[15px]">
             <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
-              <span>{t("youReceiveEst")}</span>
+              <span>You receive (est.)</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="ws-display tnum text-accent min-w-0 truncate text-[30px]">
@@ -522,15 +505,13 @@ export function RwaTradePanel({
           >
             {confirming
               ? signStep
-                ? t("signingStep", { current: signStep.index + 1, total: signStep.total })
-                : t("buildingOrder")
+                ? `Signing step ${signStep.index + 1} of ${signStep.total}…`
+                : "Building your order…"
               : phase === "quoting"
-                ? t("fetchingBestPrice")
+                ? "Fetching best price…"
                 : quote
-                  ? isBuy
-                    ? t("buySymbol", { symbol: asset.symbol })
-                    : t("sellSymbol", { symbol: asset.symbol })
-                  : t("enterAmount")}
+                  ? `${isBuy ? "Buy" : "Sell"} ${asset.symbol}`
+                  : "Enter an amount"}
           </button>
 
           {confirming && signStep ? (
@@ -541,23 +522,23 @@ export function RwaTradePanel({
 
           <div className="mt-[15px] flex flex-col gap-[9px] text-[12.5px] font-normal text-white/60">
             <div className="flex justify-between">
-              <span>{t("route")}</span>
+              <span>Route</span>
               <span className="text-white/85">{quote ? routeLabel(quote) : "—"}</span>
             </div>
             <div className="flex justify-between">
-              <span>{t("priceImpact")}</span>
+              <span>Price impact</span>
               <span className="text-white/85">
                 {impact != null ? `${impact.toFixed(2)}%` : "—"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>{t("minReceived")}</span>
+              <span>Min received</span>
               <span className="text-white/85">
                 {minReceive != null ? `${formatAmount(minReceive)} ${recvSymbol}` : "—"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>{t("maxSlippage")}</span>
+              <span>Max slippage</span>
               <span className="text-white/85">{(SLIPPAGE_BPS / 100).toFixed(2)}%</span>
             </div>
           </div>

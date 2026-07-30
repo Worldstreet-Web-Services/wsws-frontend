@@ -1,8 +1,6 @@
 "use client";
 
-import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { PredictionCard } from "@/components/dashboard/prediction/prediction-card";
@@ -20,7 +18,6 @@ import { toast } from "@/lib/toast";
 import type { Prediction } from "@/lib/types";
 
 export function PredictionView() {
-  const t = useTranslations("prediction");
   const [desktop, setDesktop] = useState(false);
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
   const [slip, setSlip] = useState<PolymarketPosition | null>(null);
@@ -31,21 +28,21 @@ export function PredictionView() {
   const { data: live } = usePredictions();
 
   const onRedeem = async (conditionId: string) => {
-    const toastId = toast.loading(t("toastClaiming"));
+    const toastId = toast.loading("Claiming your winnings…");
     // 1) Claim: convert the winning shares to pUSD in the prediction account.
     try {
       await redeem.redeem(conditionId);
     } catch {
-      toast.error(redeem.error ?? t("toastClaimFailed"), { id: toastId });
+      toast.error(redeem.error ?? "Could not claim your winnings.", { id: toastId });
       return;
     }
     // 2) Move the winnings out to USDC on Base. If this leg fails, the claim
     // still succeeded and the funds are safe as pUSD, recoverable via Cash out.
     try {
       await settle.settleToBase();
-      toast.success(t("toastClaimSuccess"), { id: toastId });
+      toast.success("Winnings claimed and on their way to your USDC on Base.", { id: toastId });
     } catch {
-      toast.error(t("toastClaimSettleFailed"), {
+      toast.error("Claimed to your prediction balance. Use Cash out to move it to Base.", {
         id: toastId,
       });
     }
@@ -55,13 +52,13 @@ export function PredictionView() {
 
   const onCashOut = async () => {
     if (positions.cashable == null || positions.cashable <= 0) return;
-    const toastId = toast.loading(t("toastCashingOut"));
+    const toastId = toast.loading("Cashing out…");
     try {
       await settle.settleToBase();
-      toast.success(t("toastCashOutSuccess"), { id: toastId });
+      toast.success("Cashing out. Your USDC will arrive on Base shortly.", { id: toastId });
       positions.refresh();
     } catch {
-      toast.error(settle.error ?? t("toastCashOutFailed"), { id: toastId });
+      toast.error(settle.error ?? "Couldn't cash out.", { id: toastId });
     }
   };
 
@@ -81,22 +78,22 @@ export function PredictionView() {
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <Eyebrow>{t("eyebrow")}</Eyebrow>
-      <h2 className="ws-display mt-2.5 text-[30px] tracking-[-0.02em]">{t("heading")}</h2>
+      <Eyebrow>Prediction markets</Eyebrow>
+      <h2 className="ws-display mt-2.5 text-[30px] tracking-[-0.02em]">Trade your conviction</h2>
 
       {!access.allowed ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-2 px-6 py-12 text-center">
-          <div className="ws-display text-[22px]">{t("regionBlockedTitle")}</div>
+          <div className="ws-display text-[22px]">Not available in your region</div>
           <p className="max-w-[360px] text-[13.5px] font-normal text-white/55">
-            {t("regionBlockedBody", { brand: BRAND })}
+            Prediction markets aren&apos;t offered where you are right now. The rest of World Street
+            stays fully available.
           </p>
         </div>
       ) : (
         <div className="mt-[18px]">
           {desktop ? (
             // Non-mobile: a fixed 2 rows x 4 columns grid (up to 8 markets).
-            // Generous gaps on both axes so the cards read as distinct tiles.
-            <div className="grid grid-cols-4 gap-6 lg:gap-7">
+            <div className="grid grid-cols-4 gap-3.5">
               {predictions.slice(0, 8).map((p) => (
                 <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
               ))}

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { Wordmark } from "@/components/ui/wordmark";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { InterestCard } from "@/components/interests/interest-card";
@@ -20,7 +19,6 @@ function initialSelection(): string | null {
 // Renders only after AuthGuard passes, so the initializer runs client-side
 // and can read localStorage safely.
 function InterestPicker() {
-  const t = useTranslations("interests");
   const [selected, setSelected] = useState<string | null>(initialSelection);
   const router = useRouter();
 
@@ -35,7 +33,7 @@ function InterestPicker() {
   };
 
   return (
-    <div className="bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255, 255, 255, 0.14)_0%,rgba(0,0,0,0)_55%),#000] flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(167,139,250,0.14)_0%,rgba(0,0,0,0)_55%),#000]">
       <header className="mx-auto flex w-full max-w-[1120px] items-center justify-between px-6 py-[22px] sm:px-8">
         <Wordmark />
         <div className="flex items-center gap-3.5">
@@ -43,24 +41,25 @@ function InterestPicker() {
             <span className="bg-accent h-1 w-[26px] rounded-full" />
             <span className="h-1 w-[26px] rounded-full bg-white/16" />
           </div>
-          <span className="text-[13px] font-normal text-white/55">{t("step")}</span>
+          <span className="text-[13px] font-normal text-white/55">Step 1 of 2</span>
         </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col items-center justify-center px-6 pt-6 pb-[140px]">
         <div className="max-w-[20ch] text-center">
-          <Eyebrow>{t("eyebrow")}</Eyebrow>
+          <Eyebrow>Tailor your app</Eyebrow>
           <h1 className="ws-display mt-3 text-[clamp(34px,5vw,60px)] leading-[1.02] tracking-[-0.03em]">
-            {t.rich("title", { accent: (chunks) => <span className="text-accent">{chunks}</span> })}
+            What are you here to <span className="text-accent">own?</span>
           </h1>
         </div>
         <p className="mt-4 max-w-[52ch] text-center text-base leading-[1.55] text-white/72">
-          {t("body")}
+          Pick one thing to start with. We&apos;ll shape your dashboard, watchlists and alerts
+          around it. You can change it anytime.
         </p>
 
         <div
           role="radiogroup"
-          aria-label={t("ariaChoose")}
+          aria-label="Choose an interest"
           className="mt-8 grid w-full grid-cols-1 gap-2.5 min-[430px]:grid-cols-2 sm:mt-11 sm:gap-3.5 lg:grid-cols-4"
         >
           {INTERESTS.map((it) => (
@@ -75,7 +74,7 @@ function InterestPicker() {
       </div>
 
       <ContinueBar
-        selectedTitle={chosen ? t(`${chosen.key}Title`) : null}
+        selectedTitle={chosen?.title ?? null}
         onContinue={handleContinue}
         onSkip={clearInterest}
       />

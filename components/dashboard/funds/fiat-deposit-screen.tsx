@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { BankIcon, CardIcon } from "@/components/ui/icons";
 import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
 import { ComingSoon } from "@/components/dashboard/funds/coming-soon";
@@ -17,7 +16,6 @@ interface FiatDepositScreenProps {
 // Card and bank on-ramp. The screen is real so users see what is coming, but the
 // rails are disabled until MoonPay verification clears.
 export function FiatDepositScreen({ onBack }: FiatDepositScreenProps) {
-  const t = useTranslations("fundsFlow");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Method>("card");
 
@@ -28,10 +26,14 @@ export function FiatDepositScreen({ onBack }: FiatDepositScreenProps) {
 
   return (
     <div>
-      <SheetNav title={t("fiatDepositTitle")} subtitle={t("fiatDepositSubtitle")} onBack={onBack} />
+      <SheetNav
+        title="Add with card or bank"
+        subtitle="Fund your wallet in naira. Settles to USDC."
+        onBack={onBack}
+      />
 
       <div className="ws-inset p-[15px]">
-        <div className="mb-[9px] text-xs font-normal text-white/55">{t("youPay")}</div>
+        <div className="mb-[9px] text-xs font-normal text-white/55">You pay</div>
         <div className="flex items-center justify-between gap-3">
           <input
             inputMode="numeric"
@@ -50,21 +52,24 @@ export function FiatDepositScreen({ onBack }: FiatDepositScreenProps) {
       <div className="mt-3 flex gap-2">
         <button onClick={() => setMethod("card")} className={chip(method === "card")}>
           <CardIcon size={18} />
-          {t("card")}
+          Card
         </button>
         <button onClick={() => setMethod("bank")} className={chip(method === "bank")}>
           <BankIcon size={18} />
-          {t("bankTransfer")}
+          Bank transfer
         </button>
       </div>
 
-      <ComingSoon title={t("almostReady")}>{t("fiatComingSoonBody")}</ComingSoon>
+      <ComingSoon title="Almost ready">
+        We are finishing verification with our payments partner. Card and bank funding go live
+        shortly. Deposit crypto in the meantime.
+      </ComingSoon>
 
       <button
         disabled
         className="text-ink mt-4 w-full cursor-not-allowed rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold opacity-50"
       >
-        {t("comingSoon")}
+        Coming soon
       </button>
     </div>
   );

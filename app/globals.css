@@ -1,4 +1,12 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+
+@source "../app";
+@source "../components";
+@source "../pages";
+@source "../hooks";
+@source "../lib";
+@source "../utils";
+@source "../apps/earn/src";
 
 @theme inline {
   --font-sans: var(--font-body);
@@ -7,42 +15,25 @@
      face, not a serif. */
   --font-serif: var(--font-display);
 
-  /* Ark brand is monochrome: no purple, no gold. The accent is silver, so
-     text-accent and the accent tints read as light neutral washes on black. */
-  --color-accent: #d4d4d8;
-  /* Gain and loss stay semantic (functional, not brand color). */
+  --color-accent: #a78bfa;
   --color-up: #7ce7b0;
   --color-up-ink: #04241a;
   --color-down: #f6a5a5;
   --color-down-ink: #2a0e0e;
-  /* Dark text on light (silver/white) buttons. Neutral near-black now. */
-  --color-ink: #0a0a0a;
-  /* Small directional glyphs. Neutral grey, was green. */
-  --color-arrow: #8a8a8f;
+  --color-ink: #04120e;
+  --color-arrow: #0b7a63;
   --color-panel: #0a0a0a;
   --color-sheet: #0c0c0e;
-
-  /* Designer greyscale scale (Ark COLOR palette). Neutral steps for text,
-     borders, and surfaces. Token names mirror the design file's grey/20..100. */
-  --color-grey-100: #f4f4f4;
-  --color-grey-200: #dcdcdc;
-  --color-grey-300: #bfbfbf;
-  --color-grey-400: #9b9b9b;
-  --color-grey-500: #7a7a7a;
-  --color-grey-600: #5a5a5a;
-  --color-grey-700: #3c3c3c;
-  --color-grey-800: #1c1c1c;
-  --color-grey-900: #0f0f0f;
 
   /* Semantic tokens used by shadcn-style primitives (e.g. the Switch), mapped to
      this app's dark palette so those components render without a separate token
      layer. */
-  --color-primary: #e8e8ea;
-  --color-primary-foreground: #0a0a0a;
+  --color-primary: #a78bfa;
+  --color-primary-foreground: #ffffff;
   --color-foreground: #ededed;
   --color-background: #fafafa;
   --color-input: #33333a;
-  --color-ring: #d4d4d8;
+  --color-ring: #a78bfa;
   --color-destructive: #ef4444;
 }
 
@@ -58,7 +49,7 @@ body {
 }
 
 ::selection {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(167, 139, 250, 0.35);
   color: #fff;
 }
 
@@ -87,13 +78,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Invalid-input state for ws-inset field containers. !important because
-   ws-inset sets border-color through its border shorthand and utility order
-   is not guaranteed to favour this one. */
-@utility ws-invalid {
-  border-color: rgba(246, 165, 165, 0.55) !important;
-}
-
 @utility ws-glass {
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
@@ -103,77 +87,4 @@ body {
 
 @utility tnum {
   font-variant-numeric: tabular-nums;
-}
-
-/* Casino: the hub's top-wins marquee scrolls one full copy of a duplicated
-   list, and drawn lottery balls pop in as they land. */
-@keyframes ws-ticker-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes ws-ball-in {
-  from {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Border beam: a light that travels around a card's rounded border, in the
-   MagicUI "border beam" style but monochrome to match the brand. Applied via the
-   ws-beam class. The animated custom property is registered so the angle can be
-   tweened; the conic gradient is clipped to a 1px ring with a mask so only the
-   border glows, not the fill. */
-@property --ws-beam-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes ws-beam-spin {
-  to {
-    --ws-beam-angle: 360deg;
-  }
-}
-
-.ws-beam::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--ws-beam-angle),
-    transparent 0%,
-    rgba(255, 255, 255, 0.7) 9%,
-    transparent 24%
-  );
-  /* Show only the padding ring (the border), not the interior. */
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.6;
-  animation: ws-beam-spin 6s linear infinite;
-}
-
-.ws-beam:hover::before {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ws-beam::before {
-    animation: none;
-  }
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 
 interface RwaPaginationProps {
@@ -10,7 +9,6 @@ interface RwaPaginationProps {
 }
 
 export function RwaPagination({ page, pages, onPage }: RwaPaginationProps) {
-  const t = useTranslations("rwa");
   if (pages <= 1) return null;
 
   const atStart = page <= 1;
@@ -28,11 +26,11 @@ export function RwaPagination({ page, pages, onPage }: RwaPaginationProps) {
         }`}
       >
         <ChevronLeftIcon />
-        {t("prev")}
+        Prev
       </button>
 
       <span className="tnum text-[12.5px] font-medium text-white/55">
-        {t("pageOf", { page, pages })}
+        Page {page} of {pages}
       </span>
 
       <button
@@ -44,7 +42,7 @@ export function RwaPagination({ page, pages, onPage }: RwaPaginationProps) {
             : "cursor-pointer border-white/12 bg-white/5 text-white/75 hover:text-white"
         }`}
       >
-        {t("next")}
+        Next
         <span className="rotate-180">
           <ChevronLeftIcon />
         </span>

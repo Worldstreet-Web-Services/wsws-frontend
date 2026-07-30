@@ -1,0 +1,163 @@
+import type { NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { queueAgent } from '@earn/features/agents/utils/queueAgent';
+import { type NextApiRequestWithUser } from '@earn/features/auth/types';
+import { withAuth } from '@earn/features/auth/utils/withAuth';
+import {
+  sanitizeGrantApplicationAnswers,
+  sanitizeGrantApplicationHtml,
+} from '@earn/features/grants/utils/sanitizeGrantApplicationHtml';
+import { submissionSchema } from '@earn/features/listings/utils/submissionFormSchema';
+import { validateSubmissionRequest } from '@earn/features/listings/utils/validateSubmissionRequest';
+
+export async function updateSubmission(
+  userId: string,
+  listingId: string,
+  data: any,
+  listing: any,
+  options?: { isAgent?: boolean; agentId?: string },
+) {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+  });
+
+  const validationResult = submissionSchema(
+    listing,
+    listing.minRewardAsk || 0,
+    listing.maxRewardAsk || 0,
+    user as any,
+    { isAgent: options?.isAgent },
+  ).safeParse(data);
+
+  if (!validationResult.success) {
+    throw new Error(JSON.stringify(validationResult.error.formErrors));
+  }
+
+  const validatedData = validationResult.data;
+  const submissionTelegram =
+    listing.type === 'project' ? validatedData.telegram || null : null;
+
+  if (validatedData.telegram && !user.telegram) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { telegram: validatedData.telegram },
+    });
+  }
+
+  const existingSubmission = await prisma.submission.findFirst({
+    where:
+      options?.isAgent && options.agentId
+        ? { listingId, agentId: options.agentId }
+        : { userId, listingId },
+    select: {
+      id: true,
+      status: true,
+      label: true,
+    },
+  });
+
+  if (!existingSubmission) {
+    throw new Error('Submission not found');
+  }
+  if (
+    existingSubmission.status === 'Rejected' ||
+    existingSubmission.label === 'Spam'
+  ) {
+    throw new Error('Submission cannot be edited after rejection');
+  }
+
+  const formattedData = {
+    link: validatedData.link || '',
+    tweet: validatedData.tweet || '',
+    otherInfo: sanitizeGrantApplicationHtml(validatedData.otherInfo),
+    eligibilityAnswers:
+      sanitizeGrantApplicationAnswers(validatedData.eligibilityAnswers) || [],
+    ask: validatedData.ask || 0,
+    telegram: submissionTelegram,
+  };
+
+  return prisma.submission.update({
+    where: { id: existingSubmission.id },
+    data: formattedData,
+  });
+}
+
+async function submission(req: NextApiRequestWithUser, res: NextApiResponse) {
+  const { userId } = req;
+  const { listingId, ...submissionData } = req.body;
+
+  logger.debug(`Request body: ${safeStringify(req.body)}`);
+  logger.debug(`User: ${safeStringify(userId)}`);
+
+  if (!listingId) {
+    return res.status(400).json({
+      error: 'Missing required field',
+      message: 'Listing ID is required',
+    });
+  }
+
+  try {
+    const { listing, user } = await validateSubmissionRequest(
+      userId as string,
+      listingId,
+      { skipLocationCooldown: true },
+    );
+
+    if (listing.isPro && !user.isPro) {
+      logger.warn(
+        `User ${userId} attempted to update pro listing submission without pro membership`,
+      );
+      return res.status(403).json({
+        error: 'Pro membership required',
+        message:
+          'You need a Pro membership to update submissions for this listing.',
+      });
+    }
+
+    const result = await updateSubmission(
+      userId as string,
+      listingId,
+      submissionData,
+      listing,
+    );
+
+    try {
+      if (listing.type === 'project') {
+        await queueAgent({
+          type: 'autoReviewProjectApplication',
+          id: result.id,
+        });
+      }
+    } catch (err) {
+      logger.error(
+        `Failed to queue agent job for autoReviewProjectApplication with id ${result.id}`,
+      );
+      console.log(
+        `Failed to queue agent job for autoReviewProjectApplication with id ${result.id}`,
+      );
+    }
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    logger.error(
+      `User ${userId} unable to update submission: ${safeStringify(error)}`,
+    );
+
+    let statusCode = 403;
+    try {
+      JSON.parse(error.message);
+      statusCode = 400;
+    } catch {}
+
+    return res.status(statusCode).json({
+      error: error.message,
+      message: `Unable to update submission: ${error.message}`,
+    });
+  }
+}
+
+export default withAuth(submission);

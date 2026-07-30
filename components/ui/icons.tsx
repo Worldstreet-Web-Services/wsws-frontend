@@ -258,14 +258,17 @@ export function LockIcon({ size = 13, className }: IconProps) {
   );
 }
 
-export function DiceIcon({ size = 20, className }: IconProps) {
+export function BriefcaseIcon({ size = 18, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="4" y="4" width="16" height="16" rx="4" stroke={stroke} strokeWidth="1.8" />
-      <circle cx="9" cy="9" r="1.3" fill={stroke} />
-      <circle cx="15" cy="9" r="1.3" fill={stroke} />
-      <circle cx="9" cy="15" r="1.3" fill={stroke} />
-      <circle cx="15" cy="15" r="1.3" fill={stroke} />
+      <rect x="4" y="7" width="16" height="12" rx="2.5" stroke={stroke} strokeWidth="1.8" />
+      <path
+        d="M9 7V5.8A1.8 1.8 0 0110.8 4h2.4A1.8 1.8 0 0115 5.8V7"
+        stroke={stroke}
+        strokeWidth="1.8"
+      />
+      <path d="M4 12h16" stroke={stroke} strokeWidth="1.8" />
+      <path d="M10 12v1.5h4V12" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -412,24 +415,39 @@ export function CollectiblesIcon({ size = 22, className }: IconProps) {
   );
 }
 
-export function MicIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="9" y="3" width="6" height="11" rx="3" stroke={stroke} strokeWidth="1.7" />
-      <path
-        d="M5 11a7 7 0 0 0 14 0M12 18v3"
-        stroke={stroke}
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 export function PlayIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
       <polygon points="6 4 20 12 6 20 6 4" />
+    </svg>
+  );
+}
+
+// Nav icon for the Casino section: a single die.
+export function DiceIcon({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" stroke={stroke} strokeWidth="1.8" />
+      <circle cx="8.5" cy="8.5" r="1.15" fill={stroke} />
+      <circle cx="15.5" cy="8.5" r="1.15" fill={stroke} />
+      <circle cx="12" cy="12" r="1.15" fill={stroke} />
+      <circle cx="8.5" cy="15.5" r="1.15" fill={stroke} />
+      <circle cx="15.5" cy="15.5" r="1.15" fill={stroke} />
+    </svg>
+  );
+}
+
+// Game-tile icon for chess: a knight in silhouette.
+export function ChessKnightIcon({ size = 24, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M8 20h9M9 20c0-3 .5-4 2-5.5-3 .5-4.5-1-5-3 1 .3 1.7 0 2.2-.6l.8-2.4c.6-1.8 2.1-3 4-3.4l-.7 2 2.2-.6c1.9 1 3 3 3 5.4 0 3.2-1.3 5.7-3.5 8.1"
+        stroke={stroke}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

@@ -1,0 +1,149 @@
+import type { GetServerSideProps } from 'next';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+
+import type { SubmissionWithUser } from '@earn/interface/submission';
+import { fetchEarnServerJson } from '@earn/lib/earn-fetch';
+import { sortRank } from '@earn/utils/rank';
+import { getURL } from '@earn/utils/validUrl';
+
+import { BONUS_REWARD_POSITION } from '@earn/features/listing-builder/constants';
+import { type Listing, type Rewards } from '@earn/features/listings/types';
+import { getListingTypeLabel } from '@earn/features/listings/utils/status';
+
+interface BountyDetailsProps {
+  bounty: Listing | null;
+  url: string;
+  submissions: SubmissionWithUser[];
+}
+
+function WinnerBounty({
+  bounty: initialBounty,
+  url,
+  submissions,
+}: BountyDetailsProps) {
+  const [bounty] = useState<typeof initialBounty>(initialBounty);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (bounty?.slug) {
+      router.push(`${getURL()}earn/listing/${bounty.slug}/`);
+    }
+  }, [bounty?.slug, router]);
+
+  const image = new URL(`${url}api/dynamic-og/winners/`);
+  image.searchParams.set('id', bounty?.id || '');
+  image.searchParams.set('rewards', JSON.stringify(bounty?.rewards));
+  image.searchParams.set('token', bounty?.token || '');
+  image.searchParams.set('submissions', JSON.stringify(submissions));
+
+  return (
+    <Head>
+      <title>{`${
+        initialBounty?.title || 'Apply'
+      } by ${initialBounty?.sponsor?.name} | TSION Earn Listing`}</title>
+      <meta
+        name="description"
+        content={`${getListingTypeLabel(initialBounty?.type ?? 'Bounty')} on TSION Earn | ${
+          initialBounty?.sponsor?.name
+        } is seeking freelancers and builders ${
+          initialBounty?.title
+            ? `to work on ${initialBounty.title}`
+            : '| Apply Here'
+        }`}
+      />
+      <meta property="og:image" content={`${image.toString()}`} />
+      <meta
+        property="og:title"
+        content={`${initialBounty?.title || 'Bounty'} | TSION Earn`}
+      />
+      <meta
+        name="twitter:title"
+        content={`${initialBounty?.title || 'Bounty'} | TSION Earn`}
+      />
+      <meta name="twitter:site" content="@TSIONGroup" />
+      <meta name="twitter:creator" content="@TSIONGroup" />
+      <meta name="twitter:image" content={`${image.toString()}`} />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="675" />
+      <meta
+        property="og:image:alt"
+        content={`Winners announced for ${initialBounty?.title || 'Listing'} by ${initialBounty?.sponsor?.name || 'Sponsor'} on TSION Earn`}
+      />
+      <meta property="og:type" content="website" />
+      <meta name="robots" content="noindex, nofollow" />
+      <meta name="googlebot" content="noindex, nofollow" />
+      <meta charSet="UTF-8" key="charset" />
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+        key="viewport"
+      />
+    </Head>
+  );
+}
+
+interface StrippedSubmission {
+  id: string;
+  winnerPosition: keyof Rewards | undefined;
+  user: {
+    id: string | undefined;
+    firstName: string | undefined;
+    lastName: string | undefined;
+    photo: string | undefined;
+  };
+}
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { slug } = context.query;
+  const { req } = context;
+  const protocol = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers.host;
+  const fullUrl = `${protocol}://${host}/`;
+
+  let bountyData;
+  const submissions: StrippedSubmission[] = [];
+  try {
+    bountyData = await fetchEarnServerJson<Listing | null>(
+      `/api/listings/details/${String(slug)}`,
+    );
+
+    let data = await fetchEarnServerJson<SubmissionWithUser[]>(
+      `/api/listings/${String(bountyData?.id)}/winners`,
+    );
+    data = data.filter((d) => d.winnerPosition !== BONUS_REWARD_POSITION);
+    const winners = sortRank(
+      data.map((submission) => submission.winnerPosition || NaN),
+    );
+    const sortedSubmissions = winners.map((position) =>
+      data.find((d: SubmissionWithUser) => d.winnerPosition === position),
+    ) as SubmissionWithUser[];
+    sortedSubmissions.forEach((s) => {
+      submissions.push({
+        id: s.id,
+        winnerPosition: s.winnerPosition,
+        user: {
+          id: s.user.id,
+          firstName: s.user.firstName,
+          lastName: s.user.lastName,
+          photo: s.user.photo,
+        },
+      });
+    });
+  } catch (e) {
+    console.error(e);
+    bountyData = null;
+  }
+
+  return {
+    props: {
+      bounty: bountyData,
+      url: fullUrl,
+      submissions,
+    },
+  };
+};
+
+export default WinnerBounty;

@@ -1,4 +1,3 @@
-import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/ui/reveal";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import {
@@ -33,32 +32,31 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 export function MarketsBento() {
-  const t = useTranslations("landing.bento");
   return (
     <section id="markets" className="relative z-[2] bg-black px-6 pt-[110px] pb-[60px]">
       <div className="mx-auto max-w-[1120px]">
         <Reveal className="mb-11 max-w-[40ch]">
-          <Eyebrow>{t("eyebrow")}</Eyebrow>
+          <Eyebrow>Everything you can own</Eyebrow>
           <h2 className="ws-display mt-3.5 text-[clamp(36px,5.5vw,68px)] leading-[1.02] tracking-[-0.03em]">
-            {t("title")}
+            One app, every market
           </h2>
         </Reveal>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
           <Reveal className="relative min-h-[260px] overflow-hidden rounded-[24px] border border-white/12 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-[14px] sm:p-[34px] md:col-span-4">
             <div className="absolute top-[26px] right-7 hidden max-w-[70%] flex-wrap justify-end gap-[7px] sm:flex">
-              <Chip>{t("chipFractional")}</Chip>
+              <Chip>Fractional</Chip>
               <Chip>24/7</Chip>
-              <Chip>{t("chipNoMin")}</Chip>
+              <Chip>No minimums</Chip>
             </div>
             <IconTile>
               <ChartBarsIcon size={22} />
             </IconTile>
             <h3 className="ws-display mt-[70px] max-w-[20ch] text-[clamp(28px,3.4vw,40px)] leading-[1.04] tracking-[-0.02em]">
-              {t("stocksTitle")}
+              Stocks, gold &amp; treasuries
             </h3>
             <p className="mt-3.5 max-w-[44ch] text-[15px] leading-[1.55] font-normal text-white/82">
-              {t("stocksBody")}
+              Own a piece of Apple, real gold, or government bonds, starting with a few dollars.
             </p>
           </Reveal>
 
@@ -71,13 +69,13 @@ export function MarketsBento() {
             </IconTile>
             <div className="mt-auto pt-6">
               <div className="mb-3.5 flex flex-wrap gap-[7px]">
-                <Chip>{t("chipLeverage")}</Chip>
-                <Chip>{t("chipAdvanced")}</Chip>
-                <Chip>{t("chipRisk")}</Chip>
+                <Chip>Leverage</Chip>
+                <Chip>Advanced</Chip>
+                <Chip>Higher risk</Chip>
               </div>
-              <h3 className="ws-display text-[28px] tracking-[-0.02em]">{t("levTitle")}</h3>
+              <h3 className="ws-display text-[28px] tracking-[-0.02em]">Leveraged trading</h3>
               <p className="mt-2.5 text-[14.5px] leading-[1.55] font-normal text-white/82">
-                {t("levBody")}
+                Bet on prices rising or falling, with your gains or losses multiplied.
               </p>
             </div>
           </Reveal>
@@ -87,9 +85,10 @@ export function MarketsBento() {
               <BulbIcon size={22} />
             </IconTile>
             <div className="mt-auto pt-6">
-              <h3 className="ws-display text-[28px] tracking-[-0.02em]">{t("eventsTitle")}</h3>
+              <h3 className="ws-display text-[28px] tracking-[-0.02em]">Trade on Events</h3>
               <p className="mt-2.5 max-w-[40ch] text-[14.5px] leading-[1.55] font-normal text-white/82">
-                {t("eventsBody")}
+                Put money on what you think will happen, in politics, sports, or world events. Get
+                paid the moment the result lands.
               </p>
             </div>
           </Reveal>
@@ -102,9 +101,9 @@ export function MarketsBento() {
               <SwapIcon size={22} />
             </IconTile>
             <div className="mt-auto pt-6">
-              <h3 className="ws-display text-[28px] tracking-[-0.02em]">{t("gamesTitle")}</h3>
+              <h3 className="ws-display text-[28px] tracking-[-0.02em]">Games</h3>
               <p className="mt-2.5 max-w-[40ch] text-[14.5px] leading-[1.55] font-normal text-white/82">
-                {t("gamesBody")}
+                Play different games, grow your money, cash out whenever you choose.
               </p>
             </div>
           </Reveal>
@@ -115,13 +114,13 @@ export function MarketsBento() {
             </IconTile>
             <div className="mt-auto pt-6">
               <h3 className="ws-display text-[26px] tracking-[-0.02em]">
-                {t("earnTitle")}{" "}
+                Auto-earn{" "}
                 <span className="font-sans text-xs font-normal text-white/55 not-italic">
-                  · {t("soon")}
+                  · soon
                 </span>
               </h3>
               <p className="mt-2.5 max-w-[40ch] text-[14.5px] leading-[1.55] font-normal text-white/82">
-                {t("earnBody")}
+                Put idle balances to work, in strategies reviewed by professionals.
               </p>
             </div>
           </Reveal>
@@ -135,13 +134,13 @@ export function MarketsBento() {
             </IconTile>
             <div className="mt-auto pt-6">
               <h3 className="ws-display text-[26px] tracking-[-0.02em]">
-                {t("nftTitle")}{" "}
+                Collectibles (NFTs){" "}
                 <span className="font-sans text-xs font-normal text-white/55 not-italic">
-                  · {t("soon")}
+                  · soon
                 </span>
               </h3>
               <p className="mt-2.5 max-w-[40ch] text-[14.5px] leading-[1.55] font-normal text-white/82">
-                {t("nftBody")}
+                Collect and trade digital items, right alongside the rest of your portfolio.
               </p>
             </div>
           </Reveal>

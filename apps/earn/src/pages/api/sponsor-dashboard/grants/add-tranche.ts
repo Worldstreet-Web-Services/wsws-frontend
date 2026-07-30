@@ -1,0 +1,109 @@
+import type { NextApiResponse } from 'next';
+
+import logger from '@earn/lib/logger';
+import { prisma } from '@earn/prisma';
+import { safeStringify } from '@earn/utils/safeStringify';
+
+import { type NextApiRequestWithSponsor } from '@earn/features/auth/types';
+import { checkGrantSponsorAuth } from '@earn/features/auth/utils/checkGrantSponsorAuth';
+import { withSponsorAuth } from '@earn/features/auth/utils/withSponsorAuth';
+import { queueEmail } from '@earn/features/emails/utils/queueEmail';
+
+async function handler(req: NextApiRequestWithSponsor, res: NextApiResponse) {
+  const { id, trancheAmount, txId = '' } = req.body;
+  const parsedTrancheAmount = parseInt(trancheAmount, 10);
+
+  const userId = req.userId;
+  const userSponsorId = req.userSponsorId;
+
+  logger.debug(`Request body: ${safeStringify(req.body)}`);
+
+  if (!id || !trancheAmount) {
+    logger.warn('Missing required body parameters: id or trancheAmount');
+    return res.status(400).json({
+      error: 'Missing required body parameters: id or trancheAmount',
+    });
+  }
+
+  try {
+    logger.info(`Fetching grant application with ID: ${id}`);
+    const currentApplication = await prisma.grantApplication.findUnique({
+      where: { id },
+      include: { grant: true },
+    });
+
+    if (!currentApplication) {
+      logger.info(`Grant application not found with ID: ${id}`);
+      return res.status(404).json({ error: 'Grant application not found' });
+    }
+
+    const { error } = await checkGrantSponsorAuth(
+      userSponsorId,
+      currentApplication.grantId,
+    );
+
+    if (error) {
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    let updatedPaymentDetails = currentApplication.paymentDetails || [];
+    if (!Array.isArray(updatedPaymentDetails)) {
+      updatedPaymentDetails = [];
+    }
+
+    updatedPaymentDetails.push({
+      txId: txId || null,
+      tranche: currentApplication.totalTranches + 1,
+      amount: parsedTrancheAmount,
+    });
+
+    const newTotalPaid = currentApplication.totalPaid + parsedTrancheAmount;
+    const isFullyPaid = newTotalPaid >= currentApplication.approvedAmount;
+
+    logger.info('Updating payment details and grant information');
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedGrantApplication = await tx.grantApplication.update({
+        where: { id },
+        data: {
+          totalPaid: {
+            increment: parsedTrancheAmount,
+          },
+          totalTranches: {
+            increment: 1,
+          },
+          paymentDetails: updatedPaymentDetails as any,
+          ...(isFullyPaid && { applicationStatus: 'Completed' }),
+        },
+        include: {
+          user: true,
+          grant: true,
+        },
+      });
+
+      return updatedGrantApplication;
+    });
+
+    await queueEmail({
+      type: 'grantPaymentReceived',
+      id,
+      triggeredBy: userId,
+      userId: currentApplication.userId,
+    });
+
+    logger.info(
+      `Payment details updated successfully for grant application ID: ${id}`,
+    );
+    return res.status(200).json(result);
+  } catch (error: any) {
+    logger.error(
+      `Error occurred while updating payment for grant application ID: ${id}`,
+      safeStringify(error),
+    );
+    return res.status(400).json({
+      error: error.message,
+      message: `Error occurred while updating payment of a submission ${id}.`,
+    });
+  }
+}
+
+export default withSponsorAuth(handler);

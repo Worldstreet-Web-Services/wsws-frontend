@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useBet } from "@/hooks/use-bet";
 import { usePredictionConsent } from "@/hooks/use-prediction-consent";
@@ -22,7 +21,6 @@ interface BetModalProps {
 // market order. Onboarding (Deposit Wallet + approvals) runs transparently on
 // the first bet and is surfaced as the button label.
 export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps) {
-  const t = useTranslations("prediction");
   const { accepted, accept } = usePredictionConsent();
   const { placeBet, phase, error, sessionStatus, usdcTotal, portfolioLoading } = useBet();
   const [amount, setAmount] = useState(10);
@@ -42,41 +40,34 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
   // account setup, then moving funds from Base USDC, then placing.
   const actionLabel =
     sessionStatus === "deploying"
-      ? t("settingUpAccount")
+      ? "Setting up your account…"
       : sessionStatus === "approving"
-        ? t("enablingTrading")
+        ? "Enabling trading…"
         : sessionStatus === "connecting"
-          ? t("connecting")
+          ? "Connecting…"
           : phase === "funding"
-            ? t("addingFunds")
+            ? "Adding funds from USDC…"
             : phase === "settling"
-              ? t("waitingForFunds")
+              ? "Waiting for funds to arrive…"
               : phase === "approving"
-                ? t("enablingTrading")
+                ? "Enabling trading…"
                 : phase === "placing"
-                  ? t("placingBet")
-                  : side === "yes"
-                    ? t("placeBetYes", { amount: `$${amount}` })
-                    : t("placeBetNo", { amount: `$${amount}` });
+                  ? "Placing your bet…"
+                  : `Place $${amount} on ${side === "yes" ? "Yes" : "No"}`;
 
   // One click: place, and if the account is short, move the stake from Base
   // USDC and retry until it lands.
   const submit = async () => {
     if (!tokenId) return;
-    const toastId = toast.loading(t("placingBet"));
+    const toastId = toast.loading("Placing your bet…");
     try {
       await placeBet({ tokenId, amountUsd: amount });
-      toast.success(
-        side === "yes"
-          ? t("betPlacedYes", { amount: `$${amount}` })
-          : t("betPlacedNo", { amount: `$${amount}` }),
-        { id: toastId }
-      );
+      toast.success(`Bet placed: $${amount} on ${side === "yes" ? "Yes" : "No"}`, { id: toastId });
       onPlaced?.();
       onClose();
     } catch {
       // Error is surfaced inline below; keep the modal open to retry.
-      toast.error(t("betFailed"), { id: toastId });
+      toast.error("Couldn't place your bet. Try again.", { id: toastId });
     }
   };
 
@@ -85,26 +76,28 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
       <div className="p-5 sm:p-6">
         {!accepted ? (
           <div className="flex flex-col gap-3">
-            <div className="ws-display text-[22px]">{t("beforeYouTrade")}</div>
+            <div className="ws-display text-[22px]">Before you trade</div>
             <p className="text-[13.5px] leading-[1.55] font-normal text-white/70">
-              {t("consentBody")}
+              Prediction markets involve real money and real risk. Prices move, outcomes can go
+              against you, and you can lose the full amount you stake. This is speculative trading,
+              not investing, and it may be treated as gambling where you live.
             </p>
             <ul className="flex flex-col gap-1.5 text-[12.5px] font-normal text-white/55">
-              <li>• {t("consentPointStake")}</li>
-              <li>• {t("consentPointRegion")}</li>
-              <li>• {t("consentPointFinal")}</li>
+              <li>• Only stake what you can afford to lose.</li>
+              <li>• Markets settle on Polymarket; availability depends on your region.</li>
+              <li>• Funds move on-chain and trades are final once matched.</li>
             </ul>
             <button
               onClick={accept}
               className="text-ink mt-1 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90"
             >
-              {t("acceptRisks")}
+              I understand the risks
             </button>
             <button
               onClick={onClose}
               className="w-full cursor-pointer rounded-[14px] p-2.5 font-sans text-[13px] font-medium text-white/60 hover:text-white"
             >
-              {t("notNow")}
+              Not now
             </button>
           </div>
         ) : (
@@ -117,18 +110,19 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
             </div>
 
             <div className="ws-inset flex items-center justify-between p-3.5">
-              <span className="text-[13px] font-normal text-white/60">{t("youAreBuying")}</span>
+              <span className="text-[13px] font-normal text-white/60">You&apos;re buying</span>
               <span
                 className="font-sans text-sm font-semibold"
                 style={{ color: side === "yes" ? "#7CE7B0" : "#F6A5A5" }}
               >
-                {side === "yes" ? t("yesLabel") : t("noLabel")} · {priceCents}
+                {side === "yes" ? "Yes" : "No"} · {priceCents}
               </span>
             </div>
 
             {!tradable ? (
               <div className="border-down/25 bg-down/10 rounded-[14px] border px-4 py-3 text-[12.5px] font-normal text-white/70">
-                {t("notTradable")}
+                This market isn&apos;t tradable yet. Live Polymarket markets can be traded here
+                soon.
               </div>
             ) : (
               <>
@@ -149,7 +143,7 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
                 </div>
 
                 <div className="ws-inset flex items-center justify-between p-3.5 text-[13px] font-normal">
-                  <span className="text-white/55">{t("payoutIfRight")}</span>
+                  <span className="text-white/55">Payout if right</span>
                   <span className="tnum text-accent font-medium">
                     ${predictionPayout(amount, priceCents)}
                   </span>
@@ -166,10 +160,9 @@ export function BetModal({ prediction, side, onClose, onPlaced }: BetModalProps)
                 </button>
 
                 <p className="text-center text-xs font-normal text-white/45">
-                  {!portfolioLoading
-                    ? `${t("usdcOnBase", { amount: `$${usdcTotal.toFixed(2)}` })} `
-                    : ""}
-                  {t("betFundingNote")}
+                  {!portfolioLoading ? `USDC on Base: $${usdcTotal.toFixed(2)}. ` : ""}Placing a bet
+                  moves what it needs from your Base USDC and settles in pUSD. No network fee to
+                  trade.
                 </p>
               </>
             )}

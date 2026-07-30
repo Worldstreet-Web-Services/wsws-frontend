@@ -164,7 +164,11 @@ export function useVividSocket(): UseVividSocket {
           finish(() => reject(new Error("Voice connection failed")));
         };
         ws.onclose = (e) => {
-          console.log("[voice] ws.onclose", { code: e.code, reason: e.reason, wasClean: e.wasClean });
+          console.log("[voice] ws.onclose", {
+            code: e.code,
+            reason: e.reason,
+            wasClean: e.wasClean,
+          });
           finish(() => reject(new Error("Voice connection closed")));
         };
       })();

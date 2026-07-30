@@ -320,7 +320,13 @@ export function SpectateSection() {
           <div>
             <div className="mb-1.5 text-[11px] font-normal text-white/50">Odds movement</div>
             <svg viewBox="0 0 240 56" className="block h-[56px] w-full">
-              <polyline points={sparkPoints} fill="none" stroke="#d4d4d8" strokeWidth="2" />
+              <polyline
+                points={sparkPoints}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-accent"
+              />
               <circle cx={blunderX} cy={blunderY} r="3.5" className="fill-down" />
             </svg>
           </div>

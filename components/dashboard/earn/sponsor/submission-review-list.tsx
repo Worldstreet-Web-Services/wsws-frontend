@@ -15,13 +15,7 @@ const STATUS_STYLE: Record<Submission["status"], string> = {
   pending: "border-white/10 text-white/55",
 };
 
-export function SubmissionReviewList({
-  slug,
-  rewards,
-}: {
-  slug: string;
-  rewards: RewardTier[];
-}) {
+export function SubmissionReviewList({ slug, rewards }: { slug: string; rewards: RewardTier[] }) {
   const { submissions, isLoading, error } = useSponsorSubmissions(slug);
   const reject = useRejectSubmissions(slug);
   const [rejecting, setRejecting] = useState<string | null>(null);

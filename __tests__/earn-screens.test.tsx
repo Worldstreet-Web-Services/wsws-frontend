@@ -218,7 +218,9 @@ describe("listing detail", () => {
   it("shows the listing and offers to submit", async () => {
     render(<ListingDetailSection slug="test-listing" />, { wrapper });
 
-    expect(await screen.findByRole("heading", { name: "Build a trading dashboard" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Build a trading dashboard" })
+    ).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Submit work" })).toBeEnabled();
   });
 

@@ -20,11 +20,7 @@ function ListingFromParams({ slug }: { slug: string }) {
   return <SponsorListingSection slug={slug} type={type} />;
 }
 
-export default function EarnSponsorListingPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default function EarnSponsorListingPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
 
   return (

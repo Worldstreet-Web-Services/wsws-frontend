@@ -79,7 +79,9 @@ export function ListingFormFields({
         required
         value={state.slug}
         error={errors.slug}
-        hint={slugLocked ? "Fixed once a listing is created." : "Lowercase words joined by hyphens."}
+        hint={
+          slugLocked ? "Fixed once a listing is created." : "Lowercase words joined by hyphens."
+        }
         onChange={(value) => {
           if (!slugLocked) set("slug", value);
         }}
@@ -102,11 +104,7 @@ export function ListingFormFields({
           options={TYPES}
           onChange={(value) => set("type", value)}
         />
-        <TextField
-          label="Region"
-          value={state.region}
-          onChange={(value) => set("region", value)}
-        />
+        <TextField label="Region" value={state.region} onChange={(value) => set("region", value)} />
       </div>
 
       <TextField

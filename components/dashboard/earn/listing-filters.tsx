@@ -87,9 +87,7 @@ export function ListingFilters({
           <select
             id="earn-sort"
             value={query.sortBy}
-            onChange={(event) =>
-              onChange({ ...query, sortBy: event.target.value as BrowseSort })
-            }
+            onChange={(event) => onChange({ ...query, sortBy: event.target.value as BrowseSort })}
             className="ws-inset cursor-pointer rounded-full px-3 py-1.5 font-sans text-[12.5px] font-medium text-white outline-none"
           >
             {SORTS.map((sort) => (

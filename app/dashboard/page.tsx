@@ -59,10 +59,7 @@ export default function DashboardPage() {
   const [modal, setModal] = useState<DashboardModal>(null);
   const tSections = useTranslations("sections");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
-  const scrollSectionIds = useMemo(
-    () => nav.map((n) => n.id).filter(isScrollSection),
-    [nav]
-  );
+  const scrollSectionIds = useMemo(() => nav.map((n) => n.id).filter(isScrollSection), [nav]);
   const activeSection = useScrollSpy(scrollSectionIds);
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open

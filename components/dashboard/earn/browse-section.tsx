@@ -31,8 +31,8 @@ export function BrowseSection() {
             Earn
           </h1>
           <p className="mt-1.5 max-w-[52ch] font-sans text-[13.5px] font-normal text-white/55">
-            Paid work posted by companies building on Worldstreet. Pick something,
-            ship it, get paid.
+            Paid work posted by companies building on Worldstreet. Pick something, ship it, get
+            paid.
           </p>
         </div>
 

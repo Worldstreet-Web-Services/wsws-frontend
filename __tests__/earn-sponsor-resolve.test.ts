@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  clearSponsorCache,
-  forgetSponsor,
-  resolveSponsorId,
-} from "@/lib/earn/sponsor-identity";
+import { clearSponsorCache, forgetSponsor, resolveSponsorId } from "@/lib/earn/sponsor-identity";
 
 // The earn service acts on whatever sponsor id it is handed, so this resolution
 // is the only thing stopping one user from editing another company's listings.

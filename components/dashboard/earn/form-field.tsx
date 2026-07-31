@@ -169,7 +169,11 @@ function Field({
         <span className="font-sans text-[11.5px] font-normal text-white/40">{hint}</span>
       ) : null}
       {error ? (
-        <span id={`${id}-error`} role="alert" className="text-down font-sans text-[12px] font-normal">
+        <span
+          id={`${id}-error`}
+          role="alert"
+          className="text-down font-sans text-[12px] font-normal"
+        >
           {error}
         </span>
       ) : null}

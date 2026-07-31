@@ -13,9 +13,7 @@ export function SubmissionStatus({ check }: { check: SubmissionCheck }) {
 
   return (
     <div className="ws-inset mt-5 px-5 py-4">
-      <div
-        className={`ws-display text-[15px] ${tone === "win" ? "text-up" : "text-white/85"}`}
-      >
+      <div className={`ws-display text-[15px] ${tone === "win" ? "text-up" : "text-white/85"}`}>
         {headline}
       </div>
       <div className="mt-1 font-sans text-[12.5px] font-normal text-white/50">{detail}</div>

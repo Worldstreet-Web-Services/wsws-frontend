@@ -63,8 +63,8 @@ function NoSponsorPrompt() {
       <div className="ws-card rounded-[20px] px-6 py-10 text-center">
         <h1 className="ws-display text-[22px] text-white">Post work, get it built</h1>
         <p className="mx-auto mt-2 max-w-[46ch] font-sans text-[13px] font-normal text-white/55">
-          Set up a company page and you can publish bounties, review what comes in,
-          and pay the people who ship.
+          Set up a company page and you can publish bounties, review what comes in, and pay the
+          people who ship.
         </p>
         <Link
           href="/earn/sponsor/new"
@@ -77,7 +77,13 @@ function NoSponsorPrompt() {
   );
 }
 
-function SponsorListings({ sponsorSlug, sponsorName }: { sponsorSlug: string; sponsorName: string }) {
+function SponsorListings({
+  sponsorSlug,
+  sponsorName,
+}: {
+  sponsorSlug: string;
+  sponsorName: string;
+}) {
   const [status, setStatus] = useState<ListingStatus>("open");
   const { allowed } = useIsCreateAllowed();
 
@@ -145,9 +151,7 @@ function SponsorListings({ sponsorSlug, sponsorName }: { sponsorSlug: string; sp
         ) : isLoading ? (
           <AsyncLoading label="Loading your listings" rows={3} />
         ) : mine.length === 0 ? (
-          <AsyncEmpty>
-            Nothing here yet. Drafts stay hidden until you publish them.
-          </AsyncEmpty>
+          <AsyncEmpty>Nothing here yet. Drafts stay hidden until you publish them.</AsyncEmpty>
         ) : (
           <ul className="flex flex-col gap-2.5">
             {mine.map((listing) => {

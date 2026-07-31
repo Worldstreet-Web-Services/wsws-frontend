@@ -51,9 +51,7 @@ export function ListingEditorSection({ existing, initialState }: ListingEditorPr
 
     const id = toast.loading("Saving your draft…");
     try {
-      const listing = await saveDraft.mutateAsync(
-        buildListingPayload(state, draftId ?? undefined)
-      );
+      const listing = await saveDraft.mutateAsync(buildListingPayload(state, draftId ?? undefined));
       setDraftId(listing.id);
       toast.success("Draft saved.", { id });
     } catch (error) {
@@ -73,9 +71,7 @@ export function ListingEditorSection({ existing, initialState }: ListingEditorPr
     try {
       // Save first so publish acts on what is on screen, not on whatever was
       // last written.
-      const listing = await saveDraft.mutateAsync(
-        buildListingPayload(state, draftId ?? undefined)
-      );
+      const listing = await saveDraft.mutateAsync(buildListingPayload(state, draftId ?? undefined));
       setDraftId(listing.id);
       await publish.mutateAsync(listing.id);
       toast.success("Your listing is live.", { id });
@@ -115,11 +111,7 @@ export function ListingEditorSection({ existing, initialState }: ListingEditorPr
           : "Save a draft as you go. Nothing is public until you publish."}
       </p>
 
-      <form
-        onSubmit={(event) => event.preventDefault()}
-        className="mt-7"
-        aria-busy={busy}
-      >
+      <form onSubmit={(event) => event.preventDefault()} className="mt-7" aria-busy={busy}>
         <ListingFormFields
           state={state}
           errors={errors}

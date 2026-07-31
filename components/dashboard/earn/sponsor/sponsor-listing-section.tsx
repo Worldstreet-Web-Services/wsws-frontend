@@ -14,13 +14,7 @@ const PAGE = "mx-auto w-full max-w-[900px] px-4 pt-6 pb-20 sm:px-6";
 
 const UNCONFIGURED_DETAIL = "This goes live once the earn service is switched on.";
 
-export function SponsorListingSection({
-  slug,
-  type,
-}: {
-  slug: string | null;
-  type: ListingType;
-}) {
+export function SponsorListingSection({ slug, type }: { slug: string | null; type: ListingType }) {
   const { listing, isLoading, error } = useSponsorListing(slug, type);
   const [editing, setEditing] = useState(false);
 

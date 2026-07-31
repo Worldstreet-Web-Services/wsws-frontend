@@ -77,9 +77,7 @@ export function ListingDetailSection({ slug }: { slug: string | null }) {
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {listing.skills.flatMap((group) =>
                   group.subskills.length
-                    ? group.subskills.map((sub) => (
-                        <Tag key={`${group.skill}-${sub}`}>{sub}</Tag>
-                      ))
+                    ? group.subskills.map((sub) => <Tag key={`${group.skill}-${sub}`}>{sub}</Tag>)
                     : [<Tag key={group.skill}>{group.skill}</Tag>]
                 )}
               </div>

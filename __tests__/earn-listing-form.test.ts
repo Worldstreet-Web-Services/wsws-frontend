@@ -6,7 +6,13 @@ import {
   validateListingForm,
   type ListingFormState,
 } from "@/lib/earn/listing-form";
-import { formatReward, parseRewardInput, rewardFrom, rewardToApi, sumRewards } from "@/lib/earn/reward";
+import {
+  formatReward,
+  parseRewardInput,
+  rewardFrom,
+  rewardToApi,
+  sumRewards,
+} from "@/lib/earn/reward";
 
 // This is the money and the dates. A listing that publishes with a reward split
 // that does not add up pays somebody the wrong amount, and the service rejects a
@@ -152,12 +158,15 @@ describe("required fields", () => {
   });
 
   it("rejects a malformed slug", () => {
-    expect(validateListingForm(form({ slug: "Test Listing" }), { forPublish: false }).slug)
-      .toBeDefined();
-    expect(validateListingForm(form({ slug: "test--listing" }), { forPublish: false }).slug)
-      .toBeDefined();
-    expect(validateListingForm(form({ slug: "test-listing-2" }), { forPublish: false }).slug)
-      .toBeUndefined();
+    expect(
+      validateListingForm(form({ slug: "Test Listing" }), { forPublish: false }).slug
+    ).toBeDefined();
+    expect(
+      validateListingForm(form({ slug: "test--listing" }), { forPublish: false }).slug
+    ).toBeDefined();
+    expect(
+      validateListingForm(form({ slug: "test-listing-2" }), { forPublish: false }).slug
+    ).toBeUndefined();
   });
 });
 

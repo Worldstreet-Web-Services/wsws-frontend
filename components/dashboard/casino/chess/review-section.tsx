@@ -130,7 +130,12 @@ export function ReviewSection({ matchId }: { matchId: string | null }) {
       <ChessBoard board={board} orientation={orientation} lastMove={lastMove} />
 
       <div className="mt-3 flex items-center justify-center gap-2">
-        <button className={navButton} onClick={() => go(0)} disabled={current === 0} aria-label="Start">
+        <button
+          className={navButton}
+          onClick={() => go(0)}
+          disabled={current === 0}
+          aria-label="Start"
+        >
           «
         </button>
         <button
@@ -168,9 +173,7 @@ export function ReviewSection({ matchId }: { matchId: string | null }) {
             const isActive = current === i + 1;
             return (
               <span key={m.ply}>
-                {i % 2 === 0 ? (
-                  <span className="text-white/35">{`${i / 2 + 1}. `}</span>
-                ) : null}
+                {i % 2 === 0 ? <span className="text-white/35">{`${i / 2 + 1}. `}</span> : null}
                 <button
                   onClick={() => go(i + 1)}
                   className={`tnum mr-1.5 cursor-pointer rounded px-1 transition-colors ${

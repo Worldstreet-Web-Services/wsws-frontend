@@ -65,10 +65,13 @@ export function usePerpFormAutostage({
   // on them — the price stream re-renders every tick, and depending on a fresh
   // submit closure would perpetually clear & reschedule the fire timeout so it
   // never completed. The scheduler below reads these refs when the timer fires.
+  // Synced in an effect (never during render) so React can track them correctly.
   const submitRef = useRef(submit);
-  submitRef.current = submit;
   const canSubmitRef = useRef(canSubmit);
-  canSubmitRef.current = canSubmit;
+  useEffect(() => {
+    submitRef.current = submit;
+    canSubmitRef.current = canSubmit;
+  });
 
   // Phase 1 — stage the form state from the prefill.
   useEffect(() => {
@@ -99,28 +102,16 @@ export function usePerpFormAutostage({
   // from price ticks can't re-enter and reset the timer. The timeout reads the
   // latest submit/canSubmit from refs, and re-checks validity at fire time.
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[perp-autostage] phase2", {
-      hasPrefill: Boolean(prefill),
-      staged: stagedFor.current === prefill,
-      alreadyFired: firedFor.current === prefill,
-      canSubmit,
-    });
     if (!prefill || stagedFor.current !== prefill || firedFor.current === prefill) return;
     if (!canSubmit) return; // wait until the form's validators pass (price/quote in)
 
     firedFor.current = prefill;
-    // eslint-disable-next-line no-console
-    console.log("[perp-autostage] scheduling auto-fire in", STAGE_VISIBLE_MS, "ms");
     const id = window.setTimeout(() => {
-      // eslint-disable-next-line no-console
-      console.log("[perp-autostage] FIRING submit, canSubmit=", canSubmitRef.current);
       if (canSubmitRef.current) void submitRef.current();
     }, STAGE_VISIBLE_MS);
     return () => window.clearTimeout(id);
     // Intentionally NOT depending on `submit`: it changes every render (price
     // stream), which would clear/reschedule this timer forever. Refs above carry
     // the latest values into the timeout.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill, canSubmit]);
 }

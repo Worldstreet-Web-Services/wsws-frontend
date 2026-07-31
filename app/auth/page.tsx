@@ -42,7 +42,6 @@ export default function AuthPage() {
         </div>
 
         <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-9 sm:py-12">
-
           <h1 className="ws-display text-[clamp(38px,4.6vw,56px)] leading-none tracking-[-0.03em]">
             {t("welcome")} <span className="text-accent">{BRAND}</span>
           </h1>

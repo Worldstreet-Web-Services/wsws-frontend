@@ -1,39 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PerpModeSwitch } from "@/components/dashboard/trade/perp-mode";
+import { SpotModeSwitch } from "@/components/dashboard/trade/spot-mode";
 import { PerpsView } from "@/components/dashboard/trade/perps-view";
 import { MarketsView } from "@/components/dashboard/views/markets-view";
 
 // The trade hub: spot markets and perpetuals under one section, chosen with a
-// top tab so the two surfaces don't clutter the sidebar. Spot shows the markets
-// terminal; Perpetuals shows the perps desk, which keeps its own simple/pro
-// switch (surfaced here in the header when that tab is active). Only the active
+// top tab so the two surfaces don't clutter the sidebar. Each tab carries its
+// own simple/pro interface switch, surfaced here in the header. Only the active
 // tab's body mounts, so its data hooks don't run in the background.
 
 type Tab = "spot" | "perps";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "spot", label: "Spot" },
-  { id: "perps", label: "Perpetuals" },
-];
-
 export function TradeSection() {
+  const t = useTranslations("spot");
+  const tSections = useTranslations("sections");
   const [tab, setTab] = useState<Tab>("spot");
   const onPerps = tab === "perps";
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "spot", label: t("tabSpot") },
+    { id: "perps", label: t("tabPerps") },
+  ];
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Eyebrow>Trade</Eyebrow>
+          <Eyebrow>{tSections("trade")}</Eyebrow>
           <div
             className="ws-inset mt-3.5 inline-grid grid-cols-2 gap-1 p-1"
             role="tablist"
-            aria-label="Trade market type"
+            aria-label={t("tabsLabel")}
           >
-            {TABS.map(({ id, label }) => {
+            {tabs.map(({ id, label }) => {
               const on = id === tab;
               return (
                 <button
@@ -53,7 +56,7 @@ export function TradeSection() {
             })}
           </div>
         </div>
-        {onPerps ? <PerpModeSwitch /> : null}
+        {onPerps ? <PerpModeSwitch /> : <SpotModeSwitch />}
       </div>
 
       <div className="mt-4">{onPerps ? <PerpsView /> : <MarketsView />}</div>

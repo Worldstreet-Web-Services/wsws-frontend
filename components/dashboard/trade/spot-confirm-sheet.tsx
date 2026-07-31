@@ -1,7 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
+import { tokenBg } from "@/lib/trade/assets";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 // The confirm-and-execute step for a spot order, as a sheet that slides up from
@@ -43,18 +45,20 @@ export function SpotConfirmSheet({
   onConfirm,
   onClose,
 }: SpotConfirmSheetProps) {
+  const t = useTranslations("spot");
   const buying = side === "buy";
   const inProgress = phase === "working";
   const done = phase === "settled";
   const failed = phase === "failed";
-  const barColor = failed ? "#f6a5a5" : done ? "#7ce7b0" : "#a78bfa";
+  // Monochrome while working; the up/down palette only marks the outcome.
+  const barColor = failed ? "#f6a5a5" : done ? "#7ce7b0" : "#e6e6e6";
 
   return (
     <AnimatePresence>
       {open ? (
         <>
           <motion.button
-            aria-label="Close"
+            aria-label={t("cancel")}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -74,21 +78,16 @@ export function SpotConfirmSheet({
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/15" />
 
             <div className="flex items-center gap-3">
-              <AssetIcon
-                sym={base || "?"}
-                bg="linear-gradient(135deg,#A78BFA,#6d5bd0)"
-                logo={logo}
-                size={34}
-              />
+              <AssetIcon sym={base || "?"} bg={tokenBg(base || "?")} logo={logo} size={34} />
               <div className="min-w-0">
                 <div className="ws-display text-[18px]">
                   {done
-                    ? "Order complete"
+                    ? t("orderComplete")
                     : failed
-                      ? "Order failed"
+                      ? t("orderFailed")
                       : inProgress
-                        ? "Working on it"
-                        : `${buying ? "Confirm buy" : "Confirm sell"} · ${base}`}
+                        ? t("orderWorking")
+                        : `${buying ? t("confirmBuy") : t("confirmSell")} · ${base}`}
                 </div>
                 <div className="text-xs font-normal text-white/50">{base}/USDC</div>
               </div>
@@ -119,7 +118,7 @@ export function SpotConfirmSheet({
                     onClick={onClose}
                     className="cursor-pointer rounded-[14px] border border-white/14 bg-white/6 p-3.5 font-sans text-[15px] font-semibold text-white hover:bg-white/10"
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                   <button
                     onClick={onConfirm}
@@ -127,7 +126,7 @@ export function SpotConfirmSheet({
                       buying ? "bg-up text-up-ink" : "bg-down text-down-ink"
                     }`}
                   >
-                    {buying ? `Confirm buy` : `Confirm sell`}
+                    {buying ? t("confirmBuy") : t("confirmSell")}
                   </button>
                 </div>
               </>
@@ -137,11 +136,7 @@ export function SpotConfirmSheet({
                   <div className="mb-2.5 text-[13px] font-medium text-white">{stageLabel}</div>
                   <ProgressBar pct={progressPct} color={barColor} />
                   <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
-                    {done
-                      ? "Your balance has been updated."
-                      : failed
-                        ? "Your order didn't go through. Any funds you sent were returned."
-                        : "This takes a moment while your order settles."}
+                    {done ? t("settledNote") : failed ? t("orderFailedNote") : t("workingNote")}
                   </p>
                 </div>
                 {!inProgress ? (
@@ -149,7 +144,7 @@ export function SpotConfirmSheet({
                     onClick={onClose}
                     className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90"
                   >
-                    Done
+                    {t("done")}
                   </button>
                 ) : null}
               </>

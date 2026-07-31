@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useBuy } from "@/hooks/use-buy";
 import { useSell } from "@/hooks/use-sell";
 import { useDepositStatus } from "@/hooks/use-deposit";
@@ -51,17 +52,18 @@ const FEE_PCT = 0.001;
 const MIN_BUY_USD = 1;
 const SLIPPAGE_BPS = 100;
 
-// Plain-language settlement stage labels for the confirm sheet.
-const STAGE_LABEL: Record<DepositStage, string> = {
-  waiting: "Placing your order",
-  detected: "Payment received",
-  processing: "Almost there",
-  settled: "All done",
-  refunded: "Money returned",
-  failed: "Order failed",
+// Plain-language settlement stage message keys for the confirm sheet.
+const STAGE_KEY: Record<DepositStage, string> = {
+  waiting: "stageWaiting",
+  detected: "stageDetected",
+  processing: "stageProcessing",
+  settled: "stageSettled",
+  refunded: "stageRefunded",
+  failed: "stageFailed",
 };
 
 export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: SpotPanelProps) {
+  const t = useTranslations("spot");
   const [side, setSide] = useState<Side>("buy");
   const [amount, setAmount] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -122,11 +124,11 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
     if (!requestId || resolvedRef.current) return;
     if (stage === "settled") {
       resolvedRef.current = true;
-      toast.success(buying ? `Bought ${base}` : `Sold ${base}`);
+      toast.success(buying ? t("toastBought", { symbol: base }) : t("toastSold", { symbol: base }));
       void portfolio.refetch();
     } else if (stage === "failed" || stage === "refunded") {
       resolvedRef.current = true;
-      toast.error("Your order didn't go through. Any funds you sent were returned.");
+      toast.error(t("orderFailedNote"));
     }
   }, [stage, requestId, buying, base, portfolio]);
 
@@ -176,7 +178,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
       }
     } catch (e) {
       setConfirmOpen(false);
-      toast.error(friendlyError(e, "That didn't go through."));
+      toast.error(friendlyError(e, t("orderRejected")));
     }
   };
 
@@ -194,33 +196,33 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
 
   const confirmRows: SpotConfirmRow[] = buying
     ? [
-        { label: "Market", value: `${base}/USDC` },
-        { label: "You pay", value: formatUsd(amountNum) },
-        { label: "You receive", value: `${formatAmount(receive)} ${base}`, tone: "up" },
-        { label: "Price", value: formatUsd(mark) },
-        { label: "Est. fee", value: formatUsd(feeUsd) },
+        { label: t("market"), value: `${base}/USDC` },
+        { label: t("youPay"), value: formatUsd(amountNum) },
+        { label: t("youReceive"), value: `${formatAmount(receive)} ${base}`, tone: "up" },
+        { label: t("price"), value: formatUsd(mark) },
+        { label: t("estFee"), value: formatUsd(feeUsd) },
       ]
     : [
-        { label: "Market", value: `${base}/USDC` },
-        { label: "You sell", value: `${formatAmount(amountNum)} ${base}` },
-        { label: "You receive", value: formatUsd(receive), tone: "up" },
-        { label: "Price", value: formatUsd(mark) },
-        { label: "Est. fee", value: formatUsd(feeUsd) },
+        { label: t("market"), value: `${base}/USDC` },
+        { label: t("youSellRow"), value: `${formatAmount(amountNum)} ${base}` },
+        { label: t("youReceive"), value: formatUsd(receive), tone: "up" },
+        { label: t("price"), value: formatUsd(mark) },
+        { label: t("estFee"), value: formatUsd(feeUsd) },
       ];
 
   const cta = !token
-    ? "Select a market"
+    ? t("ctaSelect")
     : notBuyable
-      ? `${base} isn't available to buy yet`
+      ? t("ctaNotBuyable", { symbol: base })
       : amountNum <= 0
-        ? "Enter an amount"
+        ? t("ctaEnterAmount")
         : belowMin
-          ? `Minimum ${formatUsd(MIN_BUY_USD)}`
+          ? t("ctaMin", { amount: formatUsd(MIN_BUY_USD) })
           : overBalance
-            ? "Not enough balance"
+            ? t("ctaNoBalance")
             : buying
-              ? `Buy ${base}`
-              : `Sell ${base}`;
+              ? t("ctaBuy", { symbol: base })
+              : t("ctaSell", { symbol: base });
 
   return (
     <div className="ws-card p-4 sm:p-5">
@@ -234,7 +236,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
               : "border border-white/10 bg-white/4 text-white/55 hover:text-white/80"
           }`}
         >
-          Buy
+          {t("buy")}
         </button>
         <button
           onClick={() => setSide("sell")}
@@ -244,24 +246,24 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
               : "border border-white/10 bg-white/4 text-white/55 hover:text-white/80"
           }`}
         >
-          Sell
+          {t("sell")}
         </button>
       </div>
 
       {/* Amount. */}
       <div className={`ws-inset mt-3 p-4 ${overBalance || belowMin ? "ws-invalid" : ""}`}>
         <div className="mb-2 flex items-center justify-between text-xs font-normal text-white/55">
-          <span>{buying ? "You're paying" : "You're selling"}</span>
+          <span>{buying ? t("youPay") : t("youSell")}</span>
           <span className="flex items-center gap-2">
             <span className="tnum">
-              Balance {formatAmount(balance)} {buying ? "USDC" : base}
+              {t("balance", { amount: formatAmount(balance), symbol: buying ? "USDC" : base })}
             </span>
             {balance > 0 ? (
               <button
                 onClick={() => setPercent(100)}
                 className="text-accent cursor-pointer font-medium hover:opacity-80"
               >
-                Max
+                {t("max")}
               </button>
             ) : null}
           </span>
@@ -297,17 +299,17 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
       {/* Summary. */}
       <div className="ws-inset mt-3 flex flex-col gap-2 p-4 text-[12.5px] font-normal">
         <div className="flex justify-between">
-          <span className="text-white/55">Price</span>
+          <span className="text-white/55">{t("price")}</span>
           <span className="tnum text-white">{mark > 0 ? formatUsd(mark) : "—"}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-white/55">You receive</span>
+          <span className="text-white/55">{t("youReceive")}</span>
           <span className="tnum text-white">
             {receive > 0 ? (buying ? `${formatAmount(receive)} ${base}` : formatUsd(receive)) : "—"}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-white/55">Est. fee</span>
+          <span className="text-white/55">{t("estFee")}</span>
           <span className="tnum text-white">{amountNum > 0 ? formatUsd(feeUsd) : "—"}</span>
         </div>
       </div>
@@ -323,12 +325,11 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
       </button>
       {notBuyable ? (
         <p className="mt-2 text-center text-xs font-normal text-white/45">
-          {base} isn&apos;t available to buy yet. You can still chart it, and sell it if you hold
-          any.
+          {t("notBuyableNote", { symbol: base })}
         </p>
       ) : !buying && token && heldBalance <= 0 ? (
         <p className="mt-2 text-center text-xs font-normal text-white/45">
-          You don&apos;t own any {base} to sell yet.
+          {t("noSellBalance", { symbol: base })}
         </p>
       ) : null}
 
@@ -340,7 +341,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
         rows={confirmRows}
         phase={phase}
         progressPct={progress.pct}
-        stageLabel={STAGE_LABEL[stage]}
+        stageLabel={t(STAGE_KEY[stage])}
         onConfirm={() => void runOrder()}
         onClose={closeSheet}
       />

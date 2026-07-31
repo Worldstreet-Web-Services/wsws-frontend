@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { AssetChart } from "@/components/ui/asset-chart";
 import { SearchIcon } from "@/components/ui/icons";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { FlashPrice } from "@/components/dashboard/trade/flash-price";
 import { SpotPanel } from "@/components/dashboard/trade/spot-panel";
+import { useSpotMode } from "@/components/dashboard/trade/spot-mode";
 import { useMarketTokens } from "@/hooks/use-market-tokens";
 import { useBuyDestinations } from "@/hooks/use-buy-catalog";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -14,12 +16,11 @@ import { usePrices } from "@/hooks/use-prices";
 import { useCoingeckoId } from "@/hooks/use-coingecko-id";
 import { buyableLogos, buyableSymbols, defaultRouteForSymbol } from "@/lib/buy";
 import { formatUsd } from "@/lib/trade/math";
+import { tokenBg } from "@/lib/trade/assets";
 import { coingeckoId, coingeckoPlatform } from "@/lib/coingecko";
 import { isSpotStable, spotChartSource } from "@/lib/spot-chart";
 import type { MarketToken } from "@/lib/market-catalog";
 import type { TokenBalance } from "@/lib/server/alchemy";
-
-const ICON_BG = "linear-gradient(135deg,#A78BFA,#6d5bd0)";
 
 // A spot market, driven by the Dextopus buyable catalog and enriched with market
 // data where we have it.
@@ -35,6 +36,9 @@ interface SpotMarket {
   marketCap: number;
 }
 
+// The markets pinned as one-tap chips in the simple interface, biggest first.
+const SIMPLE_CHIP_COUNT = 6;
+
 function changeLabel(chg: number): string {
   const v = Number.isFinite(chg) ? chg : 0;
   return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -45,8 +49,12 @@ function changeLabel(chg: number): string {
 // executed. Prices come from the app's by-symbol price feed (which covers the
 // whole set, not just the top coins); logos, 24h change and the chart id are
 // enriched from the market feed when present. Renders as a bare body; the trade
-// hub provides the header and tabs.
+// hub provides the header, tabs and the simple/pro switch. Simple is a single
+// guided column (chips, compact chart, ticket); pro is the full terminal with
+// candles and the position card.
 export function MarketsView() {
+  const t = useTranslations("spot");
+  const { mode } = useSpotMode();
   const destinations = useBuyDestinations();
   const { data: feed = [] } = useMarketTokens("popular");
   const portfolio = usePortfolio();
@@ -152,151 +160,203 @@ export function MarketsView() {
     setSearch("");
   };
 
-  return (
-    <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
-      <SpotPanel
-        token={token}
-        mark={mark}
-        usdcBalance={usdcBalance}
-        heldToken={heldToken}
-        buyRoute={buyRoute}
-      />
+  const simple = mode !== "pro";
+  const chartHeight = simple ? 240 : 360;
 
-      <div className="flex flex-col gap-4">
-        {/* Pair header + market picker. */}
-        <div className="ws-card relative p-4 sm:p-5">
-          <div className="flex items-center gap-3">
-            <AssetIcon sym={base || "?"} bg={ICON_BG} logo={token?.logo} size={34} />
-            <button
-              onClick={() => setPickerOpen((v) => !v)}
-              disabled={markets.length === 0}
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 font-sans text-[16px] font-semibold">
-                  {token ? `${base}/USDC` : loading ? "Loading markets…" : "No markets available"}
-                  {markets.length > 0 ? <span className="text-white/40">▾</span> : null}
-                </div>
-                <div className="truncate text-xs font-normal text-white/50">
-                  {token?.name ?? "—"}
-                </div>
-              </div>
-            </button>
-            <div className="text-right">
-              <FlashPrice value={mark} className="ws-display tnum block text-[19px]">
-                {mark > 0 ? formatUsd(mark) : "—"}
-              </FlashPrice>
-              {token ? (
-                <div
-                  className={`tnum text-xs font-medium ${
-                    token.change24h >= 0 ? "text-up" : "text-down"
-                  }`}
-                >
-                  {changeLabel(token.change24h)}
-                </div>
-              ) : null}
+  // Pair header with the searchable market picker; shared by both interfaces.
+  const pairHeader = (
+    <div className="ws-card relative p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <AssetIcon sym={base || "?"} bg={tokenBg(base || "?")} logo={token?.logo} size={34} />
+        <button
+          onClick={() => setPickerOpen((v) => !v)}
+          disabled={markets.length === 0}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 font-sans text-[16px] font-semibold">
+              {token ? `${base}/USDC` : loading ? t("loadingMarkets") : t("noMarkets")}
+              {markets.length > 0 ? <span className="text-white/40">▾</span> : null}
             </div>
+            <div className="truncate text-xs font-normal text-white/50">{token?.name ?? "—"}</div>
           </div>
-
-          {pickerOpen ? (
-            <div className="bg-panel absolute inset-x-4 top-[calc(100%-8px)] z-20 mt-1 overflow-hidden rounded-2xl border border-white/12 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.9)]">
-              <div className="flex items-center gap-2 border-b border-white/8 px-3.5 py-2.5">
-                <SearchIcon />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search markets"
-                  autoFocus
-                  className="min-w-0 flex-1 bg-transparent text-[13.5px] font-normal text-white outline-none"
-                />
-              </div>
-              <div className="max-h-[300px] overflow-y-auto py-1">
-                {filtered.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[13px] font-normal text-white/40">
-                    No markets match.
-                  </div>
-                ) : (
-                  filtered.slice(0, 60).map((t) => (
-                    <button
-                      key={t.symbol}
-                      onClick={() => pick(t)}
-                      className="flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-white/6"
-                    >
-                      <AssetIcon sym={t.symbol} bg={ICON_BG} logo={t.logo} size={26} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-sans text-[13.5px] font-medium">
-                          {t.symbol}/USDC
-                        </div>
-                        <div className="truncate text-[11.5px] font-normal text-white/45">
-                          {t.name}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="tnum text-[13px] font-normal">
-                          {t.priceUsd > 0 ? formatUsd(t.priceUsd) : "—"}
-                        </div>
-                        <div
-                          className={`tnum text-[11px] ${
-                            t.change24h >= 0 ? "text-up" : "text-down"
-                          }`}
-                        >
-                          {changeLabel(t.change24h)}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
+        </button>
+        <div className="text-right">
+          <FlashPrice value={mark} className="ws-display tnum block text-[19px]">
+            {mark > 0 ? formatUsd(mark) : "—"}
+          </FlashPrice>
+          {token ? (
+            <div
+              className={`tnum text-xs font-medium ${
+                token.change24h >= 0 ? "text-up" : "text-down"
+              }`}
+            >
+              {changeLabel(token.change24h)}
             </div>
           ) : null}
         </div>
+      </div>
 
-        {/* Candles: TradingView for the majors (same embed as the perps chart),
-            our CoinGecko candle feed when we have an id. */}
-        <div className="ws-card p-4 sm:p-5">
-          {loading ? (
-            <div className="h-[360px] animate-pulse rounded-xl bg-white/6" />
-          ) : marketsError && !token ? (
-            <div className="grid h-[360px] place-items-center text-center text-[13.5px] font-normal text-white/45">
-              Markets are unavailable right now.
-            </div>
-          ) : !token || !chart ? (
-            <div className="grid h-[360px] place-items-center text-center text-[13.5px] font-normal text-white/45">
-              No market selected.
-            </div>
-          ) : chart.kind === "tradingview" ? (
-            <TradingViewChart symbol={chart.symbol} height={360} />
-          ) : chartId ? (
-            <AssetChart
-              coingeckoId={chartId}
-              allowCandles
-              defaultType="candles"
-              height={324}
-              up={token.change24h >= 0}
+      {pickerOpen ? (
+        <div className="bg-panel absolute inset-x-4 top-[calc(100%-8px)] z-20 mt-1 overflow-hidden rounded-2xl border border-white/12 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.9)]">
+          <div className="flex items-center gap-2 border-b border-white/8 px-3.5 py-2.5">
+            <SearchIcon />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              autoFocus
+              className="min-w-0 flex-1 bg-transparent text-[13.5px] font-normal text-white outline-none"
             />
-          ) : resolved.loading ? (
-            <div className="h-[360px] animate-pulse rounded-xl bg-white/6" />
-          ) : (
-            <div className="grid h-[360px] place-items-center text-center text-[13.5px] font-normal text-white/45">
-              No chart for {base} yet. You can still trade it above.
-            </div>
-          )}
+          </div>
+          <div className="max-h-[300px] overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-6 text-center text-[13px] font-normal text-white/40">
+                {t("noMatch")}
+              </div>
+            ) : (
+              filtered.slice(0, 60).map((t) => (
+                <button
+                  key={t.symbol}
+                  onClick={() => pick(t)}
+                  className="flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-white/6"
+                >
+                  <AssetIcon sym={t.symbol} bg={tokenBg(t.symbol)} logo={t.logo} size={26} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-sans text-[13.5px] font-medium">
+                      {t.symbol}/USDC
+                    </div>
+                    <div className="truncate text-[11.5px] font-normal text-white/45">{t.name}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="tnum text-[13px] font-normal">
+                      {t.priceUsd > 0 ? formatUsd(t.priceUsd) : "—"}
+                    </div>
+                    <div
+                      className={`tnum text-[11px] ${t.change24h >= 0 ? "text-up" : "text-down"}`}
+                    >
+                      {changeLabel(t.change24h)}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
         </div>
+      ) : null}
+    </div>
+  );
+
+  // Candles: TradingView for the majors (same embed as the perps chart),
+  // our CoinGecko candle feed when we have an id.
+  const chartCard = (
+    <div className="ws-card p-4 sm:p-5">
+      {loading ? (
+        <div style={{ height: chartHeight }} className="animate-pulse rounded-xl bg-white/6" />
+      ) : marketsError && !token ? (
+        <div
+          style={{ height: chartHeight }}
+          className="grid place-items-center text-center text-[13.5px] font-normal text-white/45"
+        >
+          {t("unavailable")}
+        </div>
+      ) : !token || !chart ? (
+        <div
+          style={{ height: chartHeight }}
+          className="grid place-items-center text-center text-[13.5px] font-normal text-white/45"
+        >
+          {t("noSelection")}
+        </div>
+      ) : chart.kind === "tradingview" ? (
+        <TradingViewChart symbol={chart.symbol} height={chartHeight} />
+      ) : chartId ? (
+        <AssetChart
+          coingeckoId={chartId}
+          allowCandles
+          defaultType={simple ? "area" : "candles"}
+          height={chartHeight - 36}
+          up={(token?.change24h ?? 0) >= 0}
+        />
+      ) : resolved.loading ? (
+        <div style={{ height: chartHeight }} className="animate-pulse rounded-xl bg-white/6" />
+      ) : (
+        <div
+          style={{ height: chartHeight }}
+          className="grid place-items-center text-center text-[13.5px] font-normal text-white/45"
+        >
+          {t("noChart", { symbol: base })}
+        </div>
+      )}
+    </div>
+  );
+
+  const ticket = (
+    <SpotPanel
+      token={token}
+      mark={mark}
+      usdcBalance={usdcBalance}
+      heldToken={heldToken}
+      buyRoute={buyRoute}
+    />
+  );
+
+  if (simple) {
+    // The guided interface: the biggest markets as one-tap chips, a compact
+    // chart and the ticket in a single column — the spot mirror of the simple
+    // perps desk. The full list stays reachable through the pair picker.
+    const chips = markets.slice(0, SIMPLE_CHIP_COUNT);
+    return (
+      <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4">
+        {chips.length > 1 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {chips.map((m) => {
+              const on = m.symbol === base;
+              return (
+                <button
+                  key={m.symbol}
+                  onClick={() => pick(m)}
+                  className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 font-sans text-[13px] font-medium transition-colors ${
+                    on
+                      ? "border-white/35 bg-white/10 text-white"
+                      : "border-white/10 bg-white/4 text-white/60 hover:text-white/85"
+                  }`}
+                >
+                  <AssetIcon sym={m.symbol} bg={tokenBg(m.symbol)} logo={m.logo} size={18} />
+                  {m.symbol}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {pairHeader}
+        {chartCard}
+        {ticket}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
+      {ticket}
+
+      <div className="flex flex-col gap-4">
+        {pairHeader}
+        {chartCard}
 
         {/* Holding for the selected market. */}
         <div className="ws-card p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="font-sans text-[13px] font-semibold text-white/80">
-              Your {base || "position"}
+              {t("holdingTitle", { symbol: base || "—" })}
             </span>
             <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10.5px] font-medium text-white/40">
-              Assets
+              {t("holdingTag")}
             </span>
           </div>
           {heldToken && heldBalance > 0 ? (
             <div className="mt-3 flex items-center justify-between">
               <span className="flex items-center gap-2.5">
-                <AssetIcon sym={base} bg={ICON_BG} logo={heldToken.logo} size={26} />
+                <AssetIcon sym={base} bg={tokenBg(base)} logo={heldToken.logo} size={26} />
                 <span className="tnum text-[14px] font-medium">
                   {heldBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {base}
                 </span>
@@ -307,7 +367,7 @@ export function MarketsView() {
             </div>
           ) : (
             <div className="grid place-items-center py-8 text-center text-[13px] font-normal text-white/40">
-              You don&apos;t hold any {base || "asset"} yet.
+              {t("noHolding", { symbol: base || "—" })}
             </div>
           )}
         </div>

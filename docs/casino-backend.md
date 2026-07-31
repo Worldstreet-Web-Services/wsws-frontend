@@ -39,11 +39,14 @@ Amounts are always:
 { "wei": "50000000000000000", "tokenSymbol": "ETH", "usdValue": 100.0 }
 ```
 
-`wei` is authoritative and exact. `usdValue` is for display only. The casino
-settles in the same asset the player already holds on Base, so a stake spends
-the balance the dashboard shows and winnings land back in it. There is no
-separate casino float, and the frontend never asks a player to fund a casino
-wallet.
+`wei` is authoritative and exact. `usdValue` is for display only. The draw and
+spectator betting settle in the same asset the player already holds on Base, so
+a stake spends the balance the dashboard shows and winnings land back in it.
+Those games have no float and never ask a player to fund a casino wallet.
+
+Chess is the exception, and this line used to claim otherwise. Its service runs
+a backend-custody USDC cashier with its own balance, which a player funds and
+withdraws from deliberately. See `docs/chess-backend.md`.
 
 The platform takes a **5% participation fee from the pot** on settlement. The
 frontend shows this breakdown before a player commits; the gateway must apply
@@ -66,35 +69,9 @@ frontend never receives another player's identity.
 
 ### Chess
 
-| Method | Path                                  | Auth    | Returns                            |
-| ------ | ------------------------------------- | ------- | ---------------------------------- |
-| GET    | `/chess/challenges`                   | public  | `{ challenges: ChessChallenge[] }` |
-| GET    | `/chess/matches?state=in_progress`    | public  | `{ matches: ChessMatch[] }`        |
-| GET    | `/chess/matches/:id`                  | public  | `ChessMatch`                       |
-| GET    | `/chess/invites/:code`                | public  | `ChessChallenge`                   |
-| POST   | `/chess/challenges`                   | session | `{ challenge, ticket }`            |
-| POST   | `/chess/challenges/:id/accept`        | session | `ChessMatch`                       |
-| POST   | `/chess/challenges/:id/cancel`        | session | —                                  |
-| GET    | `/chess/matchmaking/:ticketId`        | session | `MatchmakingTicket`                |
-| POST   | `/chess/matchmaking/:ticketId/cancel` | session | —                                  |
-| POST   | `/chess/matches/:id/moves`            | session | `ChessMatch`                       |
-| POST   | `/chess/matches/:id/resign`           | session | `ChessMatch`                       |
-
-**The server owns the game.** It holds the position, validates every move,
-runs both clocks, and decides the result. The client sends an intended move in
-coordinate notation (`e2e4`, `e7e8q`) and renders whatever `ChessMatch` comes
-back. It computes legal-move highlights locally only so the board feels
-responsive; those hints carry no authority. A move the server rejects must
-return `ILLEGAL_MOVE` and leave the match unchanged.
-
-`ChessMatch.fen` is standard FEN. `clocks` are seconds remaining as of
-`clockUpdatedAt` (ISO); the client ticks the side to move locally between
-frames and resets to the server's value on every frame, so flag falls are
-decided server-side.
-
-Creating a challenge escrows the creator's stake. Accepting escrows the
-joiner's and starts the match. A challenge that nobody joins must return the
-stake; the UI tells players this, so it has to be true.
+Chess moved to its own service with its own contract, including a stake cashier
+this document does not cover. See `docs/chess-backend.md`. Nothing under
+`/chess/*` on the casino gateway is called any more.
 
 ### Spectator betting
 

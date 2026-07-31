@@ -28,8 +28,12 @@ interface UseVoiceCommand {
   recording: boolean;
   busy: boolean;
   supported: boolean;
+  // Live input loudness, 0..1, for the listening animation.
+  level: number;
   // One tap runs the whole flow: listen, auto-stop on pause, understand, act.
   run: () => Promise<void>;
+  // Stops listening and discards the audio.
+  cancel: () => void;
 }
 
 const CHAIN_LABEL: Record<ChainType, string> = {
@@ -57,7 +61,7 @@ export function useVoiceCommand(): UseVoiceCommand {
   const { user } = usePrivy();
   const router = useRouter();
   const navigate = useAppNavigate();
-  const { recording, supported, capture } = useVoiceRecord();
+  const { recording, supported, level, capture, cancel } = useVoiceRecord();
   const { configured, send } = useVividSocket();
   const { totalUsd, refetch } = usePortfolio();
   const money = useMoney();
@@ -146,29 +150,34 @@ export function useVoiceCommand(): UseVoiceCommand {
   const run = useCallback(async () => {
     if (busy || recording) return;
 
-    const toastId = toast.loading("Listening…");
-    let audio: Blob | null = null;
+    // No "Listening…" toast: the control itself shows that it is listening, and
+    // a toast saying the same thing is noise on top of it. The toast starts once
+    // there is something to report.
+    let outcome: Awaited<ReturnType<typeof capture>>;
     try {
-      const result = await capture();
-      audio = result.blob;
+      outcome = await capture();
     } catch (err) {
       console.error("[voice] capture failed:", err);
-      toast.error("Microphone unavailable.", { id: toastId });
+      toast.error("Microphone unavailable.");
       return;
     }
 
-    if (!audio) {
-      toast.error("Didn't hear anything. Try again.", { id: toastId });
+    // Stopping the mic yourself is not a failure, so it passes without comment.
+    if (outcome.reason === "cancelled") return;
+
+    if (!outcome.blob) {
+      toast.error("Didn't hear anything. Try again.");
       return;
     }
 
     if (!configured) {
-      toast.error("Voice is not configured.", { id: toastId });
+      toast.error("Voice is not configured.");
       return;
     }
 
+    const audio = outcome.blob;
     setBusy(true);
-    toast.loading("Working…", { id: toastId });
+    const toastId = toast.loading("Working…");
     try {
       // Stream the clip to Vivid over the /audio socket. The hook authenticates
       // with the Privy access token, sends the audio + endpoint frame, and
@@ -185,5 +194,5 @@ export function useVoiceCommand(): UseVoiceCommand {
     }
   }, [busy, recording, capture, configured, send, dispatch]);
 
-  return { recording, busy, supported, run };
+  return { recording, busy, supported, level, run, cancel };
 }

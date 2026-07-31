@@ -1,4 +1,5 @@
 import {
+  BriefcaseIcon,
   BulbIcon,
   ChartBarsIcon,
   DiceIcon,
@@ -14,6 +15,7 @@ export const SECTION_ICONS: Record<SectionId, (props: { size?: number }) => Reac
   markets: ChartBarsIcon,
   rwa: HouseIcon,
   prediction: BulbIcon,
+  earn: BriefcaseIcon,
   casino: DiceIcon,
 };
 

@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAcceptChallenge, useChessLobby, useQuickMatch } from "@/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
+import { useCashierConfig } from "@/hooks/use-chess-cashier";
+import { ChessBalance } from "@/components/dashboard/casino/chess/chess-balance";
+import { StakeBadge } from "@/components/dashboard/casino/chess/stake-badge";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { formatUsdc, potBreakdown } from "@/lib/casino/cashier-money";
 import {
   CasinoEmpty,
   CasinoError,
@@ -27,6 +33,11 @@ export function LobbySection() {
   const wallet = useCasinoWallet();
   const accept = useAcceptChallenge();
   const quickMatch = useQuickMatch();
+  const { config, enabled: cashierOn } = useCashierConfig();
+  // The staked challenge awaiting confirmation, if any.
+  const [confirming, setConfirming] = useState<ChessChallenge | null>(null);
+
+  const rowGrid = cashierOn ? "grid-cols-[2fr_1fr_1fr_90px]" : "grid-cols-[2fr_1fr_90px]";
 
   // Takes the oldest game nobody has joined, or opens one and waits when every
   // seat is taken.
@@ -58,6 +69,17 @@ export function LobbySection() {
       toast.error("Connect your wallet to play.");
       return;
     }
+    // Joining a staked game locks money, so it is confirmed rather than taken
+    // on one click.
+    if (challenge.wager) {
+      setConfirming(challenge);
+      return;
+    }
+    await joinNow(challenge);
+  };
+
+  const joinNow = async (challenge: ChessChallenge) => {
+    setConfirming(null);
     const id = toast.loading("Joining…");
     try {
       const match = await accept.mutateAsync(challenge.id);
@@ -70,6 +92,10 @@ export function LobbySection() {
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 pt-8 pb-20 sm:px-6">
+      <div className="mb-5 flex justify-end">
+        <ChessBalance />
+      </div>
+
       <div className="mb-8 flex flex-wrap gap-3.5">
         <Link
           href="/casino/chess/create"
@@ -94,6 +120,24 @@ export function LobbySection() {
             {quickMatch.isPending ? "Starting…" : "Find opponent"}
           </button>
         </div>
+        <Link
+          href="/casino/chess/tournaments"
+          className="ws-glass min-w-[260px] flex-1 cursor-pointer rounded-2xl px-6 py-5 text-left text-white transition-transform hover:-translate-y-0.5"
+        >
+          <div className="ws-display mb-1 text-[20px]">Tournaments</div>
+          <div className="text-[12.5px] font-normal text-white/55">
+            Swiss events over several rounds, paired by score
+          </div>
+        </Link>
+        <Link
+          href="/casino/chess/history"
+          className="ws-glass min-w-[260px] flex-1 cursor-pointer rounded-2xl px-6 py-5 text-left text-white transition-transform hover:-translate-y-0.5"
+        >
+          <div className="ws-display mb-1 text-[20px]">Your games</div>
+          <div className="text-[12.5px] font-normal text-white/55">
+            Everything you have played, and how it ended
+          </div>
+        </Link>
       </div>
 
       {error ? (
@@ -132,20 +176,34 @@ export function LobbySection() {
           ) : (
             <div className="overflow-x-auto rounded-[14px] border border-white/8">
               <div className="min-w-[640px]">
-                <div className="grid grid-cols-[2fr_1fr_90px] bg-white/4 px-4.5 py-2.5 text-[11px] font-normal tracking-[0.05em] text-white/50 uppercase">
+                <div
+                  className={`grid ${rowGrid} bg-white/4 px-4.5 py-2.5 text-[11px] font-normal tracking-[0.05em] text-white/50 uppercase`}
+                >
                   <div>Opponent</div>
                   <div>Time control</div>
+                  {/* Only when the service can actually take a stake. Without a
+                      cashier every game is free and the column is noise. */}
+                  {cashierOn ? <div>Stake</div> : null}
                   <div />
                 </div>
                 {challenges.map((c) => (
                   <div
                     key={c.id}
-                    className="grid grid-cols-[2fr_1fr_90px] items-center border-t border-white/6 px-4.5 py-3 text-[13px]"
+                    className={`grid ${rowGrid} items-center border-t border-white/6 px-4.5 py-3 text-[13px]`}
                   >
                     <div className="truncate">{c.creator.username}</div>
                     <div className="font-normal text-white/50">
                       {timeControlLabel(c.timeControl)}
                     </div>
+                    {cashierOn ? (
+                      <div>
+                        {c.wager ? (
+                          <StakeBadge wager={c.wager} />
+                        ) : (
+                          <span className="font-normal text-white/35">Free</span>
+                        )}
+                      </div>
+                    ) : null}
                     <button
                       onClick={() => void onJoin(c)}
                       disabled={accept.isPending}
@@ -160,6 +218,60 @@ export function LobbySection() {
           )}
         </>
       )}
+
+      <ModalShell open={!!confirming} onClose={() => setConfirming(null)}>
+        {confirming?.wager ? (
+          <div className="flex flex-col gap-4 p-5">
+            <div>
+              <h2 className="ws-display text-[18px] text-white">Play for real money?</h2>
+              <p className="mt-1 font-sans text-[12.5px] font-normal text-white/55">
+                Joining locks your stake until the game ends.
+              </p>
+            </div>
+
+            <div className="ws-inset flex flex-col gap-2 px-4 py-3.5">
+              <Row label="Your stake" value={`${formatUsdc(confirming.wager.stakeMicro)} USDC`} />
+              <Row
+                label="Pot"
+                value={`${formatUsdc(potBreakdown(confirming.wager.stakeMicro, config?.platformFeeBps ?? 0).potMicro)} USDC`}
+              />
+              <Row
+                label="Winner takes"
+                value={`${formatUsdc(potBreakdown(confirming.wager.stakeMicro, config?.platformFeeBps ?? 0).payoutMicro)} USDC`}
+              />
+            </div>
+
+            <p className="font-sans text-[12px] font-normal text-white/45">
+              A draw or an abort returns both stakes in full.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirming(null)}
+                className="ws-inset flex-1 cursor-pointer rounded-full px-4 py-2.5 font-sans text-[13px] font-semibold text-white/70 transition-colors hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void joinNow(confirming)}
+                disabled={accept.isPending}
+                className="bg-accent text-ink flex-1 cursor-pointer rounded-full px-4 py-2.5 font-sans text-[13px] font-semibold disabled:opacity-40"
+              >
+                {accept.isPending ? "Joining…" : "Join and stake"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </ModalShell>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="font-sans text-[12.5px] font-normal text-white/50">{label}</span>
+      <span className="tnum font-sans text-[12.5px] font-medium text-white/85">{value}</span>
     </div>
   );
 }

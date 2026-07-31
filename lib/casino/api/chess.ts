@@ -10,6 +10,7 @@ import {
   type ChessMoveWire,
 } from "@/lib/casino/api/chess-wire";
 import { apiError } from "@/lib/casino/api/envelope";
+import { usdcToApi } from "@/lib/casino/cashier-money";
 import type {
   ChessChallenge,
   ChessMatch,
@@ -105,9 +106,14 @@ export async function createChallenge(
   const { initialSeconds, incrementSeconds } = parseTimeControl(input.timeControl);
   const wire = await chessPost<ChessMatchWire>("/matches", {
     creator: input.creator,
-    color: "random",
+    color: input.color ?? "random",
     initial_seconds: initialSeconds,
     increment_seconds: incrementSeconds,
+    // Omitted entirely on a free game. Sending "0" would make the service
+    // treat it as a wager and open a settlement row for nothing.
+    ...(input.stakeMicro && input.stakeMicro > 0n
+      ? { stake_usdc: usdcToApi(input.stakeMicro) }
+      : {}),
   });
 
   return {

@@ -6,6 +6,7 @@ import {
   abortMatch,
   acceptChallenge,
   cancelMatchmaking,
+  claimDraw,
   claimTimeout,
   createChallenge,
   fetchJoinableMatches,
@@ -21,17 +22,26 @@ import {
   submitMove,
 } from "@/lib/casino/api/chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
+import { useChessLive } from "@/hooks/use-chess-live";
 import type { ChessColor, ChessMatch, CreateChessChallengeInput } from "@/lib/casino/api/types";
 
-// The chess service has no socket, so these polls are the live path. They run
-// faster than the vault's: a board that is two seconds behind is visibly wrong.
+// Live frames come from the WS gateway. These polls bootstrap the board and
+// cover the socket being down, where a board two seconds behind is visibly
+// wrong; with the socket up they drop right back to a safety net.
 const MATCH_POLL_MS = 2_000;
+const FALLBACK_POLL_MS = 20_000;
 const LOBBY_POLL_MS = 10_000;
 const TICKET_POLL_MS = 3_000;
 
 // How often the displayed clock is recomputed. Four times a second keeps the
 // seconds digit honest without re-rendering the board on every frame.
 const CLOCK_TICK_MS = 250;
+
+// How many times a flag-fall claim is retried. The service does not end a game
+// on time by itself, so if every attempt fails the game sits unfinished, which
+// for a staked game means the money stays locked. A handful of retries covers a
+// dropped request without hammering a service that is genuinely refusing.
+const TIMEOUT_CLAIM_ATTEMPTS = 3;
 
 export const CHESS_KEYS = {
   challenges: ["casino", "chess", "challenges"] as const,
@@ -108,15 +118,33 @@ export function useChessMatch(matchId: string | null) {
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
 
+  const matchKey = CHESS_KEYS.match(matchId ?? "none");
+  // Read inside refetchInterval, which runs long after this render. The socket
+  // is only established once the first fetch has named its topic, so the flag
+  // cannot be a plain value declared above the query.
+  const liveRef = useRef(false);
+
   const query = useQuery({
-    queryKey: CHESS_KEYS.match(matchId ?? "none"),
+    queryKey: matchKey,
     queryFn: () => fetchMatch(matchId as string),
     enabled: !!matchId,
-    refetchInterval: (q) =>
-      q.state.data && q.state.data.state !== "in_progress" ? false : MATCH_POLL_MS,
+    refetchInterval: (q) => {
+      const data = q.state.data;
+      if (data && data.state !== "in_progress") return false;
+      // With the socket up, polling is only a safety net against a missed
+      // frame; without it, polling is the live path.
+      return liveRef.current ? FALLBACK_POLL_MS : MATCH_POLL_MS;
+    },
   });
 
   const match = query.data;
+  // The service names its own topic, so we subscribe to what it gave us rather
+  // than rebuilding the string here.
+  const live = useChessLive(matchId, match?.liveTopic ?? null, matchKey);
+  useEffect(() => {
+    liveRef.current = live;
+  }, [live]);
+
   const clocks = useTickingClocks(match);
 
   const applyMatch = useCallback(
@@ -169,11 +197,20 @@ export function useChessMatch(matchId: string | null) {
     onSuccess: applyMatch,
   });
 
+  const drawClaim = useMutation({
+    mutationFn: () => claimDraw(matchId as string, requireWallet(wallet.address)),
+    onSuccess: applyMatch,
+  });
+
   // The service does not end a game when a clock runs out, so the player who is
   // still on the move has to claim it. Only the opponent of the flagged side
-  // claims, and only once per match: a repeated claim would be rejected, and
-  // the poll would keep re-triggering it.
-  const claimedRef = useRef<string | null>(null);
+  // claims.
+  //
+  // One claim is in flight at a time, and a failed one is retried on the next
+  // poll rather than abandoned: a single dropped request used to leave the game
+  // in_progress forever with no way back.
+  const claimAttemptsRef = useRef<{ matchId: string; attempts: number } | null>(null);
+  const claimInFlightRef = useRef(false);
   const opponentFlagged =
     !!match &&
     match.state === "in_progress" &&
@@ -184,9 +221,19 @@ export function useChessMatch(matchId: string | null) {
   const claimMutate = flag.mutate;
   useEffect(() => {
     if (!opponentFlagged || !match) return;
-    if (claimedRef.current === match.id) return;
-    claimedRef.current = match.id;
-    claimMutate();
+    if (claimInFlightRef.current) return;
+
+    const previous = claimAttemptsRef.current;
+    const attempts = previous?.matchId === match.id ? previous.attempts : 0;
+    if (attempts >= TIMEOUT_CLAIM_ATTEMPTS) return;
+
+    claimAttemptsRef.current = { matchId: match.id, attempts: attempts + 1 };
+    claimInFlightRef.current = true;
+    claimMutate(undefined, {
+      onSettled: () => {
+        claimInFlightRef.current = false;
+      },
+    });
   }, [opponentFlagged, match, claimMutate]);
 
   return {
@@ -209,6 +256,8 @@ export function useChessMatch(matchId: string | null) {
     rematch: rematch.mutateAsync,
     requestingRematch: rematch.isPending,
     claimingTimeout: flag.isPending,
+    claimDraw: drawClaim.mutateAsync,
+    claimingDraw: drawClaim.isPending,
   };
 }
 

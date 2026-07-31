@@ -12,9 +12,10 @@ function pickMimeType(): string {
 }
 
 // How the capture ended, so the UI can distinguish "nothing said" from a real
-// clip. "empty" means the user tapped but never spoke.
+// clip. "empty" means the user tapped but never spoke; "cancelled" means they
+// stopped it themselves, which is not a failure and gets no error.
 type CaptureOutcome =
-  { blob: Blob; reason: "silence" | "maxDuration" } | { blob: null; reason: "empty" };
+  { blob: Blob; reason: "silence" | "maxDuration" } | { blob: null; reason: "empty" | "cancelled" };
 
 // One spoken command is short. Auto-stop after this much silence, and never
 // listen longer than the hard cap even if the room stays noisy.
@@ -33,9 +34,15 @@ const DEBUG_LEVELS = false;
 interface UseVoiceRecord {
   recording: boolean;
   supported: boolean;
+  // Live input loudness, 0..1, updated while recording and reset to 0 when it
+  // stops. The silence detector already measures this, so exposing it lets the
+  // UI react to the actual voice rather than animate on a timer.
+  level: number;
   // Opens the mic, records one utterance, and resolves when the speaker pauses
   // (or the max cap is hit). The caller does not stop it manually.
   capture: () => Promise<CaptureOutcome>;
+  // Abandons the current capture and discards the audio.
+  cancel: () => void;
 }
 
 // Owns the microphone for a single hands-free utterance: opens a getUserMedia
@@ -45,9 +52,14 @@ interface UseVoiceRecord {
 // released (on finish and on unmount) rather than leaking the mic indicator.
 export function useVoiceRecord(): UseVoiceRecord {
   const [recording, setRecording] = useState(false);
+  const [level, setLevel] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const pollRef = useRef<number | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  // Set when the user stops the capture themselves, so onstop knows to throw
+  // the audio away rather than resolve with it.
+  const cancelledRef = useRef(false);
 
   const supported =
     typeof navigator !== "undefined" &&
@@ -63,7 +75,16 @@ export function useVoiceRecord(): UseVoiceRecord {
     streamRef.current = null;
     void audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
+    recorderRef.current = null;
     setRecording(false);
+    setLevel(0);
+  }, []);
+
+  const cancel = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    cancelledRef.current = true;
+    recorder.stop();
   }, []);
 
   const capture = useCallback(async (): Promise<CaptureOutcome> => {
@@ -73,6 +94,8 @@ export function useVoiceRecord(): UseVoiceRecord {
 
     const mimeType = pickMimeType();
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    recorderRef.current = recorder;
+    cancelledRef.current = false;
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data);
     };
@@ -105,7 +128,13 @@ export function useVoiceRecord(): UseVoiceRecord {
           pollRef.current = null;
         }
         const type = recorder.mimeType || "audio/webm";
+        const cancelled = cancelledRef.current;
         cleanup();
+        // A capture the user stopped is discarded without being sent.
+        if (cancelled) {
+          resolve({ blob: null, reason: "cancelled" });
+          return;
+        }
         // Send any captured audio and let the server decide. We only treat it as
         // "empty" when no audio was recorded at all, so a mis-tuned silence
         // threshold can never silently swallow a real command.
@@ -125,6 +154,7 @@ export function useVoiceRecord(): UseVoiceRecord {
           sumSquares += v * v;
         }
         const level = Math.sqrt(sumSquares / samples.length);
+        setLevel(level);
         const now = Date.now();
 
         if (DEBUG_LEVELS) {
@@ -161,5 +191,5 @@ export function useVoiceRecord(): UseVoiceRecord {
   // Never leave the microphone open if the component unmounts mid-capture.
   useEffect(() => cleanup, [cleanup]);
 
-  return { recording, supported, capture };
+  return { recording, supported, level, capture, cancel };
 }

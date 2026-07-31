@@ -159,16 +159,9 @@ export function useChessMatch(matchId: string | null) {
         return;
       }
       if (type !== "state" && type !== "position" && type !== "gameOver") return;
-      // A `state` frame carries the match id, so ignore ones meant for another
-      // match sharing this socket. `position`/`gameOver` carry no id (the gateway
-      // does not tag delivered frames with their topic), so they are trusted as
-      // this match's — correct for the one-board-on-screen case this app renders.
-      if (type === "state") {
-        const frameId = (data as { id?: string } | null)?.id;
-        if (frameId && frameId !== matchId) return;
-      }
-      // A frame proves the relay is live: let the match poll drop to its slow
-      // safety-net interval.
+      // The shared socket already routed this frame here by its topic, so it is
+      // this match's. A frame proves the relay is live: let the match poll drop
+      // to its slow safety-net interval.
       setLiveMatchId(matchId);
 
       // Apply the pushed payload straight to the cache so the move renders the

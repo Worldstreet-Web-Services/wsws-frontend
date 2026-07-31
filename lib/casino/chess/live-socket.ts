@@ -9,15 +9,17 @@
 // a match's liveTopic and get its frames, and the socket opens on the first
 // subscription and closes when the last one goes away.
 //
-// The gateway delivers each frame as { type, data, timestamp } with no topic
-// field, so a frame cannot be routed to a specific match here; every subscriber
-// receives every frame and decides for itself (a `state` frame carries data.id;
-// `position`/`gameOver` carry no id and are trusted by the board on screen).
+// Every data frame the gateway delivers carries a `topic` (the match's
+// liveTopic), so each frame is routed to exactly the subscribers of that topic —
+// the only reliable attribution, since `position`/`gameOver` payloads have no id
+// of their own. Connection-level control frames (welcome/subscribed/pong/error)
+// are topic-less and ignored here.
 
 const WS_URL = process.env.NEXT_PUBLIC_CHESS_WS_URL ?? "wss://ws.worldstreetwebservices.com";
 
 export interface GatewayFrame {
   type?: string;
+  topic?: string;
   data?: unknown;
 }
 
@@ -40,7 +42,26 @@ function send(message: unknown): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
 
-function broadcast(frame: GatewayFrame): void {
+// Route a gateway frame to the subscribers of its topic. An untagged chess frame
+// is tolerated during a rolling deploy: if only one match is being followed it
+// can only be that one. Control frames (no topic) are dropped.
+function deliver(frame: GatewayFrame): void {
+  const topic = typeof frame.topic === "string" ? frame.topic : null;
+  if (topic) {
+    const set = listeners.get(topic);
+    if (set) for (const listener of set) listener(frame);
+    return;
+  }
+  const isChessFrame =
+    frame.type === "state" || frame.type === "position" || frame.type === "gameOver";
+  if (isChessFrame && listeners.size === 1) {
+    for (const set of listeners.values()) for (const listener of set) listener(frame);
+  }
+}
+
+// Notify every subscriber regardless of topic — used only for the synthetic
+// close signal, which every board needs so it can fall back to polling.
+function broadcastToAll(frame: GatewayFrame): void {
   for (const set of listeners.values()) {
     for (const listener of set) listener(frame);
   }
@@ -71,14 +92,14 @@ function open(): void {
     } catch {
       return;
     }
-    broadcast(frame);
+    deliver(frame);
   };
   socket.onclose = () => {
     if (pingTimer != null) clearInterval(pingTimer);
     pingTimer = null;
     socket = null;
     // Tell subscribers the live path is gone so they speed their poll back up.
-    broadcast(SOCKET_CLOSED_FRAME);
+    broadcastToAll(SOCKET_CLOSED_FRAME);
     if (listeners.size > 0) scheduleReconnect();
   };
   socket.onerror = () => {};

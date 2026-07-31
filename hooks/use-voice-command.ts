@@ -172,7 +172,9 @@ export function useVoiceCommand(): UseVoiceCommand {
         case "unknown": {
           const heard = intent.transcript ? `Heard "${intent.transcript}"` : "Didn't catch that";
           toast.error(`${heard}. Try "what's my balance" or "go to markets".`, { id: toastId });
-          void speak(`Sorry, I didn't catch that. Try asking for your balance, or to open markets.`);
+          void speak(
+            `Sorry, I didn't catch that. Try asking for your balance, or to open markets.`
+          );
           return;
         }
       }

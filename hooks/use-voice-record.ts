@@ -154,7 +154,10 @@ export function useVoiceRecord(): UseVoiceRecord {
         const now = Date.now();
 
         if (DEBUG_LEVELS) {
-          vlog("capture", `level ${level.toFixed(3)} ${level > SILENCE_LEVEL ? "SPEECH" : "quiet"}`);
+          vlog(
+            "capture",
+            `level ${level.toFixed(3)} ${level > SILENCE_LEVEL ? "SPEECH" : "quiet"}`
+          );
         }
 
         if (level > SILENCE_LEVEL) {

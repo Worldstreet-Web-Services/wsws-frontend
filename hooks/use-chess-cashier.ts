@@ -1,203 +1,169 @@
 "use client";
 
-import { useCallback } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePrivy } from "@privy-io/react-auth";
 import {
-  confirmDeposit,
-  createWithdrawal,
+  confirmChessDeposit,
+  createChessWithdrawal,
+  feePctFromBps,
   fetchCashierConfig,
-  fetchPlayerBalance,
+  fetchChessBalance,
+  isCashierUnavailable,
+  USDC_DECIMALS,
+  type CashierWithdrawal,
 } from "@/lib/casino/api/cashier";
-import {
-  clearPendingDeposit,
-  readPendingDeposit,
-  savePendingDeposit,
-} from "@/lib/casino/pending-deposit";
-import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { SETTLE_CHAINS } from "@/lib/deposit";
-import { usdcToApi } from "@/lib/casino/cashier-money";
+import { getWalletAddress } from "@/lib/user";
+import { toBaseUnits } from "@/lib/trade/math";
 
-// The balance moves when a game settles, which happens on the service's clock
-// rather than ours, so it is polled while a cashier screen is open.
-const BALANCE_POLL_MS = 15_000;
+// The chess cashier's balance and money movements. Everything hangs off the
+// config query: while the service reports the cashier unconfigured, nothing
+// here polls and `configured` stays false, so every cashier surface renders
+// nothing. The moment the backend configures it, the same code lights up.
 
-// The service verifies a deposit against the chain, and an early confirm can
-// legitimately fail while the transfer is still gathering confirmations. These
-// retries cover that as well as a dropped request.
-const CONFIRM_ATTEMPTS = 4;
-const CONFIRM_BACKOFF_MS = 2_000;
-
-export const CASHIER_KEYS = {
+const CASHIER_KEYS = {
   config: ["casino", "chess", "cashier", "config"] as const,
-  balance: (player: string) => ["casino", "chess", "cashier", "balance", player] as const,
+  balance: (wallet: string) => ["casino", "chess", "cashier", "balance", wallet] as const,
 };
 
-// Whether this deployment has a cashier at all. A service without one answers
-// CONFLICT rather than erroring, which becomes null here, and every staking
-// affordance in the UI keys off `enabled` so it hides cleanly.
-export function useCashierConfig() {
-  const query = useQuery({
-    queryKey: CASHIER_KEYS.config,
-    queryFn: fetchCashierConfig,
-    // The operator does not switch a cashier on mid-session, so this is asked
-    // once and kept.
-    staleTime: Infinity,
-  });
+// The config is deployment state, not user state; it changes when the backend
+// team flips it on, so an occasional re-read is plenty.
+const CONFIG_STALE_MS = 5 * 60_000;
+// Stakes lock and settle server-side, so the balance moves without any local
+// action; poll it while a cashier screen is mounted.
+const BALANCE_POLL_MS = 15_000;
 
-  return {
-    config: query.data ?? null,
-    enabled: !!query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-  };
+// The service wants the deposit transfer at its confirmation depth before it
+// credits, so the first confirm right after the send can legitimately fail.
+// Four tries three seconds apart cover Base's confirmation time comfortably.
+const CONFIRM_ATTEMPTS = 4;
+const CONFIRM_DELAY_MS = 3_000;
+
+const NETWORK = "base-mainnet";
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function usePlayerBalance() {
-  const wallet = useCasinoWallet();
-  const { enabled } = useCashierConfig();
-  const address = wallet.address;
+export type DepositPhase = "idle" | "sending" | "confirming";
 
-  const query = useQuery({
-    queryKey: CASHIER_KEYS.balance(address ?? "none"),
-    queryFn: () => fetchPlayerBalance(address as string),
-    enabled: !!address && enabled,
+export interface ChessDepositOutcome {
+  txHash: string;
+  // The credited amount once the service confirmed within the retry window.
+  // Null means the send went through but the confirm has not landed yet: the
+  // funds are safe with the cashier and credit on their own, so the caller
+  // shows the "confirms in a moment" note rather than an error.
+  credited: string | null;
+}
+
+// Read-only view of the cashier: is it configured, what does it charge, and
+// what does this player hold. This is what the lobby, create and play screens
+// mount; it touches no wallet SDK, so it is safe on screens that never move
+// money.
+export function useChessCashierStatus() {
+  const { user } = usePrivy();
+  const wallet = getWalletAddress(user, "ethereum");
+
+  const config = useQuery({
+    queryKey: CASHIER_KEYS.config,
+    queryFn: fetchCashierConfig,
+    staleTime: CONFIG_STALE_MS,
+    // "Not configured" is an answer, not a fault; retrying would hammer the
+    // service for a state that only changes by deployment.
+    retry: (failureCount, error) => !isCashierUnavailable(error) && failureCount < 2,
+  });
+
+  const configured = config.isSuccess;
+
+  const balance = useQuery({
+    queryKey: CASHIER_KEYS.balance(wallet ?? "none"),
+    queryFn: () => fetchChessBalance(wallet as string),
+    enabled: configured && !!wallet,
     refetchInterval: BALANCE_POLL_MS,
   });
 
   return {
-    balance: query.data ?? null,
-    availableMicro: query.data?.availableMicro ?? null,
-    lockedMicro: query.data?.lockedMicro ?? null,
-    isLoading: query.isLoading,
-    error: query.error,
+    configured,
+    config: config.data ?? null,
+    wallet,
+    // Display-only fee percentage (500 bps -> 5); null until the config loads.
+    feePct: config.data ? feePctFromBps(config.data.platformFeeBps) : null,
+    available: balance.data?.availableUsdc ?? "0",
+    locked: balance.data?.lockedUsdc ?? "0",
+    balanceLoading: balance.isLoading,
   };
 }
 
-// Invalidates the caller's balance. Used after a deposit, a withdrawal, and
-// whenever a staked game reaches a terminal state.
-export function useRefreshBalance() {
+// The full cashier: status plus deposits and withdrawals. Deposits sign with
+// the embedded wallet, so this hook mounts the wallet SDK; only cashier
+// surfaces (the sheet) should use it, everything else reads
+// useChessCashierStatus.
+export function useChessCashier() {
   const queryClient = useQueryClient();
-  const wallet = useCasinoWallet();
-  const address = wallet.address;
-
-  return useCallback(() => {
-    if (!address) return;
-    void queryClient.invalidateQueries({ queryKey: CASHIER_KEYS.balance(address) });
-  }, [queryClient, address]);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Tells the service about a transfer, retrying because the alternative is money
-// sitting in the service's wallet with nothing crediting it. Safe to repeat:
-// the hash is unique upstream and re-confirming returns the row already
-// credited.
-export function useConfirmDeposit() {
-  const wallet = useCasinoWallet();
-  const refresh = useRefreshBalance();
-  const address = wallet.address;
-
-  const mutation = useMutation({
-    mutationFn: async (txHash: string) => {
-      if (!address) throw new Error("Connect your wallet first.");
-      let lastError: unknown;
-      for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt += 1) {
-        try {
-          const deposit = await confirmDeposit(address, txHash);
-          clearPendingDeposit(address);
-          return deposit;
-        } catch (error) {
-          lastError = error;
-          if (attempt < CONFIRM_ATTEMPTS - 1) await delay(CONFIRM_BACKOFF_MS * (attempt + 1));
-        }
-      }
-      throw lastError;
-    },
-    onSuccess: refresh,
-  });
-
-  return {
-    confirm: mutation.mutateAsync,
-    confirming: mutation.isPending,
-    error: mutation.error,
-  };
-}
-
-// The full deposit: send USDC to the service's wallet, then tell the service.
-//
-// On Base the send is sponsored and returns an already-confirmed hash, so there
-// is no receipt wait here. The hash is written down before confirm is tried, so
-// a failure between the two steps is recoverable rather than lost.
-export function useDepositToCashier() {
-  const wallet = useCasinoWallet();
-  const { config } = useCashierConfig();
+  const status = useChessCashierStatus();
   const { sendToken } = useSendToken();
-  const { confirm } = useConfirmDeposit();
-  const address = wallet.address;
+  const [depositPhase, setDepositPhase] = useState<DepositPhase>("idle");
+  const { config, wallet } = status;
 
-  const mutation = useMutation({
-    mutationFn: async (amountMicro: bigint) => {
-      if (!address) throw new Error("Connect your wallet first.");
-      if (!config) throw new Error("The chess cashier isn't available right now.");
+  const invalidateBalance = () => {
+    if (wallet) void queryClient.invalidateQueries({ queryKey: CASHIER_KEYS.balance(wallet) });
+  };
 
-      const txHash = await sendToken({
-        network: "base-mainnet",
-        tokenAddress: SETTLE_CHAINS.base.usdc,
-        decimals: SETTLE_CHAINS.base.decimals,
-        to: config.depositAddress,
-        amount: amountMicro,
-      });
+  // Deposit = send USDC on Base to the cashier's deposit address (gas
+  // sponsored), then ask the service to credit that hash, retrying while the
+  // transfer reaches confirmation depth.
+  const deposit = useMutation({
+    mutationFn: async (amountUsdc: string): Promise<ChessDepositOutcome> => {
+      if (!config) throw new Error("Chess balances aren't available yet.");
+      if (!wallet) throw new Error("Connect your wallet first.");
 
-      // Written down before the confirm is attempted: from here on the money
-      // has left the player's wallet, and this hash is the only proof of it.
-      savePendingDeposit(address, {
-        txHash,
-        amountMicro: amountMicro.toString(),
-        savedAt: Date.now(),
-      });
+      setDepositPhase("sending");
+      try {
+        const txHash = await sendToken({
+          network: NETWORK,
+          tokenAddress: config.tokenAddress,
+          decimals: USDC_DECIMALS,
+          to: config.depositAddress,
+          amount: toBaseUnits(amountUsdc, USDC_DECIMALS),
+        });
 
-      await confirm(txHash);
-      return { txHash, amountUsdc: usdcToApi(amountMicro) };
+        setDepositPhase("confirming");
+        for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
+          if (attempt > 0) await wait(CONFIRM_DELAY_MS);
+          try {
+            const credited = await confirmChessDeposit(wallet, txHash);
+            return { txHash, credited: credited.amountUsdc };
+          } catch {
+            // Most likely still short of the confirmation depth. The confirm
+            // is idempotent by hash, so trying again is free.
+          }
+        }
+        // The money is with the cashier; only the credit acknowledgement is
+        // late. Resolving (not throwing) keeps this out of the error path so
+        // the UI reports it truthfully instead of as a failed deposit.
+        return { txHash, credited: null };
+      } finally {
+        setDepositPhase("idle");
+      }
     },
+    onSettled: invalidateBalance,
+  });
+
+  const withdraw = useMutation({
+    mutationFn: (amountUsdc: string): Promise<CashierWithdrawal> => {
+      if (!wallet) throw new Error("Connect your wallet first.");
+      return createChessWithdrawal(wallet, amountUsdc);
+    },
+    onSuccess: invalidateBalance,
   });
 
   return {
-    deposit: mutation.mutateAsync,
-    depositing: mutation.isPending,
-    error: mutation.error,
-  };
-}
-
-// A deposit that was sent but never credited, so the screen can offer to
-// finish it rather than leaving the player to work out where their money went.
-export function usePendingDeposit() {
-  const wallet = useCasinoWallet();
-  const address = wallet.address;
-  return {
-    pending: readPendingDeposit(address),
-    dismiss: () => clearPendingDeposit(address),
-  };
-}
-
-export function useCreateWithdrawal() {
-  const wallet = useCasinoWallet();
-  const refresh = useRefreshBalance();
-  const address = wallet.address;
-
-  const mutation = useMutation({
-    mutationFn: (input: { amountMicro: bigint; toAddress?: string }) => {
-      if (!address) throw new Error("Connect your wallet first.");
-      return createWithdrawal({ player: address, ...input });
-    },
-    onSuccess: refresh,
-  });
-
-  return {
-    withdraw: mutation.mutateAsync,
-    withdrawing: mutation.isPending,
-    error: mutation.error,
+    ...status,
+    deposit: deposit.mutateAsync,
+    depositing: deposit.isPending,
+    depositPhase,
+    withdraw: withdraw.mutateAsync,
+    withdrawing: withdraw.isPending,
   };
 }

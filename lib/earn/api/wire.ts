@@ -117,7 +117,9 @@ const COMPENSATION_TYPES: CompensationType[] = ["fixed", "range", "variable"];
 const AGENT_ACCESS: AgentAccess[] = ["HUMAN_ONLY", "AGENT_ALLOWED", "AGENT_ONLY"];
 
 function oneOf<T extends string>(options: T[], value: unknown, fallback: T): T {
-  return typeof value === "string" && (options as string[]).includes(value) ? (value as T) : fallback;
+  return typeof value === "string" && (options as string[]).includes(value)
+    ? (value as T)
+    : fallback;
 }
 
 function text(value: unknown, fallback = ""): string {
@@ -273,9 +275,7 @@ function toApplicant(wire: SubmissionWire["user"]): SubmissionApplicant | null {
   };
 }
 
-function toEligibilityAnswers(
-  wire: SubmissionWire["eligibilityAnswers"]
-): EligibilityAnswer[] {
+function toEligibilityAnswers(wire: SubmissionWire["eligibilityAnswers"]): EligibilityAnswer[] {
   if (!Array.isArray(wire)) return [];
   return wire
     .filter((a): a is { question: string; answer?: string } => isNonEmptyString(a?.question))

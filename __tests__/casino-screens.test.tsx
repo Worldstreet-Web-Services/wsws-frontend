@@ -65,20 +65,24 @@ vi.mock("@/lib/toast", () => ({
   toast: { loading: vi.fn(() => "t"), success: vi.fn(), error: vi.fn() },
 }));
 
-import {
-  CasinoNavGuardProvider,
-  useCasinoNavGuard,
-} from "@/components/dashboard/casino/casino-nav-guard";
+import { NextIntlClientProvider } from "next-intl";
 import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section";
 import { PlaySection } from "@/components/dashboard/casino/chess/play-section";
 import { CreateSection } from "@/components/dashboard/casino/chess/create-section";
 import { DrawSection } from "@/components/dashboard/casino/draw/draw-section";
+import messages from "@/messages/en.json";
 
+// The screens read their copy through next-intl, so the wrapper provides the
+// English catalog; assertions below match the en.json strings.
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    </NextIntlClientProvider>
+  );
 }
 
 const money = (usd: number, symbol = "ETH") => ({
@@ -293,11 +297,6 @@ describe("a drawn game", () => {
     white: player("0xabc", "you"),
     black: player("0xdef", "them"),
     timeControl: "5+3",
-    inviteCode: "m1",
-    liveTopic: "chess:match:m1",
-    // A game already under way. Abort is only offered before the first move, so
-    // the test that wants it says so explicitly.
-    ply: 4,
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     moves: [],
     clocks: { w: 300, b: 300 },
@@ -393,143 +392,13 @@ describe("a drawn game", () => {
 
   it("aborts a game nobody has joined", async () => {
     chessApi.fetchMatch.mockResolvedValue(
-      drawnMatch({ state: "awaiting_opponent", result: null, black: null, ply: 0 })
+      drawnMatch({ state: "awaiting_opponent", result: null, black: null })
     );
     chessApi.abortMatch.mockResolvedValue(drawnMatch({ state: "cancelled", result: null }));
     render(<PlaySection matchId="m1" />, { wrapper });
 
     fireEvent.click(await screen.findByRole("button", { name: "Abort" }));
     await waitFor(() => expect(chessApi.abortMatch).toHaveBeenCalledWith("m1", "0xabc"));
-  });
-
-  // Walking out of a running game abandons an opponent to a clock, and the only
-  // way to end it is to resign, so Back has to be intercepted rather than
-  // silently obeyed or silently ignored.
-  describe("leaving a game in progress", () => {
-    const livePlay = () => drawnMatch({ state: "in_progress", result: null, ply: 4 });
-
-    it("asks before letting Back out of a running game", async () => {
-      chessApi.fetchMatch.mockResolvedValue(livePlay());
-      render(<PlaySection matchId="m1" />, { wrapper });
-      await screen.findByText(/Your move|Opponent thinking/);
-
-      window.dispatchEvent(new PopStateEvent("popstate"));
-
-      expect(await screen.findByText(/Leave this game\?/)).toBeInTheDocument();
-      // Nothing has happened to the game yet: it is only a question.
-      expect(chessApi.resignMatch).not.toHaveBeenCalled();
-      expect(push).not.toHaveBeenCalled();
-    });
-
-    it("resigns and leaves only when that is confirmed", async () => {
-      chessApi.fetchMatch.mockResolvedValue(livePlay());
-      chessApi.resignMatch.mockResolvedValue(drawnMatch());
-      render(<PlaySection matchId="m1" />, { wrapper });
-      await screen.findByText(/Your move|Opponent thinking/);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-
-      fireEvent.click(await screen.findByRole("button", { name: "Resign and leave" }));
-      await waitFor(() => expect(chessApi.resignMatch).toHaveBeenCalledWith("m1", "0xabc"));
-      await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess"));
-    });
-
-    // The chrome's own back link has to ask too, not just the browser's Back.
-    // This stands in for CasinoPage's BackLink, which consults the guard the
-    // same way.
-    function ChromeBack() {
-      const guard = useCasinoNavGuard();
-      return (
-        <a
-          href="/casino/chess"
-          data-testid="chrome-back"
-          onClick={(e) => {
-            if (guard.blocked()) e.preventDefault();
-          }}
-        >
-          Back
-        </a>
-      );
-    }
-
-    it("intercepts the chrome's back link rather than leaving silently", async () => {
-      chessApi.fetchMatch.mockResolvedValue(livePlay());
-      render(
-        <CasinoNavGuardProvider>
-          <ChromeBack />
-          <PlaySection matchId="m1" />
-        </CasinoNavGuardProvider>,
-        { wrapper }
-      );
-      await screen.findByText(/Your move|Opponent thinking/);
-
-      // fireEvent returns false when a handler called preventDefault.
-      expect(fireEvent.click(screen.getByTestId("chrome-back"))).toBe(false);
-      expect(await screen.findByText(/Leave this game\?/)).toBeInTheDocument();
-    });
-
-    it("lets the back link through once the game is over", async () => {
-      chessApi.fetchMatch.mockResolvedValue(drawnMatch());
-      render(
-        <CasinoNavGuardProvider>
-          <ChromeBack />
-          <PlaySection matchId="m1" />
-        </CasinoNavGuardProvider>,
-        { wrapper }
-      );
-      await screen.findAllByText(/Draw · agreement/);
-
-      expect(fireEvent.click(screen.getByTestId("chrome-back"))).toBe(true);
-      expect(screen.queryByText(/Leave this game\?/)).not.toBeInTheDocument();
-    });
-
-    it("stays put, and still in the game, on keep playing", async () => {
-      chessApi.fetchMatch.mockResolvedValue(livePlay());
-      render(<PlaySection matchId="m1" />, { wrapper });
-      await screen.findByText(/Your move|Opponent thinking/);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-
-      fireEvent.click(await screen.findByRole("button", { name: "Keep playing" }));
-      await waitFor(() => expect(screen.queryByText(/Leave this game\?/)).not.toBeInTheDocument());
-      expect(chessApi.resignMatch).not.toHaveBeenCalled();
-      expect(push).not.toHaveBeenCalled();
-    });
-
-    // A spectator has nothing to resign, and a finished game nothing to leave.
-    it("does not stand in the way of a spectator", async () => {
-      chessApi.fetchMatch.mockResolvedValue(
-        drawnMatch({
-          state: "in_progress",
-          result: null,
-          white: player("0x111", "one"),
-          black: player("0x222", "two"),
-        })
-      );
-      render(<PlaySection matchId="m1" />, { wrapper });
-      await screen.findByText("Spectating");
-
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      await waitFor(() => expect(screen.queryByText(/Leave this game\?/)).not.toBeInTheDocument());
-    });
-  });
-
-  // The service allows an abort right up to the first move, including after an
-  // opponent has joined, and refuses it after. The button follows that rule
-  // rather than the older "only while waiting" one.
-  it("still offers abort once joined, until the first move is played", async () => {
-    chessApi.fetchMatch.mockResolvedValue(
-      drawnMatch({ state: "in_progress", result: null, ply: 0 })
-    );
-    render(<PlaySection matchId="m1" />, { wrapper });
-    expect(await screen.findByRole("button", { name: "Abort" })).toBeInTheDocument();
-  });
-
-  it("withdraws abort once the game is under way", async () => {
-    chessApi.fetchMatch.mockResolvedValue(
-      drawnMatch({ state: "in_progress", result: null, ply: 1 })
-    );
-    render(<PlaySection matchId="m1" />, { wrapper });
-    expect(await screen.findByRole("button", { name: "Offer draw" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Abort" })).not.toBeInTheDocument();
   });
 
   // The service does not end a game on time by itself, so a game whose clock

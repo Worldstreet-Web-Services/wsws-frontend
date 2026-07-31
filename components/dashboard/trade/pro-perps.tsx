@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AssetChart } from "@/components/ui/asset-chart";
 import { SearchIcon } from "@/components/ui/icons";
+import { TradingViewChart } from "@/components/ui/tradingview-chart";
+import { FlashPrice } from "@/components/dashboard/trade/flash-price";
+import { PerpConfirmModal, type ConfirmRow } from "@/components/dashboard/trade/perp-confirm-modal";
 import { PerpOrders } from "@/components/dashboard/trade/perp-orders";
 import { PerpPositions } from "@/components/dashboard/trade/perp-positions";
 import { PerpPairIcon } from "@/components/dashboard/trade/perp-pair-icon";
@@ -13,10 +15,19 @@ import { usePerpActions } from "@/hooks/use-perp-actions";
 import { usePerpOrders } from "@/hooks/use-perp-orders";
 import { usePerpPositions } from "@/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import type { OpenTradeRequest } from "@/lib/perp/types";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
-import { CATEGORY_ORDER, pairSymbol, validateOrder } from "@/lib/perp/logic";
-import { coingeckoId } from "@/lib/coingecko";
-import type { PerpCategory, PerpOrderType, PerpPair } from "@/lib/perp/types";
+import {
+  CATEGORY_ORDER,
+  isPositiveWireDecimal,
+  orderFieldValidity,
+  pairSymbol,
+  validateOrder,
+} from "@/lib/perp/logic";
+import { tradingViewFallbackSymbol, tradingViewSymbol } from "@/lib/perp/tradingview";
+import { usePerpFormAutostage } from "@/hooks/use-perp-form-autostage";
+import type { PerpPrefill } from "@/lib/voice/intent";
+import type { OpenPosition, PerpCategory, PerpOrderType, PerpPair } from "@/lib/perp/types";
 
 // The full-control interface: every market Avantis lists across crypto, forex,
 // commodities and equities, with order types, TP/SL, slippage, and position
@@ -27,6 +38,8 @@ interface ProPerpsProps {
   pairs: PerpPair[];
   priceOf: (symbol: string) => string | null;
   live: boolean;
+  // A voice-staged long/short: the form fills in and auto-fires. Null when idle.
+  voicePrefill?: PerpPrefill | null;
 }
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
@@ -55,7 +68,7 @@ function num(value: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
+export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) {
   const t = useTranslations("perps");
   const [category, setCategory] = useState<PerpCategory>("crypto");
   const [search, setSearch] = useState("");
@@ -68,6 +81,13 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
   const [takeProfit, setTakeProfit] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [slippage, setSlippage] = useState("1");
+  // The confirm step before money moves: an open staged from the form, or a
+  // close staged from a position row. null = no dialog.
+  const [confirm, setConfirm] = useState<
+    | { kind: "open"; req: Omit<OpenTradeRequest, "trader"> }
+    | { kind: "close"; position: OpenPosition; amount: string; full: boolean }
+    | null
+  >(null);
 
   const { positions, loading: positionsLoading } = usePerpPositions(live);
   const { orders } = usePerpOrders(live);
@@ -103,7 +123,25 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
     ? validateOrder(pair, collateral, leverage, usdcBalance.toFixed(6))
     : { ok: false as const, message: t("pickMarket") };
   const needsTrigger = orderType !== "market";
-  const triggerOk = !needsTrigger || num(limitPrice) > 0;
+  // The trigger price goes on the wire as openPrice, so it must satisfy the
+  // API's decimal-string contract — parseFloat alone would pass "3000." and
+  // fail server-side.
+  const triggerOk = !needsTrigger || isPositiveWireDecimal(limitPrice);
+
+  // Field-level invalid flags drive the red borders, judged live on every
+  // keystroke and independently per field (an over-max leverage is wrong even
+  // while collateral is still empty). A pristine field never reads as wrong.
+  const { collateralInvalid, leverageInvalid } = pair
+    ? orderFieldValidity(pair, collateral, leverage, usdcBalance.toFixed(6))
+    : { collateralInvalid: false, leverageInvalid: false };
+  const triggerInvalid = needsTrigger && limitPrice !== "" && !isPositiveWireDecimal(limitPrice);
+  const tpInvalid = takeProfit !== "" && !isPositiveWireDecimal(takeProfit);
+  const slInvalid = stopLoss !== "" && !isPositiveWireDecimal(stopLoss);
+  // Slippage above 50% is never a real intent; cap it so a typo cannot
+  // authorize a fill at half the displayed price.
+  const slippageInvalid =
+    slippage !== "" && (!isPositiveWireDecimal(slippage) || num(slippage) > 50);
+  const fieldsOk = !tpInvalid && !slInvalid && !slippageInvalid;
 
   const leverageNum = num(leverage);
   const entryNum = needsTrigger ? num(limitPrice) : markNum;
@@ -114,23 +152,91 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
     if (next === "" || DECIMAL_INPUT.test(next)) set(next);
   };
 
-  const submit = async () => {
-    if (!pair || !validation.ok || !triggerOk) return;
+  const pairByIndex = useMemo(() => new Map(pairs.map((p) => [p.pairIndex, p])), [pairs]);
+
+  const submit = () => {
+    if (!pair || !validation.ok || !triggerOk || !fieldsOk) return;
     const openPrice = needsTrigger ? limitPrice : (markPrice ?? undefined);
     if (openPrice == null) return;
-    const ok = await actions.openTrade({
-      pair: selected,
-      isLong: side === "long",
-      collateralUsdc: collateral,
-      leverage,
-      orderType,
-      openPrice,
-      takeProfit: takeProfit || "0",
-      stopLoss: stopLoss || "0",
-      slippagePct: slippage || "1",
+    setConfirm({
+      kind: "open",
+      req: {
+        pair: selected,
+        isLong: side === "long",
+        collateralUsdc: collateral,
+        leverage,
+        orderType,
+        openPrice,
+        takeProfit: takeProfit || "0",
+        stopLoss: stopLoss || "0",
+        slippagePct: slippage || "1",
+      },
     });
-    if (ok) setCollateral("");
   };
+
+  // Voice: stage this form from a spoken command, then auto-fire submit() after a
+  // visible beat. onStage switches to the pair's category (so it's visible in the
+  // market browser) and forces a market order.
+  usePerpFormAutostage({
+    prefill: voicePrefill ?? null,
+    pairs,
+    setSelected,
+    setSide,
+    setCollateral,
+    setLeverage,
+    submit,
+    canSubmit: live && validation.ok && triggerOk && markPrice != null && !actions.busy,
+    onStage: (p) => {
+      setCategory(p.category);
+      setOrderType("market");
+      setSearch("");
+    },
+  });
+
+  const runConfirmed = async () => {
+    if (!confirm) return;
+    const staged = confirm;
+    setConfirm(null);
+    if (staged.kind === "open") {
+      const ok = await actions.openTrade(staged.req);
+      if (ok) setCollateral("");
+    } else {
+      await actions.closeTrade(staged.position, staged.amount);
+    }
+  };
+
+  const confirmRows: ConfirmRow[] =
+    confirm?.kind === "open"
+      ? [
+          { label: t("confirmMarket"), value: confirm.req.pair },
+          {
+            label: t("confirmSide"),
+            value: `${t(confirm.req.isLong ? "long" : "short")} ${confirm.req.leverage}x`,
+            tone: confirm.req.isLong ? ("up" as const) : ("down" as const),
+          },
+          { label: t("collateral"), value: `${confirm.req.collateralUsdc} USDC` },
+          {
+            label: t("positionSize"),
+            value: `${formatAmount(
+              (parseFloat(confirm.req.collateralUsdc) || 0) *
+                (parseFloat(confirm.req.leverage) || 0)
+            )} USDC`,
+          },
+        ]
+      : confirm?.kind === "close"
+        ? [
+            {
+              label: t("confirmMarket"),
+              value: pairByIndex.get(confirm.position.pairIndex)
+                ? pairSymbol(pairByIndex.get(confirm.position.pairIndex) as PerpPair)
+                : `#${confirm.position.pairIndex}`,
+            },
+            {
+              label: t("confirmCloseAmount"),
+              value: confirm.full ? t("confirmCloseFull") : `${confirm.amount} USDC`,
+            },
+          ]
+        : [];
 
   const cta = !live
     ? t("liveTradingConnectsSoon")
@@ -144,7 +250,6 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
           ? t("enterTriggerPrice")
           : t(side === "long" ? "ctaLong" : "ctaShort", { sym: baseSym, lev: leverage || "?" });
 
-  const pairByIndex = useMemo(() => new Map(pairs.map((p) => [p.pairIndex, p])), [pairs]);
   const oi = market?.openInterest;
   const oiTotal = oi ? oi.long + oi.short : 0;
 
@@ -224,9 +329,9 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="ws-display tnum text-[22px]">
+                <FlashPrice value={markNum} className="ws-display tnum block text-[22px]">
                   {markNum > 0 ? formatUsd(markNum) : "—"}
-                </div>
+                </FlashPrice>
                 {closed ? (
                   <div className="text-down text-[11.5px] font-medium">{t("marketClosedHint")}</div>
                 ) : null}
@@ -278,11 +383,11 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
             </div>
           </div>
 
-          {coingeckoId(baseSym) ? (
-            <div className="ws-card p-4 sm:p-5">
-              <AssetChart coingeckoId={coingeckoId(baseSym)} allowCandles />
-            </div>
-          ) : null}
+          <div className="ws-card overflow-hidden p-2 sm:p-3">
+            <TradingViewChart
+              symbol={pair ? tradingViewSymbol(pair) : tradingViewFallbackSymbol(baseSym)}
+            />
+          </div>
         </div>
 
         {/* Order panel. */}
@@ -324,14 +429,16 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
             ))}
           </div>
 
-          <div className="ws-inset mt-2.5 p-3.5">
+          <div className={`ws-inset mt-2.5 p-3.5 ${collateralInvalid ? "ws-invalid" : ""}`}>
             <div className="mb-1.5 flex items-center justify-between text-[11.5px] font-normal text-white/55">
               <span>{t("collateral")}</span>
               <span className="flex items-center gap-2">
                 <span className="tnum">{formatAmount(usdcBalance)} USDC</span>
                 {usdcBalance > 0 ? (
                   <button
-                    onClick={() => setCollateral(usdcBalance.toFixed(2))}
+                    // Floor, not round: toFixed rounds 25.999 to "26.00", which
+                    // then trips the over-balance check and Max invalidates itself.
+                    onClick={() => setCollateral((Math.floor(usdcBalance * 100) / 100).toFixed(2))}
                     className="text-accent cursor-pointer font-medium hover:opacity-80"
                   >
                     {t("max")}
@@ -351,38 +458,59 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
             </div>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-            <div className="ws-inset p-3">
-              <div className="mb-1 text-[11px] font-normal text-white/50">
+          <div className={`ws-inset mt-2.5 p-3 ${leverageInvalid ? "ws-invalid" : ""}`}>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-normal text-white/50">
+              <span>
                 {t("leverage")} {pair ? t("leverageMax", { max: pair.maxLeverage }) : ""}
-              </div>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
               <input
                 value={leverage}
                 onChange={(e) => guard(setLeverage)(e.target.value)}
                 inputMode="decimal"
                 placeholder="10"
-                className="tnum w-full bg-transparent text-[16px] font-medium text-white outline-none placeholder:text-white/30"
+                className="tnum w-16 shrink-0 bg-transparent text-[16px] font-medium text-white outline-none placeholder:text-white/30"
               />
-            </div>
-            <div className="ws-inset p-3">
-              <div className="mb-1 text-[11px] font-normal text-white/50">{t("slippagePct")}</div>
+              {/* Slider and input drive the same state: dragging writes a whole
+                  number into the field, typing moves the thumb (clamped into
+                  range so a fractional or out-of-range entry cannot break it). */}
               <input
-                value={slippage}
-                onChange={(e) => guard(setSlippage)(e.target.value)}
-                inputMode="decimal"
-                placeholder="1"
-                className="tnum w-full bg-transparent text-[16px] font-medium text-white outline-none placeholder:text-white/30"
+                type="range"
+                min={1}
+                max={pair?.maxLeverage ?? 50}
+                step={1}
+                value={Math.min(
+                  Math.max(Math.round(num(leverage)) || 1, 1),
+                  pair?.maxLeverage ?? 50
+                )}
+                onChange={(e) => setLeverage(e.target.value)}
+                className="accent-accent h-1.5 min-w-0 flex-1 cursor-pointer"
               />
             </div>
           </div>
 
+          <div className={`ws-inset mt-2.5 p-3 ${slippageInvalid ? "ws-invalid" : ""}`}>
+            <div className="mb-1 text-[11px] font-normal text-white/50">{t("slippagePct")}</div>
+            <input
+              value={slippage}
+              onChange={(e) => guard(setSlippage)(e.target.value)}
+              inputMode="decimal"
+              placeholder="1"
+              className="tnum w-full bg-transparent text-[16px] font-medium text-white outline-none placeholder:text-white/30"
+            />
+          </div>
+
           {needsTrigger ? (
-            <div className="ws-inset mt-2.5 p-3">
+            <div className={`ws-inset mt-2.5 p-3 ${triggerInvalid ? "ws-invalid" : ""}`}>
               <div className="mb-1 flex items-center justify-between text-[11px] font-normal text-white/50">
                 <span>{orderType === "limit" ? t("limitPrice") : t("stopPrice")}</span>
                 {markNum > 0 ? (
                   <button
-                    onClick={() => setLimitPrice(String(markNum))}
+                    // The source string, never String(parseFloat(...)): a float
+                    // round-trip can emit exponent notation for sub-micro pairs,
+                    // which the wire contract rejects.
+                    onClick={() => setLimitPrice(markPrice ?? "")}
                     className="text-accent cursor-pointer font-medium hover:opacity-80"
                   >
                     {t("useMarket")}
@@ -400,7 +528,7 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
           ) : null}
 
           <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-            <div className="ws-inset p-3">
+            <div className={`ws-inset p-3 ${tpInvalid ? "ws-invalid" : ""}`}>
               <div className="mb-1 text-[11px] font-normal text-white/50">{t("takeProfit")}</div>
               <input
                 value={takeProfit}
@@ -410,7 +538,7 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
                 className="tnum w-full bg-transparent text-[15px] font-medium text-white outline-none placeholder:text-white/30"
               />
             </div>
-            <div className="ws-inset p-3">
+            <div className={`ws-inset p-3 ${slInvalid ? "ws-invalid" : ""}`}>
               <div className="mb-1 text-[11px] font-normal text-white/50">{t("stopLoss")}</div>
               <input
                 value={stopLoss}
@@ -453,11 +581,11 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
 
           <button
             onClick={submit}
-            disabled={!live || actions.busy || !validation.ok || !triggerOk}
+            disabled={!live || actions.busy || !validation.ok || !triggerOk || !fieldsOk}
             className={`mt-3 w-full rounded-[14px] p-3.5 font-sans text-[14.5px] font-semibold transition-opacity ${
               side === "long" ? "bg-up text-up-ink" : "bg-down text-down-ink"
             } ${
-              !live || actions.busy || !validation.ok || !triggerOk
+              !live || actions.busy || !validation.ok || !triggerOk || !fieldsOk
                 ? "cursor-not-allowed opacity-50"
                 : "cursor-pointer hover:opacity-90"
             }`}
@@ -479,11 +607,25 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
         loading={positionsLoading}
         pairByIndex={pairByIndex}
         priceOf={priceOf}
-        onClose={(p, c) => void actions.closeTrade(p, c)}
+        onClose={(p, c) =>
+          setConfirm({ kind: "close", position: p, amount: c, full: c === p.initialCollateralUsdc })
+        }
         onUpdateTpSl={(p, tp, sl) => void actions.updateTpSl(p, tp, sl)}
         onUpdateMargin={(p, amt, dir) => void actions.updateMargin(p, amt, dir)}
         busy={actions.busy}
       />
+
+      {confirm ? (
+        <PerpConfirmModal
+          title={confirm.kind === "open" ? t("confirmOpenTitle") : t("confirmCloseTitle")}
+          rows={confirmRows}
+          warning={confirm.kind === "open" ? t("confirmRiskOpen") : t("confirmRiskClose")}
+          cancelLabel={t("confirmCancel")}
+          continueLabel={t("confirmContinue")}
+          onCancel={() => setConfirm(null)}
+          onContinue={() => void runConfirmed()}
+        />
+      ) : null}
     </div>
   );
 }

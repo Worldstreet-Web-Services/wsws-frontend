@@ -1,381 +1,197 @@
 "use client";
 
 import { useState } from "react";
-import { ModalShell } from "@/components/ui/modal-shell";
+import { useTranslations } from "next-intl";
+import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { useChessCashier } from "@/hooks/use-chess-cashier";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import {
-  useCreateWithdrawal,
-  useDepositToCashier,
-  useConfirmDeposit,
-  usePendingDeposit,
-  usePlayerBalance,
-  useCashierConfig,
-} from "@/hooks/use-chess-cashier";
-import { useCasinoWallet } from "@/hooks/use-casino-wallet";
-import {
-  formatUsdc,
-  formatUsdcWithSymbol,
-  isTxHash,
-  requireUsdc,
-  USDC_DECIMALS,
-} from "@/lib/casino/cashier-money";
-import { toBaseUnits } from "@/lib/trade/math";
+import { exceedsUsdcBalance, normalizeUsdcAmount } from "@/lib/casino/api/cashier";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
 const DECIMAL = /^\d*\.?\d*$/;
 
-// The cashier settles on Base, same as the rest of the casino.
-const EXPLORER_TX_URL = "https://basescan.org/tx/";
+export type CashierMode = "deposit" | "withdraw";
 
-const INPUT =
-  "ws-inset focus:border-accent/50 tnum w-full rounded-[12px] px-3.5 py-3 font-sans text-[18px] text-white outline-none placeholder:text-white/25";
-
-type Tab = "deposit" | "withdraw";
-
-// Funding and cashing out a chess balance.
-//
-// The balance is held by the chess service, not on-chain and not in the
-// player's own wallet, so every screen here says so rather than letting it read
-// as another wallet balance.
-export function CashierSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>("deposit");
-  const { config, enabled } = useCashierConfig();
-
-  return (
-    <ModalShell open={open} onClose={onClose} contentKey={tab}>
-      <div className="flex flex-col gap-4 p-5">
-        <div>
-          <h2 className="ws-display text-[18px] text-white">Chess balance</h2>
-          <p className="mt-1 font-sans text-[12.5px] font-normal text-white/50">
-            Held by the chess service to settle staked games. Move money in to play, out whenever it
-            isn&apos;t committed.
-          </p>
-        </div>
-
-        {!enabled || !config ? (
-          <div className="ws-inset px-4 py-6 text-center font-sans text-[13px] font-normal text-white/55">
-            Staked chess isn&apos;t switched on yet.
-          </div>
-        ) : (
-          <>
-            <BalanceRow />
-            <PendingDepositBanner />
-
-            <div className="ws-inset flex gap-2 rounded-full p-1">
-              {(["deposit", "withdraw"] as const).map((id) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex-1 cursor-pointer rounded-full py-2.5 font-sans text-[13px] font-semibold capitalize transition-colors ${
-                    tab === id ? "text-ink bg-white" : "text-white/50"
-                  }`}
-                >
-                  {id}
-                </button>
-              ))}
-            </div>
-
-            {tab === "deposit" ? <DepositForm onDone={onClose} /> : <WithdrawForm />}
-          </>
-        )}
-      </div>
-    </ModalShell>
-  );
+interface CashierSheetProps {
+  onClose: () => void;
+  initialMode?: CashierMode;
 }
 
-function BalanceRow() {
-  const { availableMicro, lockedMicro, isLoading } = usePlayerBalance();
+// Moves USDC between the player's Base wallet and their chess balance. A
+// deposit is a gas-sponsored USDC send to the cashier's deposit address which
+// the service then credits; a withdrawal is entirely server-side. Both forms
+// validate in exact base units before anything is sent.
+export function CashierSheet({ onClose, initialMode = "deposit" }: CashierSheetProps) {
+  const t = useTranslations("casino.chess.cashier");
+  // Borrowed for the one message this namespace lacks: a deposit larger than
+  // the wallet's Base USDC holding.
+  const tFund = useTranslations("casino.fund");
+  const cashier = useChessCashier();
+  const { tokens, refetch: refetchPortfolio } = usePortfolio();
 
-  return (
-    <div className="ws-card flex items-center justify-between gap-4 rounded-[14px] px-4 py-3">
-      <div>
-        <div className="font-sans text-[11.5px] font-normal text-white/45">Available</div>
-        <div className="ws-display tnum text-[20px] text-white">
-          {isLoading ? "…" : formatUsdcWithSymbol(availableMicro)}
-        </div>
-      </div>
-      {lockedMicro && lockedMicro > 0n ? (
-        <div className="text-right">
-          <div className="font-sans text-[11.5px] font-normal text-white/45">In play</div>
-          <div className="tnum font-sans text-[13px] font-medium text-white/70">
-            {formatUsdc(lockedMicro)}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// A transfer that reached the service's wallet but was never credited. Without
-// this the player has simply lost the money as far as the UI is concerned.
-function PendingDepositBanner() {
-  const { pending, dismiss } = usePendingDeposit();
-  const { confirm, confirming } = useConfirmDeposit();
-  const [done, setDone] = useState(false);
-
-  if (!pending || done) return null;
-
-  const onFinish = async () => {
-    const id = toast.loading("Crediting your deposit…");
-    try {
-      await confirm(pending.txHash);
-      setDone(true);
-      toast.success("Deposit credited.", { id });
-    } catch (e) {
-      toast.error(friendlyError(e, "That deposit still couldn't be credited."), { id });
-    }
-  };
-
-  return (
-    <div className="border-accent/35 rounded-[14px] border bg-white/4 px-4 py-3.5">
-      <div className="font-sans text-[12.5px] font-medium text-white/85">
-        A deposit is waiting to be credited
-      </div>
-      <div className="mt-1 font-sans text-[12px] font-normal text-white/55">
-        Your transfer went through but we couldn&apos;t tell the service about it. Nothing is lost,
-        it just needs finishing.
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          onClick={() => void onFinish()}
-          disabled={confirming}
-          className="bg-accent text-ink cursor-pointer rounded-full px-4 py-2 font-sans text-[12.5px] font-semibold disabled:opacity-50"
-        >
-          {confirming ? "Crediting…" : "Finish crediting"}
-        </button>
-        <a
-          href={`${EXPLORER_TX_URL}${pending.txHash}`}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="cursor-pointer rounded-full border border-white/15 px-4 py-2 font-sans text-[12.5px] font-medium text-white/60 transition-colors hover:text-white"
-        >
-          View transaction
-        </a>
-        <button
-          onClick={() => {
-            dismiss();
-            setDone(true);
-          }}
-          className="cursor-pointer px-2 font-sans text-[12.5px] font-normal text-white/40 transition-colors hover:text-white/70"
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DepositForm({ onDone }: { onDone: () => void }) {
-  const { tokens } = usePortfolio();
-  const { deposit, depositing } = useDepositToCashier();
-  const { confirm, confirming } = useConfirmDeposit();
+  const [mode, setMode] = useState<CashierMode>(initialMode);
   const [amount, setAmount] = useState("");
-  const [manualHash, setManualHash] = useState("");
-  const [showManual, setShowManual] = useState(false);
+  // Set when a deposit was sent but the cashier has not credited it within
+  // the retry window. The money is safe; this tells the player so.
+  const [awaitingCredit, setAwaitingCredit] = useState(false);
 
-  // What the player holds in their own wallet, which is what they can move in.
-  const holding = tokens.find(
-    (t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "USDC"
-  );
-  const walletMicro = toBaseUnits(String(holding?.balance ?? 0), USDC_DECIMALS);
+  const baseUsdc =
+    tokens.find((tk) => tk.network === "base-mainnet" && tk.symbol.toUpperCase() === "USDC")
+      ?.balance ?? 0;
 
-  let parsed: bigint | null = null;
-  let amountError: string | null = null;
-  if (amount.trim()) {
-    try {
-      parsed = requireUsdc(amount);
-      if (parsed > walletMicro) amountError = "More than your wallet holds.";
-    } catch (e) {
-      amountError = (e as Error).message;
-    }
-  }
+  // The canonical decimal is what every call and label uses, so the service
+  // never sees a trailing dot or padded zeros.
+  const normalized = normalizeUsdcAmount(amount);
+  const overWallet =
+    mode === "deposit" && normalized !== null && exceedsUsdcBalance(normalized, String(baseUsdc));
+  const overAvailable =
+    mode === "withdraw" && normalized !== null && exceedsUsdcBalance(normalized, cashier.available);
+  const busy = cashier.depositing || cashier.withdrawing;
+  const ready = normalized !== null && !overWallet && !overAvailable && !busy;
+
+  const switchMode = (next: CashierMode) => {
+    setMode(next);
+    setAmount("");
+    setAwaitingCredit(false);
+  };
 
   const onDeposit = async () => {
-    if (!parsed || amountError) return;
-    const id = toast.loading("Moving your money in…");
+    if (normalized === null) return;
+    const id = toast.loading(t("depositing"));
+    setAwaitingCredit(false);
     try {
-      await deposit(parsed);
-      toast.success("Deposit credited.", { id });
-      setAmount("");
-      onDone();
+      const outcome = await cashier.deposit(normalized);
+      void refetchPortfolio();
+      if (outcome.credited) {
+        toast.success(t("depositConfirmed", { amount: outcome.credited }), { id });
+        setAmount("");
+      } else {
+        // Sent on-chain but not credited yet. Not an error: the confirm is
+        // idempotent and the service picks the transfer up on its own.
+        toast.dismiss(id);
+        setAwaitingCredit(true);
+      }
     } catch (e) {
-      toast.error(friendlyError(e, "That deposit didn't go through."), { id });
+      toast.error(friendlyError(e, t("depositFailed")), { id });
     }
   };
-
-  const onManual = async () => {
-    const id = toast.loading("Crediting that transaction…");
-    try {
-      await confirm(manualHash.trim());
-      toast.success("Deposit credited.", { id });
-      setManualHash("");
-      setShowManual(false);
-    } catch (e) {
-      toast.error(friendlyError(e, "That transaction couldn't be credited."), { id });
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="font-sans text-[12.5px] font-medium text-white/70">Amount</span>
-          <button
-            onClick={() => setAmount(formatUsdc(walletMicro).replace(/,/g, ""))}
-            className="cursor-pointer font-sans text-[12px] font-medium text-white/45 transition-colors hover:text-white"
-          >
-            Wallet: {formatUsdc(walletMicro)} USDC
-          </button>
-        </div>
-        <input
-          value={amount}
-          onChange={(e) => {
-            if (e.target.value === "" || DECIMAL.test(e.target.value)) setAmount(e.target.value);
-          }}
-          inputMode="decimal"
-          placeholder="0"
-          aria-label="Deposit amount"
-          aria-invalid={!!amountError}
-          className={INPUT}
-        />
-        {amountError ? (
-          <div role="alert" className="text-down mt-1.5 font-sans text-[12px] font-normal">
-            {amountError}
-          </div>
-        ) : null}
-      </div>
-
-      <button
-        onClick={() => void onDeposit()}
-        disabled={!parsed || !!amountError || depositing}
-        className="bg-accent text-ink cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {depositing ? "Moving in…" : "Add to chess balance"}
-      </button>
-
-      {showManual ? (
-        <div className="ws-inset flex flex-col gap-2 rounded-[12px] p-3">
-          <label
-            htmlFor="chess-tx-hash"
-            className="font-sans text-[12px] font-medium text-white/60"
-          >
-            Transaction hash
-          </label>
-          <input
-            id="chess-tx-hash"
-            value={manualHash}
-            onChange={(e) => setManualHash(e.target.value)}
-            placeholder="0x…"
-            className="ws-inset focus:border-accent/50 w-full rounded-[10px] px-3 py-2 font-sans text-[12.5px] text-white outline-none"
-          />
-          <button
-            onClick={() => void onManual()}
-            disabled={!isTxHash(manualHash) || confirming}
-            className="cursor-pointer rounded-full border border-white/15 px-4 py-2 font-sans text-[12.5px] font-semibold text-white/75 transition-colors hover:text-white disabled:opacity-40"
-          >
-            {confirming ? "Crediting…" : "Credit this transaction"}
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowManual(true)}
-          className="cursor-pointer font-sans text-[12px] font-normal text-white/40 transition-colors hover:text-white/70"
-        >
-          Already sent USDC? Credit it by transaction hash
-        </button>
-      )}
-    </div>
-  );
-}
-
-function WithdrawForm() {
-  const wallet = useCasinoWallet();
-  const { availableMicro } = usePlayerBalance();
-  const { withdraw, withdrawing } = useCreateWithdrawal();
-  const [amount, setAmount] = useState("");
-  const [sentTo, setSentTo] = useState<string | null>(null);
-
-  const available = availableMicro ?? 0n;
-
-  let parsed: bigint | null = null;
-  let amountError: string | null = null;
-  if (amount.trim()) {
-    try {
-      parsed = requireUsdc(amount);
-      // Checked against available, not total: money locked in a game in
-      // progress is not the player's to take back yet.
-      if (parsed > available) amountError = "More than your available balance.";
-    } catch (e) {
-      amountError = (e as Error).message;
-    }
-  }
 
   const onWithdraw = async () => {
-    if (!parsed || amountError) return;
-    const id = toast.loading("Sending your money out…");
+    if (normalized === null) return;
+    const id = toast.loading(t("withdrawing"));
     try {
-      const result = await withdraw({ amountMicro: parsed });
-      setSentTo(result.txHash);
+      await cashier.withdraw(normalized);
+      toast.success(t("withdrawalSent", { amount: normalized }), { id });
       setAmount("");
-      toast.success("Withdrawal sent.", { id });
+      void refetchPortfolio();
     } catch (e) {
-      toast.error(friendlyError(e, "That withdrawal didn't go through."), { id });
+      toast.error(friendlyError(e, t("withdrawFailed")), { id });
     }
   };
 
-  return (
-    <div className="flex flex-col gap-3">
+  if (!cashier.configured) {
+    return (
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="font-sans text-[12.5px] font-medium text-white/70">Amount</span>
+        <SheetNav title={t("title")} onBack={onClose} />
+        <div className="ws-inset px-4 py-4 text-[13px] font-normal text-white/60">
+          {t("unavailable")}
+        </div>
+      </div>
+    );
+  }
+
+  const isDeposit = mode === "deposit";
+  const submitLabel = busy
+    ? isDeposit
+      ? cashier.depositPhase === "confirming"
+        ? t("confirmingDeposit")
+        : t("depositing")
+      : t("withdrawing")
+    : isDeposit
+      ? t("depositSubmit", { amount: normalized ?? "0" })
+      : t("withdrawSubmit", { amount: normalized ?? "0" });
+
+  return (
+    <div>
+      <SheetNav
+        title={isDeposit ? t("depositTitle") : t("withdrawTitle")}
+        subtitle={isDeposit ? undefined : t("withdrawBody")}
+        onBack={onClose}
+      />
+
+      <div className="ws-inset mt-1 flex items-center justify-between px-4 py-3.5">
+        <span className="text-[13px] font-normal text-white/55">{t("available")}</span>
+        <span className="ws-display tnum text-[18px] text-white">{cashier.available} USDC</span>
+      </div>
+      <div className="ws-inset mt-2 flex items-center justify-between px-4 py-3.5">
+        <span className="text-[13px] font-normal text-white/55">{t("locked")}</span>
+        <span className="ws-display tnum text-[18px] text-white">{cashier.locked} USDC</span>
+      </div>
+
+      <div className="ws-inset mt-4 flex gap-2 rounded-full p-1">
+        {(["deposit", "withdraw"] as const).map((m) => (
           <button
-            onClick={() => setAmount(formatUsdc(available).replace(/,/g, ""))}
-            className="cursor-pointer font-sans text-[12px] font-medium text-white/45 transition-colors hover:text-white"
+            key={m}
+            onClick={() => switchMode(m)}
+            className={`flex-1 cursor-pointer rounded-full py-2.5 font-sans text-[13px] font-semibold transition-colors ${
+              mode === m ? "text-ink bg-white" : "text-white/50"
+            }`}
           >
-            Available: {formatUsdc(available)} USDC
+            {m === "deposit" ? t("deposit") : t("withdraw")}
+          </button>
+        ))}
+      </div>
+
+      <div className="ws-inset mt-2 p-[15px]">
+        <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
+          <span>{isDeposit ? t("depositAmount") : t("withdrawAmount")}</span>
+          <button
+            onClick={() => setAmount(isDeposit ? String(baseUsdc) : cashier.available)}
+            className="tnum cursor-pointer text-white/55 hover:text-white"
+          >
+            {tFund("max", { amount: isDeposit ? String(baseUsdc) : cashier.available })}
           </button>
         </div>
         <input
-          value={amount}
-          onChange={(e) => {
-            if (e.target.value === "" || DECIMAL.test(e.target.value)) setAmount(e.target.value);
-          }}
           inputMode="decimal"
           placeholder="0"
-          aria-label="Withdrawal amount"
-          aria-invalid={!!amountError}
-          className={INPUT}
+          value={amount}
+          onChange={(e) => DECIMAL.test(e.target.value) && setAmount(e.target.value)}
+          className="ws-display tnum w-full min-w-0 bg-transparent text-[28px] text-white outline-none placeholder:text-white/30"
         />
-        {amountError ? (
-          <div role="alert" className="text-down mt-1.5 font-sans text-[12px] font-normal">
-            {amountError}
-          </div>
+        {overWallet ? (
+          <div className="text-down mt-1.5 text-[12px] font-normal">{tFund("overBalance")}</div>
+        ) : null}
+        {overAvailable ? (
+          <div className="text-down mt-1.5 text-[12px] font-normal">{t("notEnough")}</div>
         ) : null}
       </div>
 
-      <div className="font-sans text-[12px] font-normal text-white/45">
-        Sent to your own wallet
-        {wallet.address ? ` (${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)})` : ""}.
-      </div>
+      {isDeposit && normalized !== null && !overWallet ? (
+        <div className="mt-3 text-[12.5px] leading-normal font-normal text-white/55">
+          {t("depositBody", { amount: normalized })}
+        </div>
+      ) : null}
+
+      {awaitingCredit ? (
+        <div className="border-accent/25 bg-accent/10 mt-3 rounded-[14px] border px-4 py-3.5 text-[13px] leading-normal font-normal text-white/80">
+          {t("confirmRetryNote")}
+        </div>
+      ) : null}
 
       <button
-        onClick={() => void onWithdraw()}
-        disabled={!parsed || !!amountError || withdrawing}
-        className="bg-accent text-ink cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+        onClick={() => void (isDeposit ? onDeposit() : onWithdraw())}
+        disabled={!ready}
+        className="text-ink mt-[18px] w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {withdrawing ? "Sending…" : "Withdraw"}
+        {submitLabel}
       </button>
 
-      {sentTo ? (
-        <a
-          href={`${EXPLORER_TX_URL}${sentTo}`}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-center font-sans text-[12.5px] font-medium text-white/55 underline-offset-2 transition-colors hover:text-white hover:underline"
-        >
-          View your withdrawal
-        </a>
+      {cashier.feePct !== null ? (
+        <div className="mt-3 text-center text-[11.5px] font-normal text-white/45">
+          {t("feeNote", { pct: cashier.feePct })}
+        </div>
       ) : null}
     </div>
   );

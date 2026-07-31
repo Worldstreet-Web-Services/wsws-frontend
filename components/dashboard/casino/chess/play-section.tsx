@@ -1,28 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAcceptChallenge, useChessMatch, useRematchOffer } from "@/hooks/use-casino-chess";
-import { useCasinoNavGuard } from "@/components/dashboard/casino/casino-nav-guard";
+import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import {
   CasinoEmpty,
   CasinoError,
   CasinoLoading,
 } from "@/components/dashboard/casino/casino-state";
-import {
-  fromUci,
-  legalMovesForPiece,
-  parseFen,
-  toUci,
-  type Square,
-} from "@/lib/casino/chess/engine";
-import { parseTimeControl } from "@/lib/casino/api/chess-wire";
-import { AUTO_RESIGN_FRACTION, useChessIdle } from "@/hooks/use-chess-idle";
-import { useChessPgn } from "@/hooks/use-chess-pgn";
-import { useRefreshBalance } from "@/hooks/use-chess-cashier";
-import { StakeBadge } from "@/components/dashboard/casino/chess/stake-badge";
-import { formatUsdc, potBreakdown } from "@/lib/casino/cashier-money";
+import { legalMovesForPiece, parseFen, toUci, type Square } from "@/lib/casino/chess/engine";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import type { ChessColor, ChessMatch } from "@/lib/casino/api/types";
@@ -32,68 +21,40 @@ function formatClock(totalSeconds: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-const DRAW_LABEL: Record<string, string> = {
-  stalemate: "stalemate",
-  agreement: "agreement",
-  repetition: "threefold repetition",
-  insufficient: "insufficient material",
-  fifty_move: "fifty-move rule",
-};
+type Translator = ReturnType<typeof useTranslations>;
 
-const WIN_LABEL: Record<string, string> = {
-  checkmate: "Checkmate",
-  resignation: "Resignation",
-  timeout: "Flag fall",
-  forfeit: "Forfeit",
-};
+const DRAW_REASON_KEYS = {
+  stalemate: "reasonStalemate",
+  agreement: "reasonAgreement",
+  repetition: "reasonRepetition",
+  insufficient: "reasonInsufficient",
+} as const;
 
-function isOver(match: ChessMatch): boolean {
-  return match.state === "settled" || match.state === "cancelled";
-}
-
-// What happened to the money. Read from the wager's own state rather than
-// inferred from the result, so it says what the service actually did.
-function settlementLine(match: ChessMatch, you: ChessColor | null): string {
-  const wager = match.wager;
-  if (!wager) return "";
-  const stake = `${formatUsdc(wager.stakeMicro)} USDC`;
-
-  if (wager.state === "refunded" || match.state === "cancelled") {
-    return `Your ${stake} stake was returned.`;
-  }
-  if (match.result?.kind === "draw") {
-    return `Drawn, so both stakes were returned. You get your ${stake} back.`;
-  }
-  if (wager.state !== "settled") {
-    // The game is over but the service has not settled yet. Saying nothing
-    // beats claiming a payout that has not happened.
-    return `${stake} a side is still being settled.`;
-  }
-
-  const { potMicro, feeMicro, payoutMicro } = potBreakdown(wager.stakeMicro, wager.feeBps);
-  // The draw case returned above, so a result here always names a winner.
-  if (you !== null && match.result) {
-    return match.result.winner === you
-      ? `You won the ${formatUsdc(potMicro)} USDC pot. After a ${formatUsdc(feeMicro)} fee, ${formatUsdc(payoutMicro)} USDC is yours.`
-      : `You lost your ${stake} stake.`;
-  }
-  return `The winner takes ${formatUsdc(payoutMicro)} USDC.`;
-}
-
-function resultLine(match: ChessMatch, you: ChessColor | null): string {
+function resultLine(t: Translator, match: ChessMatch, you: ChessColor | null): string {
   const r = match.result;
-  if (!r) return match.state === "cancelled" ? "Game aborted" : "";
-  if (r.kind === "draw") return `Draw · ${DRAW_LABEL[r.reason] ?? r.reason}`;
-  const how = WIN_LABEL[r.kind] ?? "Result";
-  if (you === null) return `${how} · ${r.winner === "w" ? "White" : "Black"} won`;
-  return `${how} · You ${r.winner === you ? "won" : "lost"}`;
+  if (!r) return match.state === "cancelled" ? t("resultAborted") : "";
+  if (r.kind === "draw") return t("resultDraw", { reason: t(DRAW_REASON_KEYS[r.reason]) });
+  const how =
+    r.kind === "checkmate"
+      ? t("howCheckmate")
+      : r.kind === "resignation"
+        ? t("howResignation")
+        : t("howTimeout");
+  if (you === null) {
+    return r.winner === "w" ? t("resultWhiteWon", { how }) : t("resultBlackWon", { how });
+  }
+  return r.winner === you ? t("resultYouWon", { how }) : t("resultYouLost", { how });
 }
 
 const actionButton =
   "cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap text-white/70 transition-colors hover:border-white/35 hover:text-white disabled:opacity-50";
 
 export function PlaySection({ matchId }: { matchId: string | null }) {
+  const t = useTranslations("casino.chess.play");
+  const tStake = useTranslations("casino.chess.stake");
   const router = useRouter();
+  // Only the fee percentage is read here, for the settled-wager line.
+  const { feePct } = useChessCashierStatus();
   const {
     match,
     clocks,
@@ -105,6 +66,8 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     resign,
     resigning,
     offerDraw,
+    claimDraw,
+    claimingDraw,
     offeringDraw,
     respondToDraw,
     respondingToDraw,
@@ -113,14 +76,8 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     rematch,
     requestingRematch,
     claimingTimeout,
-    claimDraw,
-    claimingDraw,
   } = useChessMatch(matchId);
-  const pgn = useChessPgn(matchId);
-  const refreshBalance = useRefreshBalance();
   const [selected, setSelected] = useState<Square | null>(null);
-  const [leavePrompt, setLeavePrompt] = useState(false);
-  const navGuard = useCasinoNavGuard();
   // A rematch the opponent has already opened, which this player joins rather
   // than opening a second one of their own.
   const rematchOffered = useRematchOffer(match, you);
@@ -139,12 +96,6 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
 
   const yourTurn = !!match && match.state === "in_progress" && you !== null && match.turn === you;
 
-  // The squares the last move ran between, so the board can show what just
-  // happened. SAN cannot be turned back into squares without replaying the
-  // game, which is why the match carries the coordinate form as well. Parsing
-  // four characters is cheaper than memoizing it.
-  const lastMove = match?.lastMoveUci ? fromUci(match.lastMoveUci) : null;
-
   // Highlights are computed locally only so the board feels responsive. The
   // server revalidates every move, so a wrong hint can never become a wrong
   // result.
@@ -153,116 +104,31 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     return legalMovesForPiece(position.board, selected.r, selected.c);
   }, [position, selected, yourTurn]);
 
-  // Sitting on a move leaves the opponent watching a clock alone, so a player
-  // who has stopped playing is nudged, then resigned for. Thresholds are
-  // fractions of the starting clock, which the label carries.
-  const initialSeconds = useMemo(() => {
-    if (!match) return 0;
-    try {
-      return parseTimeControl(match.timeControl).initialSeconds;
-    } catch {
-      return 0;
-    }
-  }, [match]);
-
-  const onIdleResign = useCallback(async () => {
-    const id = toast.loading("You stopped playing, so the game was resigned…");
-    try {
-      await resign();
-      toast.success("Resigned after no move was made.", { id });
-    } catch (e) {
-      toast.error(friendlyError(e, "Couldn't resign."), { id });
-    }
-  }, [resign]);
-
-  const idle = useChessIdle({
-    active: !!match && match.state === "in_progress" && you !== null && match.turn === you,
-    initialSeconds,
-    since: match?.clockUpdatedAt ?? "",
-    turnKey: match?.ply ?? 0,
-    onAutoResign: () => void onIdleResign(),
-  });
-
-  // A staked game settles when it ends, so the chess balance the lobby shows is
-  // stale from that moment. Refreshed once per finished game.
-  const settledId = match && match.wager && isOver(match) ? match.id : null;
-  useEffect(() => {
-    if (settledId) refreshBalance();
-  }, [settledId, refreshBalance]);
-
-  // Walking out of a game in progress abandons an opponent to a running clock,
-  // and the only way to end it is to resign. So Back is intercepted and the
-  // choice made explicit rather than taken silently either way.
-  const inPlay = !!match && match.state === "in_progress" && you !== null;
-  const leavingRef = useRef(false);
-
-  // The chrome's back link asks this before navigating, so leaving by that
-  // route gets the same question as leaving by the browser's Back.
-  useEffect(() => {
-    if (!inPlay) return;
-    navGuard.setGuard(() => {
-      setLeavePrompt(true);
-      return true;
-    });
-    return () => navGuard.setGuard(null);
-  }, [inPlay, navGuard]);
-
-  useEffect(() => {
-    if (!inPlay) return;
-    // A sentinel entry, so the first Back lands here instead of leaving.
-    const hold = () => window.history.pushState({ chessLeaveGuard: true }, "");
-    hold();
-
-    const onPopState = () => {
-      if (leavingRef.current) return;
-      // Re-arm: the entry just consumed is replaced, so Back keeps landing here
-      // until the player has actually decided.
-      hold();
-      setLeavePrompt(true);
-    };
-    // Closing or reloading the tab gets the browser's own prompt. The wording
-    // is the browser's to choose; we can only ask for it.
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (leavingRef.current) return;
-      event.preventDefault();
-    };
-
-    window.addEventListener("popstate", onPopState);
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-      window.removeEventListener("beforeunload", onBeforeUnload);
-    };
-  }, [inPlay]);
-
   if (!matchId) {
     return (
       <div className="mx-auto w-full max-w-[560px] px-4 pt-10 pb-20">
-        <CasinoEmpty>No game selected. Pick one from the lobby to start playing.</CasinoEmpty>
+        <CasinoEmpty>{t("noMatch")}</CasinoEmpty>
       </div>
     );
   }
   if (error) {
     return (
       <div className="mx-auto w-full max-w-[560px] px-4 pt-10 pb-20">
-        <CasinoError error={error} subject="this game" />
+        <CasinoError error={error} subject={t("subject")} />
       </div>
     );
   }
   if (isLoading || !match || !position) {
     return (
       <div className="mx-auto w-full max-w-[560px] px-4 pt-10 pb-20">
-        <CasinoLoading label="Loading the game" rows={5} />
+        <CasinoLoading label={t("loading")} rows={5} />
       </div>
     );
   }
 
   const board = position.board;
-  const over = isOver(match);
+  const over = match.state === "settled" || match.state === "cancelled";
   const waiting = match.state === "awaiting_opponent";
-  // A game can be abandoned right up until the first move, which includes one
-  // an opponent has already joined but nobody has moved in yet.
-  const abortable = !over && match.ply === 0;
   // An offer from the other side is the one this player can answer.
   const offerToAnswer = you !== null && match.drawOffered !== null && match.drawOffered !== you;
   const offerPending = you !== null && match.drawOffered === you;
@@ -275,7 +141,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
       try {
         await submitMove(uci);
       } catch (e) {
-        toast.error(friendlyError(e, "That move didn't go through."));
+        toast.error(friendlyError(e, t("toastMoveFailed")));
       }
       return;
     }
@@ -286,100 +152,75 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   const onOfferDraw = async () => {
     try {
       await offerDraw();
-      toast.success("Draw offered.");
+      toast.success(t("toastDrawOffered"));
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't offer a draw."));
-    }
-  };
-
-  // Repetition and the fifty-move rule are claimed, not automatic, and the
-  // client does not track repetition, so the service decides whether the claim
-  // stands. Its refusal is the message worth showing.
-  const onClaimDraw = async () => {
-    try {
-      await claimDraw();
-      toast.success("Draw claimed.");
-    } catch (e) {
-      toast.error(friendlyError(e, "No draw can be claimed in this position."));
-    }
-  };
-
-  const onDownloadPgn = async () => {
-    try {
-      await pgn.download();
-    } catch (e) {
-      toast.error(friendlyError(e, "Couldn't download that game."));
+      toast.error(friendlyError(e, t("toastDrawOfferFailed")));
     }
   };
 
   const onAnswerDraw = async (accept: boolean) => {
     try {
       await respondToDraw(accept);
-      toast.success(accept ? "Draw agreed." : "Draw declined.");
+      toast.success(accept ? t("toastDrawAgreed") : t("toastDrawDeclined"));
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't answer that draw offer."));
+      toast.error(friendlyError(e, t("toastDrawAnswerFailed")));
+    }
+  };
+
+  // Threefold repetition / fifty-move draws are claimed, not automatic. The
+  // server arbitrates; an unfounded claim comes back as a clear rejection.
+  const onClaimDraw = async () => {
+    try {
+      await claimDraw();
+      toast.success(t("toastDrawClaimed"));
+    } catch {
+      toast.error(t("toastNoClaimableDraw"));
     }
   };
 
   const onResign = async () => {
-    const id = toast.loading("Resigning…");
+    const id = toast.loading(t("toastResigning"));
     try {
       await resign();
-      toast.success("Game resigned.", { id });
+      toast.success(t("toastResigned"), { id });
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't resign."), { id });
-    }
-  };
-
-  // Leaving for real: resign first, and only stand the guard down once the
-  // server has actually accepted it, so a failed resign never strands the
-  // player outside a game that is still running.
-  const onResignAndLeave = async () => {
-    const id = toast.loading("Resigning…");
-    try {
-      await resign();
-      leavingRef.current = true;
-      setLeavePrompt(false);
-      toast.success("Game resigned.", { id });
-      router.push("/casino/chess");
-    } catch (e) {
-      toast.error(friendlyError(e, "Couldn't resign."), { id });
+      toast.error(friendlyError(e, t("toastResignFailed")), { id });
     }
   };
 
   const onAbort = async () => {
-    const id = toast.loading("Aborting…");
+    const id = toast.loading(t("toastAborting"));
     try {
       await abort();
-      toast.success("Game aborted.", { id });
+      toast.success(t("toastAborted"), { id });
       router.push("/casino/chess");
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't abort that game."), { id });
+      toast.error(friendlyError(e, t("toastAbortFailed")), { id });
     }
   };
 
   // Opening a rematch seats only this player, so it lands on a board that waits
   // for the opponent to accept.
   const onRematch = async () => {
-    const id = toast.loading("Opening a rematch…");
+    const id = toast.loading(t("toastRematchOpening"));
     try {
       const next = await rematch();
-      toast.success("Rematch opened, colours swapped. Waiting for your opponent.", { id });
+      toast.success(t("toastRematchOpened"), { id });
       router.push(`/casino/chess/play?match=${next.id}`);
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't start a rematch."), { id });
+      toast.error(friendlyError(e, t("toastRematchFailed")), { id });
     }
   };
 
   const onAcceptRematch = async () => {
     if (!rematchOffered) return;
-    const id = toast.loading("Joining the rematch…");
+    const id = toast.loading(t("toastRematchJoining"));
     try {
       const next = await acceptRematch.mutateAsync(rematchOffered);
-      toast.success("Rematch on. Good luck.", { id });
+      toast.success(t("toastRematchOn"), { id });
       router.push(`/casino/chess/play?match=${next.id}`);
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't join that rematch."), { id });
+      toast.error(friendlyError(e, t("toastRematchJoinFailed")), { id });
     }
   };
 
@@ -390,7 +231,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
 
   const moveList =
     match.moves.length === 0
-      ? "No moves yet"
+      ? t("noMoves")
       : match.moves
           .reduce<string[]>((acc, san, i) => {
             if (i % 2 === 0) acc.push(`${i / 2 + 1}. ${san}`);
@@ -399,30 +240,48 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
           }, [])
           .join("  ");
 
+  // One quiet line for staked matches. During play both stakes sit locked; a
+  // draw or abort refunds them, a decisive result settles the pot to the
+  // winner. The service's wagerStatus is free text, so refunds are also read
+  // from the result itself and the fee line only shows once the fee is known.
+  const wagerRefunded =
+    match.state === "cancelled" ||
+    match.result?.kind === "draw" ||
+    (match.wagerStatus ?? "").toLowerCase().includes("refund");
+  const wagerLine = !match.stakeUsdc
+    ? null
+    : !over
+      ? tStake("wagerEach", { amount: match.stakeUsdc })
+      : wagerRefunded
+        ? tStake("wagerRefunded")
+        : feePct !== null
+          ? tStake("wagerSettled", { pct: feePct })
+          : tStake("wagerEach", { amount: match.stakeUsdc });
+
   const turnLabel = over
-    ? resultLine(match, you)
+    ? resultLine(t, match, you)
     : claimingTimeout
-      ? "Clock ran out, ending the game…"
+      ? t("statusClaiming")
       : waiting
-        ? "Waiting for an opponent"
+        ? t("statusWaiting")
         : yourTurn
           ? moving
-            ? "Sending your move…"
-            : "Your move"
+            ? t("statusSending")
+            : t("statusYourMove")
           : you === null
-            ? "Spectating"
+            ? t("statusSpectating")
             : offerToAnswer
-              ? "Draw offered to you"
+              ? t("statusDrawToYou")
               : offerPending
-                ? "Draw offer sent"
-                : "Opponent thinking…";
+                ? t("statusDrawSent")
+                : t("statusOpponentThinking");
 
   return (
     <div className="relative mx-auto w-full max-w-[560px] px-4 pt-7 pb-20 sm:px-6">
       <div className="mb-2.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-[13.5px]">
           <span className="h-[26px] w-[26px] shrink-0 rounded-full border border-white/10 bg-white/8" />
-          <span className="truncate">{opponent ? opponent.username : "Waiting for opponent"}</span>
+          <span className="truncate">{opponent ? opponent.username : t("waitingForOpponent")}</span>
         </div>
         <div className="tnum shrink-0 rounded-lg border border-transparent bg-white/4 px-3.5 py-1.5 text-[20px]">
           {formatClock(clocks?.[opponentColor] ?? 0)}
@@ -433,7 +292,6 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
         board={board}
         selected={selected}
         legalTargets={legalTargets}
-        lastMove={lastMove}
         orientation={you ?? "w"}
         onSquareClick={you !== null && !over ? (r, c) => void onSquareClick(r, c) : undefined}
       />
@@ -441,7 +299,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
       <div className="mt-2.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-[13.5px]">
           <span className="border-accent h-[26px] w-[26px] shrink-0 rounded-full border bg-white/8" />
-          <span className="truncate">{self ? self.username : "You"}</span>
+          <span className="truncate">{self ? self.username : t("you")}</span>
         </div>
         <div
           className={`tnum shrink-0 rounded-lg border px-3.5 py-1.5 text-[20px] ${
@@ -457,12 +315,11 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
           <span className="tnum [direction:ltr] [unicode-bidi:bidi-override]">{moveList}</span>
         </div>
         <div className="text-[12px] whitespace-nowrap text-white/50">{turnLabel}</div>
-        <StakeBadge wager={match.wager} />
 
         {you !== null && !over ? (
-          abortable ? (
+          waiting ? (
             <button onClick={() => void onAbort()} disabled={aborting} className={actionButton}>
-              {aborting ? "…" : "Abort"}
+              {aborting ? "…" : t("abort")}
             </button>
           ) : offerToAnswer ? (
             <>
@@ -471,14 +328,14 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 disabled={respondingToDraw}
                 className={actionButton}
               >
-                {respondingToDraw ? "…" : "Accept draw"}
+                {respondingToDraw ? "…" : t("acceptDraw")}
               </button>
               <button
                 onClick={() => void onAnswerDraw(false)}
                 disabled={respondingToDraw}
                 className={actionButton}
               >
-                Decline
+                {t("declineDraw")}
               </button>
             </>
           ) : (
@@ -488,109 +345,49 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 disabled={offeringDraw || offerPending}
                 className={actionButton}
               >
-                {offeringDraw ? "…" : offerPending ? "Draw offered" : "Offer draw"}
+                {offeringDraw ? "…" : offerPending ? t("drawOffered") : t("offerDraw")}
               </button>
               <button
                 onClick={() => void onClaimDraw()}
                 disabled={claimingDraw}
-                title="Claim a draw by threefold repetition or the fifty-move rule"
                 className={actionButton}
               >
-                {claimingDraw ? "…" : "Claim draw"}
+                {claimingDraw ? "…" : t("claimDraw")}
               </button>
               <button
                 onClick={() => void onResign()}
                 disabled={resigning}
                 className="border-down/40 text-down cursor-pointer rounded-full border px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap disabled:opacity-50"
               >
-                {resigning ? "…" : "Resign"}
+                {resigning ? "…" : t("resign")}
               </button>
             </>
           )
         ) : null}
       </div>
 
-      {idle.pending !== null && !leavePrompt && !over ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[10px] bg-black/60 backdrop-blur-md">
-          <div className="ws-glass w-[320px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-            <div className="text-[12px] font-semibold tracking-[0.06em] text-white/70 uppercase">
-              Still there?
-            </div>
-            <div className="mt-2.5 text-[13px] font-normal text-white/70">
-              You haven&apos;t moved in a while and your opponent is waiting. Keep playing, or
-              resign the game.
-            </div>
-            <div className="mt-2 text-[11.5px] font-normal text-white/45">
-              If you still haven&apos;t moved by {Math.round(AUTO_RESIGN_FRACTION * 100)}% of your
-              clock, the game resigns itself.
-            </div>
-            <button
-              onClick={idle.dismiss}
-              className="text-ink mt-5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold"
-            >
-              I&apos;m still playing
-            </button>
-            <button
-              onClick={() => void onResign()}
-              disabled={resigning}
-              className="border-down/40 text-down mt-2.5 w-full cursor-pointer rounded-full border p-3 font-sans text-[13px] font-bold disabled:opacity-50"
-            >
-              {resigning ? "Resigning…" : "Resign"}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {leavePrompt && !over ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[10px] bg-black/60 backdrop-blur-md">
-          <div className="ws-glass w-[320px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-            <div className="text-[12px] font-semibold tracking-[0.06em] text-white/70 uppercase">
-              Leave this game?
-            </div>
-            <div className="mt-2.5 text-[13px] font-normal text-white/70">
-              The game is still running. The only way out is to resign it, which hands the win to
-              your opponent.
-            </div>
-            <button
-              onClick={() => void onResignAndLeave()}
-              disabled={resigning}
-              className="border-down/40 text-down mt-5 w-full cursor-pointer rounded-full border p-3 font-sans text-[13px] font-bold disabled:opacity-50"
-            >
-              {resigning ? "Resigning…" : "Resign and leave"}
-            </button>
-            <button
-              onClick={() => setLeavePrompt(false)}
-              className="text-ink mt-2.5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold"
-            >
-              Keep playing
-            </button>
-          </div>
-        </div>
+      {wagerLine ? (
+        <div className="mt-2 text-[11.5px] font-normal text-white/45">{wagerLine}</div>
       ) : null}
 
       {over ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[10px] bg-black/60 backdrop-blur-md">
           <div className="ws-glass w-[320px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
             <div className="text-[12px] font-semibold tracking-[0.06em] text-white/70 uppercase">
-              {resultLine(match, you)}
+              {resultLine(t, match, you)}
             </div>
-            {match.wager ? (
-              <div className="mt-3 text-[12.5px] font-normal text-white/70">
-                {settlementLine(match, you)}
-              </div>
-            ) : null}
             {you !== null ? (
               rematchOffered ? (
                 <>
                   <div className="mt-4 text-[12.5px] font-normal text-white/70">
-                    Your opponent wants a rematch.
+                    {t("opponentWantsRematch")}
                   </div>
                   <button
                     onClick={() => void onAcceptRematch()}
                     disabled={acceptRematch.isPending}
                     className="text-ink mt-2.5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold disabled:opacity-50"
                   >
-                    {acceptRematch.isPending ? "Joining…" : "Accept rematch"}
+                    {acceptRematch.isPending ? t("joining") : t("acceptRematch")}
                   </button>
                 </>
               ) : (
@@ -599,22 +396,15 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                   disabled={requestingRematch}
                   className="text-ink mt-5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold disabled:opacity-50"
                 >
-                  {requestingRematch ? "Opening…" : "Rematch"}
+                  {requestingRematch ? t("opening") : t("rematch")}
                 </button>
               )
             ) : null}
             <button
-              onClick={() => void onDownloadPgn()}
-              disabled={pgn.downloading}
-              className="mt-2.5 w-full cursor-pointer rounded-full border border-white/15 p-3 font-sans text-[13px] font-semibold text-white/70 transition-colors hover:border-white/35 hover:text-white disabled:opacity-50"
-            >
-              {pgn.downloading ? "Preparing…" : "Download PGN"}
-            </button>
-            <button
               onClick={() => router.push("/casino/chess")}
               className="mt-2.5 w-full cursor-pointer rounded-full border border-white/15 p-3 font-sans text-[13px] font-semibold text-white/70 transition-colors hover:border-white/35 hover:text-white"
             >
-              Back to lobby
+              {t("backToLobby")}
             </button>
           </div>
         </div>

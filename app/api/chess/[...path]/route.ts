@@ -1,12 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getRequestUser, verifyRequest } from "@/lib/server/auth";
-import {
-  isCashierPath,
-  namesAnActor,
-  parseBody,
-  requiresProvenWallet,
-  withIdentity,
-} from "@/lib/casino/chess-identity";
 
 // Server-side proxy for the chess service on the platform gateway. Same
 // arrangement as the other service proxies in this app: routing through our
@@ -57,26 +50,41 @@ async function sessionWallet(req: NextRequest): Promise<string | null> {
   return wallet && "address" in wallet ? wallet.address : null;
 }
 
-function unverifiedWallet() {
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code: "UNAUTHORIZED",
-        message: "We couldn't verify your wallet. Sign in again before moving money.",
-      },
-    },
-    { status: 401 }
-  );
+// Names the acting player. When the session's wallet is known it overrides
+// whatever the client sent, so a caller cannot act as somebody else; otherwise
+// the client's claim stands. Both names appear in the contract: "creator" when
+// opening a game, "player" for every action on one.
+function withIdentity(raw: string, wallet: string | null): string {
+  let body: unknown;
+  try {
+    body = raw ? JSON.parse(raw) : {};
+  } catch {
+    return raw;
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return raw;
+  const record = body as Record<string, unknown>;
+  if (wallet) {
+    if ("creator" in record) record.creator = wallet;
+    if ("player" in record || !("creator" in record)) record.player = wallet;
+  }
+  return JSON.stringify(record);
 }
 
-async function forward(
-  req: NextRequest,
-  joined: string,
-  method: "GET" | "POST",
-  body?: string,
-  { cacheable = true }: { cacheable?: boolean } = {}
-) {
+// The address the request names itself by, used only to fail with a clear
+// message rather than passing an anonymous write upstream.
+function claimedWallet(raw: string): string | null {
+  try {
+    const body = raw ? JSON.parse(raw) : {};
+    if (typeof body !== "object" || body === null) return null;
+    const record = body as Record<string, unknown>;
+    const value = record.player ?? record.creator;
+    return typeof value === "string" && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+async function forward(req: NextRequest, joined: string, method: "GET" | "POST", body?: string) {
   const url = `${BASE}/${joined}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: "application/json" };
   if (method === "POST") headers["content-type"] = "application/json";
@@ -90,7 +98,7 @@ async function forward(
       signal: AbortSignal.timeout(15_000),
     });
     const text = await res.text();
-    if (method === "GET" && cacheable) {
+    if (method === "GET") {
       cache.set(url, { expires: Date.now() + CACHE_TTL_MS, body: text, status: res.status });
     }
     return new NextResponse(text, {
@@ -111,13 +119,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   if (!BASE) return notConfigured();
   const joined = path.join("/");
 
-  // A balance is nobody else's business, so cashier reads need a session and are
-  // never served from the shared cache. Boards and lobbies stay public.
-  if (isCashierPath(joined)) {
-    if (!(await verifyRequest(req))) return unauthorized();
-    return forward(req, joined, "GET", undefined, { cacheable: false });
-  }
-
   const url = `${BASE}/${joined}${req.nextUrl.search}`;
   const hit = cache.get(url);
   if (hit && hit.expires > Date.now()) {
@@ -137,21 +138,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ path: stri
   const claims = await verifyRequest(req);
   if (!claims) return unauthorized();
 
-  const joined = path.join("/");
   const raw = await req.text();
-  const body = parseBody(raw);
   const wallet = await sessionWallet(req);
 
-  // Anything that moves money is held to the stricter rule: the wallet has to
-  // be one the session provably owns. A claimed one is good enough to lose a
-  // game with, not to spend a balance with.
-  const needsProof = requiresProvenWallet(joined, body);
-  if (needsProof && !wallet) return unverifiedWallet();
-
-  // A write has to say who is acting. Only when neither the session nor the
-  // request can supply that is there nothing to send upstream. Swiss names its
-  // actor with a token rather than an address, which namesAnActor accounts for.
-  if (!wallet && !namesAnActor(body)) {
+  // A write has to name a player. Only when neither the session nor the client
+  // can supply one is there nothing to send upstream.
+  if (!wallet && !claimedWallet(raw)) {
     return NextResponse.json(
       {
         success: false,
@@ -164,13 +156,5 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ path: stri
     );
   }
 
-  return forward(
-    req,
-    joined,
-    "POST",
-    // Swiss name tokens are only rewritten when money is involved. On a free
-    // tournament a player picks their own token, and rewriting it would rename
-    // entrants out of tournaments they already joined.
-    withIdentity(raw, wallet, { rewriteSwissNames: needsProof })
-  );
+  return forward(req, path.join("/"), "POST", withIdentity(raw, wallet));
 }

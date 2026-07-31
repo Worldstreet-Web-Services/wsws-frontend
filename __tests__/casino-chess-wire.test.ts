@@ -86,6 +86,7 @@ describe("result", () => {
     expect(toResult("white", "checkmate")).toEqual({ kind: "checkmate", winner: "w" });
     expect(toResult("black", "resignation")).toEqual({ kind: "resignation", winner: "b" });
     expect(toResult("white", "timeout")).toEqual({ kind: "timeout", winner: "w" });
+    expect(toResult("black", "flagged on time")).toEqual({ kind: "timeout", winner: "b" });
   });
 
   it("maps every way a game can be drawn", () => {
@@ -98,14 +99,7 @@ describe("result", () => {
       kind: "draw",
       reason: "insufficient",
     });
-    expect(toResult("draw", "fifty_move_rule")).toEqual({ kind: "draw", reason: "fifty_move" });
-    expect(toResult("draw", "draw_agreement")).toEqual({ kind: "draw", reason: "agreement" });
-  });
-
-  // A swiss withdrawal finishes the backing game this way, so it must not be
-  // reported as a checkmate.
-  it("keeps a forfeit distinct from a checkmate", () => {
-    expect(toResult("white", "forfeit")).toEqual({ kind: "forfeit", winner: "w" });
+    expect(toResult("draw", "agreement")).toEqual({ kind: "draw", reason: "agreement" });
   });
 
   // The reason is the service's free text. An unfamiliar one still has to
@@ -166,28 +160,21 @@ describe("match", () => {
     expect(match.moves).toEqual(["e4", "c5", "Nf3"]);
   });
 
-  // The service sends both, and the topic in particular must not be rebuilt
-  // client-side, so they are carried straight through.
-  it("takes the share code and live topic from the server", () => {
-    const match = toChessMatch(
-      wire({ inviteCode: "share-me", liveTopic: "chess:match:elsewhere" })
+  // A free game carries no stake; a wager-backed one carries exactly the
+  // per-player USDC stake the cashier locked, nothing invented client-side.
+  it("reads the stake from the wager, null when played for free", () => {
+    expect(toChessMatch(wire()).stakeUsdc).toBeNull();
+    const staked = toChessMatch(
+      wire({
+        wager: {
+          stakeUsdc: "10",
+          feeBps: 500,
+          status: "active",
+          winnerPlayer: null,
+        },
+      })
     );
-    expect(match.inviteCode).toBe("share-me");
-    expect(match.liveTopic).toBe("chess:match:elsewhere");
-  });
-
-  it("falls back to the id for a response that carries neither", () => {
-    const match = toChessMatch(wire());
-    expect(match.inviteCode).toBe("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
-    expect(match.liveTopic).toBe("chess:match:3f2504e0-4f89-11d3-9a0c-0305e82c3301");
-  });
-
-  // The service settles nothing. A screen cannot show an amount it was never
-  // given, which is the point.
-  it("carries no money at all", () => {
-    const match = toChessMatch(wire());
-    expect(match).not.toHaveProperty("stake");
-    expect(match).not.toHaveProperty("pot");
+    expect(staked.stakeUsdc).toBe("10");
   });
 });
 
@@ -198,7 +185,12 @@ describe("challenge", () => {
     expect(c.inviteCode).toBe(c.id);
     expect(c.creator.walletAddress).toBe("0xwhite");
     expect(c.timeControl).toBe("5+3");
-    expect(c).not.toHaveProperty("stake");
+    expect(c.stakeUsdc).toBeNull();
+  });
+
+  it("prefers the service's own invite code when it sends one", () => {
+    const c = toChessChallenge(wire({ status: "waiting", inviteCode: "SHORT1" }));
+    expect(c.inviteCode).toBe("SHORT1");
   });
 
   it("takes the creator from whichever seat is filled", () => {

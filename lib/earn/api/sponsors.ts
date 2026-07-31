@@ -5,6 +5,7 @@
 
 import { earnGet, earnPost } from "@/lib/earn/api/client";
 import { toSponsor, type SponsorWire } from "@/lib/earn/api/wire";
+import { FIXTURE_SPONSOR, USE_FIXTURES } from "@/lib/earn/api/fixtures";
 import type { CreateSponsorInput, Sponsor, SponsorProfileInput } from "@/lib/earn/api/types";
 
 // The check endpoints answer with a flag whose name is not pinned by the
@@ -21,10 +22,12 @@ function isAvailable(data: AvailabilityResponse): boolean {
 }
 
 export async function checkSponsorName(name: string): Promise<boolean> {
+  if (USE_FIXTURES) return true;
   return isAvailable(await earnGet<AvailabilityResponse>("/sponsors/check-name", { name }));
 }
 
 export async function checkSponsorSlug(slug: string): Promise<boolean> {
+  if (USE_FIXTURES) return true;
   return isAvailable(await earnGet<AvailabilityResponse>("/sponsors/check-slug", { slug }));
 }
 
@@ -32,6 +35,7 @@ export async function checkSponsorSlug(slug: string): Promise<boolean> {
 // with no sponsor is the normal first-visit state, not an error, so the 403 the
 // service answers with is turned into null here.
 export async function fetchCurrentSponsor(): Promise<Sponsor | null> {
+  if (USE_FIXTURES) return FIXTURE_SPONSOR;
   try {
     return toSponsor(await earnGet<SponsorWire>("/sponsors"));
   } catch (error) {
@@ -46,9 +50,13 @@ function isNoSponsor(error: unknown): boolean {
 }
 
 export async function createSponsor(input: CreateSponsorInput): Promise<Sponsor | null> {
+  // Nothing is persisted while the service is down, so the form completes and
+  // the flow can be walked end to end without pretending an account exists.
+  if (USE_FIXTURES) return null;
   return toSponsor(await earnPost<SponsorWire>("/sponsors/create", input));
 }
 
 export async function saveSponsorProfile(input: SponsorProfileInput): Promise<void> {
+  if (USE_FIXTURES) return;
   await earnPost<unknown>("/sponsors/usersponsor-details", input);
 }

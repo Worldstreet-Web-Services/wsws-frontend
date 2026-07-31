@@ -15,6 +15,8 @@ import { usePerpPositions } from "@/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
 import { CATEGORY_ORDER, pairSymbol, validateOrder } from "@/lib/perp/logic";
+import { usePerpFormAutostage } from "@/hooks/use-perp-form-autostage";
+import type { PerpPrefill } from "@/lib/voice/intent";
 import { coingeckoId } from "@/lib/coingecko";
 import type { PerpCategory, PerpOrderType, PerpPair } from "@/lib/perp/types";
 
@@ -27,6 +29,8 @@ interface ProPerpsProps {
   pairs: PerpPair[];
   priceOf: (symbol: string) => string | null;
   live: boolean;
+  // A voice-staged long/short: the form fills in and auto-fires. Null when idle.
+  voicePrefill?: PerpPrefill | null;
 }
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
@@ -55,7 +59,7 @@ function num(value: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
+export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) {
   const t = useTranslations("perps");
   const [category, setCategory] = useState<PerpCategory>("crypto");
   const [search, setSearch] = useState("");
@@ -131,6 +135,25 @@ export function ProPerps({ pairs, priceOf, live }: ProPerpsProps) {
     });
     if (ok) setCollateral("");
   };
+
+  // Voice: stage this form from a spoken command, then auto-fire submit() after a
+  // visible beat. onStage switches to the pair's category (so it's visible in the
+  // market browser) and forces a market order.
+  usePerpFormAutostage({
+    prefill: voicePrefill ?? null,
+    pairs,
+    setSelected,
+    setSide,
+    setCollateral,
+    setLeverage,
+    submit,
+    canSubmit: live && validation.ok && triggerOk && markPrice != null && !actions.busy,
+    onStage: (p) => {
+      setCategory(p.category);
+      setOrderType("market");
+      setSearch("");
+    },
+  });
 
   const cta = !live
     ? t("liveTradingConnectsSoon")

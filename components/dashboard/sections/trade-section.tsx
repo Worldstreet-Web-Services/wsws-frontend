@@ -8,6 +8,7 @@ import { SimplePerps } from "@/components/dashboard/trade/simple-perps";
 import { ProPerps } from "@/components/dashboard/trade/pro-perps";
 import { usePerpPairs, usePerpPrices } from "@/hooks/use-perp-markets";
 import { usePerpPriceStream } from "@/hooks/use-perp-price-stream";
+import { usePerpPrefill } from "@/hooks/use-perp-prefill";
 import { usePrices } from "@/hooks/use-prices";
 import { pairSymbol } from "@/lib/perp/logic";
 import { TRADE_PRICE_SYMBOLS } from "@/lib/trade/assets";
@@ -75,6 +76,12 @@ export function TradeSection() {
     [stream, livePrices, fallbackPrices]
   );
 
+  // Voice perps: a spoken "long $2 of bitcoin 30x" lands as URL params. It's
+  // passed into whichever interface is showing, which STAGES the visible form
+  // and then auto-fires its own submit (see usePerpFormAutostage) — so the user
+  // watches the order fill in and place itself.
+  const perpPrefill = usePerpPrefill();
+
   const body = useMemo(() => {
     if (loading) {
       return (
@@ -84,11 +91,16 @@ export function TradeSection() {
       );
     }
     return mode === "pro" ? (
-      <ProPerps pairs={effectivePairs} priceOf={priceOf} live={live} />
+      <ProPerps pairs={effectivePairs} priceOf={priceOf} live={live} voicePrefill={perpPrefill} />
     ) : (
-      <SimplePerps pairs={effectivePairs} priceOf={priceOf} live={live} />
+      <SimplePerps
+        pairs={effectivePairs}
+        priceOf={priceOf}
+        live={live}
+        voicePrefill={perpPrefill}
+      />
     );
-  }, [loading, mode, effectivePairs, priceOf, live]);
+  }, [loading, mode, effectivePairs, priceOf, live, perpPrefill]);
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">

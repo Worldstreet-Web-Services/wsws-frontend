@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { fetchChallengeByInvite } from "@/lib/casino/api/chess";
 import { useAcceptChallenge } from "@/hooks/use-casino-chess";
@@ -11,17 +12,21 @@ import {
   CasinoError,
   CasinoLoading,
 } from "@/components/dashboard/casino/casino-state";
-import { amountUsd, potBreakdown, weiToUnits } from "@/lib/casino/money";
+import { BRAND } from "@/lib/brand";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
-function timeControlLabel(tc: string): string {
-  return tc === "3+2" || tc === "5+3" ? `${tc} Blitz` : `${tc} Rapid`;
+// The common chess namespace names the speed after its preset, so the label
+// reads "5+3 Blitz" in every locale.
+function timeControlLabel(t: ReturnType<typeof useTranslations>, tc: string): string {
+  return tc === "3+2" || tc === "5+3" ? t("blitz", { tc }) : t("rapid", { tc });
 }
 
 // Landing screen for a challenge link. Rendered without the app shell so the
 // invite reads as a focused offer, the way the recipient meets it.
 export function InviteSection({ inviteCode }: { inviteCode: string | null }) {
+  const t = useTranslations("casino.chess.invite");
+  const tCommon = useTranslations("casino.chess.common");
   const router = useRouter();
   const wallet = useCasinoWallet();
   const accept = useAcceptChallenge();
@@ -42,78 +47,46 @@ export function InviteSection({ inviteCode }: { inviteCode: string | null }) {
     </div>
   );
 
-  if (!inviteCode) return frame(<CasinoEmpty>This invite link is missing its code.</CasinoEmpty>);
-  if (error) return frame(<CasinoError error={error} subject="this challenge" />);
-  if (isLoading || !challenge) return frame(<CasinoLoading label="Loading challenge" rows={4} />);
-
-  const stakeUsd = amountUsd(challenge.stake, wallet.unitPriceUsd);
-  const { feeWei, payoutWei } = potBreakdown(BigInt(challenge.stake.wei));
-  const toUsd = (wei: bigint) => weiToUnits(wei.toString()) * wallet.unitPriceUsd;
-  const affordable = wallet.canAfford(challenge.stake.wei);
+  if (!inviteCode) return frame(<CasinoEmpty>{t("missingCode")}</CasinoEmpty>);
+  if (error) return frame(<CasinoError error={error} subject={t("subject")} />);
+  if (isLoading || !challenge) return frame(<CasinoLoading label={t("loading")} rows={4} />);
 
   const onAccept = async () => {
     if (!wallet.connected) {
-      toast.error("Sign in to accept this challenge.");
+      toast.error(t("toastSignIn"));
       return;
     }
-    if (!affordable) {
-      toast.error("Not enough balance to match this stake.");
-      return;
-    }
-    const id = toast.loading("Matching the stake…");
+    const id = toast.loading(t("takingSeat"));
     try {
       const match = await accept.mutateAsync(challenge.id);
-      toast.success("Stake matched. Good luck.", { id });
+      toast.success(tCommon("youAreIn"), { id });
       router.push(`/casino/chess/play?match=${match.id}`);
     } catch (e) {
-      toast.error(friendlyError(e, "Couldn't accept that challenge."), { id });
+      toast.error(friendlyError(e, t("toastAcceptFailed")), { id });
     }
   };
 
   return frame(
     <>
-      <div className="ws-display mb-5 text-[18px]">World Street · Chess challenge</div>
+      <div className="ws-display mb-5 text-[18px]">{t("title", { brand: BRAND })}</div>
       <div className="mx-auto mb-3.5 h-14 w-14 rounded-full border border-white/10 bg-white/8" />
       <div className="text-[15px]">{challenge.creator.username}</div>
       <div className="mb-5 text-[12px] font-normal text-white/50">
-        Rating {challenge.creator.rating} · {timeControlLabel(challenge.timeControl)}
+        {timeControlLabel(tCommon, challenge.timeControl)}
       </div>
-      <div className="ws-display tnum text-grey-100 text-[44px]">{wallet.format(stakeUsd)}</div>
-      <div className="mb-5 text-[12px] font-normal text-white/50">stake to match</div>
-      <div className="text-up mb-5 flex items-center justify-center gap-2 text-[12px]">
-        <span className="bg-up h-[7px] w-[7px] rounded-full" />
-        Challenger&apos;s stake is already locked
-      </div>
-      <div className="ws-inset tnum mb-5 px-4 py-3.5 text-left text-[12.5px]">
-        <div className="mb-1.5 flex justify-between">
-          <span className="font-normal text-white/50">Your stake</span>
-          <span>{wallet.format(stakeUsd)}</span>
-        </div>
-        <div className="mb-1.5 flex justify-between">
-          <span className="font-normal text-white/50">Participation fee (5%)</span>
-          <span className="font-normal text-white/50">−{wallet.format(toUsd(feeWei))}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Potential winnings</span>
-          <span className="text-grey-100">{wallet.format(toUsd(payoutWei))}</span>
-        </div>
-      </div>
+      <div className="mb-6 text-[12.5px] font-normal text-white/55">{t("waitingNote")}</div>
       <button
         onClick={() => void onAccept()}
-        disabled={accept.isPending || !affordable}
+        disabled={accept.isPending}
         className="text-ink mb-2.5 block w-full cursor-pointer rounded-full bg-white p-3.5 font-sans text-[14px] font-bold transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45"
       >
-        {accept.isPending
-          ? "Matching stake…"
-          : affordable
-            ? `Accept & stake ${wallet.format(stakeUsd)}`
-            : "Not enough balance"}
+        {accept.isPending ? t("takingSeat") : t("accept")}
       </button>
       <Link
         href="/casino"
         className="block w-full p-1.5 text-[12.5px] font-normal text-white/50 hover:text-white"
       >
-        Decline
+        {t("decline")}
       </Link>
     </>
   );

@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAcceptChallenge, useChessMatch, useRematchOffer } from "@/hooks/use-casino-chess";
 import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
+import { playMoveSound } from "@/lib/casino/chess/sound";
 import {
   CasinoEmpty,
   CasinoError,
@@ -59,6 +60,8 @@ const actionButton =
 export function PlaySection({ matchId }: { matchId: string | null }) {
   const t = useTranslations("casino.chess.play");
   const tStake = useTranslations("casino.chess.stake");
+  // The create screen owns the invite-link copy; the waiting board reuses it.
+  const tCreate = useTranslations("casino.chess.create");
   const router = useRouter();
   // Only the fee percentage is read here, for the settled-wager line.
   const { feePct } = useChessCashierStatus();
@@ -89,6 +92,19 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   // than opening a second one of their own.
   const rematchOffered = useRematchOffer(match, you);
   const acceptRematch = useAcceptChallenge();
+
+  // A soft "thock" whenever the move count grows — the player's own move and the
+  // opponent's alike. The first render only records the starting count, so
+  // opening a mid-game board is silent.
+  const prevMoveCount = useRef<number | null>(null);
+  const moveCount = match?.moves.length ?? null;
+  useEffect(() => {
+    if (moveCount === null) return;
+    if (prevMoveCount.current !== null && moveCount > prevMoveCount.current) {
+      playMoveSound();
+    }
+    prevMoveCount.current = moveCount;
+  }, [moveCount]);
 
   // The board is whatever the server says. A malformed FEN yields null rather
   // than a silently half-rendered position.
@@ -314,6 +330,25 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
         orientation={you ?? "w"}
         onSquareClick={you !== null && !over ? (r, c) => void onSquareClick(r, c) : undefined}
       />
+
+      {waiting && you !== null ? (
+        <div className="border-accent/35 mt-3 flex items-center gap-2 rounded-[12px] border bg-white/4 px-4 py-3">
+          <div className="min-w-0 flex-1 text-[12px] font-normal text-white/60">
+            {tCreate("inviteReady")}
+          </div>
+          <button
+            onClick={() => {
+              void navigator.clipboard.writeText(
+                `${window.location.origin}/casino/chess/invite?code=${match.id}`
+              );
+              toast.success(tCreate("linkCopied"));
+            }}
+            className="bg-accent text-ink shrink-0 cursor-pointer rounded-lg px-4 py-2 font-sans text-[12px] font-bold"
+          >
+            {tCreate("copy")}
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-2.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5 text-[13.5px]">

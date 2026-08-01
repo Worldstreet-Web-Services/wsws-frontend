@@ -27,14 +27,14 @@ function PieceGlyph({ type, white }: { type: PieceType; white: boolean }) {
   const art = PIECE_ART[type];
 
   return (
-    <svg viewBox="0 0 45 45" className="pointer-events-none h-[84%] w-[84%]">
-      <g fill={fill} stroke={line} strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
+    <svg viewBox="0 0 45 45" className="pointer-events-none h-[90%] w-[90%]">
+      <g fill={fill} stroke={line} strokeWidth="2.1" strokeLinejoin="round" strokeLinecap="round">
         {art.body.map((d, i) => (
           <path key={i} d={d} />
         ))}
       </g>
       {art.detail?.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke={line} strokeWidth="1.4" strokeLinecap="round" />
+        <path key={i} d={d} fill="none" stroke={line} strokeWidth="1.75" strokeLinecap="round" />
       ))}
     </svg>
   );

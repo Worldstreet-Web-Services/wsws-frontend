@@ -26,6 +26,12 @@ export const INTERESTS: Interest[] = [
     icon: "trend",
   },
   {
+    key: "meme",
+    title: "Memecoins",
+    desc: "Trending Base tokens, bought and sold in USDC.",
+    icon: "flame",
+  },
+  {
     key: "prediction",
     title: "Prediction markets",
     desc: "Trade politics, sports and world events.",
@@ -36,6 +42,12 @@ export const INTERESTS: Interest[] = [
     title: "Casino & games",
     desc: "Last Man Standing, staked chess and more.",
     icon: "dice",
+  },
+  {
+    key: "earn",
+    title: "Earn & bounties",
+    desc: "Real tasks that pay out in crypto.",
+    icon: "yield",
   },
   {
     key: "realestate",

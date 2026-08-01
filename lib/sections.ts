@@ -1,10 +1,13 @@
-// "trade" is the combined trading hub: spot markets and perpetuals under one
-// section, chosen with an in-section tab.
-export type SectionId = "portfolio" | "trade" | "rwa" | "prediction" | "earn" | "casino";
+// Spot and perpetuals are separate sections with their own sidebar entries;
+// each carries its own simple/pro interface switch inside.
+export type SectionId =
+  "portfolio" | "spot" | "perps" | "meme" | "rwa" | "prediction" | "earn" | "casino";
 
 export const SECTION_LABEL: Record<SectionId, string> = {
   portfolio: "Portfolio",
-  trade: "Trade",
+  spot: "Spot",
+  perps: "Perpetuals",
+  meme: "Memecoins",
   rwa: "Real assets",
   prediction: "Prediction",
   earn: "Earn",
@@ -14,17 +17,18 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 // Portfolio is always the account home. The rest follow, led by whatever the
 // user picked during onboarding.
 const PINNED: SectionId = "portfolio";
-const REORDERABLE: SectionId[] = ["trade", "rwa", "prediction", "earn", "casino"];
+const REORDERABLE: SectionId[] = ["spot", "perps", "meme", "rwa", "prediction", "earn", "casino"];
 
-// Maps an onboarding interest to the section it should surface first. Spot and
-// perps both live in the trade hub now.
+// Maps an onboarding interest to the section it should surface first.
 const INTEREST_TO_SECTION: Record<string, SectionId> = {
   stocks: "rwa",
   gold: "rwa",
-  crypto: "trade",
-  perps: "trade",
+  crypto: "spot",
+  perps: "perps",
+  meme: "meme",
   prediction: "prediction",
   casino: "casino",
+  earn: "earn",
   yield: "rwa",
   realestate: "rwa",
   treasuries: "rwa",

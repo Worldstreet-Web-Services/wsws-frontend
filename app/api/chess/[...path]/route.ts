@@ -9,13 +9,27 @@ import { getRequestUser, verifyRequest } from "@/lib/server/auth";
 // Reads are public: the lobby, a board, its moves and its PGN are all
 // spectator-visible. Writes act on a game, so they need a verified session.
 const BASE = process.env.NEXT_PUBLIC_CHESS_API_URL;
+const NO_STORE = "no-store, max-age=0, must-revalidate";
 
 // Just long enough to collapse the concurrent polls of two players watching the
 // same board, and short enough that neither sees a stale position. The match
 // poll runs at 2s, so anything longer would serve a cached board more often
 // than a fresh one.
 const CACHE_TTL_MS = 1000;
-const cache = new Map<string, { expires: number; body: string; status: number }>();
+const cache = new Map<
+  string,
+  { expires: number; body: string; status: number; contentType: string }
+>();
+
+function cacheTtlMs(joined: string): number {
+  // Live boards and move lists are the last place to add a whole extra second:
+  // when the relay misses a move, these reads are the repair path. Keep only a
+  // tiny collapse window there, while lobby-style reads still collapse for 1s.
+  if (/^matches\/[^/]+(?:\/moves|\/pgn)?$/u.test(joined)) return 250;
+  // Cashier reads are per-caller state and must never be shared or delayed.
+  if (joined.startsWith("cashier/")) return 0;
+  return CACHE_TTL_MS;
+}
 
 function notConfigured() {
   return NextResponse.json(
@@ -23,14 +37,14 @@ function notConfigured() {
       success: false,
       error: { code: "NOT_CONFIGURED", message: "Chess isn't configured yet." },
     },
-    { status: 503 }
+    { status: 503, headers: { "cache-control": NO_STORE } }
   );
 }
 
 function unauthorized() {
   return NextResponse.json(
     { success: false, error: { code: "UNAUTHORIZED", message: "Sign in to play." } },
-    { status: 401 }
+    { status: 401, headers: { "cache-control": NO_STORE } }
   );
 }
 
@@ -88,6 +102,7 @@ async function forward(req: NextRequest, joined: string, method: "GET" | "POST",
   const url = `${BASE}/${joined}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: "application/json" };
   if (method === "POST") headers["content-type"] = "application/json";
+  const ttl = cacheTtlMs(joined);
 
   try {
     const res = await fetch(url, {
@@ -98,18 +113,24 @@ async function forward(req: NextRequest, joined: string, method: "GET" | "POST",
       signal: AbortSignal.timeout(15_000),
     });
     const text = await res.text();
-    if (method === "GET") {
-      cache.set(url, { expires: Date.now() + CACHE_TTL_MS, body: text, status: res.status });
+    const contentType = res.headers.get("content-type") ?? "text/plain; charset=utf-8";
+    if (method === "GET" && ttl > 0) {
+      cache.set(url, {
+        expires: Date.now() + ttl,
+        body: text,
+        status: res.status,
+        contentType,
+      });
     }
     return new NextResponse(text, {
       status: res.status,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": contentType, "cache-control": NO_STORE },
     });
   } catch (error) {
     console.error("Chess proxy failed:", joined, error);
     return NextResponse.json(
       { success: false, error: { code: "UPSTREAM_ERROR", message: "Chess is unreachable." } },
-      { status: 502 }
+      { status: 502, headers: { "cache-control": NO_STORE } }
     );
   }
 }
@@ -118,14 +139,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   const { path } = await ctx.params;
   if (!BASE) return notConfigured();
   const joined = path.join("/");
+  const ttl = cacheTtlMs(joined);
 
   const url = `${BASE}/${joined}${req.nextUrl.search}`;
-  const hit = cache.get(url);
-  if (hit && hit.expires > Date.now()) {
-    return new NextResponse(hit.body, {
-      status: hit.status,
-      headers: { "content-type": "application/json" },
-    });
+  if (ttl > 0) {
+    const hit = cache.get(url);
+    if (hit && hit.expires > Date.now()) {
+      return new NextResponse(hit.body, {
+        status: hit.status,
+        headers: { "content-type": hit.contentType, "cache-control": NO_STORE },
+      });
+    }
   }
 
   return forward(req, joined, "GET");
@@ -152,7 +176,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ path: stri
           message: "Your account has no wallet to play with yet.",
         },
       },
-      { status: 400 }
+      { status: 400, headers: { "cache-control": NO_STORE } }
     );
   }
 

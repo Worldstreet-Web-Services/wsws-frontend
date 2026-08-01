@@ -78,7 +78,9 @@ export type Intent =
 // sections).
 export const NAV_TARGETS: readonly SectionId[] = [
   "portfolio",
-  "trade",
+  "spot",
+  "perps",
+  "meme",
   "rwa",
   "prediction",
   "earn",

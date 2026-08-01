@@ -3,6 +3,7 @@ import { apiError } from "@/lib/casino/api/envelope";
 import {
   exceedsUsdcBalance,
   feePctFromBps,
+  isCashierAccessDenied,
   isCashierUnavailable,
   normalizeUsdcAmount,
   parseUsdcAmount,
@@ -71,6 +72,21 @@ describe("isCashierUnavailable", () => {
     expect(isCashierUnavailable(null)).toBe(false);
     expect(isCashierUnavailable(undefined)).toBe(false);
     expect(isCashierUnavailable("boom")).toBe(false);
+  });
+});
+
+describe("isCashierAccessDenied", () => {
+  it("treats auth and wallet identity failures as terminal", () => {
+    expect(isCashierAccessDenied(apiError("UNAUTHORIZED", "sign in", 401))).toBe(true);
+    expect(isCashierAccessDenied(apiError("NO_WALLET", "link a wallet", 400))).toBe(true);
+  });
+
+  it("does not confuse ordinary service faults with auth faults", () => {
+    expect(isCashierAccessDenied(apiError("CONFLICT", "not configured", 409))).toBe(false);
+    expect(isCashierAccessDenied(apiError("SERVICE_UNAVAILABLE", "gateway down", 502))).toBe(
+      false
+    );
+    expect(isCashierAccessDenied(new Error("network"))).toBe(false);
   });
 });
 

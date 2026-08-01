@@ -20,7 +20,6 @@ import {
   resignMatch,
   respondToDraw,
   submitMove,
-  fetchPlayerMatches,
 } from "@/lib/casino/api/chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import {
@@ -52,7 +51,6 @@ const CLOCK_TICK_MS = 250;
 export const CHESS_KEYS = {
   challenges: ["casino", "chess", "challenges"] as const,
   liveMatches: ["casino", "chess", "live"] as const,
-  myActive: (wallet: string) => ["casino", "chess", "my-active", wallet] as const,
   match: (id: string) => ["casino", "chess", "match", id] as const,
   history: (wallet: string) => ["casino", "chess", "history", wallet] as const,
   ticket: (id: string) => ["casino", "chess", "ticket", id] as const,
@@ -114,32 +112,30 @@ export function useChessLobby(wallet: string | null) {
     queryFn: () => fetchLobbyChallenges(wallet),
     refetchInterval: LOBBY_POLL_MS,
   });
-  const myActive = useQuery({
-    queryKey: CHESS_KEYS.myActive(wallet ?? "none"),
-    queryFn: () => fetchPlayerMatches(wallet as string, "active"),
-    enabled: !!wallet,
-    refetchInterval: LOBBY_POLL_MS,
-    select: (matches) =>
-      [...matches].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-  });
   const live = useQuery({
     queryKey: CHESS_KEYS.liveMatches,
     queryFn: fetchLiveMatches,
     refetchInterval: LOBBY_POLL_MS,
   });
-  const myActiveIds = new Set((myActive.data ?? []).map((match) => match.id));
+  const mine = wallet?.toLowerCase() ?? null;
+  const allLive =
+    live.data?.filter((match) => match.state === "in_progress").sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }) ?? [];
+  const isMine = (match: ChessMatch) =>
+    !!mine &&
+    (match.white?.walletAddress?.toLowerCase() === mine ||
+      match.black?.walletAddress?.toLowerCase() === mine);
+  const myActiveGames = mine ? allLive.filter(isMine) : [];
   return {
     challenges: challenges.data?.challenges ?? [],
-    myActiveGames: myActive.data ?? [],
+    myActiveGames,
     myOpenGames: challenges.data?.myOpenGames ?? [],
-    liveMatches: (live.data ?? []).filter((match) => !myActiveIds.has(match.id)),
-    isLoading: challenges.isLoading || myActive.isLoading || live.isLoading,
-    error: challenges.error ?? myActive.error ?? live.error,
+    liveMatches: allLive.filter((match) => !isMine(match)),
+    isLoading: challenges.isLoading || live.isLoading,
+    error: challenges.error ?? live.error,
     refetch: () => {
       void challenges.refetch();
-      void myActive.refetch();
       void live.refetch();
     },
   };

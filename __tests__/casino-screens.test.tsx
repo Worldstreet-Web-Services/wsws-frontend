@@ -238,7 +238,6 @@ describe("chess lobby", () => {
   });
 
   it("keeps your own active game resumable from the lobby", async () => {
-    chessApi.fetchPlayerMatches.mockResolvedValue([activeMatch()]);
     chessApi.fetchLiveMatches.mockResolvedValue([activeMatch()]);
     render(<LobbySection />, { wrapper });
 
@@ -246,6 +245,20 @@ describe("chess lobby", () => {
     expect(screen.getByText("GrandmasterKay")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m1"));
+  });
+
+  it("hides finished games from the live lobby lists", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([
+      activeMatch({
+        id: "done-1",
+        state: "settled",
+        result: { kind: "resignation", winner: "w" },
+      }),
+    ]);
+    render(<LobbySection />, { wrapper });
+
+    expect(await screen.findByText("No games in play yet. Create one and it shows up here.")).toBeInTheDocument();
+    expect(screen.queryByText("GrandmasterKay")).not.toBeInTheDocument();
   });
 });
 

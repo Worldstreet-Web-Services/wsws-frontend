@@ -46,7 +46,11 @@ export async function fetchCashierConfig(): Promise<CashierConfig> {
 }
 
 export async function fetchChessBalance(wallet: string): Promise<CashierBalance> {
-  return chessGet<CashierBalance>(`/cashier/players/${encodeURIComponent(wallet)}/balance`);
+  return chessGet<CashierBalance>(
+    `/cashier/players/${encodeURIComponent(wallet)}/balance`,
+    undefined,
+    { requireAuth: true }
+  );
 }
 
 // Asks the service to credit an on-chain deposit. Idempotent by txHash, so a
@@ -71,6 +75,14 @@ export async function createChessWithdrawal(
 export function isCashierUnavailable(error: unknown): boolean {
   const code = (error as CasinoApiError | null)?.code;
   return code === "CONFLICT" || code === "NOT_CONFIGURED" || code === "SERVICE_UNAVAILABLE";
+}
+
+// The proxy now protects private chess reads with the caller's verified
+// session, so a 401 or "no wallet on the account" is not a transient fault.
+// Retrying or polling those only spams the console and burns rate limits.
+export function isCashierAccessDenied(error: unknown): boolean {
+  const code = (error as CasinoApiError | null)?.code;
+  return code === "UNAUTHORIZED" || code === "NO_WALLET";
 }
 
 // 500 bps reads as 5 (%). Display only; settlement math stays server-side.

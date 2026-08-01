@@ -6,7 +6,7 @@ import { RewardBadge } from "@/components/dashboard/earn/reward-badge";
 import { SubmissionStatus } from "@/components/dashboard/earn/submission-status";
 import { SubmitSheet } from "@/components/dashboard/earn/submit-sheet";
 import { useListingDetail } from "@/hooks/use-earn-listings";
-import { useSubmissionCheck } from "@/hooks/use-earn-submission";
+import { useMySubmission, useSubmissionCheck } from "@/hooks/use-earn-submission";
 import { deadlineLabel, formatDeadline } from "@/lib/earn/deadline";
 import { ordinal } from "@/lib/earn/ordinal";
 import { formatReward } from "@/lib/earn/reward";
@@ -20,6 +20,11 @@ export function ListingDetailSection({ slug }: { slug: string | null }) {
   const { listing, isLoading, error } = useListingDetail(slug);
   // Only asked once the listing is known, since the check is keyed by id.
   const { check } = useSubmissionCheck(listing?.id ?? null);
+  // The user's own entry content, fetched only once we know they submitted, so
+  // they can see and reach what they sent.
+  const { submission: mySubmission } = useMySubmission(
+    check?.hasSubmitted ? (listing?.id ?? null) : null
+  );
   const [submitOpen, setSubmitOpen] = useState(false);
 
   if (error) {
@@ -85,6 +90,27 @@ export function ListingDetailSection({ slug }: { slug: string | null }) {
           ) : null}
 
           {check ? <SubmissionStatus check={check} /> : null}
+
+          {mySubmission ? (
+            <section className="ws-inset mt-4 px-5 py-4">
+              <div className="ws-display text-[14px] text-white/85">Your submission</div>
+              {mySubmission.link ? (
+                <a
+                  href={mySubmission.link}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-accent mt-2 block truncate font-sans text-[12.5px] font-medium hover:underline"
+                >
+                  {mySubmission.link}
+                </a>
+              ) : null}
+              {mySubmission.otherInfo ? (
+                <p className="mt-2 font-sans text-[12.5px] leading-[1.6] font-normal whitespace-pre-line text-white/55">
+                  {mySubmission.otherInfo}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
         </article>
 
         <aside className="lg:sticky lg:top-28 lg:self-start">
@@ -95,18 +121,33 @@ export function ListingDetailSection({ slug }: { slug: string | null }) {
             </div>
 
             {listing.rewards.length > 1 ? (
-              <ul className="mt-4 flex flex-col gap-1.5 border-t border-white/8 pt-4">
-                {listing.rewards.map((tier) => (
-                  <li key={tier.position} className="flex justify-between gap-3">
-                    <span className="font-sans text-[12.5px] font-normal text-white/50">
-                      {ordinal(tier.position)}
-                    </span>
-                    <span className="tnum font-sans text-[12.5px] font-medium text-white/80">
-                      {formatReward(tier.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              // A vertical prize timeline: each position is a node on a line, the
+              // way Superteam lays out a multi-place reward split.
+              <div className="relative mt-4 border-t border-white/8 pt-4">
+                <span
+                  aria-hidden
+                  className="absolute top-6 bottom-2 left-[3.5px] w-px bg-white/10"
+                />
+                <ul className="flex flex-col gap-3">
+                  {listing.rewards.map((tier) => (
+                    <li
+                      key={tier.position}
+                      className="relative flex items-center justify-between gap-3 pl-5"
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute top-1/2 left-0 size-2 -translate-y-1/2 rounded-full bg-white/30 ring-2 ring-[#0c0c0e]"
+                      />
+                      <span className="font-sans text-[12.5px] font-normal text-white/50">
+                        {ordinal(tier.position)}
+                      </span>
+                      <span className="tnum ws-display text-[15px] text-white/85">
+                        {formatReward(tier.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
 
             <div className="mt-4 border-t border-white/8 pt-4">
@@ -159,7 +200,7 @@ export function ListingDetailSection({ slug }: { slug: string | null }) {
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-white/10 px-2.5 py-1 font-sans text-[11.5px] font-medium text-white/55">
+    <span className="rounded-[6px] bg-white/8 px-2.5 py-1 font-sans text-[11.5px] font-medium text-white/60">
       {children}
     </span>
   );

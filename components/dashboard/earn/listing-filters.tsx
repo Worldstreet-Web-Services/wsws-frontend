@@ -21,8 +21,36 @@ const SORTS: { id: BrowseSort; label: string }[] = [
   { id: "Submissions", label: "Entries" },
 ];
 
-// There is no Tabs primitive in this app, so a filter row is a row of buttons
-// with the active one inverted. Same treatment as the casino hub's categories.
+// The primary tabs read as an underline strip, the way Superteam's feed splits
+// All / Bounties / Projects: text buttons, the active one lit white with an
+// accent underline drawn beneath it.
+function TabLink({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`relative cursor-pointer px-1 py-2 font-sans text-[13px] font-medium transition-colors ${
+        active
+          ? "text-accent after:bg-accent after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:content-['']"
+          : "text-white/50 hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Status is a secondary filter, so it stays a row of pill chips with the active
+// one inverted. Same treatment as the casino hub's categories.
 function Chip({
   active,
   onClick,
@@ -57,15 +85,15 @@ export function ListingFilters({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-4 border-b border-white/[0.08]">
         {TABS.map((tab) => (
-          <Chip
+          <TabLink
             key={tab.id}
             active={query.tab === tab.id}
             onClick={() => onChange({ ...query, tab: tab.id })}
           >
             {tab.label}
-          </Chip>
+          </TabLink>
         ))}
       </div>
 

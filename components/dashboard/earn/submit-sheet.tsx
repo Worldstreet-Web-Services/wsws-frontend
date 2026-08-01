@@ -3,10 +3,21 @@
 import { useState } from "react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { TextAreaField, TextField } from "@/components/dashboard/earn/form-field";
+import { TalentProfileSheet } from "@/components/dashboard/earn/talent-profile-sheet";
 import { useCreateSubmission } from "@/hooks/use-earn-submission";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import type { EligibilityQuestion } from "@/lib/earn/api/types";
+
+// The service refuses a submission until the user's talent profile is complete.
+// The exact code/message isn't pinned by the contract, so match on the word the
+// service uses rather than a single literal, and route the user to fill it in.
+function needsTalentProfile(error: unknown): boolean {
+  const e = error as { code?: string; message?: string; details?: unknown } | null;
+  const haystack =
+    `${e?.code ?? ""} ${e?.message ?? ""} ${JSON.stringify(e?.details ?? "")}`.toLowerCase();
+  return haystack.includes("talent") || haystack.includes("istalentfilled");
+}
 
 interface SubmitSheetProps {
   open: boolean;
@@ -17,8 +28,8 @@ interface SubmitSheetProps {
 }
 
 // Entering a listing. The service also requires the user's talent profile to be
-// filled in, which nothing in this app can set yet, so a refusal on that ground
-// is surfaced with the service's own wording rather than guessed at.
+// filled in first; a refusal on that ground opens the talent profile sheet so
+// the user can complete it and submit again.
 export function SubmitSheet({
   open,
   onClose,
@@ -32,6 +43,7 @@ export function SubmitSheet({
   const [telegram, setTelegram] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<{ link?: string }>({});
+  const [talentOpen, setTalentOpen] = useState(false);
 
   function reset() {
     setLink("");
@@ -67,6 +79,11 @@ export function SubmitSheet({
       reset();
       onClose();
     } catch (error) {
+      if (needsTalentProfile(error)) {
+        toast.error("Complete your talent profile to submit.", { id });
+        setTalentOpen(true);
+        return;
+      }
       toast.error(friendlyError(error, "Couldn't send that entry."), { id });
     }
   }
@@ -136,6 +153,12 @@ export function SubmitSheet({
           </button>
         </div>
       </form>
+
+      <TalentProfileSheet
+        open={talentOpen}
+        onClose={() => setTalentOpen(false)}
+        onSaved={() => setTalentOpen(false)}
+      />
     </ModalShell>
   );
 }

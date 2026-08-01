@@ -62,7 +62,7 @@ export function BrowseSection() {
                 {count} {count === 1 ? "listing" : "listings"}
               </div>
             ) : null}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="divide-y divide-white/[0.06]">
               {listings.map((listing, index) => (
                 <ListingCard key={listing.id} listing={listing} featured={index === 0} />
               ))}

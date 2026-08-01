@@ -184,6 +184,18 @@ export interface SponsorProfileInput {
   telegram: string;
 }
 
+// The talent profile a user must complete before the service accepts a
+// submission (it enforces isTalentFilled === true). The field set here is the
+// minimal one the submission flow needs; confirm it against the service.
+export interface TalentProfileInput {
+  firstName: string;
+  lastName: string;
+  username: string;
+  bio: string;
+  skills: string[];
+  telegram: string;
+}
+
 export interface CreateSubmissionInput {
   listingId: string;
   link: string;

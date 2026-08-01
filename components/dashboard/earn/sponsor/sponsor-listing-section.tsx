@@ -55,14 +55,24 @@ export function SponsorListingSection({ slug, type }: { slug: string | null; typ
 
   return (
     <div className={PAGE}>
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-6">
         <div className="min-w-0">
           <h1 className="ws-display text-[clamp(22px,3vw,30px)] tracking-[-0.02em] text-white">
             {listing.title}
           </h1>
-          <div className="tnum mt-1.5 font-sans text-[12.5px] font-normal text-white/45">
-            {formatDeadline(listing.deadline)} · {deadline.text} ·{" "}
-            {listing.isPublished ? "Published" : "Draft"}
+          <div className="mt-2 flex flex-wrap items-center gap-2.5">
+            <span
+              className={`rounded-full border px-2 py-px font-sans text-[11px] capitalize ${
+                listing.isPublished
+                  ? "border-up/30 bg-up/10 text-up"
+                  : "border-white/15 text-white/50"
+              }`}
+            >
+              {listing.isPublished ? "Published" : "Draft"}
+            </span>
+            <span className="tnum font-sans text-[12.5px] font-normal text-white/45">
+              {formatDeadline(listing.deadline)} · {deadline.text}
+            </span>
           </div>
         </div>
 

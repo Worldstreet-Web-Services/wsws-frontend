@@ -90,31 +90,64 @@ export function WinnerPicker({
       </p>
 
       <div className="mt-4 flex flex-col gap-2.5">
-        {rewards.map((tier) => (
-          <div key={tier.position} className="flex flex-wrap items-center gap-2.5">
-            <span className="w-24 shrink-0 font-sans text-[12.5px] font-medium text-white/70">
-              {ordinal(tier.position)}
-            </span>
-            <span className="tnum w-28 shrink-0 font-sans text-[12.5px] font-normal text-white/45">
-              {formatReward(tier.amount)}
-            </span>
-            <select
-              value={draft.get(tier.position) ?? ""}
-              aria-label={`Winner for ${ordinal(tier.position)} place`}
-              onChange={(event) => pick(tier.position, event.target.value)}
-              className="ws-inset focus:border-accent/50 min-w-[180px] flex-1 cursor-pointer rounded-[12px] px-3 py-2 font-sans text-[12.5px] text-white outline-none"
+        {rewards.map((tier) => {
+          const chosen = draft.get(tier.position) ?? "";
+          return (
+            <div
+              key={tier.position}
+              className="ws-inset flex flex-wrap items-center gap-3 rounded-[12px] px-3 py-2.5"
             >
-              <option value="" className="bg-sheet">
-                Nobody yet
-              </option>
-              {eligible.map((submission) => (
-                <option key={submission.id} value={submission.id} className="bg-sheet">
-                  {submission.applicant?.username ?? submission.link ?? submission.id}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
+              <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-white/70">
+                {chosen ? (
+                  <span className="text-up" aria-hidden="true">
+                    ✓
+                  </span>
+                ) : null}
+                {ordinal(tier.position)}
+              </span>
+              <span className="tnum font-sans text-[12.5px] font-normal text-white/45">
+                {formatReward(tier.amount)}
+              </span>
+
+              <div className="ml-auto flex items-center gap-2">
+                <select
+                  value={chosen}
+                  aria-label={`Winner for ${ordinal(tier.position)} place`}
+                  onChange={(event) => pick(tier.position, event.target.value)}
+                  className={`min-w-[160px] cursor-pointer rounded-lg border px-3 py-1.5 font-sans text-[12.5px] transition-colors outline-none ${
+                    chosen
+                      ? "border-up/40 bg-up/10 text-up"
+                      : "focus:border-accent/50 border-white/15 bg-black/30 text-white"
+                  }`}
+                >
+                  <option value="" className="bg-sheet text-white">
+                    Select winner
+                  </option>
+                  {eligible.map((submission) => (
+                    <option
+                      key={submission.id}
+                      value={submission.id}
+                      className="bg-sheet text-white"
+                    >
+                      {submission.applicant?.username ?? submission.link ?? submission.id}
+                    </option>
+                  ))}
+                </select>
+
+                {chosen ? (
+                  <button
+                    type="button"
+                    onClick={() => pick(tier.position, "")}
+                    aria-label={`Clear ${ordinal(tier.position)} place winner`}
+                    className="text-down/80 hover:text-down hover:border-down/40 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-white/10 font-sans text-[11px] transition-colors"
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <button

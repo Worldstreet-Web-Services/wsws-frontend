@@ -1,8 +1,9 @@
 import type { PieceColor, PieceType } from "@/lib/casino/chess/engine";
 
-// The neo piece set (public/piece/neo/). See its NOTICE.txt on licensing.
+// The Cburnett piece set (public/piece/cburnett/). See its NOTICE.txt on
+// licensing and how to swap sets.
 function pieceSrc(color: PieceColor, type: PieceType): string {
-  return `/piece/neo/${color}${type}.png`;
+  return `/piece/cburnett/${color}${type}.png`;
 }
 
 // Captured pieces read left-to-right cheapest first, the way a board lines them
@@ -37,7 +38,7 @@ export function CapturedRow({
               src={pieceSrc(color, type)}
               alt=""
               draggable={false}
-              className={`h-[15px] w-[15px] select-none opacity-80 ${startsGroup ? "" : "-ml-[9px]"}`}
+              className={`h-[15px] w-[15px] opacity-80 select-none ${startsGroup ? "" : "-ml-[9px]"}`}
             />
           );
         })}

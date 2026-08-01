@@ -12,7 +12,8 @@ function audioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!context) {
     const Ctor =
-      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     try {
       context = new Ctor();
@@ -28,7 +29,15 @@ function audioContext(): AudioContext | null {
 // silent and never throwing on failure — the move still went through.
 function tone(
   ac: AudioContext,
-  { freqStart, freqEnd, at = 0, attack = 0.005, hold = 0.12, peak = 0.22, type = "triangle" as OscillatorType }: {
+  {
+    freqStart,
+    freqEnd,
+    at = 0,
+    attack = 0.005,
+    hold = 0.12,
+    peak = 0.22,
+    type = "triangle" as OscillatorType,
+  }: {
     freqStart: number;
     freqEnd: number;
     at?: number;
@@ -36,7 +45,7 @@ function tone(
     hold?: number;
     peak?: number;
     type?: OscillatorType;
-  },
+  }
 ): void {
   const now = ac.currentTime + at;
   const osc = ac.createOscillator();
@@ -89,7 +98,15 @@ export function playMoveSound(kind: MoveSound = "move"): void {
       case "check":
         // The quiet move knock plus a short high ping that reads as an alert.
         tone(ac, { freqStart: 250, freqEnd: 150 });
-        tone(ac, { freqStart: 1200, freqEnd: 900, at: 0.02, attack: 0.003, hold: 0.14, peak: 0.16, type: "sine" });
+        tone(ac, {
+          freqStart: 1200,
+          freqEnd: 900,
+          at: 0.02,
+          attack: 0.003,
+          hold: 0.14,
+          peak: 0.16,
+          type: "sine",
+        });
         break;
       case "promote":
         // A rising sparkle for a pawn becoming a queen.
@@ -114,7 +131,8 @@ export function playGameEndSound(outcome: "win" | "loss" | "draw"): void {
   if (ac.state === "suspended") void ac.resume();
 
   try {
-    const notes = outcome === "win" ? [523, 659, 784] : outcome === "loss" ? [392, 330, 262] : [440, 415, 392];
+    const notes =
+      outcome === "win" ? [523, 659, 784] : outcome === "loss" ? [392, 330, 262] : [440, 415, 392];
     notes.forEach((freq, i) => {
       tone(ac, {
         freqStart: freq,

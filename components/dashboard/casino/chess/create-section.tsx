@@ -152,11 +152,7 @@ export function CreateSection() {
         disabled={create.isPending || stakeOverBalance}
         className="text-ink w-full cursor-pointer rounded-full bg-white p-3.5 font-sans text-[14px] font-bold transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45"
       >
-        {create.isPending
-          ? t("creating")
-          : mode === "invite"
-            ? t("submitInvite")
-            : t("submitAuto")}
+        {create.isPending ? t("creating") : mode === "invite" ? t("submitInvite") : t("submitAuto")}
       </button>
     </div>
   );

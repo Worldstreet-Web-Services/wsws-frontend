@@ -76,7 +76,10 @@ function broadcastToAll(frame: GatewayFrame): void {
 
 function open(): void {
   if (typeof window === "undefined") return;
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+  if (
+    socket &&
+    (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+  ) {
     return;
   }
   try {

@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import type { Board, Move, PieceColor, PieceType, Square } from "@/lib/casino/chess/engine";
 import { DEFAULT_THEME, type BoardTheme } from "@/lib/casino/chess/board-theme";
 
-// The neo piece set (public/piece/neo/). See its NOTICE.txt on licensing.
+// The Cburnett piece set (public/piece/cburnett/). See its NOTICE.txt on
+// licensing and how to swap sets.
 function pieceSrc(color: PieceColor, type: PieceType): string {
-  return `/piece/neo/${color}${type}.png`;
+  return `/piece/cburnett/${color}${type}.png`;
 }
 
 // The dual drop-shadow is a thin light + dark halo so a piece of either colour
 // stays legible on any square shade.
-const PIECE_HALO = "drop-shadow(0 0 0.6px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(244,244,244,0.4))";
+const PIECE_HALO =
+  "drop-shadow(0 0 0.6px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(244,244,244,0.4))";
 
 // Pieces move the way chess.com's board does: each piece is one persistent
 // element on an absolute layer, positioned by a transform, and a move is just a
@@ -79,7 +81,12 @@ function reconcile(prev: Placement, board: Board, serial: string): Placement {
 
   for (const cell of cells) {
     const idx = old.findIndex(
-      (p, i) => !used[i] && p.r === cell.r && p.c === cell.c && p.color === cell.color && p.type === cell.type,
+      (p, i) =>
+        !used[i] &&
+        p.r === cell.r &&
+        p.c === cell.c &&
+        p.color === cell.color &&
+        p.type === cell.type
     );
     if (idx >= 0) {
       used[idx] = true;
@@ -99,11 +106,16 @@ function reconcile(prev: Placement, board: Board, serial: string): Placement {
     let idx = -1;
     if (slide) {
       idx = old.findIndex((p, i) => !used[i] && p.color === cell.color && p.type === cell.type);
-      if (idx < 0) idx = old.findIndex((p, i) => !used[i] && p.color === cell.color && p.type === "p");
+      if (idx < 0)
+        idx = old.findIndex((p, i) => !used[i] && p.color === cell.color && p.type === "p");
     }
     if (idx >= 0) {
       used[idx] = true;
-      moved.push({ from: { r: old[idx].r, c: old[idx].c }, to: { r: cell.r, c: cell.c }, king: cell.type === "k" });
+      moved.push({
+        from: { r: old[idx].r, c: old[idx].c },
+        to: { r: cell.r, c: cell.c },
+        king: cell.type === "k",
+      });
       kept.push({ id: old[idx].id, color: cell.color, type: cell.type, r: cell.r, c: cell.c });
     } else {
       kept.push({ id: nextId++, ...cell });
@@ -112,7 +124,12 @@ function reconcile(prev: Placement, board: Board, serial: string): Placement {
 
   // Prefer the king's move for the highlight, so castling lights the king.
   const primary = moved.find((m) => m.king) ?? moved[0] ?? null;
-  return { placed: kept, serial, nextId, move: primary ? { from: primary.from, to: primary.to } : null };
+  return {
+    placed: kept,
+    serial,
+    nextId,
+    move: primary ? { from: primary.from, to: primary.to } : null,
+  };
 }
 
 interface ChessBoardProps {

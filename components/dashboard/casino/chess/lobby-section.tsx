@@ -34,8 +34,10 @@ export function LobbySection() {
   const tSwiss = useTranslations("casino.chess.swiss");
   const tCashier = useTranslations("casino.chess.cashier");
   const router = useRouter();
-  const { challenges, liveMatches, isLoading, error, refetch } = useChessLobby();
   const wallet = useCasinoWallet();
+  const { challenges, myOpenGames, liveMatches, isLoading, error, refetch } = useChessLobby(
+    wallet.address ?? null
+  );
   const cashier = useChessCashierStatus();
   const accept = useAcceptChallenge();
   const quickMatch = useQuickMatch();
@@ -179,6 +181,41 @@ export function LobbySection() {
               ))}
             </div>
           )}
+
+          {myOpenGames.length > 0 ? (
+            <>
+              <div className="ws-display mt-9 mb-3 text-[18px]">{t("yourOpenGames")}</div>
+              <div className="overflow-x-auto rounded-[14px] border border-white/8">
+                <div className="min-w-[640px]">
+                  {myOpenGames.map((c) => (
+                    <div
+                      key={c.id}
+                      className="grid grid-cols-[2fr_1fr_90px] items-center border-t border-white/6 px-4.5 py-3 text-[13px] first:border-t-0"
+                    >
+                      <div className="truncate">
+                        {t("awaitingOpponent")}
+                        {c.stakeUsdc ? (
+                          <span className="text-white/60">
+                            {" · "}
+                            {tCommon("stakedFor", { amount: c.stakeUsdc })}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="font-normal text-white/50">
+                        {timeControlLabel(tCommon, c.timeControl)}
+                      </div>
+                      <button
+                        onClick={() => router.push(`/casino/chess/play?match=${c.id}`)}
+                        className="text-ink cursor-pointer rounded-full bg-white py-1.5 text-center font-sans text-[12px] font-bold"
+                      >
+                        {t("resume")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="ws-display mt-9 mb-3 text-[18px]">{t("openChallenges")}</div>
           {challenges.length === 0 ? (

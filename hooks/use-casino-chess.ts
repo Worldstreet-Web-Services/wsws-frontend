@@ -9,10 +9,10 @@ import {
   claimTimeout,
   createChallenge,
   fetchJoinableMatches,
+  fetchLobbyChallenges,
   fetchLiveMatches,
   fetchMatch,
   fetchMatchmakingTicket,
-  fetchOpenChallenges,
   fetchWaitingMatches,
   claimDraw,
   offerDraw,
@@ -107,10 +107,10 @@ function requireWallet(address: string | null): string {
   return address;
 }
 
-export function useChessLobby() {
+export function useChessLobby(wallet: string | null) {
   const challenges = useQuery({
-    queryKey: CHESS_KEYS.challenges,
-    queryFn: fetchOpenChallenges,
+    queryKey: [...CHESS_KEYS.challenges, wallet ?? "anon"],
+    queryFn: () => fetchLobbyChallenges(wallet),
     refetchInterval: LOBBY_POLL_MS,
   });
   const live = useQuery({
@@ -118,9 +118,9 @@ export function useChessLobby() {
     queryFn: fetchLiveMatches,
     refetchInterval: LOBBY_POLL_MS,
   });
-
   return {
-    challenges: challenges.data ?? [],
+    challenges: challenges.data?.challenges ?? [],
+    myOpenGames: challenges.data?.myOpenGames ?? [],
     liveMatches: live.data ?? [],
     isLoading: challenges.isLoading || live.isLoading,
     error: challenges.error ?? live.error,

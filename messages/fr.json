@@ -1099,7 +1099,10 @@
         "challengesEmpty": "Aucun défi ouvert. Créez-en un et les autres joueurs pourront le rejoindre.",
         "colOpponent": "Adversaire",
         "colTimeControl": "Cadence",
-        "join": "Rejoindre"
+        "join": "Rejoindre",
+        "yourOpenGames": "Vos parties ouvertes",
+        "awaitingOpponent": "En attente d'un adversaire",
+        "resume": "Reprendre"
       },
       "create": {
         "title": "Créer une partie",

@@ -1099,7 +1099,10 @@
         "challengesEmpty": "No hay desafíos abiertos. Crea uno y otros jugadores podrán unirse.",
         "colOpponent": "Rival",
         "colTimeControl": "Ritmo de juego",
-        "join": "Unirse"
+        "join": "Unirse",
+        "yourOpenGames": "Tus partidas abiertas",
+        "awaitingOpponent": "Esperando un rival",
+        "resume": "Reanudar"
       },
       "create": {
         "title": "Crear una partida",

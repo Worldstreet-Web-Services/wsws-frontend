@@ -1099,7 +1099,10 @@
         "challengesEmpty": "Keine offenen Herausforderungen. Erstellen Sie eine und andere Spieler können beitreten.",
         "colOpponent": "Gegner",
         "colTimeControl": "Bedenkzeit",
-        "join": "Beitreten"
+        "join": "Beitreten",
+        "yourOpenGames": "Deine offenen Spiele",
+        "awaitingOpponent": "Warten auf einen Gegner",
+        "resume": "Fortsetzen"
       },
       "create": {
         "title": "Partie erstellen",

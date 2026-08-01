@@ -1099,7 +1099,10 @@
         "challengesEmpty": "No open challenges. Create one and other players can join it.",
         "colOpponent": "Opponent",
         "colTimeControl": "Time control",
-        "join": "Join"
+        "join": "Join",
+        "yourOpenGames": "Your open games",
+        "awaitingOpponent": "Waiting for an opponent",
+        "resume": "Resume"
       },
       "create": {
         "title": "Create a game",

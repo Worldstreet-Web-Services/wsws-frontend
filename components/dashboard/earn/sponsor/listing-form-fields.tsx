@@ -9,7 +9,13 @@ import {
 } from "@/components/dashboard/earn/form-field";
 import { slugify } from "@/lib/earn/listing-form";
 import type { ListingFormErrors, ListingFormState } from "@/lib/earn/listing-form";
-import type { AgentAccess, CompensationType, ListingType } from "@/lib/earn/api/types";
+import {
+  SKILL_CATEGORIES,
+  type AgentAccess,
+  type CompensationType,
+  type ListingType,
+  type SkillCategory,
+} from "@/lib/earn/api/types";
 
 const TYPES: { value: ListingType; label: string }[] = [
   { value: "bounty", label: "Bounty" },
@@ -267,18 +273,6 @@ function RewardSplit({
   );
 }
 
-function parseSkills(text: string): ListingFormState["skills"] {
-  return text
-    .split(",")
-    .map((skill) => skill.trim())
-    .filter(Boolean)
-    .map((skill) => ({ skill, subskills: [] }));
-}
-
-function joinSkills(skills: ListingFormState["skills"]): string {
-  return skills.map((group) => group.skill).join(", ");
-}
-
 function SkillsField({
   state,
   error,
@@ -288,40 +282,52 @@ function SkillsField({
   error?: string;
   onChange: (skills: ListingFormState["skills"]) => void;
 }) {
-  // Skills are a free-text list rather than a picker: the service accepts any
-  // string, and hardcoding a taxonomy here would go stale against it.
-  //
-  // The raw text is held locally because the parsed list is not round-trippable:
-  // deriving the field's value from it would delete the comma the moment it was
-  // typed, and the sponsor could never reach the second skill.
-  const joined = joinSkills(state.skills);
-  const [text, setText] = useState(joined);
-  // Adjusted during render rather than in an effect, which is what React
-  // prescribes for state that follows a prop: an effect here would render the
-  // stale text once first and cascade a second render.
-  const [lastJoined, setLastJoined] = useState(joined);
+  // A picker rather than a text field: the service takes one of a fixed set and
+  // rejects anything else, so free text just produced a validation error the
+  // sponsor could not act on.
+  const chosen = new Set(state.skills.map((group) => group.skill));
 
-  // Only follows the form state when it changed from somewhere else, such as an
-  // existing listing being loaded in for editing. A change this field caused
-  // itself round-trips to the same string and is left alone, so the comma the
-  // sponsor just typed survives.
-  if (lastJoined !== joined) {
-    setLastJoined(joined);
-    if (joinSkills(parseSkills(text)) !== joined) setText(joined);
+  function toggle(skill: SkillCategory) {
+    // Subskills are preserved on a skill that is already chosen, so unticking
+    // and reticking does not quietly discard them.
+    const next = chosen.has(skill)
+      ? state.skills.filter((group) => group.skill !== skill)
+      : [...state.skills, { skill, subskills: [] }];
+    onChange(next);
   }
 
   return (
-    <TextField
-      label="Skills"
-      required
-      value={text}
-      error={error}
-      placeholder="Frontend, Design"
-      hint="Comma separated."
-      onChange={(next) => {
-        setText(next);
-        onChange(parseSkills(next));
-      }}
-    />
+    <div className="flex flex-col gap-1.5">
+      <span className="font-sans text-[12.5px] font-medium text-white/70">
+        Skills<span className="text-white/35"> *</span>
+      </span>
+
+      <div className="flex flex-wrap gap-2">
+        {SKILL_CATEGORIES.map((skill) => {
+          const active = chosen.has(skill);
+          return (
+            <button
+              key={skill}
+              type="button"
+              onClick={() => toggle(skill)}
+              aria-pressed={active}
+              className={`cursor-pointer rounded-full border px-3.5 py-1.5 font-sans text-[12.5px] transition-colors ${
+                active
+                  ? "border-accent bg-accent text-ink font-semibold"
+                  : "border-white/10 font-medium text-white/55 hover:text-white"
+              }`}
+            >
+              {skill}
+            </button>
+          );
+        })}
+      </div>
+
+      {error ? (
+        <span role="alert" className="text-down font-sans text-[12px] font-normal">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }

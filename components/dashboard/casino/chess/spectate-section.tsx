@@ -6,13 +6,14 @@ import { useChessMatch } from "@/hooks/use-casino-chess";
 import { useMatchMarket, usePlaceBet } from "@/hooks/use-casino-betting";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
+import { useBoardTheme } from "@/lib/casino/chess/board-theme";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import {
   CasinoEmpty,
   CasinoError,
   CasinoLoading,
 } from "@/components/dashboard/casino/casino-state";
-import { capturedFromBoard, parseFen } from "@/lib/casino/chess/engine";
+import { capturedFromBoard, isInCheck, kingPos, parseFen } from "@/lib/casino/chess/engine";
 import { amountUsd, usdToWei } from "@/lib/casino/money";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
@@ -32,6 +33,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
   const tCommon = useTranslations("casino.chess.common");
   const wallet = useCasinoWallet();
   const { match, clocks, isLoading, error } = useChessMatch(matchId);
+  const theme = useBoardTheme();
   const { odds, history, myBets } = useMatchMarket(matchId);
   const placeBet = usePlaceBet();
 
@@ -66,6 +68,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
   } catch {
     board = null;
   }
+  const checkSquare = board && isInCheck(board, match.turn) ? kingPos(board, match.turn) : null;
 
   // Captured pieces and material lead for each side, read off the board.
   const captured = board ? capturedFromBoard(board) : null;
@@ -158,7 +161,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                     ? `${match.black.username} (${match.black.rating})`
                     : tCommon("black")}
                 </span>
-                <CapturedRow pieces={capturedFor("b")} lead={leadFor("b")} />
+                <CapturedRow pieces={capturedFor("b")} lead={leadFor("b")} color="w" />
               </div>
             </div>
             <div className="tnum ws-inset rounded-lg px-3 py-1 text-[16px]">
@@ -167,7 +170,11 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
           </div>
 
           <div className="max-w-[520px]">
-            {board ? <ChessBoard board={board} /> : <CasinoLoading rows={1} />}
+            {board ? (
+              <ChessBoard board={board} theme={theme} checkSquare={checkSquare} />
+            ) : (
+              <CasinoLoading rows={1} />
+            )}
           </div>
 
           <div className="mt-2.5 flex max-w-[520px] items-center justify-between text-[13.5px]">
@@ -179,7 +186,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                     ? `${match.white.username} (${match.white.rating})`
                     : tCommon("white")}
                 </span>
-                <CapturedRow pieces={capturedFor("w")} lead={leadFor("w")} />
+                <CapturedRow pieces={capturedFor("w")} lead={leadFor("w")} color="b" />
               </div>
             </div>
             <div className="tnum ws-inset rounded-lg px-3 py-1 text-[16px]">

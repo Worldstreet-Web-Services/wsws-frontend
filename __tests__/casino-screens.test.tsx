@@ -9,6 +9,7 @@ const chessApi = vi.hoisted(() => ({
   fetchLobbyChallenges: vi.fn(),
   fetchOpenChallenges: vi.fn(),
   fetchLiveMatches: vi.fn(),
+  fetchPlayerMatches: vi.fn(),
   fetchJoinableMatches: vi.fn(),
   fetchWaitingMatches: vi.fn(),
   fetchMatch: vi.fn(),
@@ -101,12 +102,33 @@ const challenge = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const activeMatch = (over: Record<string, unknown> = {}) => ({
+  id: "m1",
+  state: "in_progress",
+  white: { id: "0xabc", username: "0xabc", rating: 0, walletAddress: "0xabc" },
+  black: { id: "0xdef", username: "GrandmasterKay", rating: 2210, walletAddress: "0xdef" },
+  timeControl: "30s",
+  fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+  moves: ["e4"],
+  clocks: { w: 26, b: 56 },
+  clockUpdatedAt: new Date().toISOString(),
+  turn: "b",
+  result: null,
+  drawOffered: null,
+  stakeUsdc: null,
+  wagerStatus: null,
+  liveTopic: "chess:match:m1",
+  createdAt: new Date().toISOString(),
+  ...over,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   wallet.balance = 10;
   chessApi.fetchLobbyChallenges.mockResolvedValue({ challenges: [], myOpenGames: [] });
   chessApi.fetchOpenChallenges.mockResolvedValue([]);
   chessApi.fetchLiveMatches.mockResolvedValue([]);
+  chessApi.fetchPlayerMatches.mockResolvedValue([]);
   chessApi.fetchJoinableMatches.mockResolvedValue([]);
   chessApi.fetchWaitingMatches.mockResolvedValue([]);
   drawApi.fetchPastResults.mockResolvedValue([]);
@@ -213,6 +235,17 @@ describe("chess lobby", () => {
     expect(await screen.findByText("Your open games")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=mine-1"));
+  });
+
+  it("keeps your own active game resumable from the lobby", async () => {
+    chessApi.fetchPlayerMatches.mockResolvedValue([activeMatch()]);
+    chessApi.fetchLiveMatches.mockResolvedValue([activeMatch()]);
+    render(<LobbySection />, { wrapper });
+
+    expect(await screen.findByText("Your active games")).toBeInTheDocument();
+    expect(screen.getByText("GrandmasterKay")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m1"));
   });
 });
 

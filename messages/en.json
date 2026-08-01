@@ -1095,6 +1095,7 @@
         "liveNow": "Live now",
         "liveEmpty": "No games in play yet. Create one and it shows up here.",
         "vs": "vs",
+        "yourActiveGames": "Your active games",
         "openChallenges": "Open challenges",
         "challengesEmpty": "No open challenges. Create one and other players can join it.",
         "colOpponent": "Opponent",

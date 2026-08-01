@@ -1273,7 +1273,13 @@
         "joinLocks": "Joining locks {amount} USDC from your chess balance.",
         "wagerEach": "Staked · {amount} USDC each",
         "wagerRefunded": "Stakes refunded to both players.",
-        "wagerSettled": "Pot settled to the winner (after the {pct}% fee)."
+        "wagerSettled": "Pot settled to the winner (after the {pct}% fee).",
+        "summaryStake": "Stake, each side",
+        "summaryYouLock": "You lock now",
+        "summaryAfter": "Balance after",
+        "summaryWinner": "Winner receives",
+        "summaryFee": "Platform fee ({pct}%)",
+        "available": "{amount} USDC available"
       },
       "swiss": {
         "entryTitle": "Swiss tournaments",

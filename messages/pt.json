@@ -1273,7 +1273,13 @@
         "joinLocks": "Entrar bloqueia {amount} USDC do seu saldo de xadrez.",
         "wagerEach": "Aposta · {amount} USDC cada",
         "wagerRefunded": "Apostas reembolsadas aos dois jogadores.",
-        "wagerSettled": "Pote entregue ao vencedor (após a taxa de {pct}%)."
+        "wagerSettled": "Pote entregue ao vencedor (após a taxa de {pct}%).",
+        "summaryStake": "Stake, each side",
+        "summaryYouLock": "You lock now",
+        "summaryAfter": "Balance after",
+        "summaryWinner": "Winner receives",
+        "summaryFee": "Platform fee ({pct}%)",
+        "available": "{amount} USDC available"
       },
       "swiss": {
         "entryTitle": "Torneios suíços",

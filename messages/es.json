@@ -1273,7 +1273,13 @@
         "joinLocks": "Unirte bloquea {amount} USDC de tu saldo de ajedrez.",
         "wagerEach": "Apuesta · {amount} USDC cada uno",
         "wagerRefunded": "Apuestas reembolsadas a ambos jugadores.",
-        "wagerSettled": "Pozo entregado al ganador (tras la comisión del {pct}%)."
+        "wagerSettled": "Pozo entregado al ganador (tras la comisión del {pct}%).",
+        "summaryStake": "Stake, each side",
+        "summaryYouLock": "You lock now",
+        "summaryAfter": "Balance after",
+        "summaryWinner": "Winner receives",
+        "summaryFee": "Platform fee ({pct}%)",
+        "available": "{amount} USDC available"
       },
       "swiss": {
         "entryTitle": "Torneos suizos",

@@ -1273,7 +1273,13 @@
         "joinLocks": "Rejoindre bloque {amount} USDC de votre solde échecs.",
         "wagerEach": "Mise · {amount} USDC chacun",
         "wagerRefunded": "Mises remboursées aux deux joueurs.",
-        "wagerSettled": "Pot versé au vainqueur (après les frais de {pct} %)."
+        "wagerSettled": "Pot versé au vainqueur (après les frais de {pct} %).",
+        "summaryStake": "Stake, each side",
+        "summaryYouLock": "You lock now",
+        "summaryAfter": "Balance after",
+        "summaryWinner": "Winner receives",
+        "summaryFee": "Platform fee ({pct}%)",
+        "available": "{amount} USDC available"
       },
       "swiss": {
         "entryTitle": "Tournois suisses",

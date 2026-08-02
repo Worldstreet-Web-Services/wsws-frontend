@@ -41,7 +41,7 @@ export const SKILL_CATEGORIES = [
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
 
 export interface SkillGroup {
-  skill: SkillCategory;
+  skill: string;
   subskills: string[];
 }
 

@@ -282,52 +282,21 @@ function SkillsField({
   error?: string;
   onChange: (skills: ListingFormState["skills"]) => void;
 }) {
-  // A picker rather than a text field: the service takes one of a fixed set and
-  // rejects anything else, so free text just produced a validation error the
-  // sponsor could not act on.
-  const chosen = new Set(state.skills.map((group) => group.skill));
-
-  function toggle(skill: SkillCategory) {
-    // Subskills are preserved on a skill that is already chosen, so unticking
-    // and reticking does not quietly discard them.
-    const next = chosen.has(skill)
-      ? state.skills.filter((group) => group.skill !== skill)
-      : [...state.skills, { skill, subskills: [] }];
-    onChange(next);
-  }
+  // A dropdown rather than a text field: the service takes one of a fixed set
+  // and rejects anything else, so free text only produced a validation error
+  // the sponsor could not act on.
+  const selected = (state.skills[0]?.skill ?? "") as SkillCategory | "";
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="font-sans text-[12.5px] font-medium text-white/70">
-        Skills<span className="text-white/35"> *</span>
-      </span>
-
-      <div className="flex flex-wrap gap-2">
-        {SKILL_CATEGORIES.map((skill) => {
-          const active = chosen.has(skill);
-          return (
-            <button
-              key={skill}
-              type="button"
-              onClick={() => toggle(skill)}
-              aria-pressed={active}
-              className={`cursor-pointer rounded-full border px-3.5 py-1.5 font-sans text-[12.5px] transition-colors ${
-                active
-                  ? "border-accent bg-accent text-ink font-semibold"
-                  : "border-white/10 font-medium text-white/55 hover:text-white"
-              }`}
-            >
-              {skill}
-            </button>
-          );
-        })}
-      </div>
-
-      {error ? (
-        <span role="alert" className="text-down font-sans text-[12px] font-normal">
-          {error}
-        </span>
-      ) : null}
-    </div>
+    <SelectField
+      label="Skill"
+      value={selected}
+      error={error}
+      options={[
+        { value: "" as SkillCategory | "", label: "Pick a skill" },
+        ...SKILL_CATEGORIES.map((skill) => ({ value: skill as SkillCategory | "", label: skill })),
+      ]}
+      onChange={(value) => onChange(value ? [{ skill: value, subskills: [] }] : [])}
+    />
   );
 }

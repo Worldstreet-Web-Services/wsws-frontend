@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { useChessMatch } from "@/hooks/use-casino-chess";
 import { useMatchMarket, usePlaceBet } from "@/hooks/use-casino-betting";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
@@ -198,142 +199,146 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
         </div>
 
         {/* Live market */}
-        <div className="ws-glass h-fit w-full shrink-0 rounded-2xl p-4.5 md:w-[320px]">
-          <div className="ws-display mb-3 text-[15px]">{t("liveMarket")}</div>
+        <div className="w-full shrink-0 space-y-4 md:w-[320px]">
+          <ChessCashierLauncher compact />
 
-          {!odds ? (
-            <CasinoLoading label={t("loadingOdds")} rows={2} />
-          ) : (
-            <>
-              {odds.status === "settled" && odds.winningOutcome ? (
-                <div className="ws-inset mb-3.5 rounded-[10px] px-3 py-2 text-[12px] text-white/65">
-                  {t("marketSettled", { outcome: tCommon(odds.winningOutcome) })}
-                </div>
-              ) : odds.status === "voided" ? (
-                <div className="ws-inset mb-3.5 rounded-[10px] px-3 py-2 text-[12px] text-white/65">
-                  {t("marketVoided")}
-                </div>
-              ) : null}
+          <div className="ws-glass h-fit rounded-2xl p-4.5">
+            <div className="ws-display mb-3 text-[15px]">{t("liveMarket")}</div>
 
-              <div className="mb-3.5 grid grid-cols-3 gap-2">
-                {SELECTIONS.map((s) => {
-                  const outcome = odds.outcomes[s];
-                  const active = selection === s;
-                  const won = odds.winningOutcome === s;
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setSelection(s)}
-                      disabled={!marketOpen || isPlayer}
-                      className={`cursor-pointer rounded-[10px] border py-2.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${
-                        active
-                          ? "text-ink border-white bg-white"
-                          : won
-                            ? "border-up/50 bg-up/10 text-white"
-                            : "border-white/10 bg-white/4 text-white hover:border-white/25"
-                      }`}
-                    >
-                      <span className="block text-[11px] opacity-70">{tCommon(s)}</span>
-                      <span className="tnum block text-[18px]">
-                        {outcome.odds !== null ? outcome.odds.toFixed(2) : "—"}
-                      </span>
-                      <span className="tnum block text-[10px] opacity-45">
-                        {usd(Number(outcome.pool))}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mb-4">
-                <div className="mb-1.5 flex justify-between text-[11px] font-normal text-white/50">
-                  <span>{t("whiteWinProbability")}</span>
-                  <span className="tnum">{Math.round(impliedProbability(odds, "white"))}%</span>
-                </div>
-                <div className="flex h-[7px] overflow-hidden rounded-[4px] bg-white/10">
-                  <div
-                    className="h-full bg-white transition-[width] duration-500"
-                    style={{ width: `${impliedProbability(odds, "white")}%` }}
-                  />
-                </div>
-              </div>
-
-              {isPlayer ? (
-                <div className="ws-inset rounded-[10px] px-3 py-2.5 text-[11.5px] text-white/50">
-                  {t("noSelfBet")}
-                </div>
-              ) : (
-                <div className="mb-3.5 border-t border-white/8 pt-3.5">
-                  <div className="mb-2 flex items-center justify-between text-[11px] font-normal text-white/50">
-                    <span>{t("placeABet")}</span>
-                    <span className="tnum">{t("balance", { amount: usd(Number(available)) })}</span>
+            {!odds ? (
+              <CasinoLoading label={t("loadingOdds")} rows={2} />
+            ) : (
+              <>
+                {odds.status === "settled" && odds.winningOutcome ? (
+                  <div className="ws-inset mb-3.5 rounded-[10px] px-3 py-2 text-[12px] text-white/65">
+                    {t("marketSettled", { outcome: tCommon(odds.winningOutcome) })}
                   </div>
-                  <div className="mb-2.5 flex gap-2">
-                    <input
-                      value={stakeInput}
-                      onChange={(e) => setStakeInput(e.target.value.replace(/[^0-9.]/g, ""))}
-                      inputMode="decimal"
-                      placeholder={t("stakePlaceholder")}
-                      className="ws-inset tnum focus:border-accent/50 min-w-0 flex-1 rounded-lg px-2.5 py-2 font-sans text-[13px] text-white outline-none"
-                    />
-                    <button
-                      onClick={() => void onPlaceBet()}
-                      disabled={!canBet}
-                      className="text-ink cursor-pointer rounded-lg bg-white px-4 font-sans text-[12px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      {placeBet.isPending ? "…" : t("placeBet")}
-                    </button>
+                ) : odds.status === "voided" ? (
+                  <div className="ws-inset mb-3.5 rounded-[10px] px-3 py-2 text-[12px] text-white/65">
+                    {t("marketVoided")}
                   </div>
-                  {selection && stakeValid ? (
-                    <div className="text-[11.5px] font-normal text-white/50">
-                      {overBalance
-                        ? t("notEnough")
-                        : t("returns", {
-                            stake: usd(Number(stakeUsdc)),
-                            selection: tCommon(selection),
-                            odds: (selectedOdds ?? 0).toFixed(2),
-                            payout: usd(estimatedReturn),
-                          })}
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                ) : null}
 
-              {myBets.length > 0 ? (
-                <div className="mt-3.5 border-t border-white/8 pt-3.5">
-                  <div className="mb-2 text-[11px] font-normal text-white/50">{t("yourBets")}</div>
-                  <div className="flex flex-col gap-1.5">
-                    {myBets.map((b) => (
-                      <div
-                        key={b.id}
-                        className="ws-inset flex items-center justify-between rounded-[10px] px-3 py-2 text-[12px]"
+                <div className="mb-3.5 grid grid-cols-3 gap-2">
+                  {SELECTIONS.map((s) => {
+                    const outcome = odds.outcomes[s];
+                    const active = selection === s;
+                    const won = odds.winningOutcome === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setSelection(s)}
+                        disabled={!marketOpen || isPlayer}
+                        className={`cursor-pointer rounded-[10px] border py-2.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${
+                          active
+                            ? "text-ink border-white bg-white"
+                            : won
+                              ? "border-up/50 bg-up/10 text-white"
+                              : "border-white/10 bg-white/4 text-white hover:border-white/25"
+                        }`}
                       >
-                        <span>
-                          {tCommon(b.selection)}
-                          <span className="tnum ml-1.5 text-white/45">
-                            {usd(Number(b.stakeUsdc))}
-                          </span>
+                        <span className="block text-[11px] opacity-70">{tCommon(s)}</span>
+                        <span className="tnum block text-[18px]">
+                          {outcome.odds !== null ? outcome.odds.toFixed(2) : "—"}
                         </span>
-                        <span
-                          className={`tnum font-semibold ${
-                            b.state === "won"
-                              ? "text-up"
-                              : b.state === "lost"
-                                ? "text-white/40"
-                                : "text-grey-100"
-                          }`}
-                        >
-                          {b.state === "active" || b.payoutUsdc === null
-                            ? "—"
-                            : usd(Number(b.payoutUsdc))}
+                        <span className="tnum block text-[10px] opacity-45">
+                          {usd(Number(outcome.pool))}
                         </span>
-                      </div>
-                    ))}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mb-4">
+                  <div className="mb-1.5 flex justify-between text-[11px] font-normal text-white/50">
+                    <span>{t("whiteWinProbability")}</span>
+                    <span className="tnum">{Math.round(impliedProbability(odds, "white"))}%</span>
+                  </div>
+                  <div className="flex h-[7px] overflow-hidden rounded-[4px] bg-white/10">
+                    <div
+                      className="h-full bg-white transition-[width] duration-500"
+                      style={{ width: `${impliedProbability(odds, "white")}%` }}
+                    />
                   </div>
                 </div>
-              ) : null}
-            </>
-          )}
+
+                {isPlayer ? (
+                  <div className="ws-inset rounded-[10px] px-3 py-2.5 text-[11.5px] text-white/50">
+                    {t("noSelfBet")}
+                  </div>
+                ) : (
+                  <div className="mb-3.5 border-t border-white/8 pt-3.5">
+                    <div className="mb-2 flex items-center justify-between text-[11px] font-normal text-white/50">
+                      <span>{t("placeABet")}</span>
+                      <span className="tnum">{t("balance", { amount: usd(Number(available)) })}</span>
+                    </div>
+                    <div className="mb-2.5 flex gap-2">
+                      <input
+                        value={stakeInput}
+                        onChange={(e) => setStakeInput(e.target.value.replace(/[^0-9.]/g, ""))}
+                        inputMode="decimal"
+                        placeholder={t("stakePlaceholder")}
+                        className="ws-inset tnum focus:border-accent/50 min-w-0 flex-1 rounded-lg px-2.5 py-2 font-sans text-[13px] text-white outline-none"
+                      />
+                      <button
+                        onClick={() => void onPlaceBet()}
+                        disabled={!canBet}
+                        className="text-ink cursor-pointer rounded-lg bg-white px-4 font-sans text-[12px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {placeBet.isPending ? "…" : t("placeBet")}
+                      </button>
+                    </div>
+                    {selection && stakeValid ? (
+                      <div className="text-[11.5px] font-normal text-white/50">
+                        {overBalance
+                          ? t("notEnough")
+                          : t("returns", {
+                              stake: usd(Number(stakeUsdc)),
+                              selection: tCommon(selection),
+                              odds: (selectedOdds ?? 0).toFixed(2),
+                              payout: usd(estimatedReturn),
+                            })}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {myBets.length > 0 ? (
+                  <div className="mt-3.5 border-t border-white/8 pt-3.5">
+                    <div className="mb-2 text-[11px] font-normal text-white/50">{t("yourBets")}</div>
+                    <div className="flex flex-col gap-1.5">
+                      {myBets.map((b) => (
+                        <div
+                          key={b.id}
+                          className="ws-inset flex items-center justify-between rounded-[10px] px-3 py-2 text-[12px]"
+                        >
+                          <span>
+                            {tCommon(b.selection)}
+                            <span className="tnum ml-1.5 text-white/45">
+                              {usd(Number(b.stakeUsdc))}
+                            </span>
+                          </span>
+                          <span
+                            className={`tnum font-semibold ${
+                              b.state === "won"
+                                ? "text-up"
+                                : b.state === "lost"
+                                  ? "text-white/40"
+                                  : "text-grey-100"
+                            }`}
+                          >
+                            {b.state === "active" || b.payoutUsdc === null
+                              ? "—"
+                              : usd(Number(b.payoutUsdc))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

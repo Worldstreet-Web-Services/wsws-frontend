@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { WagerSummary } from "@/components/dashboard/casino/chess/wager-summary";
 import {
@@ -571,6 +572,8 @@ export function CreateSection() {
                   feePct={cashier.feePct}
                 />
               ) : null}
+
+              <ChessCashierLauncher compact />
 
               <div className="rounded-[16px] border border-white/6 px-4 py-4 text-[0.92rem] leading-6 text-white/60">
                 After you create the game, we open the waiting board, copy the challenge link, and show a copy button there again. Send that link manually for now, the first person who opens it takes the other side.

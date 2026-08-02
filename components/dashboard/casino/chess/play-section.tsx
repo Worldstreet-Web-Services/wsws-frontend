@@ -8,6 +8,7 @@ import { useAcceptChallenge, useChessMatch, useRematchOffer } from "@/hooks/use-
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { useChessEngine } from "@/hooks/use-chess-engine";
 import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
+import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import { BoardThemePicker } from "@/components/dashboard/casino/chess/board-theme-picker";
@@ -900,6 +901,8 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 </button>
               </div>
             ) : null}
+
+            <ChessCashierLauncher compact className="mt-4 shrink-0" />
           </div>
         </aside>
       </div>

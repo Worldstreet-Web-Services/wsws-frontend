@@ -259,6 +259,23 @@ describe("chess lobby", () => {
     expect(await screen.findByText("No games in play yet. Create one and it shows up here.")).toBeInTheDocument();
     expect(screen.queryByText("GrandmasterKay")).not.toBeInTheDocument();
   });
+
+  it("lets a spectator open a live market from the lobby", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([
+      activeMatch({
+        id: "watch-1",
+        white: { id: "0x111", username: "WhiteSide", rating: 1650, walletAddress: "0x111" },
+        black: { id: "0x222", username: "BlackSide", rating: 1710, walletAddress: "0x222" },
+        timeControl: "5+3",
+        stakeUsdc: "5",
+      }),
+    ]);
+    render(<LobbySection />, { wrapper });
+
+    expect(await screen.findByText("WhiteSide vs BlackSide")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Watch" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/watch?match=watch-1"));
+  });
 });
 
 describe("create a game", () => {

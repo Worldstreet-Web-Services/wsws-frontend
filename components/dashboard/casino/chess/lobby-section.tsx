@@ -10,13 +10,14 @@ import {
   CasinoError,
   CasinoLoading,
 } from "@/components/dashboard/casino/casino-state";
+import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { BOARD_THEMES, DEFAULT_THEME } from "@/lib/casino/chess/board-theme";
 import { friendlyError } from "@/lib/errors";
 import { truncateAddress } from "@/lib/format";
 import { initialBoard } from "@/lib/casino/chess/engine";
 import { toast } from "@/lib/toast";
-import type { ChessChallenge, ChessTimeControl } from "@/lib/casino/api/types";
+import type { ChessChallenge, ChessMatch, ChessTimeControl } from "@/lib/casino/api/types";
 
 const SURFACE_BG = "#312E2B";
 const SHELL_BG = "rgba(0, 0, 0, 0.20)";
@@ -271,9 +272,17 @@ function EmptyHint({
   );
 }
 
-function selfLabel(name: string | null | undefined, wallet: string | null): string {
+function publicLabel(name: string | null | undefined, wallet: string | null | undefined, fallback = "Player"): string {
   if (name && name !== "Account" && name !== "World Street user") return name;
-  return wallet ? truncateAddress(wallet) : "You";
+  return wallet ? truncateAddress(wallet) : fallback;
+}
+
+function selfLabel(name: string | null | undefined, wallet: string | null): string {
+  return publicLabel(name, wallet, "You");
+}
+
+function liveMatchLabel(t: ReturnType<typeof useTranslations>, match: ChessMatch): string {
+  return `${publicLabel(match.white?.username, match.white?.walletAddress)} ${t("vs")} ${publicLabel(match.black?.username, match.black?.walletAddress)}`;
 }
 
 export function LobbySection() {
@@ -289,6 +298,7 @@ export function LobbySection() {
   const activeGame = myActiveGames[0] ?? null;
   const openGame = myOpenGames[0] ?? null;
   const joinableChallenges = challenges.slice(0, 2);
+  const liveWatchMatches = liveMatches.slice(0, 2);
   const showQuietLobbyHint =
     !error &&
     !isLoading &&
@@ -333,6 +343,10 @@ export function LobbySection() {
     } catch (e) {
       toast.error(friendlyError(e, t("toastJoinFailed")), { id });
     }
+  };
+
+  const onWatch = (matchId: string) => {
+    router.push(`/casino/chess/watch?match=${matchId}`);
   };
 
   return (
@@ -418,6 +432,26 @@ export function LobbySection() {
               </div>
             ) : null}
 
+            {liveWatchMatches.length > 0 ? (
+              <div className="space-y-2">
+                <div className="px-1 text-[0.82rem] font-semibold text-white/56">{t("liveNow")}</div>
+                {liveWatchMatches.map((match) => {
+                  const details = match.stakeUsdc
+                    ? `${timeControlLabel(tCommon, match.timeControl)} · ${tCommon("stakedFor", { amount: match.stakeUsdc })}`
+                    : timeControlLabel(tCommon, match.timeControl);
+                  return (
+                    <StateRow
+                      key={match.id}
+                      label={liveMatchLabel(t, match)}
+                      meta={details}
+                      action="Watch"
+                      onAction={() => onWatch(match.id)}
+                    />
+                  );
+                })}
+              </div>
+            ) : null}
+
             {error ? (
               <CasinoError error={error} subject={t("subject")} onRetry={refetch} />
             ) : null}
@@ -440,6 +474,8 @@ export function LobbySection() {
                 <span className="sr-only">{t("challengesEmpty")}</span>
               </>
             ) : null}
+
+            <ChessCashierLauncher />
 
             <div className="flex flex-wrap justify-center gap-2 pt-1">
               <MiniLink

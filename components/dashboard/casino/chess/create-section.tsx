@@ -20,6 +20,16 @@ import { exceedsUsdcBalance, normalizeUsdcAmount } from "@/lib/casino/api/cashie
 import { parseTimeControl } from "@/lib/casino/api/chess-wire";
 import { BOARD_THEMES, DEFAULT_THEME } from "@/lib/casino/chess/board-theme";
 import { initialBoard } from "@/lib/casino/chess/engine";
+import {
+  CHESS_CARD_BG,
+  CHESS_CARD_SHADOW,
+  CHESS_PAGE_BOARD_MAX_WIDTH,
+  CHESS_PRIMARY_BUTTON_CLASS,
+  CHESS_SHELL_BG,
+  CHESS_SHELL_SHADOW,
+  CHESS_SIDEBAR_BG,
+  CHESS_SURFACE_BG,
+} from "@/lib/casino/chess/ui";
 import { copyText } from "@/lib/clipboard";
 import type { ChessTimeControl, CreateChessChallengeInput } from "@/lib/casino/api/types";
 import { friendlyError } from "@/lib/errors";
@@ -28,18 +38,8 @@ import { toast } from "@/lib/toast";
 
 const DECIMAL = /^\d*\.?\d*$/;
 const STAKE_CHIPS = ["1", "5", "10", "25"] as const;
-const SURFACE_BG = "#312E2B";
-const SHELL_BG = "rgba(0, 0, 0, 0.20)";
-const SIDEBAR_BG =
-  "linear-gradient(180deg, rgba(31, 29, 26, 0.96) 0%, rgba(20, 18, 16, 0.92) 100%)";
-const CARD_BG =
-  "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)";
-const SHADOW = "0 .1rem .1rem 0 rgba(0, 0, 0, 0.20)";
-const CARD_SHADOW =
-  "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.07), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.20)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
-const CREATE_BOARD_MAX_WIDTH = "min(100%, 730px, calc(100vh - 365px))";
 
 const CREATE_TIME_GROUPS = [
   {
@@ -224,7 +224,7 @@ function PlayerBar({
   return (
     <div
       className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
-      style={{ background: SHELL_BG, boxShadow: SHADOW }}
+      style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
     >
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847]">
         <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-6.5 w-6.5 opacity-35" />
@@ -246,7 +246,7 @@ function ClockBadge({ label }: { label: string }) {
   return (
     <div
       className="flex min-w-[108px] items-center justify-center rounded-[8px] px-3.5 py-2 text-[0.96rem] font-semibold text-white/88"
-      style={{ background: SHELL_BG, boxShadow: SHADOW }}
+      style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
     >
       {label}
     </div>
@@ -301,7 +301,7 @@ function FieldRow({
       <div className="mb-2 text-[0.96rem] font-extrabold text-white/88">{label}</div>
       <div
         className="flex items-center gap-3 rounded-[16px] border border-white/6 px-5 py-4 text-white"
-        style={{ background: CARD_BG, boxShadow: CARD_SHADOW }}
+        style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
       >
         <span
           className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
@@ -345,7 +345,10 @@ function StakeCard({
     }`;
 
   return (
-    <div className="rounded-[16px] border border-white/6 px-4 py-4" style={{ background: CARD_BG }}>
+    <div
+      className="rounded-[16px] border border-white/6 px-4 py-4"
+      style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
+    >
       <div className="mb-3 text-[0.96rem] font-extrabold text-white/88">{tStake("label")}</div>
       <div className="flex flex-wrap items-center gap-2">
         {STAKE_CHIPS.map((v) => (
@@ -450,17 +453,17 @@ export function CreateSection() {
     <div className="mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
-          className="rounded-[8px] p-3 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SURFACE_BG }}
+          className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          style={{ background: CHESS_SURFACE_BG }}
         >
-          <div className="mx-auto w-full" style={{ maxWidth: CREATE_BOARD_MAX_WIDTH }}>
+          <div className="mx-auto w-full" style={{ maxWidth: CHESS_PAGE_BOARD_MAX_WIDTH }}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <PlayerBar label="Opponent" />
               <div className="flex items-center gap-3">
                 <ClockBadge label={selectedTime.clock} />
                 <span
                   className="grid h-[44px] w-[44px] place-items-center rounded-[8px] text-white/55"
-                  style={{ background: SHELL_BG, boxShadow: SHADOW }}
+                  style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
                 >
                   <SettingsIcon size={16} />
                 </span>
@@ -481,7 +484,7 @@ export function CreateSection() {
 
         <aside
           className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SIDEBAR_BG }}
+          style={{ background: CHESS_SIDEBAR_BG }}
         >
           <div className="grid grid-cols-3 border-b border-white/6 bg-black/10">
             <RailTab label="New Game" icon={<TabIcon kind="new" active />} active />
@@ -584,7 +587,7 @@ export function CreateSection() {
               <button
                 onClick={() => void onCreate()}
                 disabled={create.isPending || stakeOverBalance}
-                className="w-full cursor-pointer rounded-[16px] bg-[#8B847B] px-4 py-4 font-sans text-[1.06rem] font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_24px_rgba(0,0,0,0.18)] transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                className={`${CHESS_PRIMARY_BUTTON_CLASS} w-full rounded-[16px] px-4 py-4 font-sans text-[1.06rem] font-extrabold`}
               >
                 {create.isPending ? t("creating") : t("submitInvite")}
               </button>

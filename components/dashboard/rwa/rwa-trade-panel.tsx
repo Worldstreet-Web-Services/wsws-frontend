@@ -21,6 +21,7 @@ import {
 import { getWalletAddress } from "@/lib/user";
 import { useSolanaFunding } from "@/hooks/use-solana-funding";
 import { planAffordable, planSolanaFunding } from "@/lib/rwa/funding";
+import { useSolanaProceeds } from "@/hooks/use-solana-proceeds";
 import { toast } from "@/lib/toast";
 import { formatAmount, formatUsd } from "@/lib/trade/math";
 import {
@@ -166,6 +167,16 @@ export function RwaTradePanel({
   const baseUsdcBalance =
     portfolio.tokens.find((t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "USDC")
       ?.balance ?? 0;
+  const proceeds = useSolanaProceeds();
+  const solanaUsdcBalance =
+    portfolio.tokens.find(
+      (t) => t.network === "solana-mainnet" && t.symbol.toUpperCase() === "USDC"
+    )?.balance ?? 0;
+  // After selling a Solana asset the proceeds are USDC on Solana; the rest of
+  // the account lives on Base, so offer to bring them back.
+  const showProceeds =
+    phase === "done" && !isBuy && asset.chain === "solana" && solanaUsdcBalance > 0.5;
+
   const needsFunding = solanaPlan != null && payValue > 0;
   const canFund = needsFunding && planAffordable(solanaPlan, baseUsdcBalance);
   const payInput = payOption?.input ?? null;
@@ -473,9 +484,42 @@ export function RwaTradePanel({
           <p className="mx-auto mt-1.5 max-w-[34ch] text-[12.5px] font-normal text-white/55">
             {isBuy ? t("buySettled", { name: asset.name }) : t("sellSettled", { name: asset.name })}
           </p>
+          {showProceeds ? (
+            <div className="mt-3.5 rounded-[12px] border border-white/12 bg-white/5 p-3 text-left">
+              <div className="text-[12.5px] leading-[1.5] font-medium text-white/80">
+                {t("proceedsTitle", { amount: formatUsd(solanaUsdcBalance) })}
+              </div>
+              <p className="mt-1 text-[11.5px] leading-[1.5] font-normal text-white/50">
+                {t("proceedsBody")}
+              </p>
+              {proceeds.error ? (
+                <p className="text-down mt-1.5 text-[11.5px] font-normal">{proceeds.error}</p>
+              ) : null}
+              <button
+                onClick={() => void proceeds.bringHome(solanaUsdcBalance)}
+                disabled={proceeds.busy || proceeds.phase === "done"}
+                className={`mt-2.5 w-full rounded-[12px] p-2.5 font-sans text-[13.5px] font-semibold ${
+                  proceeds.busy || proceeds.phase === "done"
+                    ? "cursor-not-allowed bg-white/10 text-white/40"
+                    : "text-ink cursor-pointer bg-white hover:opacity-90"
+                }`}
+              >
+                {proceeds.phase === "done"
+                  ? t("proceedsDone")
+                  : proceeds.busy
+                    ? t("proceedsWorking")
+                    : t("proceedsCta")}
+              </button>
+            </div>
+          ) : null}
+
           <button
             onClick={reset}
-            className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-[13px] font-sans text-[14px] font-semibold hover:opacity-90"
+            className={`mt-4 w-full cursor-pointer rounded-[14px] p-[13px] font-sans text-[14px] font-semibold ${
+              showProceeds
+                ? "border border-white/12 bg-white/5 text-white hover:bg-white/10"
+                : "text-ink bg-white hover:opacity-90"
+            }`}
           >
             {isBuy ? t("buyMore") : t("sellMore")}
           </button>

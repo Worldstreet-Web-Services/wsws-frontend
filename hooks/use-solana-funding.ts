@@ -19,9 +19,10 @@ export type FundingPhase = "idle" | "quoting" | "signing" | "settling" | "done" 
 
 const SLIPPAGE = 0.005;
 const POLL_MS = 3_000;
-// Bridges quote ~1s for the gas hop and ~30s for USDC; give both room without
-// hanging the UI forever.
-const MAX_POLLS = 40;
+// Bridges quote ~1s for the gas hop and ~30s for USDC, so this is generous
+// headroom. It is a wall-clock deadline rather than a poll count because a
+// slow status endpoint would otherwise stretch the wait far past it.
+const SETTLE_DEADLINE_MS = 150_000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -77,12 +78,15 @@ export function useSolanaFunding() {
           // Solana before the buy can spend them.
           setPhase("settling");
           let settled = false;
-          for (let i = 0; i < MAX_POLLS && !settled; i += 1) {
+          const deadline = Date.now() + SETTLE_DEADLINE_MS;
+          while (!settled && Date.now() < deadline) {
             await delay(POLL_MS);
             const status = await fetchLifiStatus(hash).catch(() => "PENDING" as const);
             if (status === "DONE") settled = true;
             else if (status === "FAILED") throw new Error("The transfer did not complete.");
           }
+          // The funds are in flight, not lost: the plan is recomputed from
+          // balances, so retrying later never double-sends.
           if (!settled) throw new Error("The transfer is taking longer than expected.");
         }
 

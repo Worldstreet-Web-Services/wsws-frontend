@@ -155,45 +155,6 @@ function MenuActionLink({
   );
 }
 
-function MenuCoachLink() {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => toast.error("Play Coach isn't wired yet here.")}
-        className="absolute inset-0 z-10 cursor-pointer rounded-[8px]"
-        aria-label="Play Coach"
-      />
-      <MenuCard
-        title="Play Coach"
-        note="Learn as you play a game with Coach"
-        icon={<LandingIcon src="/chesscom-icons/coachdavid-icon.png" alt="" />}
-        action={null}
-      />
-    </div>
-  );
-}
-
-function MiniLink({
-  href,
-  iconSrc,
-  label,
-}: {
-  href: string;
-  iconSrc: string;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-2 rounded-[8px] px-3 py-2 text-[0.95rem] font-semibold text-white/76 transition-colors hover:text-white"
-    >
-      <LandingIcon src={iconSrc} alt="" className="h-7 w-7" />
-      <span>{label}</span>
-    </Link>
-  );
-}
-
 function PlayerBar({
   label,
   active = false,
@@ -355,13 +316,6 @@ export function LobbySection() {
                 onClick={() => setLiveOpen(true)}
                 ariaLabel="Open live games"
               />
-              <MenuActionButton
-                title="Play Bots"
-                note="Challenge a bot from Easy to Master"
-                iconSrc="/chesscom-icons/device-bot.svg"
-                onClick={() => toast.error("Play Bots isn't wired yet here.")}
-              />
-              <MenuCoachLink />
               <MenuActionLink
                 title="Play a Friend"
                 note="Invite a friend to a game of chess"
@@ -373,12 +327,6 @@ export function LobbySection() {
                 note="Browse current events and create a Swiss tournament"
                 iconSrc="/chesscom-icons/tournaments.svg"
                 onClick={() => setTournamentsOpen(true)}
-              />
-              <MenuActionButton
-                title="Chess Variants"
-                note="Find fun new ways to play chess"
-                iconSrc="/chesscom-icons/variants.svg"
-                onClick={() => toast.error("Chess Variants isn't wired yet here.")}
               />
             </div>
 
@@ -427,25 +375,17 @@ export function LobbySection() {
             ) : null}
 
             <ChessCashierLauncher />
-
-            <div className="flex flex-wrap justify-center gap-2 pt-1">
-              <MiniLink
-                href="/casino/chess/history"
-                iconSrc="/chesscom-icons/board-archive.svg"
-                label="Game History"
-              />
-              <MiniLink
-                href="/casino/chess/history"
-                iconSrc="/chesscom-icons/leaderboard.svg"
-                label="Leaderboard"
-              />
-            </div>
           </div>
         </aside>
       </div>
       </div>
 
-      <ChessLiveNowDialog open={liveOpen} onClose={() => setLiveOpen(false)} matches={liveMatches} />
+      <ChessLiveNowDialog
+        open={liveOpen}
+        onClose={() => setLiveOpen(false)}
+        myMatches={myActiveGames}
+        matches={liveMatches}
+      />
       <ChessTournamentsDialog
         open={tournamentsOpen}
         onClose={() => setTournamentsOpen(false)}

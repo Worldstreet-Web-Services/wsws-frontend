@@ -18,8 +18,10 @@ import { BOARD_THEMES, DEFAULT_THEME } from "@/lib/casino/chess/board-theme";
 import { initialBoard } from "@/lib/casino/chess/engine";
 import { copyText } from "@/lib/clipboard";
 import {
+  currentRound,
   defaultPlayerName,
   hasOngoingPairing,
+  isSeated,
   playerNameError,
   PLAYER_NAME_MAX,
   type SwissDetail,
@@ -228,25 +230,44 @@ function JoinPanel({
 }
 
 function OrganizerPanel({
+  state,
+  round,
+  participantCount,
   manual,
   setManual,
   onStartRound,
   startingRound,
 }: {
+  state: SwissDetail["state"];
+  round: number;
+  participantCount: number;
   manual: string;
   setManual: (value: string) => void;
   onStartRound: () => Promise<void>;
   startingRound: boolean;
 }) {
   const t = useTranslations("casino.chess.swiss");
+  const title = state === "open" ? "Start the tournament" : "Start the next round";
+  const ctaLabel = state === "open" ? "Start round 1" : t("startRound");
+  const description =
+    state === "open"
+      ? `${t("organizerHint")} Round 1 starts when you click the button below, and Play now appears as soon as the board is paired.`
+      : `Round ${round} is live. Start the next round only after every board in the current round is done.`;
 
   return (
     <div
       className="rounded-[16px] border border-white/6 px-4 py-4"
       style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
     >
-      <div className="mb-2 text-[1.1rem] font-extrabold text-white">Organizer Console</div>
-      <div className="text-[0.9rem] leading-6 text-white/60">{t("organizerHint")}</div>
+      <div className="mb-2 text-[1.1rem] font-extrabold text-white">{title}</div>
+      <div className="text-[0.9rem] leading-6 text-white/60">{description}</div>
+      {state === "open" ? (
+        <div className="mt-3 rounded-[12px] border border-white/8 bg-black/12 px-3 py-3 text-[0.9rem] text-white/68">
+          {participantCount >= 2
+            ? `${participantCount} players are ready. Click Start round 1 now.`
+            : "At least 2 players must join before round 1 can start."}
+        </div>
+      ) : null}
       <div className="mt-4">
         <div className="mb-2 text-[11px] uppercase tracking-[0.05em] text-white/38">
           {t("manualLabel")}
@@ -265,7 +286,7 @@ function OrganizerPanel({
         disabled={startingRound}
         className={`${CHESS_PRIMARY_BUTTON_CLASS} mt-4 w-full px-4 py-3 font-sans text-[13px] font-bold`}
       >
-        {startingRound ? t("startingRound") : t("startRound")}
+        {startingRound ? t("startingRound") : ctaLabel}
       </button>
     </div>
   );
@@ -419,7 +440,7 @@ export function SwissDetailSection({
   } = useSwissTournament(tournamentId);
 
   const [manual, setManual] = useState("");
-  const [railTab, setRailTab] = useState<RailTab>("standings");
+  const [railTabChoice, setRailTabChoice] = useState<RailTab | null>(null);
   const [shareDismissed, setShareDismissed] = useState(!showCreatedShare);
   const shareUrl =
     typeof window === "undefined"
@@ -478,12 +499,25 @@ export function SwissDetailSection({
   const rounds = [...detail.rounds].sort((a, b) => b.round - a.round);
   const joined = yourName !== null;
   const viewer = viewerLabel(wallet.name, wallet.address);
+  const pairingOngoing = hasOngoingPairing(detail, yourName);
+  const liveRound = currentRound(detail);
+  const yourPairing =
+    liveRound?.pairings.find((pairing) => pairing.status === "ongoing" && isSeated(pairing, yourName)) ??
+    null;
+  const opponentName =
+    yourPairing && yourName
+      ? yourPairing.white === yourName
+        ? yourPairing.black
+        : yourPairing.white
+      : null;
   const boardFooter =
     detail.state === "open"
       ? "Share the tournament page to gather players."
       : detail.state === "running"
         ? "Rounds and live boards are managed from the rail."
         : "Tournament complete.";
+  const railTab: RailTab =
+    railTabChoice ?? (detail.state === "running" && liveRound?.pairings.length ? "games" : "standings");
 
   return (
     <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
@@ -605,18 +639,82 @@ export function SwissDetailSection({
               ) : null}
             </div>
 
+            <div className="mt-4 space-y-4">
+              {detail.state === "open" && !joined ? (
+                <JoinPanel join={join} joining={joining} />
+              ) : null}
+
+              {detail.state === "open" && joined && !isOrganizer ? (
+                <CompactMessage>
+                  You&apos;re in. Only the organizer, {detail.organizer}, can start round 1.
+                  Ask them to open this page and click Start round 1. Your board will
+                  appear automatically here once they do.
+                </CompactMessage>
+              ) : null}
+
+              {isOrganizer && detail.state === "open" ? (
+                <ShareCard title="Tournament Link" url={shareUrl} onCopy={onCopyShare} />
+              ) : null}
+
+              {yourPairing?.matchId ? (
+                <div
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-white/6 px-4 py-4"
+                  style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
+                >
+                  <div className="min-w-0">
+                    <div className="text-[1rem] font-bold text-white">
+                      Round {yourPairing.round}, board {yourPairing.board} is live
+                    </div>
+                    <div className="mt-1 text-[0.92rem] leading-6 text-white/62">
+                      {opponentName ? `You are paired against ${opponentName}.` : "Your board is ready."} Open the game now.
+                    </div>
+                  </div>
+                  <Link
+                    href={`/casino/chess/play?match=${yourPairing.matchId}&player=${encodeURIComponent(yourName ?? "")}`}
+                    className={`${CHESS_PRIMARY_BUTTON_CLASS} shrink-0 px-4 py-2.5 font-sans text-[13px] font-bold`}
+                  >
+                    Play now
+                  </Link>
+                </div>
+              ) : null}
+
+              {detail.state === "running" && !!liveRound?.pairings.length && !yourPairing?.matchId ? (
+                <CompactMessage>
+                  Round {liveRound.round} is live. Open the Games tab below to see the pairings and watch the active boards.
+                </CompactMessage>
+              ) : null}
+
+              {isOrganizer && detail.state !== "finished" ? (
+                <OrganizerPanel
+                  state={detail.state}
+                  round={detail.round}
+                  participantCount={detail.participantCount}
+                  manual={manual}
+                  setManual={setManual}
+                  onStartRound={onStartRound}
+                  startingRound={startingRound}
+                />
+              ) : null}
+
+              {joined && detail.state === "running" && !pairingOngoing ? (
+                <CompactMessage>
+                  You&apos;re joined. Open the Games tab to watch pairings and wait for your next board to appear.
+                </CompactMessage>
+              ) : null}
+            </div>
+
             <div className="mt-4 grid grid-cols-3 border-b border-white/6 bg-black/8">
               <RailTabButton
                 active={railTab === "standings"}
                 label="Standings"
-                onClick={() => setRailTab("standings")}
+                onClick={() => setRailTabChoice("standings")}
               />
               <RailTabButton
                 active={railTab === "games"}
                 label="Games"
-                onClick={() => setRailTab("games")}
+                onClick={() => setRailTabChoice("games")}
               />
-              <RailTabButton active={railTab === "info"} label="Info" onClick={() => setRailTab("info")} />
+              <RailTabButton active={railTab === "info"} label="Info" onClick={() => setRailTabChoice("info")} />
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto pt-4 pr-1">
@@ -625,14 +723,6 @@ export function SwissDetailSection({
                   <SwissStandings standings={detail.standings} yourName={yourName} />
                 ) : railTab === "games" ? (
                   <div className="space-y-4">
-                    {isOrganizer && detail.state !== "finished" ? (
-                      <OrganizerPanel
-                        manual={manual}
-                        setManual={setManual}
-                        onStartRound={onStartRound}
-                        startingRound={startingRound}
-                      />
-                    ) : null}
                     {rounds.length > 0 ? (
                       <div className="space-y-4">
                         {rounds.map((round) => (
@@ -651,10 +741,6 @@ export function SwissDetailSection({
                       isOrganizer={isOrganizer}
                       onCopyShare={onCopyShare}
                     />
-
-                    {!joined && detail.state !== "finished" ? (
-                      <JoinPanel join={join} joining={joining} />
-                    ) : null}
 
                     {joined && detail.state !== "finished" ? (
                       <div

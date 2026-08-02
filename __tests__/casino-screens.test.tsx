@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 
 // The screens are mocked at the API-client seam, not inside the components, so
@@ -133,6 +133,10 @@ beforeEach(() => {
   chessApi.fetchWaitingMatches.mockResolvedValue([]);
   drawApi.fetchPastResults.mockResolvedValue([]);
   drawApi.fetchMyEntries.mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("chess lobby", () => {
@@ -293,12 +297,12 @@ describe("create a game", () => {
       ticket: null,
     });
     render(<CreateSection />, { wrapper });
-    fireEvent.click(screen.getByRole("button", { name: "1 min" }));
+    fireEvent.click(screen.getByRole("button", { name: "15 min" }));
     fireEvent.click(screen.getByRole("button", { name: "Start game" }));
 
     await waitFor(() => expect(chessApi.createChallenge).toHaveBeenCalled());
     const sent = chessApi.createChallenge.mock.calls[0][0];
-    expect(sent.timeControl).toBe("1m");
+    expect(sent.timeControl).toBe("15+0");
     expect(sent.mode).toBe("invite");
     expect(sent.creator).toBe("0xabc");
   });
@@ -551,11 +555,14 @@ describe("a drawn game", () => {
     );
     render(<PlaySection matchId="m1" />, { wrapper });
 
-    await screen.findByText(/Your move|Opponent thinking/);
+    await screen.findByText("Your time ran out");
     expect(chessApi.claimTimeout).not.toHaveBeenCalled();
   });
 
   it("does not claim a flag fall just because an old snapshot was reopened", async () => {
+    chessApi.claimTimeout.mockResolvedValue(
+      drawnMatch({ result: { kind: "timeout", winner: "w" } })
+    );
     chessApi.fetchMatch.mockResolvedValue(
       drawnMatch({
         state: "in_progress",
@@ -567,12 +574,79 @@ describe("a drawn game", () => {
     );
     render(<PlaySection matchId="m1" />, { wrapper });
 
-    await screen.findByText(/Your move|Opponent thinking/);
-    expect(chessApi.claimTimeout).not.toHaveBeenCalled();
+    await waitFor(() => expect(chessApi.claimTimeout).toHaveBeenCalledWith("m1", "0xabc"));
+  });
+
+  it("keeps the same clock running through a tab switch on the same snapshot", async () => {
+    vi.useFakeTimers();
+    const start = new Date("2026-08-02T12:00:00.000Z");
+    vi.setSystemTime(start);
+
+    const originalVisibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility,
+    });
+
+    try {
+      chessApi.fetchMatch.mockResolvedValue(
+        drawnMatch({
+          state: "in_progress",
+          result: null,
+          timeControl: "10+0",
+          turn: "w",
+          clocks: { w: 600, b: 600 },
+          clockUpdatedAt: start.toISOString(),
+        })
+      );
+
+      render(<PlaySection matchId="m1" />, { wrapper });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByText("Your move")).toBeInTheDocument();
+      expect(screen.getAllByText("10:00").length).toBeGreaterThan(0);
+
+      act(() => {
+        vi.advanceTimersByTime(30_000);
+      });
+      expect(screen.getByText("09:30")).toBeInTheDocument();
+
+      act(() => {
+        visibility = "hidden";
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+      act(() => {
+        visibility = "visible";
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      expect(screen.queryByText("09:10") ?? screen.queryByText("09:09")).toBeInTheDocument();
+    } finally {
+      if (originalVisibility) {
+        Object.defineProperty(document, "visibilityState", originalVisibility);
+      }
+      vi.useRealTimers();
+    }
   });
 });
 
 describe("live games modal", () => {
+  it("shows your own live game in the modal as a resumable board", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([activeMatch()]);
+    render(<LobbySection />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open live games" }));
+    expect(await screen.findByText("0xabc vs GrandmasterKay")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m1"));
+  });
+
   it("opens from the lobby rail", async () => {
     chessApi.fetchLiveMatches.mockResolvedValue([
       activeMatch({

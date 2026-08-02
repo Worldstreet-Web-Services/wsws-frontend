@@ -132,7 +132,13 @@ function playerName(
   return displayName(player.username, player.walletAddress) ?? fallback;
 }
 
-export function PlaySection({ matchId }: { matchId: string | null }) {
+export function PlaySection({
+  matchId,
+  seatName = null,
+}: {
+  matchId: string | null;
+  seatName?: string | null;
+}) {
   const t = useTranslations("casino.chess.play");
   const tStake = useTranslations("casino.chess.stake");
   // The create screen owns the invite-link copy; the waiting board reuses it.
@@ -162,7 +168,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     rematch,
     requestingRematch,
     claimingTimeout,
-  } = useChessMatch(matchId);
+  } = useChessMatch(matchId, seatName);
   const [selected, setSelected] = useState<Square | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{
     fen: string;
@@ -175,7 +181,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   const rematchOffered = useRematchOffer(match, you);
   const acceptRematch = useAcceptChallenge();
   const theme = useBoardTheme();
-  const [railTab, setRailTab] = useState<"moves" | "chat" | "info">("moves");
+  const [railTab, setRailTab] = useState<"moves" | "info">("moves");
   const engine = useChessEngine(match?.fen ?? null);
 
   // A soft "thock" whenever the move count grows — the player's own move and the
@@ -230,9 +236,10 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   // result.
   const legalTargets = useMemo(() => {
     const yourTurn = !!match && match.state === "in_progress" && you !== null && match.turn === you;
-    if (!position || !selected || !yourTurn) return [];
+    const ownClock = yourTurn && you !== null ? (clocks?.[you] ?? 0) : 1;
+    if (!position || !selected || !yourTurn || ownClock <= 0) return [];
     return legalMovesForSquare(position, selected.r, selected.c);
-  }, [match, position, selected, you]);
+  }, [clocks, match, position, selected, you]);
 
   const targetSquares = useMemo(() => {
     const seen = new Set<string>();
@@ -272,6 +279,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
 
   const displayTurn = match.turn;
   const yourTurn = match.state === "in_progress" && you !== null && displayTurn === you;
+  const yourClockExpired = yourTurn && you !== null && (clocks?.[you] ?? 0) <= 0;
   const board = position.board;
   // Captured pieces and material lead, read straight off the board each render.
   const captured = capturedFromBoard(board);
@@ -287,7 +295,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   const offerPending = you !== null && match.drawOffered === you;
 
   const onSquareClick = async (r: number, c: number) => {
-    if (!yourTurn || moving) return;
+    if (!yourTurn || yourClockExpired || moving) return;
     if (selected && targetSquares.some((t) => t.r === r && t.c === c)) {
       const matching = legalTargets.filter((move) => move.to.r === r && move.to.c === c);
       const promotions = Array.from(
@@ -320,7 +328,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
   };
 
   const onPromotionChoice = async (promotion: PromotionOption) => {
-    if (!activePendingPromotion) return;
+    if (!activePendingPromotion || yourClockExpired) return;
     const uci = toUci(position, activePendingPromotion.from, activePendingPromotion.to, promotion);
     setPendingPromotion(null);
     setSelected(null);
@@ -470,6 +478,8 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
       ? t("statusClaiming")
       : waiting
         ? t("statusWaiting")
+        : yourClockExpired
+          ? t("statusFlagged")
         : moving
           ? t("statusSending")
           : yourTurn
@@ -533,7 +543,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 orientation={you ?? "w"}
                 theme={theme}
                 onSquareClick={
-                  you !== null && !over ? (r, c) => void onSquareClick(r, c) : undefined
+                  you !== null && !over && !yourClockExpired ? (r, c) => void onSquareClick(r, c) : undefined
                 }
               />
             </div>
@@ -646,10 +656,9 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 border-b border-white/6 bg-black/8">
-            {(["moves", "chat", "info"] as const).map((tab) => {
-              const label =
-                tab === "moves" ? "Moves + Engine" : tab === "chat" ? "Chat" : "Info";
+          <div className="grid grid-cols-2 border-b border-white/6 bg-black/8">
+            {(["moves", "info"] as const).map((tab) => {
+              const label = tab === "moves" ? "Moves + Engine" : "Info";
               const active = railTab === tab;
               return (
                 <button
@@ -789,18 +798,6 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-              ) : railTab === "chat" ? (
-                <div
-                  className="rounded-[16px] border border-white/6 px-4 py-4"
-                  style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
-                >
-                  <div className="mb-2 text-[1.2rem] font-extrabold text-white">Chat</div>
-                  <div className="text-[0.92rem] leading-6 text-white/56">
-                    {waiting
-                      ? "Chat will make more sense once your opponent joins. For now, send the challenge link and the game starts as soon as they open it."
-                      : "Live chat is not wired into this board yet. The game state, moves, and timers stay authoritative here."}
                   </div>
                 </div>
               ) : (

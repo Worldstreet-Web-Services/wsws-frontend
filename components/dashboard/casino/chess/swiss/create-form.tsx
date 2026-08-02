@@ -19,9 +19,14 @@ import type { ChessTimeControl } from "@/lib/casino/api/types";
 
 // Local copy of the create screen's presets. Copied, not imported: the create
 // section is its own module and this form must not couple to its internals.
-// Per-move budgets, matching the 1-v-1 create screen (mapped to base +
-// increment on the service).
-const TIME_CONTROL_PRESETS: readonly ChessTimeControl[] = ["15s", "30s", "1m", "2m"];
+const TIME_CONTROL_PRESETS: ReadonlyArray<{
+  value: ChessTimeControl;
+  label: string;
+}> = [
+  { value: "5+0", label: "5 min" },
+  { value: "10+0", label: "10 min" },
+  { value: "15+0", label: "15 min" },
+];
 
 const ROUND_PRESETS = [3, 5, 7] as const;
 
@@ -39,7 +44,7 @@ export function SwissCreateForm({ embedded = false, onCreated }: SwissCreateForm
   const [name, setName] = useState("");
   const [rounds, setRounds] = useState<number>(5);
   const [customRounds, setCustomRounds] = useState(false);
-  const [timeControl, setTimeControl] = useState<ChessTimeControl>("30s");
+  const [timeControl, setTimeControl] = useState<ChessTimeControl>("10+0");
   const [password, setPassword] = useState("");
   const [forbidden, setForbidden] = useState("");
   const [touched, setTouched] = useState(false);
@@ -142,11 +147,11 @@ export function SwissCreateForm({ embedded = false, onCreated }: SwissCreateForm
         <div className="flex flex-wrap gap-2">
           {TIME_CONTROL_PRESETS.map((tc) => (
             <button
-              key={tc}
-              onClick={() => setTimeControl(tc)}
-              className={chipClass(timeControl === tc)}
+              key={tc.value}
+              onClick={() => setTimeControl(tc.value)}
+              className={chipClass(timeControl === tc.value)}
             >
-              {tc}
+              {tc.label}
             </button>
           ))}
         </div>

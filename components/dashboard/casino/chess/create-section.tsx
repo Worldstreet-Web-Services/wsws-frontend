@@ -43,30 +43,12 @@ const LANDING_BOARD = initialBoard();
 
 const CREATE_TIME_GROUPS = [
   {
-    title: "Bullet",
-    tone: "#E1B02F",
-    options: [
-      { value: "15s", label: "15 sec" },
-      { value: "30s", label: "30 sec" },
-      { value: "1m", label: "1 min" },
-    ],
-  },
-  {
-    title: "Blitz",
-    tone: "#F1CC47",
-    options: [
-      { value: "2m", label: "2 min" },
-      { value: "3+2", label: "3 + 2" },
-      { value: "5+3", label: "5 + 3" },
-    ],
-  },
-  {
-    title: "Rapid",
+    title: "Game Clock",
     tone: "#B7B1A8",
     options: [
+      { value: "5+0", label: "5 min" },
       { value: "10+0", label: "10 min" },
-      { value: "10+5", label: "10 + 5" },
-      { value: "15+10", label: "15 + 10" },
+      { value: "15+0", label: "15 min" },
     ],
   },
 ] as const satisfies readonly {

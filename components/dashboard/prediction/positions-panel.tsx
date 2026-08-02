@@ -1,62 +1,49 @@
 "use client";
 
+import Link from "next/link";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useMoney } from "@/components/ui/currency-select";
 import { ChevronLeftIcon, ChartBarsIcon } from "@/components/ui/icons";
-import { isClaimable } from "@/lib/prediction";
-import type { PolymarketPosition } from "@/hooks/use-polymarket-positions";
+import { usePositions, usePendingWithdrawals } from "@/hooks/use-prediction-portfolio";
+import { useMarkets } from "@/hooks/use-prediction-markets";
+import { usePredictionActions } from "@/hooks/use-prediction-actions";
+import { sideLabel, toNumber } from "@/lib/prediction/format";
+import type { Market, Position } from "@/lib/prediction/types";
 
-interface PositionsPanelProps {
-  positions: PolymarketPosition[];
-  available: number | null;
-  cashable: number | null;
-  loading: boolean;
-  loaded: boolean;
-  error: string | null;
-  onRefresh: () => void;
-  onOpenSlip: (position: PolymarketPosition) => void;
-  onRedeem: (conditionId: string) => void;
-  redeemingId: string | null;
-  onCashOut: () => void;
-  cashingOut: boolean;
-}
-
-// Position fields are read defensively so a schema tweak in the SDK never breaks
-// rendering.
-interface PositionInfo {
-  title?: string;
-  outcome?: string;
-  size?: string | number;
-  currentValue?: string | number;
-  conditionId?: string;
-  redeemable?: boolean;
-}
-
-function num(v: string | number | undefined): number {
-  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-export function PositionsPanel({
-  positions,
-  available,
-  cashable,
-  loading,
-  loaded,
-  error,
-  onRefresh,
-  onOpenSlip,
-  onRedeem,
-  redeemingId,
-  onCashOut,
-  cashingOut,
-}: PositionsPanelProps) {
+// Portfolio (Portfolio pillar): the wallet's open positions and its claimable
+// balance. Selling and redeeming happen on each market's detail page where the
+// live pool and resolution context exist; here a resolved winning position gets a
+// direct Redeem, and the pull-payment balance gets a global Claim.
+export function PortfolioPanel() {
   const t = useTranslations("prediction");
   const money = useMoney();
+  const { data: positions, isLoading, isError } = usePositions();
+  const { data: markets } = useMarkets();
+  const withdrawable = usePendingWithdrawals();
+  const actions = usePredictionActions();
+
+  const byId = useMemo(() => {
+    const map = new Map<string, Market>();
+    for (const m of markets ?? []) map.set(m.marketId.toString(), m);
+    return map;
+  }, [markets]);
+
+  const list = positions ?? [];
+  const claimable = withdrawable.data ?? 0n;
+
+  // A position wins when its market resolved and the held side matches the
+  // outcome. Winning shares can be redeemed 1:1 for USDC.
+  const isWinner = (p: Position, m: Market | undefined): boolean =>
+    !!m && m.status === "Resolved" && m.outcome.toLowerCase() === p.side;
+
+  const onRedeem = async (p: Position) => {
+    const ok = await actions.redeem(p.marketId, p.side, p.shares);
+    if (ok) void actions.claim();
+  };
+
   return (
     <div className="ws-card relative mt-7 overflow-hidden sm:mt-9">
-      {/* Accent wash across the header so this section reads as a distinct
-          "your money" area, not another market tile. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[92px] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]"
@@ -69,95 +56,81 @@ export function PositionsPanel({
           <div className="min-w-0">
             <span className="ws-display text-[21px] tracking-[-0.01em]">{t("positionsTitle")}</span>
             <div className="tnum mt-0.5 text-[13px] font-normal text-white/60">
-              {available != null
-                ? t("availableToBet", { amount: money.format(available) })
-                : t("positionsSubtitle")}
+              {t("positionsSubtitle")}
             </div>
           </div>
         </div>
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          className={
-            loaded
-              ? "shrink-0 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white/80 hover:text-white disabled:opacity-50"
-              : "text-ink shrink-0 cursor-pointer rounded-xl bg-white px-5 py-2.5 font-sans text-[13px] font-semibold hover:opacity-90 disabled:opacity-50"
-          }
-        >
-          {loading ? t("loading") : loaded ? t("refresh") : t("loadPositions")}
-        </button>
       </div>
 
-      {error ? (
+      {isError ? (
         <div className="border-t border-white/6 px-6 py-6 text-center text-[13px] font-normal text-white/45">
-          {error}
+          {t("positionsError")}
         </div>
-      ) : loaded && positions.length === 0 ? (
+      ) : isLoading ? (
+        <div className="border-t border-white/6 px-6 py-6 text-center text-[13px] font-normal text-white/45">
+          {t("loading")}
+        </div>
+      ) : list.length === 0 ? (
         <div className="border-t border-white/6 px-6 py-6 text-center text-[13px] font-normal text-white/45">
           {t("noPositions")}
         </div>
-      ) : positions.length > 0 ? (
-        positions.map((raw, i) => {
-          const p = raw as PositionInfo;
-          const claiming = p.conditionId != null && redeemingId === p.conditionId;
+      ) : (
+        list.map((p) => {
+          const m = byId.get(p.marketId.toString());
+          const winner = isWinner(p, m);
           return (
             <div
-              key={i}
-              onClick={() => onOpenSlip(positions[i])}
-              className="grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-t border-white/6 px-4 py-3 transition-colors hover:bg-white/4 sm:px-6"
+              key={`${p.marketId}-${p.side}`}
+              className="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-white/6 px-4 py-3 sm:px-6"
             >
-              <div className="min-w-0">
+              <Link href={`/prediction/${p.marketId}`} className="min-w-0">
                 <div className="truncate font-sans text-[13.5px] font-medium">
-                  {p.title ?? t("marketFallback")}
+                  {m?.question ?? t("marketFallback")}
                 </div>
                 <div className="flex items-center gap-1 text-xs font-normal text-white/50">
                   <span className="truncate">
-                    {p.outcome ?? "—"} · {t("sharesCount", { count: num(p.size).toFixed(2) })}
+                    {sideLabel(p.side)} ·{" "}
+                    {t("sharesCount", { count: toNumber(p.shares).toFixed(2) })}
                   </span>
                   <span className="text-accent inline-flex shrink-0 items-center">
                     · {t("viewSlip")}
                     <ChevronLeftIcon size={12} className="-scale-x-100" />
                   </span>
                 </div>
-              </div>
-              {isClaimable(p.redeemable, num(p.currentValue)) && p.conditionId ? (
+              </Link>
+              {winner ? (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRedeem(p.conditionId as string);
-                  }}
-                  disabled={claiming}
+                  onClick={() => onRedeem(p)}
+                  disabled={actions.busy}
                   className="border-accent/45 bg-accent/12 cursor-pointer rounded-lg border px-3 py-1.5 text-[12.5px] font-medium text-white disabled:opacity-60"
                 >
-                  {claiming ? t("claiming") : t("claim")}
+                  {actions.busy ? t("claiming") : t("claim")}
                 </button>
-              ) : p.redeemable ? (
-                // Resolved but worth nothing — the losing side. Say so plainly
-                // instead of showing a bare $0.00.
+              ) : m?.status === "Resolved" ? (
                 <span className="text-down text-right text-[12.5px] font-medium">
                   {t("resolvedNoWin")}
                 </span>
               ) : (
                 <span className="tnum text-right font-sans text-sm font-medium">
-                  {money.format(num(p.currentValue))}
+                  {money.format(toNumber(p.costUsdc))}
                 </span>
               )}
             </div>
           );
         })
-      ) : null}
+      )}
 
-      {loaded && cashable != null && cashable > 0 ? (
+      {claimable > 0n ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 px-4 py-3.5 sm:px-6">
           <span className="text-[12.5px] font-normal text-white/55">
-            {t("cashOutTo", { amount: money.format(cashable) })}
+            {t("claimableBalance", { amount: money.format(toNumber(claimable)) })}
           </span>
           <button
-            onClick={onCashOut}
-            disabled={cashingOut}
+            onClick={() => actions.claim()}
+            disabled={actions.busy}
             className="text-ink cursor-pointer rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {cashingOut ? t("cashingOut") : t("cashOut")}
+            {actions.busy ? t("claiming") : t("claim")}
           </button>
         </div>
       ) : null}

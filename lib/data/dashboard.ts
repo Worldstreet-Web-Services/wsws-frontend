@@ -1,4 +1,4 @@
-import type { FundMethod, Holding, Market, PerpMarket, Position, Prediction } from "@/lib/types";
+import type { FundMethod, Holding, Market, PerpMarket, Position } from "@/lib/types";
 
 export const HOLDINGS: Holding[] = [
   {
@@ -154,73 +154,6 @@ export const PERP_MARKETS: PerpMarket[] = [
 export const POSITIONS: Position[] = [
   { side: "LONG", pair: "SOL-PERP", size: "20,000", entry: "$166.40", pnl: "+$896" },
   { side: "SHORT", pair: "BTC-PERP", size: "8,500", entry: "$72,100", pnl: "+$102" },
-];
-
-export const PREDICTIONS: Prediction[] = [
-  {
-    tag: "Politics",
-    vol: "$4.2M vol",
-    q: "Will the US cut rates before Q4 2026?",
-    yes: "68¢",
-    no: "32¢",
-    pct: 68,
-  },
-  {
-    tag: "Crypto",
-    vol: "$2.8M vol",
-    q: "Will BTC close above $80k this quarter?",
-    yes: "41¢",
-    no: "59¢",
-    pct: 41,
-  },
-  {
-    tag: "Sports",
-    vol: "$1.1M vol",
-    q: "Will Real Madrid win the Champions League?",
-    yes: "55¢",
-    no: "45¢",
-    pct: 55,
-  },
-  {
-    tag: "World",
-    vol: "$920k vol",
-    q: "Will Nigeria's inflation fall below 20% in 2026?",
-    yes: "37¢",
-    no: "63¢",
-    pct: 37,
-  },
-  {
-    tag: "Crypto",
-    vol: "$2.1M vol",
-    q: "Will a spot SOL ETF launch in the US in 2026?",
-    yes: "64¢",
-    no: "36¢",
-    pct: 64,
-  },
-  {
-    tag: "Politics",
-    vol: "$1.3M vol",
-    q: "Will voter turnout exceed 60% in the next US election?",
-    yes: "52¢",
-    no: "48¢",
-    pct: 52,
-  },
-  {
-    tag: "Sports",
-    vol: "$690k vol",
-    q: "Will the next World Cup final go to penalties?",
-    yes: "22¢",
-    no: "78¢",
-    pct: 22,
-  },
-  {
-    tag: "World",
-    vol: "$1.5M vol",
-    q: "Will oil close above $90 a barrel this year?",
-    yes: "44¢",
-    no: "56¢",
-    pct: 44,
-  },
 ];
 
 export const SWAP_ROUTES = [

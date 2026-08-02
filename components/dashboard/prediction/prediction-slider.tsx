@@ -4,14 +4,13 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import useEmblaCarousel from "embla-carousel-react";
 import { PredictionCard } from "@/components/dashboard/prediction/prediction-card";
-import type { Prediction } from "@/lib/types";
+import type { Market } from "@/lib/prediction/types";
 
 interface PredictionSliderProps {
-  predictions: Prediction[];
-  onBuy: (prediction: Prediction, yes: boolean) => void;
+  markets: Market[];
 }
 
-export function PredictionSlider({ predictions, onBuy }: PredictionSliderProps) {
+export function PredictionSlider({ markets }: PredictionSliderProps) {
   const t = useTranslations("prediction");
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", dragFree: false, loop: false });
   const [selected, setSelected] = useState(0);
@@ -31,17 +30,20 @@ export function PredictionSlider({ predictions, onBuy }: PredictionSliderProps) 
     <div>
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex touch-pan-y">
-          {predictions.map((p) => (
-            <div key={p.q} className="min-w-0 shrink-0 grow-0 basis-[86%] pr-3 last:pr-0">
-              <PredictionCard prediction={p} onBuy={(yes) => onBuy(p, yes)} />
+          {markets.map((m) => (
+            <div
+              key={m.marketId.toString()}
+              className="min-w-0 shrink-0 grow-0 basis-[86%] pr-3 last:pr-0"
+            >
+              <PredictionCard market={m} />
             </div>
           ))}
         </div>
       </div>
       <div className="mt-4 flex justify-center gap-1.5">
-        {predictions.map((p, i) => (
+        {markets.map((m, i) => (
           <button
-            key={p.q}
+            key={m.marketId.toString()}
             onClick={() => emblaApi?.scrollTo(i)}
             aria-label={t("goToPrediction", { number: i + 1 })}
             className={`h-1.5 rounded-full transition-all ${

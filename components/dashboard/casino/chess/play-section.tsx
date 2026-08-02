@@ -9,9 +9,11 @@ import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { useChessEngine } from "@/hooks/use-chess-engine";
 import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
+import { GridIcon } from "@/components/ui/icons";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import { BoardThemePicker } from "@/components/dashboard/casino/chess/board-theme-picker";
+import { VictoryConfetti } from "@/components/dashboard/casino/chess/victory-confetti";
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
 import { identifyOpening } from "@/lib/casino/chess/openings";
 import { formatEngineScore, pvToSan, uciToSan } from "@/lib/casino/chess/engine-analysis";
@@ -110,7 +112,10 @@ const PROMOTION_TEXT_KEY: Record<
   n: "promotionN",
 };
 
-function displayName(name: string | null | undefined, wallet: string | null | undefined): string | null {
+function displayName(
+  name: string | null | undefined,
+  wallet: string | null | undefined
+): string | null {
   if (name && name !== "Account" && name !== "World Street user") return name;
   return wallet ? truncateAddress(wallet) : null;
 }
@@ -130,6 +135,38 @@ function playerName(
   }
 
   return displayName(player.username, player.walletAddress) ?? fallback;
+}
+
+// The rail's tab glyphs; the create screen draws the same set.
+function RailGlyph({ kind }: { kind: "play" | "new" | "games" | "players" }) {
+  if (kind === "new") {
+    return (
+      <span className="relative mb-2 block h-6 w-6" aria-hidden>
+        <span className="absolute inset-x-1 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-current" />
+        <span className="absolute inset-y-1 left-1/2 w-[3px] -translate-x-1/2 rounded-full bg-current" />
+      </span>
+    );
+  }
+  if (kind === "games") return <GridIcon size={24} className="mb-2" />;
+  if (kind === "players") {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="mb-2" aria-hidden>
+        <circle cx="8.5" cy="9.25" r="2.75" fill="currentColor" />
+        <circle cx="15.75" cy="10" r="2.25" fill="currentColor" opacity="0.78" />
+        <path
+          d="M4.5 18.5c.8-2.4 2.8-3.7 5.5-3.7 2.7 0 4.7 1.3 5.5 3.7"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="mb-2" aria-hidden>
+      <path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor" />
+    </svg>
+  );
 }
 
 export function PlaySection({
@@ -204,6 +241,7 @@ export function PlaySection({
   // the game in progress, so opening an already-finished board stays silent.
   const sawInProgress = useRef(false);
   const sawResult = useRef(false);
+  const [celebrating, setCelebrating] = useState(false);
   const inProgress = match?.state === "in_progress";
   const result = match?.result ?? null;
   useEffect(() => {
@@ -218,7 +256,16 @@ export function PlaySection({
     sawResult.current = true;
     const outcome = result.kind === "draw" ? "draw" : result.winner === you ? "win" : "loss";
     playGameEndSound(outcome);
+    if (outcome === "win") {
+      const id = setTimeout(() => setCelebrating(true), 0);
+      return () => clearTimeout(id);
+    }
   }, [result, you]);
+  useEffect(() => {
+    if (!celebrating) return;
+    const id = setTimeout(() => setCelebrating(false), 4500);
+    return () => clearTimeout(id);
+  }, [celebrating]);
 
   // The board is whatever the server says. A malformed FEN yields null rather
   // than a silently half-rendered position.
@@ -452,7 +499,9 @@ export function PlaySection({
           return acc;
         }, []);
   const enginePvSan = match ? pvToSan(match.fen, engine.pv) : [];
-  const engineBestMoveSan = match ? (uciToSan(match.fen, engine.bestMove) ?? engine.bestMove) : engine.bestMove;
+  const engineBestMoveSan = match
+    ? (uciToSan(match.fen, engine.bestMove) ?? engine.bestMove)
+    : engine.bestMove;
 
   // One quiet line for staked matches. During play both stakes sit locked; a
   // draw or abort refunds them, a decisive result settles the pot to the
@@ -480,17 +529,17 @@ export function PlaySection({
         ? t("statusWaiting")
         : yourClockExpired
           ? t("statusFlagged")
-        : moving
-          ? t("statusSending")
-          : yourTurn
-            ? t("statusYourMove")
-            : you === null
-              ? t("statusSpectating")
-              : offerToAnswer
-                ? t("statusDrawToYou")
-            : offerPending
-                  ? t("statusDrawSent")
-                  : t("statusOpponentThinking");
+          : moving
+            ? t("statusSending")
+            : yourTurn
+              ? t("statusYourMove")
+              : you === null
+                ? t("statusSpectating")
+                : offerToAnswer
+                  ? t("statusDrawToYou")
+                  : offerPending
+                    ? t("statusDrawSent")
+                    : t("statusOpponentThinking");
   const inviteUrl =
     waiting && matchId
       ? typeof window === "undefined"
@@ -500,6 +549,7 @@ export function PlaySection({
 
   return (
     <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
+      {celebrating ? <VictoryConfetti /> : null}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
@@ -511,7 +561,7 @@ export function PlaySection({
                 className="flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-2.5"
                 style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[0.96rem] font-bold text-white/30">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-white/10 font-sans text-[0.96rem] font-bold text-white/30">
                   P
                 </span>
                 <div className="min-w-0">
@@ -543,7 +593,9 @@ export function PlaySection({
                 orientation={you ?? "w"}
                 theme={theme}
                 onSquareClick={
-                  you !== null && !over && !yourClockExpired ? (r, c) => void onSquareClick(r, c) : undefined
+                  you !== null && !over && !yourClockExpired
+                    ? (r, c) => void onSquareClick(r, c)
+                    : undefined
                 }
               />
             </div>
@@ -583,7 +635,7 @@ export function PlaySection({
                 className="flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-2.5"
                 style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[0.96rem] font-bold text-white/30">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-white/10 font-sans text-[0.96rem] font-bold text-white/30">
                   P
                 </span>
                 <div className="min-w-0">
@@ -599,7 +651,7 @@ export function PlaySection({
               </div>
               <div
                 className={`tnum flex min-w-[108px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-3.5 py-2 text-[1rem] font-semibold ${
-                  yourTurn ? "border border-[#B7B1A8]/45 text-white" : "text-white/88"
+                  yourTurn ? "border border-white/45 text-white" : "text-white/88"
                 }`}
                 style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
               >
@@ -630,35 +682,35 @@ export function PlaySection({
         >
           <div className="grid grid-cols-4 border-b border-white/6 bg-black/10">
             <div className="grid min-h-[78px] place-items-center px-4 py-3 text-center text-white">
-              <span className="mb-2 block text-[1.1rem] font-bold">P</span>
-              <span className="font-sans text-[0.98rem] font-semibold">Play</span>
+              <RailGlyph kind="play" />
+              <span className="font-sans text-[0.98rem] font-semibold">{t("navPlay")}</span>
             </div>
             <Link
               href="/casino/chess/create"
               className="grid min-h-[78px] place-items-center px-4 py-3 text-center text-white/65 transition-colors hover:bg-white/4 hover:text-white"
             >
-              <span className="mb-2 block text-[1.1rem] font-bold">+</span>
-              <span className="font-sans text-[0.98rem] font-semibold">New Game</span>
+              <RailGlyph kind="new" />
+              <span className="font-sans text-[0.98rem] font-semibold">{t("navNewGame")}</span>
             </Link>
             <Link
               href="/casino/chess/history"
               className="grid min-h-[78px] place-items-center px-4 py-3 text-center text-white/65 transition-colors hover:bg-white/4 hover:text-white"
             >
-              <span className="mb-2 block text-[1.1rem] font-bold">#</span>
-              <span className="font-sans text-[0.98rem] font-semibold">Games</span>
+              <RailGlyph kind="games" />
+              <span className="font-sans text-[0.98rem] font-semibold">{t("navGames")}</span>
             </Link>
             <Link
               href="/casino/chess"
               className="grid min-h-[78px] place-items-center px-4 py-3 text-center text-white/65 transition-colors hover:bg-white/4 hover:text-white"
             >
-              <span className="mb-2 block text-[1.1rem] font-bold">U</span>
-              <span className="font-sans text-[0.98rem] font-semibold">Players</span>
+              <RailGlyph kind="players" />
+              <span className="font-sans text-[0.98rem] font-semibold">{t("navPlayers")}</span>
             </Link>
           </div>
 
           <div className="grid grid-cols-2 border-b border-white/6 bg-black/8">
             {(["moves", "info"] as const).map((tab) => {
-              const label = tab === "moves" ? "Moves + Engine" : "Info";
+              const label = tab === "moves" ? t("railMoves") : "Info";
               const active = railTab === tab;
               return (
                 <button
@@ -685,9 +737,7 @@ export function PlaySection({
                       className="rounded-[16px] border border-white/6 px-4 py-4"
                       style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                     >
-                      <div className="mb-1 text-[1.2rem] font-extrabold text-white">
-                        Challenge Link
-                      </div>
+                      <div className="ws-display mb-1 text-[17px] text-white">Challenge Link</div>
                       <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
                         {tCreate("inviteReady")}
                       </div>
@@ -701,13 +751,14 @@ export function PlaySection({
                             const copied = await copyText(inviteUrl);
                             if (copied) toast.success(tCreate("linkCopied"));
                           }}
-                          className="cursor-pointer rounded-[12px] bg-[#8B847B] px-4 py-3 font-sans text-[12px] font-bold text-white"
+                          className="text-ink cursor-pointer rounded-[12px] bg-white px-4 py-3 font-sans text-[12px] font-bold"
                         >
                           {tCreate("copy")}
                         </button>
                       </div>
                       <div className="mt-3 text-[11.5px] text-white/44">
-                        Share this link manually. The first player who opens it takes the other side.
+                        Share this link manually. The first player who opens it takes the other
+                        side.
                       </div>
                     </div>
                   ) : null}
@@ -717,7 +768,7 @@ export function PlaySection({
                     style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="text-[1.2rem] font-extrabold text-white">
+                      <div className="ws-display text-[17px] text-white">
                         {waiting ? "Start Game" : "Moves"}
                       </div>
                       <div className="text-[12px] text-white/46">{turnLabel}</div>
@@ -738,8 +789,8 @@ export function PlaySection({
                     className="rounded-[16px] border border-white/6 px-4 py-4"
                     style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                   >
-                      <div className="mb-1 flex items-center justify-between gap-3">
-                      <div className="text-[1.2rem] font-extrabold text-white">Engine</div>
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <div className="ws-display text-[17px] text-white">Engine</div>
                       <div className="text-[12px] text-white/46">
                         {engine.depth !== null ? `Depth ${engine.depth}` : engine.label}
                       </div>
@@ -760,7 +811,7 @@ export function PlaySection({
                       <div className="space-y-2.5">
                         <div className="grid grid-cols-3 gap-2.5">
                           <div className="rounded-[10px] bg-black/10 px-3 py-2">
-                            <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
+                            <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
                               Score
                             </div>
                             <div className="tnum text-[1rem] font-semibold text-white">
@@ -768,15 +819,15 @@ export function PlaySection({
                             </div>
                           </div>
                           <div className="rounded-[10px] bg-black/10 px-3 py-2">
-                            <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
-                              Best Move
+                            <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
+                              {t("engineBestMove")}
                             </div>
                             <div className="tnum text-[1rem] font-semibold text-white">
                               {engineBestMoveSan ?? "…"}
                             </div>
                           </div>
                           <div className="rounded-[10px] bg-black/10 px-3 py-2">
-                            <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
+                            <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
                               Status
                             </div>
                             <div className="text-[1rem] font-semibold text-white">
@@ -789,11 +840,13 @@ export function PlaySection({
                           </div>
                         </div>
                         <div className="rounded-[10px] bg-black/10 px-3 py-2">
-                          <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
-                            Principal Variation
+                          <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
+                            {t("enginePv")}
                           </div>
-                          <div className="tnum break-words text-[0.92rem] leading-6 text-white/72">
-                            {enginePvSan.length > 0 ? enginePvSan.join(" ") : "Waiting for engine line…"}
+                          <div className="tnum text-[0.92rem] leading-6 break-words text-white/72">
+                            {enginePvSan.length > 0
+                              ? enginePvSan.join(" ")
+                              : "Waiting for engine line…"}
                           </div>
                         </div>
                       </div>
@@ -805,7 +858,7 @@ export function PlaySection({
                   className="space-y-3 rounded-[16px] border border-white/6 px-4 py-4"
                   style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                 >
-                  <div className="text-[1.2rem] font-extrabold text-white">Info</div>
+                  <div className="ws-display text-[17px] text-white">Info</div>
                   <div className="flex items-center justify-between gap-3 rounded-[10px] bg-black/10 px-3 py-2.5">
                     <span className="text-white/55">Status</span>
                     <span className="text-white">{turnLabel}</span>

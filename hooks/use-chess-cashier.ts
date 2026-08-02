@@ -89,7 +89,8 @@ export function useChessCashierStatus() {
     // again or links the wallet, so stop there instead of hammering the route.
     retry: (failureCount, error) =>
       !isCashierAccessDenied(error) && !isCashierUnavailable(error) && failureCount < 4,
-    refetchInterval: (query) => (isCashierAccessDenied(query.state.error) ? false : BALANCE_POLL_MS),
+    refetchInterval: (query) =>
+      isCashierAccessDenied(query.state.error) ? false : BALANCE_POLL_MS,
   });
 
   return {

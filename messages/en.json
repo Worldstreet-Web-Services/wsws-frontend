@@ -72,7 +72,8 @@
     "next": "Next",
     "confirmingLong": "Still verifying — Base is busy. You can close this; we'll show the result the moment it lands.",
     "closeAndNotify": "Close — notify me when done",
-    "orderFailed": "The trade didn't complete."
+    "orderFailed": "The trade didn't complete.",
+    "max": "Max"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -123,7 +124,9 @@
     "youPay": "You pay",
     "youReceive": "You receive",
     "youSell": "You're selling",
-    "youSellRow": "You sell"
+    "youSellRow": "You sell",
+    "ctaNotSellable": "{symbol} can't be sold from this wallet",
+    "ctaNeedsGas": "You need {symbol} on {chain} for the network fee"
   },
   "topbar": {
     "searchPlaceholder": "Search assets, markets, tickers",
@@ -774,7 +777,9 @@
     "confirmRiskOpen": "Leveraged trades can lose value fast, and fills happen at market. Continue only if this looks right.",
     "confirmRiskClose": "The close fills at the current market price. This can't be undone.",
     "confirmCancel": "Cancel",
-    "confirmContinue": "Continue"
+    "confirmContinue": "Continue",
+    "positionsUnavailable": "Couldn't load your positions. They are safe on-chain; retrying…",
+    "updateTakingLonger": "The change is confirmed and is taking a moment to settle."
   },
   "fundsFlow": {
     "back": "Back",
@@ -874,16 +879,21 @@
     "youWithdraw": "You withdraw",
     "bankComingSoonBody": "Bank payouts are being finished with our payments partner. Withdraw to a crypto wallet in the meantime.",
     "fiatDepositTitle": "Add with card or bank",
-    "fiatDepositSubtitle": "Fund your wallet in naira. Settles to USDC.",
+    "fiatDepositSubtitle": "Pay with card, Apple Pay or Google Pay. Settles as USDC on Base.",
     "youPay": "You pay",
     "card": "Card",
     "bankTransfer": "Bank transfer",
-    "fiatComingSoonBody": "We are finishing verification with our payments partner. Card and bank funding go live shortly. Deposit crypto in the meantime.",
     "searchPlaceholder": "Search",
     "selectNetwork": "Select network",
     "pickNetworkFirst": "Pick a network first",
     "networksError": "Couldn't load networks.",
-    "tokensError": "Couldn't load tokens."
+    "tokensError": "Couldn't load tokens.",
+    "fiatNote": "Payment is handled securely by Privy. Funds usually arrive within a few minutes of a completed purchase.",
+    "fiatWorking": "Waiting for payment…",
+    "fiatContinue": "Continue — ${amount}",
+    "fiatMin": "Minimum is ${min}",
+    "fiatSuccess": "Payment complete. Your USDC is on the way.",
+    "fiatFailed": "The payment didn't complete. You were not charged twice — try again."
   },
   "remit": {
     "sendMoney": "Send money",
@@ -1317,7 +1327,8 @@
         "infoWhite": "White",
         "infoBlack": "Black",
         "controlsWaiting": "Game controls",
-        "controlsActions": "Actions"
+        "controlsActions": "Actions",
+        "navPlay": "Play"
       },
       "spectate": {
         "subject": "this match",
@@ -1490,5 +1501,19 @@
         "watch": "Watch"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Buy Kash to earn more cash by your activities",
+    "bannerSub": "Trade, play and refer — every activity pays you back in Kash.",
+    "bannerCta": "Buy Kash",
+    "balanceTitle": "Kash balance",
+    "buy": "Buy",
+    "sell": "Sell",
+    "activityTitle": "Activity rewards",
+    "activityTrading": "Trading",
+    "activityGames": "Games",
+    "activityReferrals": "Referrals",
+    "activityHint": "Kash rewards accrue from your activity across the app and land here.",
+    "comingSoon": "Kash is almost here. Buying and selling open soon."
   }
 }

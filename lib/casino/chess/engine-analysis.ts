@@ -57,7 +57,9 @@ export function formatEngineScore(scoreCp: number | null, scoreMate: number | nu
   return `${sign}${pawns.toFixed(1)}`;
 }
 
-function uciParts(uci: string): { from: string; to: string; promotion?: "q" | "r" | "b" | "n" } | null {
+function uciParts(
+  uci: string
+): { from: string; to: string; promotion?: "q" | "r" | "b" | "n" } | null {
   if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(uci)) return null;
   const promotion = uci[4]?.toLowerCase();
   return {

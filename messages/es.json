@@ -72,7 +72,8 @@
     "next": "Sig.",
     "confirmingLong": "Aún verificando: Base está ocupada. Puedes cerrar esto; el resultado aparecerá en cuanto llegue.",
     "closeAndNotify": "Cerrar — avisarme del resultado",
-    "orderFailed": "La operación no se completó."
+    "orderFailed": "La operación no se completó.",
+    "max": "Máx"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -123,7 +124,9 @@
     "youPay": "Pagas",
     "youReceive": "Recibes",
     "youSell": "Vendes",
-    "youSellRow": "Vendes"
+    "youSellRow": "Vendes",
+    "ctaNotSellable": "{symbol} no se puede vender desde esta billetera",
+    "ctaNeedsGas": "Necesitas {symbol} en {chain} para la tarifa de red"
   },
   "topbar": {
     "searchPlaceholder": "Buscar activos, mercados, tickers",
@@ -774,7 +777,9 @@
     "confirmRiskOpen": "Las operaciones con apalancamiento pueden perder valor rápidamente y se ejecutan a precio de mercado. Continúa solo si todo es correcto.",
     "confirmRiskClose": "El cierre se ejecuta al precio de mercado actual. Esto no se puede deshacer.",
     "confirmCancel": "Cancelar",
-    "confirmContinue": "Continuar"
+    "confirmContinue": "Continuar",
+    "positionsUnavailable": "No se pudieron cargar tus posiciones. Están seguras on-chain; reintentando…",
+    "updateTakingLonger": "El cambio está confirmado y tarda un momento en liquidarse."
   },
   "fundsFlow": {
     "back": "Atrás",
@@ -874,16 +879,21 @@
     "youWithdraw": "Retiras",
     "bankComingSoonBody": "Los pagos bancarios se están terminando con nuestro socio de pagos. Mientras tanto, retira a una billetera cripto.",
     "fiatDepositTitle": "Añadir con tarjeta o banco",
-    "fiatDepositSubtitle": "Fondea tu billetera en nairas. Se liquida en USDC.",
+    "fiatDepositSubtitle": "Paga con tarjeta, Apple Pay o Google Pay. Se liquida como USDC en Base.",
     "youPay": "Pagas",
     "card": "Tarjeta",
     "bankTransfer": "Transferencia bancaria",
-    "fiatComingSoonBody": "Estamos terminando la verificación con nuestro socio de pagos. El fondeo con tarjeta y banco llega en breve. Mientras tanto, deposita cripto.",
     "searchPlaceholder": "Buscar",
     "selectNetwork": "Elige una red",
     "pickNetworkFirst": "Elige primero una red",
     "networksError": "No se pudieron cargar las redes.",
-    "tokensError": "No se pudieron cargar los tokens."
+    "tokensError": "No se pudieron cargar los tokens.",
+    "fiatNote": "El pago lo gestiona Privy de forma segura. Los fondos suelen llegar a los pocos minutos de completar la compra.",
+    "fiatWorking": "Esperando el pago…",
+    "fiatContinue": "Continuar — {amount} $",
+    "fiatMin": "El mínimo es {min} $",
+    "fiatSuccess": "Pago completado. Tus USDC están en camino.",
+    "fiatFailed": "El pago no se completó. No se te cobró dos veces — inténtalo de nuevo."
   },
   "remit": {
     "sendMoney": "Enviar dinero",
@@ -1316,7 +1326,9 @@
         "infoWhite": "Blancas",
         "infoBlack": "Negras",
         "controlsWaiting": "Controles de la partida",
-        "controlsActions": "Acciones"
+        "controlsActions": "Acciones",
+        "statusFlagged": "Se te acabó el tiempo",
+        "navPlay": "Jugar"
       },
       "spectate": {
         "subject": "este encuentro",
@@ -1489,5 +1501,19 @@
         "watch": "Ver"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Compra Kash y gana más dinero con tus actividades",
+    "bannerSub": "Opera, juega y refiere — cada actividad te recompensa en Kash.",
+    "bannerCta": "Comprar Kash",
+    "balanceTitle": "Saldo de Kash",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "activityTitle": "Recompensas por actividad",
+    "activityTrading": "Trading",
+    "activityGames": "Juegos",
+    "activityReferrals": "Referidos",
+    "activityHint": "Las recompensas Kash se acumulan con tu actividad en la aplicación y llegan aquí.",
+    "comingSoon": "Kash llega pronto. La compra y venta abren en breve."
   }
 }

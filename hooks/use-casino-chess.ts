@@ -11,6 +11,7 @@ import {
   fetchJoinableMatches,
   fetchLobbyChallenges,
   fetchLiveMatches,
+  fetchPlayerMatches,
   fetchMatch,
   fetchMatchmakingTicket,
   fetchWaitingMatches,
@@ -136,9 +137,11 @@ export function useChessLobby(wallet: string | null) {
   });
   const mine = wallet?.toLowerCase() ?? null;
   const allLive =
-    live.data?.filter((match) => match.state === "in_progress").sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }) ?? [];
+    live.data
+      ?.filter((match) => match.state === "in_progress")
+      .sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }) ?? [];
   const isMine = (match: ChessMatch) =>
     !!mine &&
     (match.white?.walletAddress?.toLowerCase() === mine ||
@@ -288,7 +291,9 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
         );
       } else if (type === "state" && data) {
         queryClient.setQueryData<ChessMatch>(CHESS_KEYS.match(matchId), (prev) =>
-          prev ? applyStateFrame(prev, data as ChessMatchWire) : toChessMatch(data as ChessMatchWire)
+          prev
+            ? applyStateFrame(prev, data as ChessMatchWire)
+            : toChessMatch(data as ChessMatchWire)
         );
       } else {
         void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.match(matchId) });

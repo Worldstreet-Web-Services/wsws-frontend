@@ -40,18 +40,12 @@ describe("engine analysis parsing", () => {
   });
 
   it("converts a best move from uci to san", () => {
-    expect(uciToSan("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")).toBe(
-      "e4"
-    );
+    expect(uciToSan("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e4")).toBe("e4");
   });
 
   it("converts a principal variation from uci to san", () => {
     expect(
-      pvToSan("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", [
-        "e2e4",
-        "e7e5",
-        "g1f3",
-      ])
+      pvToSan("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", ["e2e4", "e7e5", "g1f3"])
     ).toEqual(["e4", "e5", "Nf3"]);
   });
 });

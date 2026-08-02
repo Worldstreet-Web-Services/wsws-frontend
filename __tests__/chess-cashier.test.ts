@@ -85,9 +85,7 @@ describe("isCashierAccessDenied", () => {
 
   it("does not confuse ordinary service faults with auth faults", () => {
     expect(isCashierAccessDenied(apiError("CONFLICT", "not configured", 409))).toBe(false);
-    expect(isCashierAccessDenied(apiError("SERVICE_UNAVAILABLE", "gateway down", 502))).toBe(
-      false
-    );
+    expect(isCashierAccessDenied(apiError("SERVICE_UNAVAILABLE", "gateway down", 502))).toBe(false);
     expect(isCashierAccessDenied(new Error("network"))).toBe(false);
   });
 });

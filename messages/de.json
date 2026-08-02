@@ -72,7 +72,8 @@
     "next": "Weiter",
     "confirmingLong": "Wird noch verifiziert — Base ist ausgelastet. Sie können dies schließen; das Ergebnis erscheint, sobald es vorliegt.",
     "closeAndNotify": "Schließen — Ergebnis melden",
-    "orderFailed": "Der Handel wurde nicht abgeschlossen."
+    "orderFailed": "Der Handel wurde nicht abgeschlossen.",
+    "max": "Max"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -123,7 +124,9 @@
     "youPay": "Sie zahlen",
     "youReceive": "Sie erhalten",
     "youSell": "Sie verkaufen",
-    "youSellRow": "Sie verkaufen"
+    "youSellRow": "Sie verkaufen",
+    "ctaNotSellable": "{symbol} kann aus dieser Wallet nicht verkauft werden",
+    "ctaNeedsGas": "Sie brauchen {symbol} auf {chain} für die Netzwerkgebühr"
   },
   "topbar": {
     "searchPlaceholder": "Assets, Märkte, Ticker suchen",
@@ -774,7 +777,9 @@
     "confirmRiskOpen": "Gehebelte Trades können schnell an Wert verlieren, die Ausführung erfolgt zum Marktpreis. Fahren Sie nur fort, wenn alles stimmt.",
     "confirmRiskClose": "Die Schließung erfolgt zum aktuellen Marktpreis. Dies kann nicht rückgängig gemacht werden.",
     "confirmCancel": "Abbrechen",
-    "confirmContinue": "Fortfahren"
+    "confirmContinue": "Fortfahren",
+    "positionsUnavailable": "Ihre Positionen konnten nicht geladen werden. Sie sind on-chain sicher; neuer Versuch…",
+    "updateTakingLonger": "Die Änderung ist bestätigt und braucht einen Moment bis zur Abwicklung."
   },
   "fundsFlow": {
     "back": "Zurück",
@@ -874,16 +879,21 @@
     "youWithdraw": "Sie zahlen aus",
     "bankComingSoonBody": "Bankauszahlungen werden mit unserem Zahlungspartner fertiggestellt. Zahlen Sie in der Zwischenzeit auf eine Krypto-Wallet aus.",
     "fiatDepositTitle": "Mit Karte oder Bank aufladen",
-    "fiatDepositSubtitle": "Laden Sie Ihre Wallet in Naira auf. Wird in USDC abgewickelt.",
+    "fiatDepositSubtitle": "Zahlen Sie mit Karte, Apple Pay oder Google Pay. Abgewickelt als USDC auf Base.",
     "youPay": "Sie zahlen",
     "card": "Karte",
     "bankTransfer": "Überweisung",
-    "fiatComingSoonBody": "Wir schließen die Verifizierung mit unserem Zahlungspartner ab. Karten- und Bankaufladung starten in Kürze. Zahlen Sie in der Zwischenzeit Krypto ein.",
     "searchPlaceholder": "Suchen",
     "selectNetwork": "Netzwerk wählen",
     "pickNetworkFirst": "Wählen Sie zuerst ein Netzwerk",
     "networksError": "Netzwerke konnten nicht geladen werden.",
-    "tokensError": "Tokens konnten nicht geladen werden."
+    "tokensError": "Tokens konnten nicht geladen werden.",
+    "fiatNote": "Die Zahlung wird sicher von Privy abgewickelt. Das Guthaben trifft meist wenige Minuten nach einem abgeschlossenen Kauf ein.",
+    "fiatWorking": "Warten auf die Zahlung…",
+    "fiatContinue": "Weiter — {amount} $",
+    "fiatMin": "Minimum ist {min} $",
+    "fiatSuccess": "Zahlung abgeschlossen. Ihre USDC sind unterwegs.",
+    "fiatFailed": "Die Zahlung wurde nicht abgeschlossen. Sie wurden nicht doppelt belastet — versuchen Sie es erneut."
   },
   "remit": {
     "sendMoney": "Geld senden",
@@ -1316,7 +1326,9 @@
         "infoWhite": "Weiß",
         "infoBlack": "Schwarz",
         "controlsWaiting": "Partie-Steuerung",
-        "controlsActions": "Aktionen"
+        "controlsActions": "Aktionen",
+        "statusFlagged": "Ihre Zeit ist abgelaufen",
+        "navPlay": "Spielen"
       },
       "spectate": {
         "subject": "Diese Begegnung",
@@ -1489,5 +1501,19 @@
         "watch": "Zuschauen"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Kaufen Sie Kash und verdienen Sie mehr Geld durch Ihre Aktivitäten",
+    "bannerSub": "Handeln, spielen, empfehlen — jede Aktivität zahlt sich in Kash aus.",
+    "bannerCta": "Kash kaufen",
+    "balanceTitle": "Kash-Guthaben",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "activityTitle": "Aktivitätsprämien",
+    "activityTrading": "Trading",
+    "activityGames": "Spiele",
+    "activityReferrals": "Empfehlungen",
+    "activityHint": "Kash-Prämien sammeln sich durch Ihre Aktivität in der App und landen hier.",
+    "comingSoon": "Kash kommt bald. Kauf und Verkauf öffnen in Kürze."
   }
 }

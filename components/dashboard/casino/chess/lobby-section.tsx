@@ -8,10 +8,7 @@ import { useAcceptChallenge, useChessLobby } from "@/hooks/use-casino-chess";
 import { ChessLiveNowDialog } from "@/components/dashboard/casino/chess/chess-live-now-dialog";
 import { ChessTournamentsDialog } from "@/components/dashboard/casino/chess/chess-tournaments-dialog";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
-import {
-  CasinoError,
-  CasinoLoading,
-} from "@/components/dashboard/casino/casino-state";
+import { CasinoError, CasinoLoading } from "@/components/dashboard/casino/casino-state";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { BOARD_THEMES, DEFAULT_THEME } from "@/lib/casino/chess/board-theme";
@@ -21,11 +18,10 @@ import { initialBoard } from "@/lib/casino/chess/engine";
 import { toast } from "@/lib/toast";
 import type { ChessChallenge } from "@/lib/casino/api/types";
 
-const SURFACE_BG = "#312E2B";
+const SURFACE_BG = "rgba(255, 255, 255, 0.045)";
 const SHELL_BG = "rgba(0, 0, 0, 0.20)";
 const CARD_BG = "linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.14) 100%)";
-const CARD_BG_HOVER =
-  "linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.10) 100%)";
+const CARD_BG_HOVER = "linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.10) 100%)";
 const SHADOW = "0 .1rem .1rem 0 rgba(0, 0, 0, 0.20)";
 const CARD_SHADOW =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.08), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.14), 0 .2rem .4rem 0 rgba(0, 0, 0, 0.10)";
@@ -33,7 +29,7 @@ const CARD_SHADOW_HOVER =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.14), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.14), 0 .2rem .4rem 0 rgba(0, 0, 0, 0.10)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
-const LOBBY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 255px))";
+const LOBBY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100dvh - 255px))";
 
 function timeControlLabel(t: ReturnType<typeof useTranslations>, tc: string): string {
   return tc === "3+2" || tc === "5+3" ? t("blitz", { tc }) : t("rapid", { tc });
@@ -61,7 +57,7 @@ function MenuHeader() {
       style={{ background: SHELL_BG, boxShadow: SHADOW }}
     >
       <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-10 w-10" />
-      <div className="font-sans text-[2.6rem] font-extrabold leading-none tracking-[-0.05em] text-white">
+      <div className="ws-display text-[2.6rem] leading-none tracking-[-0.05em] text-white">
         Play Chess
       </div>
     </div>
@@ -96,10 +92,12 @@ function MenuCard({
       <div className="pointer-events-none flex min-h-[136px] items-center gap-4 px-6 py-6">
         {icon}
         <div className="min-w-0">
-          <div className="font-sans text-[1.18rem] font-extrabold leading-none tracking-[-0.03em] text-white sm:text-[1.24rem]">
+          <div className="ws-display text-[1.18rem] leading-none tracking-[-0.03em] text-white sm:text-[1.24rem]">
             {title}
           </div>
-          <div className="mt-2 text-[0.92rem] leading-6 text-white/72 sm:text-[0.98rem]">{note}</div>
+          <div className="mt-2 text-[0.92rem] leading-6 text-white/72 sm:text-[0.98rem]">
+            {note}
+          </div>
         </div>
       </div>
     </div>
@@ -150,32 +148,31 @@ function MenuActionLink({
 }) {
   return (
     <Link href={href} className="block rounded-[8px]">
-      <MenuCard title={title} note={note} icon={<LandingIcon src={iconSrc} alt="" />} action={null} />
+      <MenuCard
+        title={title}
+        note={note}
+        icon={<LandingIcon src={iconSrc} alt="" />}
+        action={null}
+      />
     </Link>
   );
 }
 
-function PlayerBar({
-  label,
-  active = false,
-}: {
-  label: string;
-  active?: boolean;
-}) {
+function PlayerBar({ label, active = false }: { label: string; active?: boolean }) {
   return (
     <div
       className="flex items-center gap-4 rounded-[8px] px-3 py-3"
       style={{ background: SHELL_BG, boxShadow: SHADOW }}
     >
-      <span className="grid h-14 w-14 place-items-center rounded-[4px] bg-[#4B4847]">
+      <span className="grid h-14 w-14 place-items-center rounded-[4px] bg-white/10">
         <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-8 w-8 opacity-35" />
       </span>
       <span className="flex min-w-0 items-center gap-2">
         <span className="truncate font-sans text-[1.05rem] font-bold text-white">{label}</span>
         {active ? (
           <span aria-hidden className="inline-flex gap-[3px]">
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#B7B1A8]" />
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#8B847B]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-white/70" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-white/60" />
           </span>
         ) : null}
       </span>
@@ -217,11 +214,7 @@ function StateRow({
   );
 }
 
-function EmptyHint({
-  lines,
-}: {
-  lines: string[];
-}) {
+function EmptyHint({ lines }: { lines: string[] }) {
   return (
     <div
       className="rounded-[8px] px-4 py-3 text-[0.92rem] leading-6 text-white/72"
@@ -234,7 +227,11 @@ function EmptyHint({
   );
 }
 
-function publicLabel(name: string | null | undefined, wallet: string | null | undefined, fallback = "Player"): string {
+function publicLabel(
+  name: string | null | undefined,
+  wallet: string | null | undefined,
+  fallback = "Player"
+): string {
   if (name && name !== "Account" && name !== "World Street user") return name;
   return wallet ? truncateAddress(wallet) : fallback;
 }
@@ -284,100 +281,103 @@ export function LobbySection() {
     <>
       <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,840px)_392px]">
-        <section
-          className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SURFACE_BG }}
-        >
-          <div className="mx-auto w-full" style={{ maxWidth: LOBBY_BOARD_MAX_WIDTH }}>
-            <PlayerBar label={t("colOpponent")} />
-            <div className="mt-4 overflow-hidden rounded-[2px]">
-              <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />
-            </div>
-            <div className="mt-4">
-              <PlayerBar
-                label={selfLabel(wallet.name, wallet.address ?? null)}
-                active={wallet.connected}
-              />
-            </div>
-          </div>
-        </section>
-
-        <aside
-          className="overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SHELL_BG }}
-        >
-          <MenuHeader />
-          <div className="space-y-4 p-4 sm:p-6">
-            <div className="space-y-4">
-              <MenuActionButton
-                title="Live Now"
-                note="Watch active games and open the live market"
-                iconSrc="/chesscom-icons/time-blitz.svg"
-                onClick={() => setLiveOpen(true)}
-                ariaLabel="Open live games"
-              />
-              <MenuActionLink
-                title="Play a Friend"
-                note="Invite a friend to a game of chess"
-                iconSrc="/chesscom-icons/hand-shake.svg"
-                href="/casino/chess/create"
-              />
-              <MenuActionButton
-                title="Tournaments"
-                note="Browse current events and create a Swiss tournament"
-                iconSrc="/chesscom-icons/tournaments.svg"
-                onClick={() => setTournamentsOpen(true)}
-              />
-            </div>
-
-            {joinableChallenges.length > 0 ? (
-              <div className="space-y-2">
-                <span className="sr-only">{t("openChallenges")}</span>
-                {joinableChallenges.map((challenge) => {
-                  const details = challenge.stakeUsdc
-                    ? `${tCommon("stakedFor", { amount: challenge.stakeUsdc })} · ${timeControlLabel(tCommon, challenge.timeControl)}`
-                    : timeControlLabel(tCommon, challenge.timeControl);
-                  return (
-                    <StateRow
-                      key={challenge.id}
-                      label={challenge.creator.username}
-                      meta={details}
-                      action={t("join")}
-                      disabled={accept.isPending}
-                      onAction={() => void onJoin(challenge)}
-                    />
-                  );
-                })}
+          <section
+            className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+            style={{ background: SURFACE_BG }}
+          >
+            <div className="mx-auto w-full" style={{ maxWidth: LOBBY_BOARD_MAX_WIDTH }}>
+              <PlayerBar label={t("colOpponent")} />
+              <div className="mt-4 overflow-hidden rounded-[2px]">
+                <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />
               </div>
-            ) : null}
-
-            {error ? (
-              <CasinoError error={error} subject={t("subject")} onRetry={refetch} />
-            ) : null}
-
-            {isLoading ? (
-              <div style={{ background: CARD_BG, boxShadow: CARD_SHADOW }} className="rounded-[8px] px-4 py-4">
-                <CasinoLoading label={t("loading")} rows={2} />
+              <div className="mt-4">
+                <PlayerBar
+                  label={selfLabel(wallet.name, wallet.address ?? null)}
+                  active={wallet.connected}
+                />
               </div>
-            ) : null}
+            </div>
+          </section>
 
-            {showQuietLobbyHint ? (
-              <>
-                <EmptyHint lines={[t("liveEmpty"), t("challengesEmpty")]} />
-                <span className="sr-only">{t("liveEmpty")}</span>
-                <span className="sr-only">{t("challengesEmpty")}</span>
-              </>
-            ) : liveMatches.length === 0 ? (
-              <>
-                <span className="sr-only">{t("liveEmpty")}</span>
-                <span className="sr-only">{t("challengesEmpty")}</span>
-              </>
-            ) : null}
+          <aside
+            className="overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+            style={{ background: SHELL_BG }}
+          >
+            <MenuHeader />
+            <div className="space-y-4 p-4 sm:p-6">
+              <div className="space-y-4">
+                <MenuActionButton
+                  title="Live Now"
+                  note="Watch active games and open the live market"
+                  iconSrc="/chesscom-icons/time-blitz.svg"
+                  onClick={() => setLiveOpen(true)}
+                  ariaLabel="Open live games"
+                />
+                <MenuActionLink
+                  title="Play a Friend"
+                  note="Invite a friend to a game of chess"
+                  iconSrc="/chesscom-icons/hand-shake.svg"
+                  href="/casino/chess/create"
+                />
+                <MenuActionButton
+                  title="Tournaments"
+                  note="Browse current events and create a Swiss tournament"
+                  iconSrc="/chesscom-icons/tournaments.svg"
+                  onClick={() => setTournamentsOpen(true)}
+                />
+              </div>
 
-            <ChessCashierLauncher />
-          </div>
-        </aside>
-      </div>
+              {joinableChallenges.length > 0 ? (
+                <div className="space-y-2">
+                  <span className="sr-only">{t("openChallenges")}</span>
+                  {joinableChallenges.map((challenge) => {
+                    const details = challenge.stakeUsdc
+                      ? `${tCommon("stakedFor", { amount: challenge.stakeUsdc })} · ${timeControlLabel(tCommon, challenge.timeControl)}`
+                      : timeControlLabel(tCommon, challenge.timeControl);
+                    return (
+                      <StateRow
+                        key={challenge.id}
+                        label={challenge.creator.username}
+                        meta={details}
+                        action={t("join")}
+                        disabled={accept.isPending}
+                        onAction={() => void onJoin(challenge)}
+                      />
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {error ? (
+                <CasinoError error={error} subject={t("subject")} onRetry={refetch} />
+              ) : null}
+
+              {isLoading ? (
+                <div
+                  style={{ background: CARD_BG, boxShadow: CARD_SHADOW }}
+                  className="rounded-[8px] px-4 py-4"
+                >
+                  <CasinoLoading label={t("loading")} rows={2} />
+                </div>
+              ) : null}
+
+              {showQuietLobbyHint ? (
+                <>
+                  <EmptyHint lines={[t("liveEmpty"), t("challengesEmpty")]} />
+                  <span className="sr-only">{t("liveEmpty")}</span>
+                  <span className="sr-only">{t("challengesEmpty")}</span>
+                </>
+              ) : liveMatches.length === 0 ? (
+                <>
+                  <span className="sr-only">{t("liveEmpty")}</span>
+                  <span className="sr-only">{t("challengesEmpty")}</span>
+                </>
+              ) : null}
+
+              <ChessCashierLauncher />
+            </div>
+          </aside>
+        </div>
       </div>
 
       <ChessLiveNowDialog
@@ -386,10 +386,7 @@ export function LobbySection() {
         myMatches={myActiveGames}
         matches={liveMatches}
       />
-      <ChessTournamentsDialog
-        open={tournamentsOpen}
-        onClose={() => setTournamentsOpen(false)}
-      />
+      <ChessTournamentsDialog open={tournamentsOpen} onClose={() => setTournamentsOpen(false)} />
     </>
   );
 }

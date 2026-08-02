@@ -7,12 +7,7 @@ import { useTranslations } from "next-intl";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { WagerSummary } from "@/components/dashboard/casino/chess/wager-summary";
-import {
-  ChevronLeftIcon,
-  ClockIcon,
-  GridIcon,
-  SettingsIcon,
-} from "@/components/ui/icons";
+import { ChevronLeftIcon, ClockIcon, GridIcon, SettingsIcon } from "@/components/ui/icons";
 import { useCreateChallenge } from "@/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
@@ -44,7 +39,7 @@ const LANDING_BOARD = initialBoard();
 const CREATE_TIME_GROUPS = [
   {
     title: "Game Clock",
-    tone: "#B7B1A8",
+    tone: "rgba(255,255,255,0.7)",
     options: [
       { value: "5+0", label: "5 min" },
       { value: "10+0", label: "10 min" },
@@ -196,27 +191,25 @@ function LandingIcon({
   );
 }
 
-function PlayerBar({
-  label,
-  active = false,
-}: {
-  label: string;
-  active?: boolean;
-}) {
+function PlayerBar({ label, active = false }: { label: string; active?: boolean }) {
   return (
     <div
       className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
       style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
     >
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847]">
-        <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-6.5 w-6.5 opacity-35" />
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-white/10">
+        <LandingIcon
+          src="/chesscom-icons/play-white.svg"
+          alt=""
+          className="h-6.5 w-6.5 opacity-35"
+        />
       </span>
       <span className="flex min-w-0 items-center gap-2">
         <span className="truncate font-sans text-[0.96rem] font-bold text-white">{label}</span>
         {active ? (
           <span aria-hidden className="inline-flex gap-[3px]">
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#B7B1A8]" />
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#8B847B]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-white/70" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-white/60" />
           </span>
         ) : null}
       </span>
@@ -317,12 +310,12 @@ function StakeCard({
   stakeOverBalance: boolean;
   cashierAvailable: string;
   feeBps: number;
-  feePct: string | null;
+  feePct: number | null;
 }) {
   const chipClass = (active: boolean) =>
     `cursor-pointer rounded-[12px] border px-3.5 py-2 font-sans text-[13px] transition-colors ${
       active
-        ? "border-[#B7B1A8] bg-[#4A4641] font-semibold text-white"
+        ? "border-white/40 bg-white/10 font-semibold text-white"
         : "border-white/10 bg-black/8 text-white/80 hover:border-white/25"
     }`;
 
@@ -334,7 +327,11 @@ function StakeCard({
       <div className="mb-3 text-[0.96rem] font-extrabold text-white/88">{tStake("label")}</div>
       <div className="flex flex-wrap items-center gap-2">
         {STAKE_CHIPS.map((v) => (
-          <button key={v} onClick={() => setStake(stake === v ? "" : v)} className={chipClass(stake === v)}>
+          <button
+            key={v}
+            onClick={() => setStake(stake === v ? "" : v)}
+            className={chipClass(stake === v)}
+          >
             {v}
           </button>
         ))}
@@ -356,11 +353,7 @@ function StakeCard({
       {stakeUsdc !== undefined ? (
         <>
           <div className="mt-3">
-            <WagerSummary
-              stakeUsdc={stakeUsdc}
-              availableUsdc={cashierAvailable}
-              feeBps={feeBps}
-            />
+            <WagerSummary stakeUsdc={stakeUsdc} availableUsdc={cashierAvailable} feeBps={feeBps} />
           </div>
           {stakeOverBalance ? (
             <div className="text-down mt-2.5 text-[12px] font-normal">
@@ -369,7 +362,9 @@ function StakeCard({
           ) : null}
         </>
       ) : feePct !== null ? (
-        <div className="mt-4 text-[11.5px] font-normal text-white/50">{tStake("note", { pct: feePct })}</div>
+        <div className="mt-4 text-[11.5px] font-normal text-white/50">
+          {tStake("note", { pct: feePct })}
+        </div>
       ) : null}
     </div>
   );
@@ -488,7 +483,7 @@ export function CreateSection() {
                   <GridIcon size={22} />
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate font-sans text-[1.9rem] font-extrabold tracking-[-0.05em] text-white">
+                  <div className="ws-display truncate text-[1.9rem] tracking-[-0.05em] text-white">
                     Challenge Link
                   </div>
                   <div className="text-[0.92rem] text-white/52">Play a Friend</div>
@@ -513,8 +508,8 @@ export function CreateSection() {
               <FieldRow
                 label="Time Control"
                 value={selectedTime.panelLabel}
-                icon={<ClockIcon size={22} className="text-[#B7B1A8]" />}
-                accent="#B7B1A8"
+                icon={<ClockIcon size={22} className="text-white/70" />}
+                accent="rgba(255,255,255,0.7)"
                 open
               />
 
@@ -533,8 +528,8 @@ export function CreateSection() {
                           onClick={() => setTimeControl(option.value)}
                           className={`cursor-pointer rounded-[12px] border px-3 py-3 text-center font-sans text-[1rem] font-extrabold transition-colors ${
                             active
-                              ? "border-[#B7B1A8] bg-[#3F3D37] text-white shadow-[0_0_0_1px_rgba(183,177,168,0.35)]"
-                              : "border-white/6 bg-[#3A3833] text-white/82 hover:border-white/18 hover:text-white"
+                              ? "border-white/40 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.2)]"
+                              : "border-white/6 bg-white/4 text-white/82 hover:border-white/18 hover:text-white"
                           }`}
                         >
                           {option.label}
@@ -561,7 +556,9 @@ export function CreateSection() {
               <ChessCashierLauncher compact />
 
               <div className="rounded-[16px] border border-white/6 px-4 py-4 text-[0.92rem] leading-6 text-white/60">
-                After you create the game, we open the waiting board, copy the challenge link, and show a copy button there again. Send that link manually for now, the first person who opens it takes the other side.
+                After you create the game, we open the waiting board, copy the challenge link, and
+                show a copy button there again. Send that link manually for now, the first person
+                who opens it takes the other side.
               </div>
             </div>
 
@@ -574,7 +571,8 @@ export function CreateSection() {
                 {create.isPending ? t("creating") : t("submitInvite")}
               </button>
               <div className="mt-2 text-center text-[0.82rem] text-white/42">
-                The link is copied right after creation, and you can copy it again from the waiting board.
+                The link is copied right after creation, and you can copy it again from the waiting
+                board.
               </div>
             </div>
           </div>

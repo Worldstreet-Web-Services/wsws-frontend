@@ -60,7 +60,7 @@ function PlayerStrip({
         className="flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-2.5"
         style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
       >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[0.96rem] font-bold text-white/30">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-white/10 font-sans text-[0.96rem] font-bold text-white/30">
           P
         </span>
         <div className="min-w-0">
@@ -244,9 +244,10 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
               className="rounded-[16px] border border-white/6 px-4 py-4"
               style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
             >
-              <div className="mb-1 text-[1.2rem] font-extrabold text-white">{t("liveMarket")}</div>
+              <div className="ws-display mb-1 text-[17px] text-white">{t("liveMarket")}</div>
               <div className="text-[0.92rem] leading-6 text-white/60">
-                Watching is free. Betting here uses your chess balance, not the Base wallet directly.
+                Watching is free. Betting here uses your chess balance, not the Base wallet
+                directly.
               </div>
               <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] bg-black/10 px-3 py-2.5">
                 <span className="text-white/55">{t("timeControl")}</span>
@@ -286,7 +287,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                           disabled={!marketOpen || isPlayer}
                           className={`cursor-pointer rounded-[10px] border py-2.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-55 ${
                             active
-                              ? "border-[#B7B1A8] bg-[#8B847B] text-white shadow-[0_0_0_1px_rgba(183,177,168,0.35)]"
+                              ? "border-white/40 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.2)]"
                               : won
                                 ? "border-up/50 bg-up/10 text-white"
                                 : "border-white/10 bg-white/4 text-white hover:border-white/25"
@@ -311,7 +312,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                     </div>
                     <div className="flex h-[7px] overflow-hidden rounded-[4px] bg-white/10">
                       <div
-                        className="h-full bg-[#B7B1A8] transition-[width] duration-500"
+                        className="h-full bg-white/70 transition-[width] duration-500"
                         style={{ width: `${impliedProbability(odds, "white")}%` }}
                       />
                     </div>
@@ -325,7 +326,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                     <div className="mb-3.5 border-t border-white/8 pt-3.5">
                       <div className="mb-2 flex items-center justify-between text-[11px] font-normal text-white/50">
                         <span>{t("placeABet")}</span>
-                        <span className="tnum">{t("balance", { amount: usd(Number(available)) })}</span>
+                        <span className="tnum">
+                          {t("balance", { amount: usd(Number(available)) })}
+                        </span>
                       </div>
                       <div className="mb-2.5 flex gap-2">
                         <input
@@ -360,7 +363,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
 
                   {myBets.length > 0 ? (
                     <div className="mt-3.5 border-t border-white/8 pt-3.5">
-                      <div className="mb-2 text-[11px] font-normal text-white/50">{t("yourBets")}</div>
+                      <div className="mb-2 text-[11px] font-normal text-white/50">
+                        {t("yourBets")}
+                      </div>
                       <div className="flex flex-col gap-1.5">
                         {myBets.map((b) => (
                           <div

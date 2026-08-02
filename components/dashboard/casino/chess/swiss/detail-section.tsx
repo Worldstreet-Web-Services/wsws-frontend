@@ -6,10 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSwissTournament } from "@/hooks/use-casino-swiss";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
-import {
-  CasinoError,
-  CasinoLoading,
-} from "@/components/dashboard/casino/casino-state";
+import { CasinoError, CasinoLoading } from "@/components/dashboard/casino/casino-state";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { SwissStandings } from "@/components/dashboard/casino/chess/swiss/standings";
@@ -83,7 +80,7 @@ function ShellPlayerBar({
       style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={iconSrc} alt="" className="h-11 w-11 shrink-0 rounded-[4px] bg-[#4B4847] p-2.5" />
+      <img src={iconSrc} alt="" className="h-11 w-11 shrink-0 rounded-[4px] bg-white/10 p-2.5" />
       <div className="min-w-0">
         <div className="truncate font-sans text-[0.96rem] font-bold text-white">{label}</div>
         <div className="truncate text-[0.8rem] text-white/58">{meta}</div>
@@ -128,7 +125,7 @@ function RailTabButton({
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[12px] border border-white/6 bg-black/10 px-3 py-3">
-      <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">{label}</div>
+      <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">{label}</div>
       <div className="text-[0.95rem] font-semibold text-white">{value}</div>
     </div>
   );
@@ -188,7 +185,7 @@ function JoinPanel({
       <div className="mb-3 text-[1.1rem] font-extrabold text-white">{t("joinTitle")}</div>
       <div className="space-y-3">
         <div>
-          <div className="mb-2 text-[11px] uppercase tracking-[0.05em] text-white/38">
+          <div className="mb-2 text-[11px] tracking-[0.05em] text-white/38 uppercase">
             {t("joinNameLabel")}
           </div>
           <input
@@ -204,7 +201,7 @@ function JoinPanel({
         </div>
 
         <div>
-          <div className="mb-2 text-[11px] uppercase tracking-[0.05em] text-white/38">
+          <div className="mb-2 text-[11px] tracking-[0.05em] text-white/38 uppercase">
             {t("joinPasswordLabel")}
           </div>
           <input
@@ -269,7 +266,7 @@ function OrganizerPanel({
         </div>
       ) : null}
       <div className="mt-4">
-        <div className="mb-2 text-[11px] uppercase tracking-[0.05em] text-white/38">
+        <div className="mb-2 text-[11px] tracking-[0.05em] text-white/38 uppercase">
           {t("manualLabel")}
         </div>
         <textarea
@@ -312,18 +309,19 @@ function ShareCard({
         overlay
           ? {
               background: "#2A2724",
-              boxShadow:
-                "0 28px 72px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.06)",
+              boxShadow: "0 28px 72px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.06)",
             }
           : { background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }
       }
     >
       <div className="flex items-start justify-between gap-4">
-        <div className={`flex min-w-0 items-center gap-3 ${overlay ? "w-full flex-col text-center" : ""}`}>
+        <div
+          className={`flex min-w-0 items-center gap-3 ${overlay ? "w-full flex-col text-center" : ""}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/chesscom-icons/tournaments.svg" alt="" className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
-            <div className="truncate font-sans text-[1.18rem] font-extrabold tracking-[-0.03em] text-white">
+            <div className="ws-display truncate text-[1.18rem] tracking-[-0.03em] text-white">
               {title}
             </div>
             <div className="mt-1 text-[13px] leading-6 text-white/60">
@@ -391,7 +389,8 @@ function InfoPanel({
             <div className="font-semibold text-white">{t("winner", { name: detail.winner })}</div>
           ) : null}
           <div>
-            Players join from this page directly. The organizer can copy the tournament page link and send it out.
+            Players join from this page directly. The organizer can copy the tournament page link
+            and send it out.
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -502,8 +501,9 @@ export function SwissDetailSection({
   const pairingOngoing = hasOngoingPairing(detail, yourName);
   const liveRound = currentRound(detail);
   const yourPairing =
-    liveRound?.pairings.find((pairing) => pairing.status === "ongoing" && isSeated(pairing, yourName)) ??
-    null;
+    liveRound?.pairings.find(
+      (pairing) => pairing.status === "ongoing" && isSeated(pairing, yourName)
+    ) ?? null;
   const opponentName =
     yourPairing && yourName
       ? yourPairing.white === yourName
@@ -517,7 +517,8 @@ export function SwissDetailSection({
         ? "Rounds and live boards are managed from the rail."
         : "Tournament complete.";
   const railTab: RailTab =
-    railTabChoice ?? (detail.state === "running" && liveRound?.pairings.length ? "games" : "standings");
+    railTabChoice ??
+    (detail.state === "running" && liveRound?.pairings.length ? "games" : "standings");
 
   return (
     <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
@@ -560,7 +561,11 @@ export function SwissDetailSection({
                 meta={joined ? t("youPlayAs", { name: yourName as string }) : t("notStarted")}
                 iconSrc="/chesscom-icons/play-white.svg"
               />
-              <ShellBadge label={detail.state === "finished" ? "Final" : `R${detail.round}/${detail.nbRounds}`} />
+              <ShellBadge
+                label={
+                  detail.state === "finished" ? "Final" : `R${detail.round}/${detail.nbRounds}`
+                }
+              />
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3">
@@ -573,7 +578,6 @@ export function SwissDetailSection({
               </Link>
             </div>
           </div>
-
         </section>
 
         <aside
@@ -615,7 +619,9 @@ export function SwissDetailSection({
             >
               <div className="mb-1 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-[1.35rem] font-extrabold text-white">{detail.name}</div>
+                  <div className="truncate text-[1.35rem] font-extrabold text-white">
+                    {detail.name}
+                  </div>
                   <div className="mt-1 text-[0.88rem] leading-6 text-white/58">
                     {headerLine(t, detail)}
                   </div>
@@ -646,9 +652,9 @@ export function SwissDetailSection({
 
               {detail.state === "open" && joined && !isOrganizer ? (
                 <CompactMessage>
-                  You&apos;re in. Only the organizer, {detail.organizer}, can start round 1.
-                  Ask them to open this page and click Start round 1. Your board will
-                  appear automatically here once they do.
+                  You&apos;re in. Only the organizer, {detail.organizer}, can start round 1. Ask
+                  them to open this page and click Start round 1. Your board will appear
+                  automatically here once they do.
                 </CompactMessage>
               ) : null}
 
@@ -666,7 +672,10 @@ export function SwissDetailSection({
                       Round {yourPairing.round}, board {yourPairing.board} is live
                     </div>
                     <div className="mt-1 text-[0.92rem] leading-6 text-white/62">
-                      {opponentName ? `You are paired against ${opponentName}.` : "Your board is ready."} Open the game now.
+                      {opponentName
+                        ? `You are paired against ${opponentName}.`
+                        : "Your board is ready."}{" "}
+                      Open the game now.
                     </div>
                   </div>
                   <Link
@@ -678,9 +687,12 @@ export function SwissDetailSection({
                 </div>
               ) : null}
 
-              {detail.state === "running" && !!liveRound?.pairings.length && !yourPairing?.matchId ? (
+              {detail.state === "running" &&
+              !!liveRound?.pairings.length &&
+              !yourPairing?.matchId ? (
                 <CompactMessage>
-                  Round {liveRound.round} is live. Open the Games tab below to see the pairings and watch the active boards.
+                  Round {liveRound.round} is live. Open the Games tab below to see the pairings and
+                  watch the active boards.
                 </CompactMessage>
               ) : null}
 
@@ -698,7 +710,8 @@ export function SwissDetailSection({
 
               {joined && detail.state === "running" && !pairingOngoing ? (
                 <CompactMessage>
-                  You&apos;re joined. Open the Games tab to watch pairings and wait for your next board to appear.
+                  You&apos;re joined. Open the Games tab to watch pairings and wait for your next
+                  board to appear.
                 </CompactMessage>
               ) : null}
             </div>
@@ -714,7 +727,11 @@ export function SwissDetailSection({
                 label="Games"
                 onClick={() => setRailTabChoice("games")}
               />
-              <RailTabButton active={railTab === "info"} label="Info" onClick={() => setRailTabChoice("info")} />
+              <RailTabButton
+                active={railTab === "info"}
+                label="Info"
+                onClick={() => setRailTabChoice("info")}
+              />
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto pt-4 pr-1">
@@ -764,7 +781,9 @@ export function SwissDetailSection({
                 )}
 
                 {detail.state === "open" && railTab === "games" && rounds.length === 0 ? (
-                  <CompactMessage>Games appear here after the first round is paired.</CompactMessage>
+                  <CompactMessage>
+                    Games appear here after the first round is paired.
+                  </CompactMessage>
                 ) : null}
               </div>
             </div>

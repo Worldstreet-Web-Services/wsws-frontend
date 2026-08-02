@@ -29,6 +29,14 @@ const chessApi = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/casino/api/chess", () => chessApi);
 
+// Boards subscribe to the live socket even while waiting; a real jsdom
+// WebSocket dials out and its teardown throws cross-realm Event errors on CI.
+vi.mock("@/lib/casino/chess/live-socket", () => ({
+  SOCKET_CLOSED_FRAME: { type: "__closed" },
+  SOCKET_OPEN_FRAME: { type: "__open" },
+  subscribeChessTopic: () => () => {},
+}));
+
 const drawApi = vi.hoisted(() => ({
   fetchCurrentRound: vi.fn(),
   fetchPastResults: vi.fn(),
@@ -260,7 +268,9 @@ describe("chess lobby", () => {
     ]);
     render(<LobbySection />, { wrapper });
 
-    expect(await screen.findByText("No games in play yet. Create one and it shows up here.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("No games in play yet. Create one and it shows up here.")
+    ).toBeInTheDocument();
     expect(screen.queryByText("GrandmasterKay")).not.toBeInTheDocument();
   });
 

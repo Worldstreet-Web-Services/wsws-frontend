@@ -24,10 +24,7 @@ interface ChessCashierLauncherProps {
 // stable balance entry point so staking, joining, and spectator betting are not
 // dead ends when the wallet is short. This component keeps that entry identical
 // across lobby, create, play, invite, and watch.
-export function ChessCashierLauncher({
-  className,
-  compact = false,
-}: ChessCashierLauncherProps) {
+export function ChessCashierLauncher({ className, compact = false }: ChessCashierLauncherProps) {
   const t = useTranslations("casino.chess.cashier");
   const cashier = useChessCashierStatus();
   const [mode, setMode] = useState<CashierMode | null>(null);
@@ -37,24 +34,35 @@ export function ChessCashierLauncher({
   return (
     <>
       <div
-        className={cn("rounded-[16px] border border-white/6", compact ? "px-4 py-4" : "px-4 py-4", className)}
+        className={cn(
+          "rounded-[16px] border border-white/6",
+          compact ? "px-4 py-4" : "px-4 py-4",
+          className
+        )}
         style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className={cn("font-extrabold text-white", compact ? "text-[1.02rem]" : "text-[1.08rem]")}>
+          <div
+            className={cn(
+              "font-extrabold text-white",
+              compact ? "text-[1.02rem]" : "text-[1.08rem]"
+            )}
+          >
             {t("title")}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
           <div className="rounded-[10px] border border-white/6 bg-black/10 px-3 py-2.5">
-            <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
+            <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
               {t("available")}
             </div>
-            <div className="tnum text-[1rem] font-semibold text-white">{cashier.available} USDC</div>
+            <div className="tnum text-[1rem] font-semibold text-white">
+              {cashier.available} USDC
+            </div>
           </div>
           <div className="rounded-[10px] border border-white/6 bg-black/10 px-3 py-2.5">
-            <div className="mb-1 text-[11px] uppercase tracking-[0.05em] text-white/38">
+            <div className="mb-1 text-[11px] tracking-[0.05em] text-white/38 uppercase">
               {t("locked")}
             </div>
             <div className="tnum text-[1rem] font-semibold text-white">{cashier.locked} USDC</div>
@@ -65,7 +73,10 @@ export function ChessCashierLauncher({
           <button
             type="button"
             onClick={() => setMode("deposit")}
-            className={cn(CHESS_PRIMARY_BUTTON_CLASS, "flex-1 px-4 py-2.5 font-sans text-[12px] font-bold")}
+            className={cn(
+              CHESS_PRIMARY_BUTTON_CLASS,
+              "flex-1 px-4 py-2.5 font-sans text-[12px] font-bold"
+            )}
           >
             {t("deposit")}
           </button>

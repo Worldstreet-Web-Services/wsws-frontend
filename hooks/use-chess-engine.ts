@@ -31,9 +31,7 @@ const EMPTY_ENGINE_INFO: EngineInfo = {
 
 function canUseEngine(): boolean {
   return (
-    typeof window !== "undefined" &&
-    typeof Worker === "function" &&
-    typeof WebAssembly === "object"
+    typeof window !== "undefined" && typeof Worker === "function" && typeof WebAssembly === "object"
   );
 }
 
@@ -107,7 +105,12 @@ export function useChessEngine(fen: string | null) {
 
         if (line === "readyok") {
           readyRef.current = true;
-          setState((current) => ({ ...current, label: candidate.label, status: "ready", error: null }));
+          setState((current) => ({
+            ...current,
+            label: candidate.label,
+            status: "ready",
+            error: null,
+          }));
           if (lastFenRef.current) {
             worker.postMessage("position fen " + lastFenRef.current);
             worker.postMessage("go movetime " + String(ANALYSIS_TIME_MS));

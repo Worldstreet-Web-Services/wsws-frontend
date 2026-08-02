@@ -37,7 +37,7 @@ export function CapturedRow({
               src={pieceSrc(color, type)}
               alt=""
               draggable={false}
-              className={`h-[15px] w-[15px] select-none opacity-80 ${startsGroup ? "" : "-ml-[9px]"}`}
+              className={`h-[15px] w-[15px] opacity-80 select-none ${startsGroup ? "" : "-ml-[9px]"}`}
             />
           );
         })}

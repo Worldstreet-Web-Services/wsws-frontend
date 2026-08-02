@@ -18,7 +18,8 @@ function parseBody(raw: string): Record<string, unknown> | null {
 
 export function walletOfUser(user: User | null): string | null {
   const wallet = user?.linked_accounts.find(
-    (account) => account.type === "wallet" && "chain_type" in account && account.chain_type === "ethereum"
+    (account) =>
+      account.type === "wallet" && "chain_type" in account && account.chain_type === "ethereum"
   );
   return wallet && "address" in wallet ? wallet.address : null;
 }

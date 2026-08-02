@@ -1,0 +1,82 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { ChessDialogFrame } from "@/components/dashboard/casino/chess/chess-dialog-frame";
+import {
+  CHESS_CARD_BG,
+  CHESS_CARD_SHADOW,
+  CHESS_PRIMARY_BUTTON_CLASS,
+} from "@/lib/casino/chess/ui";
+import { truncateAddress } from "@/lib/format";
+import type { ChessMatch } from "@/lib/casino/api/types";
+
+function publicLabel(name: string | null | undefined, wallet: string | null | undefined, fallback = "Player") {
+  if (name && name !== "Account" && name !== "World Street user") return name;
+  return wallet ? truncateAddress(wallet) : fallback;
+}
+
+function liveMatchLabel(match: ChessMatch): string {
+  return `${publicLabel(match.white?.username, match.white?.walletAddress)} vs ${publicLabel(
+    match.black?.username,
+    match.black?.walletAddress
+  )}`;
+}
+
+interface ChessLiveNowDialogProps {
+  open: boolean;
+  onClose: () => void;
+  matches: ChessMatch[];
+}
+
+export function ChessLiveNowDialog({ open, onClose, matches }: ChessLiveNowDialogProps) {
+  const router = useRouter();
+
+  const onWatch = (matchId: string) => {
+    onClose();
+    router.push(`/casino/chess/watch?match=${matchId}`);
+  };
+
+  return (
+    <ChessDialogFrame open={open} onClose={onClose} title="Live Now" iconSrc="/chesscom-icons/time-blitz.svg">
+      <div className="space-y-4">
+        <div className="text-[13px] leading-6 text-white/60">
+          Watch games that are already live, then open the market to spectate and bet from your chess balance.
+        </div>
+
+        {matches.length === 0 ? (
+          <div
+            className="rounded-[18px] border border-white/8 px-5 py-5 text-[14px] text-white/60"
+            style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
+          >
+            No live chess games right now.
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {matches.map((match) => (
+              <div
+                key={match.id}
+                className="rounded-[18px] border border-white/8 px-5 py-5"
+                style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
+              >
+                <div className="mb-2 font-sans text-[1.15rem] font-extrabold leading-none tracking-[-0.03em] text-white">
+                  {liveMatchLabel(match)}
+                </div>
+                <div className="mb-4 text-[13px] leading-6 text-white/62">
+                  {match.timeControl}
+                  {match.stakeUsdc ? ` · Staked ${match.stakeUsdc} USDC` : " · Casual game"}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onWatch(match.id)}
+                  className={`${CHESS_PRIMARY_BUTTON_CLASS} px-4 py-2.5 font-sans text-[13px] font-bold`}
+                >
+                  Watch
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </ChessDialogFrame>
+  );
+}

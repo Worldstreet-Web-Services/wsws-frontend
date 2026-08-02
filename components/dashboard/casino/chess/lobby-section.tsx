@@ -1,10 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useAcceptChallenge, useChessLobby, useQuickMatch } from "@/hooks/use-casino-chess";
+import { useAcceptChallenge, useChessLobby } from "@/hooks/use-casino-chess";
+import { ChessLiveNowDialog } from "@/components/dashboard/casino/chess/chess-live-now-dialog";
+import { ChessTournamentsDialog } from "@/components/dashboard/casino/chess/chess-tournaments-dialog";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import {
   CasinoError,
@@ -17,7 +19,7 @@ import { friendlyError } from "@/lib/errors";
 import { truncateAddress } from "@/lib/format";
 import { initialBoard } from "@/lib/casino/chess/engine";
 import { toast } from "@/lib/toast";
-import type { ChessChallenge, ChessMatch, ChessTimeControl } from "@/lib/casino/api/types";
+import type { ChessChallenge } from "@/lib/casino/api/types";
 
 const SURFACE_BG = "#312E2B";
 const SHELL_BG = "rgba(0, 0, 0, 0.20)";
@@ -32,7 +34,6 @@ const CARD_SHADOW_HOVER =
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
 const LOBBY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 255px))";
-const QUICK_MATCH_TIME_CONTROL: ChessTimeControl = "5+3";
 
 function timeControlLabel(t: ReturnType<typeof useTranslations>, tc: string): string {
   return tc === "3+2" || tc === "5+3" ? t("blitz", { tc }) : t("rapid", { tc });
@@ -281,10 +282,6 @@ function selfLabel(name: string | null | undefined, wallet: string | null): stri
   return publicLabel(name, wallet, "You");
 }
 
-function liveMatchLabel(t: ReturnType<typeof useTranslations>, match: ChessMatch): string {
-  return `${publicLabel(match.white?.username, match.white?.walletAddress)} ${t("vs")} ${publicLabel(match.black?.username, match.black?.walletAddress)}`;
-}
-
 export function LobbySection() {
   const t = useTranslations("casino.chess.lobby");
   const tCommon = useTranslations("casino.chess.common");
@@ -293,12 +290,12 @@ export function LobbySection() {
   const { challenges, myActiveGames, myOpenGames, liveMatches, isLoading, error, refetch } =
     useChessLobby(wallet.address ?? null);
   const accept = useAcceptChallenge();
-  const quickMatch = useQuickMatch();
+  const [liveOpen, setLiveOpen] = useState(false);
+  const [tournamentsOpen, setTournamentsOpen] = useState(false);
 
   const activeGame = myActiveGames[0] ?? null;
   const openGame = myOpenGames[0] ?? null;
   const joinableChallenges = challenges.slice(0, 2);
-  const liveWatchMatches = liveMatches.slice(0, 2);
   const showQuietLobbyHint =
     !error &&
     !isLoading &&
@@ -306,29 +303,6 @@ export function LobbySection() {
     !openGame &&
     joinableChallenges.length === 0 &&
     liveMatches.length === 0;
-
-  const onQuickMatch = async () => {
-    if (!wallet.connected) {
-      toast.error(t("toastConnect"));
-      return;
-    }
-    const id = toast.loading(t("toastFinding"));
-    try {
-      const { matchId, waitingOn } = await quickMatch.mutateAsync({
-        timeControl: QUICK_MATCH_TIME_CONTROL,
-        mode: "auto",
-      });
-      if (matchId) {
-        toast.success(t("toastFound"), { id });
-        router.push(`/casino/chess/play?match=${matchId}`);
-        return;
-      }
-      toast.success(t("toastOpened"), { id });
-      router.push(`/casino/chess/matchmaking?ticket=${waitingOn}`);
-    } catch (e) {
-      toast.error(friendlyError(e, t("toastQuickFailed")), { id });
-    }
-  };
 
   const onJoin = async (challenge: ChessChallenge) => {
     if (!wallet.connected) {
@@ -345,13 +319,10 @@ export function LobbySection() {
     }
   };
 
-  const onWatch = (matchId: string) => {
-    router.push(`/casino/chess/watch?match=${matchId}`);
-  };
-
   return (
-    <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,840px)_392px]">
+    <>
+      <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,840px)_392px]">
         <section
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
@@ -378,11 +349,11 @@ export function LobbySection() {
           <div className="space-y-4 p-4 sm:p-6">
             <div className="space-y-4">
               <MenuActionButton
-                title="Play Online"
-                note="Play vs a person of similar skill"
+                title="Live Now"
+                note="Watch active games and open the live market"
                 iconSrc="/chesscom-icons/time-blitz.svg"
-                onClick={() => void onQuickMatch()}
-                ariaLabel={t("findOpponent")}
+                onClick={() => setLiveOpen(true)}
+                ariaLabel="Open live games"
               />
               <MenuActionButton
                 title="Play Bots"
@@ -397,11 +368,11 @@ export function LobbySection() {
                 iconSrc="/chesscom-icons/hand-shake.svg"
                 href="/casino/chess/create"
               />
-              <MenuActionLink
+              <MenuActionButton
                 title="Tournaments"
-                note="Join an Arena where anyone can win"
+                note="Browse current events and create a Swiss tournament"
                 iconSrc="/chesscom-icons/tournaments.svg"
-                href="/casino/chess/swiss"
+                onClick={() => setTournamentsOpen(true)}
               />
               <MenuActionButton
                 title="Chess Variants"
@@ -426,26 +397,6 @@ export function LobbySection() {
                       action={t("join")}
                       disabled={accept.isPending}
                       onAction={() => void onJoin(challenge)}
-                    />
-                  );
-                })}
-              </div>
-            ) : null}
-
-            {liveWatchMatches.length > 0 ? (
-              <div className="space-y-2">
-                <div className="px-1 text-[0.82rem] font-semibold text-white/56">{t("liveNow")}</div>
-                {liveWatchMatches.map((match) => {
-                  const details = match.stakeUsdc
-                    ? `${timeControlLabel(tCommon, match.timeControl)} · ${tCommon("stakedFor", { amount: match.stakeUsdc })}`
-                    : timeControlLabel(tCommon, match.timeControl);
-                  return (
-                    <StateRow
-                      key={match.id}
-                      label={liveMatchLabel(t, match)}
-                      meta={details}
-                      action="Watch"
-                      onAction={() => onWatch(match.id)}
                     />
                   );
                 })}
@@ -492,6 +443,13 @@ export function LobbySection() {
           </div>
         </aside>
       </div>
-    </div>
+      </div>
+
+      <ChessLiveNowDialog open={liveOpen} onClose={() => setLiveOpen(false)} matches={liveMatches} />
+      <ChessTournamentsDialog
+        open={tournamentsOpen}
+        onClose={() => setTournamentsOpen(false)}
+      />
+    </>
   );
 }

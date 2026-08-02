@@ -55,12 +55,14 @@ function ClockIcon() {
 
 const SURFACE_BG = "#312E2B";
 const SHELL_BG = "rgba(0, 0, 0, 0.20)";
+const SIDEBAR_BG =
+  "linear-gradient(180deg, rgba(31, 29, 26, 0.96) 0%, rgba(20, 18, 16, 0.92) 100%)";
 const CARD_BG =
   "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)";
 const SHADOW = "0 .1rem .1rem 0 rgba(0, 0, 0, 0.20)";
 const CARD_SHADOW =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.07), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.20)";
-const PLAY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 280px))";
+const PLAY_BOARD_MAX_WIDTH = "min(100%, 745px, calc(100vh - 375px))";
 
 type Translator = ReturnType<typeof useTranslations>;
 
@@ -491,20 +493,20 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
     <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
-          className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          className="rounded-[8px] p-3 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
         >
           <div className="mx-auto w-full" style={{ maxWidth: PLAY_BOARD_MAX_WIDTH }}>
-            <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div
-                className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
+                className="flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-2.5"
                 style={{ background: SHELL_BG, boxShadow: SHADOW }}
               >
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[1.1rem] font-bold text-white/30">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[0.96rem] font-bold text-white/30">
                   P
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate font-sans text-[1.05rem] font-bold text-white">
+                  <div className="truncate font-sans text-[0.96rem] font-bold text-white">
                     {opponentDisplayName}
                   </div>
                   <CapturedRow
@@ -515,7 +517,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 </div>
               </div>
               <div
-                className="tnum flex min-w-[126px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-5 py-3 text-[1.15rem] font-semibold text-white/88"
+                className="tnum flex min-w-[108px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-3.5 py-2 text-[1rem] font-semibold text-white/88"
                 style={{ background: SHELL_BG, boxShadow: SHADOW }}
               >
                 <ClockIcon />
@@ -567,16 +569,16 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
               </div>
             ) : null}
 
-            <div className="mt-4 flex items-center justify-between gap-4">
+            <div className="mt-3 flex items-center justify-between gap-3">
               <div
-                className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
+                className="flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-2.5"
                 style={{ background: SHELL_BG, boxShadow: SHADOW }}
               >
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[1.1rem] font-bold text-white/30">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847] font-sans text-[0.96rem] font-bold text-white/30">
                   P
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate font-sans text-[1.05rem] font-bold text-white">
+                  <div className="truncate font-sans text-[0.96rem] font-bold text-white">
                     {selfDisplayName}
                   </div>
                   <CapturedRow
@@ -587,7 +589,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                 </div>
               </div>
               <div
-                className={`tnum flex min-w-[126px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-5 py-3 text-[1.15rem] font-semibold ${
+                className={`tnum flex min-w-[108px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-3.5 py-2 text-[1rem] font-semibold ${
                   yourTurn ? "border border-[#B7B1A8]/45 text-white" : "text-white/88"
                 }`}
                 style={{ background: SHELL_BG, boxShadow: SHADOW }}
@@ -614,8 +616,8 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
         </section>
 
         <aside
-          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SHELL_BG }}
+          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          style={{ background: SIDEBAR_BG }}
         >
           <div className="grid grid-cols-4 border-b border-white/6 bg-black/10">
             <div className="grid min-h-[78px] place-items-center px-4 py-3 text-center text-white">

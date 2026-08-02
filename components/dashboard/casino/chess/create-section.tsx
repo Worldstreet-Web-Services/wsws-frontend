@@ -29,13 +29,16 @@ const DECIMAL = /^\d*\.?\d*$/;
 const STAKE_CHIPS = ["1", "5", "10", "25"] as const;
 const SURFACE_BG = "#312E2B";
 const SHELL_BG = "rgba(0, 0, 0, 0.20)";
-const CARD_BG = "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)";
+const SIDEBAR_BG =
+  "linear-gradient(180deg, rgba(31, 29, 26, 0.96) 0%, rgba(20, 18, 16, 0.92) 100%)";
+const CARD_BG =
+  "linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)";
 const SHADOW = "0 .1rem .1rem 0 rgba(0, 0, 0, 0.20)";
 const CARD_SHADOW =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.07), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.20)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
-const CREATE_BOARD_MAX_WIDTH = "min(100%, 760px, calc(100vh - 300px))";
+const CREATE_BOARD_MAX_WIDTH = "min(100%, 730px, calc(100vh - 365px))";
 
 const CREATE_TIME_GROUPS = [
   {
@@ -222,11 +225,11 @@ function PlayerBar({
       className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
       style={{ background: SHELL_BG, boxShadow: SHADOW }}
     >
-      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[4px] bg-[#4B4847]">
-        <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-8 w-8 opacity-35" />
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] bg-[#4B4847]">
+        <LandingIcon src="/chesscom-icons/play-white.svg" alt="" className="h-6.5 w-6.5 opacity-35" />
       </span>
       <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate font-sans text-[1.05rem] font-bold text-white">{label}</span>
+        <span className="truncate font-sans text-[0.96rem] font-bold text-white">{label}</span>
         {active ? (
           <span aria-hidden className="inline-flex gap-[3px]">
             <span className="h-4 w-[8px] rounded-[2px] bg-[#B7B1A8]" />
@@ -241,7 +244,7 @@ function PlayerBar({
 function ClockBadge({ label }: { label: string }) {
   return (
     <div
-      className="flex min-w-[126px] items-center justify-center rounded-[8px] px-5 py-3 text-[1.05rem] font-semibold text-white/88"
+      className="flex min-w-[108px] items-center justify-center rounded-[8px] px-3.5 py-2 text-[0.96rem] font-semibold text-white/88"
       style={{ background: SHELL_BG, boxShadow: SHADOW }}
     >
       {label}
@@ -446,26 +449,26 @@ export function CreateSection() {
     <div className="mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
-          className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          className="rounded-[8px] p-3 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
         >
           <div className="mx-auto w-full" style={{ maxWidth: CREATE_BOARD_MAX_WIDTH }}>
-            <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <PlayerBar label="Opponent" />
               <div className="flex items-center gap-3">
                 <ClockBadge label={selectedTime.clock} />
                 <span
-                  className="grid h-[50px] w-[50px] place-items-center rounded-[8px] text-white/55"
+                  className="grid h-[44px] w-[44px] place-items-center rounded-[8px] text-white/55"
                   style={{ background: SHELL_BG, boxShadow: SHADOW }}
                 >
-                  <SettingsIcon size={18} />
+                  <SettingsIcon size={16} />
                 </span>
               </div>
             </div>
             <div className="overflow-hidden rounded-[2px]">
               <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />
             </div>
-            <div className="mt-4 flex items-center justify-between gap-4">
+            <div className="mt-3 flex items-center justify-between gap-3">
               <PlayerBar
                 label={selfLabel(wallet.name, wallet.address ?? null)}
                 active={wallet.connected}
@@ -476,8 +479,8 @@ export function CreateSection() {
         </section>
 
         <aside
-          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
-          style={{ background: SHELL_BG }}
+          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          style={{ background: SIDEBAR_BG }}
         >
           <div className="grid grid-cols-3 border-b border-white/6 bg-black/10">
             <RailTab label="New Game" icon={<TabIcon kind="new" active />} active />

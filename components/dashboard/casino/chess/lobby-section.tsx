@@ -30,6 +30,7 @@ const CARD_SHADOW_HOVER =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.14), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.14), 0 .2rem .4rem 0 rgba(0, 0, 0, 0.10)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
+const LOBBY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 255px))";
 const QUICK_MATCH_TIME_CONTROL: ChessTimeControl = "5+3";
 
 function timeControlLabel(t: ReturnType<typeof useTranslations>, tc: string): string {
@@ -336,12 +337,12 @@ export function LobbySection() {
 
   return (
     <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_392px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,840px)_392px]">
         <section
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
         >
-          <div className="mx-auto max-w-[944px]">
+          <div className="mx-auto w-full" style={{ maxWidth: LOBBY_BOARD_MAX_WIDTH }}>
             <PlayerBar label={t("colOpponent")} />
             <div className="mt-4 overflow-hidden rounded-[2px]">
               <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />

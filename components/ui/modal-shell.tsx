@@ -12,15 +12,26 @@ interface ModalShellProps {
   // (e.g. the detail modal opening the buy sheet), the new content slides in
   // instead of swapping instantly.
   contentKey?: string | number;
+  // Desktop width. Defaults to the standard sheet; "lg" is for form-heavy
+  // modals (e.g. create market) that need more room.
+  size?: "md" | "lg";
+  // Extra classes for the panel surface and the close button, for the rare modal
+  // that needs to tweak padding, width, or the close position.
   panelClassName?: string;
   closeButtonClassName?: string;
 }
+
+const SIZE_WIDTH: Record<"md" | "lg", string> = {
+  md: "md:w-[min(440px,100%)]",
+  lg: "md:w-[min(600px,100%)]",
+};
 
 export function ModalShell({
   open,
   onClose,
   children,
   contentKey,
+  size = "md",
   panelClassName,
   closeButtonClassName,
 }: ModalShellProps) {
@@ -48,7 +59,8 @@ export function ModalShell({
             }
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:w-[min(440px,100%)] md:rounded-[24px] md:pt-[26px]",
+              "bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px] md:pt-[26px]",
+              SIZE_WIDTH[size],
               panelClassName
             )}
           >

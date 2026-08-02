@@ -152,6 +152,9 @@ export function usePredictionActions() {
         toast.success(t(side === "yes" ? "betPlacedYes" : "betPlacedNo"), { id: toastId });
         return true;
       } catch (error) {
+        // Log the raw reason: friendlyError hides RPC/sponsorship text from the
+        // toast, so the console is where a failed trade's real cause shows up.
+        console.error("[prediction] buy failed", error);
         toast.error(friendlyError(error, t("betFailed")), { id: toastId });
         return false;
       } finally {
@@ -195,6 +198,7 @@ export function usePredictionActions() {
         toast.success(t("positionSold"), { id: toastId });
         return true;
       } catch (error) {
+        console.error("[prediction] sell failed", error);
         toast.error(friendlyError(error, t("sellFailed")), { id: toastId });
         return false;
       } finally {

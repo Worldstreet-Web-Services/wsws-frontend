@@ -2,10 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { usePredictionActions } from "@/hooks/use-prediction-actions";
 import { useCategories } from "@/hooks/use-prediction-markets";
 import { attachMetadata, newIdempotencyKey, uploadImage } from "@/lib/prediction/api";
+import { isImageNotConfigured } from "@/lib/prediction/normalize";
 import { toBaseUnits } from "@/lib/trade/math";
 import { USDC_DECIMALS } from "@/lib/prediction/types";
 import { toast } from "@/lib/toast";
@@ -40,30 +42,46 @@ function randomMarketId(): bigint {
   return id;
 }
 
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Could not read the image."));
-    reader.readAsDataURL(file);
-  });
-}
+// Downscale the longest edge to this many pixels before upload.
+const MAX_IMAGE_DIM = 1280;
+// JPEG quality for the compressed upload (0..1). Heavy compression keeps the
+// payload small so the upload is fast and well under any body-size limit.
+const IMAGE_QUALITY = 0.7;
 
-// True when the image is landscape (at least as wide as it is tall).
-function isLandscape(file: File): Promise<boolean> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img.naturalWidth >= img.naturalHeight);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(false);
-    };
-    img.src = url;
-  });
+type ProcessedImage = { ok: true; dataUrl: string } | { ok: false; reason: "landscape" | "read" };
+
+// Validates orientation and compresses the image on a canvas (resize + JPEG)
+// before it ever hits the network. A multi-MB photo becomes a few hundred KB,
+// which is what we send to the upload API.
+async function processImage(file: File): Promise<ProcessedImage> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("read"));
+      el.src = url;
+    });
+    if (img.naturalWidth < img.naturalHeight) return { ok: false, reason: "landscape" };
+
+    const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return { ok: false, reason: "read" };
+    // Flatten onto white so transparent PNGs don't turn black as JPEG.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return { ok: true, dataUrl: canvas.toDataURL("image/jpeg", IMAGE_QUALITY) };
+  } catch {
+    return { ok: false, reason: "read" };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // Creation flow: pick an image (uploaded to Cloudinary immediately for a secure
@@ -73,6 +91,7 @@ function isLandscape(file: File): Promise<boolean> {
 export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
   const t = useTranslations("prediction");
   const actions = usePredictionActions();
+  const queryClient = useQueryClient();
   const { data: liveCategories } = useCategories();
 
   // The market id is chosen once and reused for both the image upload and the
@@ -137,24 +156,32 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
       toast.error(t("imageTooLarge"));
       return;
     }
-    if (!(await isLandscape(picked))) {
-      toast.error(t("imageNotLandscape"));
+    // Validate + heavily compress on a canvas before touching the network.
+    const processed = await processImage(picked);
+    if (!processed.ok) {
+      toast.error(processed.reason === "landscape" ? t("imageNotLandscape") : t("imageUploadFailed"));
       return;
     }
     setImageUrl(null);
     setImageError(false);
     setUploading(true);
     try {
-      const dataUrl = await readAsDataUrl(picked);
       const { imageUrl: url } = await uploadImage(
         marketId().toString(),
-        dataUrl,
+        processed.dataUrl,
         newIdempotencyKey()
       );
       setImageUrl(url);
-    } catch {
-      setImageError(true);
-      toast.error(t("imageUploadFailed"));
+    } catch (error) {
+      if (isImageNotConfigured(error)) {
+        // Image hosting isn't set up on the deployment: don't block creation,
+        // just let the user proceed without an image.
+        setImageError(false);
+        toast.info(t("imageHostingUnavailable"));
+      } else {
+        setImageError(true);
+        toast.error(t("imageUploadFailed"));
+      }
     } finally {
       setUploading(false);
     }
@@ -198,6 +225,10 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
     } catch {
       toast.info(t("metadataDeferred"));
     }
+
+    // Refetch the lists so the new market shows up with its question, category,
+    // and image (the on-chain create already invalidated once, before metadata).
+    void queryClient.invalidateQueries({ queryKey: ["prediction"] });
 
     toast.success(t("marketCreated"));
     onDone();

@@ -2,12 +2,27 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
-import { getLpPositions, getPositions } from "@/lib/prediction/api";
+import { getLpPositions, getMyMarkets, getPositions } from "@/lib/prediction/api";
 import { readPendingWithdrawals } from "@/lib/prediction/chain-reads";
 import { getWalletAddress } from "@/lib/user";
 
 // Portfolio reads for the connected wallet: open positions and LP positions from
-// the indexer, and the claimable balance straight from the contract.
+// the indexer, the markets the wallet created, and the claimable balance from the
+// contract.
+
+// Markets the connected wallet created (by on-chain creator), so they can resolve
+// their own markets even before the indexer backfills the creator field.
+export function useMyMarkets() {
+  const { user } = usePrivy();
+  const wallet = getWalletAddress(user, "ethereum");
+  return useQuery({
+    queryKey: ["prediction", "my-markets", wallet],
+    queryFn: () => getMyMarkets(wallet as string),
+    enabled: !!wallet,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
 
 export function usePositions() {
   const { user } = usePrivy();

@@ -21,12 +21,29 @@ import {
 export class PredictionApiError extends Error {
   code: string;
   status: number;
-  constructor(code: string, message: string, status = 0) {
+  // Optional error.details from the envelope (e.g. { reason: "not_configured" }
+  // on the image endpoint), so callers can degrade gracefully.
+  details?: unknown;
+  constructor(code: string, message: string, status = 0, details?: unknown) {
     super(message);
     this.name = "PredictionApiError";
     this.code = code;
     this.status = status;
+    this.details = details;
   }
+}
+
+// Whether an image-upload failure is because Cloudinary isn't configured on the
+// deployment (a 502 with details.reason === "not_configured"), which the create
+// flow treats as "attach no image" rather than a hard error.
+export function isImageNotConfigured(error: unknown): boolean {
+  if (!(error instanceof PredictionApiError)) return false;
+  const details = error.details;
+  return (
+    !!details &&
+    typeof details === "object" &&
+    (details as { reason?: unknown }).reason === "not_configured"
+  );
 }
 
 const MALFORMED = "MALFORMED_RESPONSE";
@@ -53,13 +70,6 @@ function toUnixSeconds(value: unknown, field: string): number {
     throw new PredictionApiError(MALFORMED, `Field "${field}" is not a valid timestamp.`);
   }
   return Math.floor(value);
-}
-
-function toStr(value: unknown, field: string): string {
-  if (typeof value !== "string" || value === "") {
-    throw new PredictionApiError(MALFORMED, `Field "${field}" is missing.`);
-  }
-  return value;
 }
 
 function toNullableStr(value: unknown): string | null {
@@ -100,7 +110,8 @@ export function normalizeMarket(raw: unknown): Market {
   const priceYes = toBig(m.priceYes, "priceYes");
   return {
     marketId: toBig(m.marketId, "marketId"),
-    creator: toStr(m.creator, "creator"),
+    // Creator can be empty on markets not yet fully indexed; don't reject those.
+    creator: typeof m.creator === "string" ? m.creator : "",
     question: toNullableStr(m.question),
     category: toNullableStr(m.category),
     imageUrl: toNullableStr(m.imageUrl),
@@ -120,16 +131,31 @@ export function normalizeMarket(raw: unknown): Market {
   };
 }
 
+// Normalizes a list, skipping any entry that fails rather than throwing the
+// whole list away. A single malformed row from the indexer must never blank an
+// entire view; the bad row is dropped and logged.
+function mapValid<T>(raw: unknown, one: (item: unknown) => T, label: string): T[] {
+  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, `Expected a ${label} list.`);
+  const out: T[] = [];
+  for (const item of raw) {
+    try {
+      out.push(one(item));
+    } catch (error) {
+      console.warn(`[prediction] skipping malformed ${label}`, error);
+    }
+  }
+  return out;
+}
+
 export function normalizeMarkets(raw: unknown): Market[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected a market list.");
-  return raw.map(normalizeMarket);
+  return mapValid(raw, normalizeMarket, "market");
 }
 
 export function normalizeTrade(raw: unknown): Trade {
   const t = asRecord(raw);
   return {
-    txHash: toStr(t.txHash, "txHash"),
-    trader: toStr(t.trader, "trader"),
+    txHash: typeof t.txHash === "string" ? t.txHash : "",
+    trader: typeof t.trader === "string" ? t.trader : "",
     buy: Boolean(t.buy),
     side: toSide(t.side),
     usdcAmount: toBig(t.usdcAmount, "usdcAmount"),
@@ -140,8 +166,7 @@ export function normalizeTrade(raw: unknown): Trade {
 }
 
 export function normalizeTrades(raw: unknown): Trade[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected a trade list.");
-  return raw.map(normalizeTrade);
+  return mapValid(raw, normalizeTrade, "trade");
 }
 
 export function normalizeChartPoint(raw: unknown): ChartPoint {
@@ -154,8 +179,7 @@ export function normalizeChartPoint(raw: unknown): ChartPoint {
 }
 
 export function normalizeChart(raw: unknown): ChartPoint[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected a chart series.");
-  return raw.map(normalizeChartPoint);
+  return mapValid(raw, normalizeChartPoint, "chart point");
 }
 
 export function normalizePricePoint(raw: unknown): PricePoint {
@@ -167,8 +191,7 @@ export function normalizePricePoint(raw: unknown): PricePoint {
 }
 
 export function normalizePrices(raw: unknown): PricePoint[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected a price series.");
-  return raw.map(normalizePricePoint);
+  return mapValid(raw, normalizePricePoint, "price point");
 }
 
 // Positions from the list endpoint carry marketId; the per-market endpoint omits
@@ -184,8 +207,7 @@ export function normalizePosition(raw: unknown, marketId?: bigint): Position {
 }
 
 export function normalizePositions(raw: unknown, marketId?: bigint): Position[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected a position list.");
-  return raw.map((item) => normalizePosition(item, marketId));
+  return mapValid(raw, (item) => normalizePosition(item, marketId), "position");
 }
 
 export function normalizeLpPosition(raw: unknown): LpPosition {
@@ -197,6 +219,5 @@ export function normalizeLpPosition(raw: unknown): LpPosition {
 }
 
 export function normalizeLpPositions(raw: unknown): LpPosition[] {
-  if (!Array.isArray(raw)) throw new PredictionApiError(MALFORMED, "Expected an LP list.");
-  return raw.map(normalizeLpPosition);
+  return mapValid(raw, normalizeLpPosition, "LP position");
 }

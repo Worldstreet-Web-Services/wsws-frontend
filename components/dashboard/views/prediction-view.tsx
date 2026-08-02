@@ -19,10 +19,17 @@ export function PredictionView() {
   const [category, setCategory] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const { data: markets, isLoading } = useMarkets("Open", category ?? undefined);
+  // Fetch the full open set once; tabs are derived from it so a topic appears as
+  // soon as a market carries it, and filtering happens client-side.
+  const { data: markets, isLoading } = useMarkets("Open");
   const { data: categories } = useCategories();
 
-  const tabs = useMemo(() => categories ?? [], [categories]);
+  const tabs = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of categories ?? []) set.add(c);
+    for (const m of markets ?? []) if (m.category) set.add(m.category);
+    return Array.from(set);
+  }, [categories, markets]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -32,7 +39,7 @@ export function PredictionView() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const list = markets ?? [];
+  const list = category ? (markets ?? []).filter((m) => m.category === category) : (markets ?? []);
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">

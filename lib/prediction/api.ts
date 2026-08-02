@@ -31,7 +31,7 @@ import type {
 interface Envelope<T> {
   success: boolean;
   data?: T;
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; details?: unknown };
 }
 
 async function request<T>(path: string, init: RequestInit = {}, auth = false): Promise<T> {
@@ -41,7 +41,8 @@ async function request<T>(path: string, init: RequestInit = {}, auth = false): P
     throw new PredictionApiError(
       body?.error?.code ?? "SERVICE_UNAVAILABLE",
       body?.error?.message ?? "Prediction markets are unavailable right now.",
-      res.status
+      res.status,
+      body?.error?.details
     );
   }
   return body.data as T;
@@ -67,6 +68,12 @@ export async function listMarkets(status?: MarketStatus): Promise<Market[]> {
   const query = status ? `?status=${status}` : "";
   const raw = await request<unknown>(`/markets${query}`);
   return normalizeMarkets(raw);
+}
+
+// Markets this wallet created (matched on the on-chain creator), so a creator can
+// find their own markets to resolve them.
+export async function getMyMarkets(wallet: string): Promise<Market[]> {
+  return normalizeMarkets(await request<unknown>(`/markets/mine?wallet=${wallet}`));
 }
 
 export async function getMarket(id: string): Promise<Market> {

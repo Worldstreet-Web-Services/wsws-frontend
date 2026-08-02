@@ -5,7 +5,11 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useMoney } from "@/components/ui/currency-select";
 import { ChevronLeftIcon, ChartBarsIcon } from "@/components/ui/icons";
-import { usePositions, usePendingWithdrawals } from "@/hooks/use-prediction-portfolio";
+import {
+  usePositions,
+  usePendingWithdrawals,
+  useMyMarkets,
+} from "@/hooks/use-prediction-portfolio";
 import { useMarkets } from "@/hooks/use-prediction-markets";
 import { usePredictionActions } from "@/hooks/use-prediction-actions";
 import { sideLabel, toNumber } from "@/lib/prediction/format";
@@ -20,6 +24,7 @@ export function PortfolioPanel() {
   const money = useMoney();
   const { data: positions, isLoading, isError } = usePositions();
   const { data: markets } = useMarkets();
+  const { data: myMarkets } = useMyMarkets();
   const withdrawable = usePendingWithdrawals();
   const actions = usePredictionActions();
 
@@ -42,7 +47,10 @@ export function PortfolioPanel() {
     if (ok) void actions.claim();
   };
 
+  const created = myMarkets ?? [];
+
   return (
+    <>
     <div className="ws-card relative mt-7 overflow-hidden sm:mt-9">
       <div
         aria-hidden
@@ -135,5 +143,35 @@ export function PortfolioPanel() {
         </div>
       ) : null}
     </div>
+
+    {created.length > 0 ? (
+      <div className="ws-card mt-5 overflow-hidden">
+        <div className="px-5 pt-5 pb-3 sm:px-6">
+          <span className="ws-display text-[18px] tracking-[-0.01em]">{t("yourMarkets")}</span>
+          <div className="mt-0.5 text-[12.5px] font-normal text-white/60">
+            {t("yourMarketsSubtitle")}
+          </div>
+        </div>
+        {created.map((m) => (
+          <Link
+            key={m.marketId.toString()}
+            href={`/prediction/${m.marketId}`}
+            className="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-white/6 px-4 py-3 transition-colors hover:bg-white/4 sm:px-6"
+          >
+            <div className="min-w-0">
+              <div className="truncate font-sans text-[13.5px] font-medium">
+                {m.question ?? t("marketFallback")}
+              </div>
+              <div className="text-xs font-normal text-white/50">{t(`status_${m.status}`)}</div>
+            </div>
+            <span className="text-accent inline-flex shrink-0 items-center text-[12.5px] font-medium">
+              {m.status === "Open" || m.status === "Closed" ? t("resolveTitle") : t("viewSlip")}
+              <ChevronLeftIcon size={12} className="-scale-x-100" />
+            </span>
+          </Link>
+        ))}
+      </div>
+    ) : null}
+    </>
   );
 }

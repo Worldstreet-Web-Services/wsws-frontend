@@ -136,7 +136,9 @@ export function ExecutionPanel({ market, initialSide = "yes" }: ExecutionPanelPr
             }}
             className={`flex-1 cursor-pointer rounded-lg border py-2 font-medium transition-colors ${
               mode === mo
-                ? "border-accent/45 bg-accent/12 text-white"
+                ? mo === "sell"
+                  ? "border-down/45 bg-down/16 text-down"
+                  : "border-accent/45 bg-accent/12 text-white"
                 : "border-white/10 bg-white/4 text-white/60 hover:bg-white/8"
             }`}
           >
@@ -204,7 +206,9 @@ export function ExecutionPanel({ market, initialSide = "yes" }: ExecutionPanelPr
       <button
         onClick={submit}
         disabled={!canSubmit}
-        className="text-ink mt-1 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className={`mt-1 w-full cursor-pointer rounded-[14px] p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${
+          mode === "sell" ? "bg-down text-white" : "text-ink bg-white"
+        }`}
       >
         {actions.busy
           ? t("confirmingOnChain")

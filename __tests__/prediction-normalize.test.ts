@@ -4,6 +4,7 @@ import {
   normalizeChart,
   normalizeLpPositions,
   normalizeMarket,
+  normalizeMarkets,
   normalizePositions,
   normalizeTrade,
 } from "@/lib/prediction/normalize";
@@ -62,6 +63,26 @@ describe("normalizeMarket", () => {
   it("throws on a malformed numeric string", () => {
     expect(() => normalizeMarket({ ...RAW_MARKET, rYes: "12.5" })).toThrow(PredictionApiError);
     expect(() => normalizeMarket({ ...RAW_MARKET, priceYes: "abc" })).toThrow(PredictionApiError);
+  });
+
+  it("accepts an empty creator on a not-yet-indexed market", () => {
+    const m = normalizeMarket({ ...RAW_MARKET, creator: "" });
+    expect(m.creator).toBe("");
+  });
+});
+
+describe("normalizeMarkets", () => {
+  it("keeps valid markets and skips a malformed one instead of failing the list", () => {
+    const markets = normalizeMarkets([
+      RAW_MARKET,
+      { ...RAW_MARKET, marketId: "102", status: "Frozen" }, // bad status -> skipped
+      { ...RAW_MARKET, marketId: "103", creator: "" }, // empty creator -> kept
+    ]);
+    expect(markets.map((m) => m.marketId)).toEqual([101n, 103n]);
+  });
+
+  it("throws only when the payload is not a list", () => {
+    expect(() => normalizeMarkets({} as unknown)).toThrow(PredictionApiError);
   });
 });
 

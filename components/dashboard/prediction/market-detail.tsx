@@ -11,6 +11,7 @@ import { TradeTape } from "@/components/dashboard/prediction/trade-tape";
 import { ExecutionPanel } from "@/components/dashboard/prediction/execution-panel";
 import { LiquidityPanel } from "@/components/dashboard/prediction/liquidity-panel";
 import { useMarket, useMarketChart, useMarketTrades } from "@/hooks/use-prediction-markets";
+import { useMyMarkets } from "@/hooks/use-prediction-portfolio";
 import { usePredictionMarketStream } from "@/hooks/use-prediction-market-stream";
 import { usePredictionActions } from "@/hooks/use-prediction-actions";
 import { compactUsd, priceToCents, priceToPct } from "@/lib/prediction/format";
@@ -33,6 +34,7 @@ export function MarketDetail({ id }: MarketDetailProps) {
   const { data: chart } = useMarketChart(id, interval);
   const { data: restTrades } = useMarketTrades(id);
   const { liveTrades } = usePredictionMarketStream(id);
+  const { data: myMarkets } = useMyMarkets();
   const actions = usePredictionActions();
 
   // Live trades sit on top of the REST tape, capped for display.
@@ -41,8 +43,14 @@ export function MarketDetail({ id }: MarketDetailProps) {
     [liveTrades, restTrades]
   );
 
+  // A user owns this market if the on-chain creator matches, or the market is in
+  // their /markets/mine list (reliable even before the indexer backfills creator).
+  const createdByMe = (myMarkets ?? []).some((m) => m.marketId.toString() === id);
   const isCreator =
-    !!market && !!actions.wallet && market.creator.toLowerCase() === actions.wallet.toLowerCase();
+    createdByMe ||
+    (!!market &&
+      !!actions.wallet &&
+      market.creator.toLowerCase() === actions.wallet.toLowerCase());
   const canResolve = isCreator && (market?.status === "Open" || market?.status === "Closed");
 
   if (isLoading || !market) {

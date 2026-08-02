@@ -59,6 +59,8 @@
     "confirmingNote": "Der Server verifiziert den Handel auf Base. Das dauert meist unter einer Minute.",
     "confirmedTitle": "Handel bestätigt",
     "confirmedBody": "On-chain verifiziert. Ihr Guthaben wurde aktualisiert.",
+    "receivedTitle": "{amount} {symbol} erhalten",
+    "receivedBody": "On-chain in Ihrer Wallet verifiziert. Die endgültige Serverbestätigung läuft im Hintergrund — Sie können dies schließen.",
     "done": "Fertig",
     "cancel": "Abbrechen",
     "sideDisabled": "Der Handel für diesen Token ist pausiert",
@@ -70,7 +72,8 @@
     "next": "Weiter",
     "confirmingLong": "Wird noch verifiziert — Base ist ausgelastet. Sie können dies schließen; das Ergebnis erscheint, sobald es vorliegt.",
     "closeAndNotify": "Schließen — Ergebnis melden",
-    "orderFailed": "Der Handel wurde nicht abgeschlossen."
+    "orderFailed": "Der Handel wurde nicht abgeschlossen.",
+    "max": "Max"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -121,7 +124,9 @@
     "youPay": "Sie zahlen",
     "youReceive": "Sie erhalten",
     "youSell": "Sie verkaufen",
-    "youSellRow": "Sie verkaufen"
+    "youSellRow": "Sie verkaufen",
+    "ctaNotSellable": "{symbol} kann aus dieser Wallet nicht verkauft werden",
+    "ctaNeedsGas": "Sie brauchen {symbol} auf {chain} für die Netzwerkgebühr"
   },
   "topbar": {
     "searchPlaceholder": "Assets, Märkte, Ticker suchen",
@@ -807,7 +812,9 @@
     "confirmRiskOpen": "Gehebelte Trades können schnell an Wert verlieren, die Ausführung erfolgt zum Marktpreis. Fahren Sie nur fort, wenn alles stimmt.",
     "confirmRiskClose": "Die Schließung erfolgt zum aktuellen Marktpreis. Dies kann nicht rückgängig gemacht werden.",
     "confirmCancel": "Abbrechen",
-    "confirmContinue": "Fortfahren"
+    "confirmContinue": "Fortfahren",
+    "positionsUnavailable": "Ihre Positionen konnten nicht geladen werden. Sie sind on-chain sicher; neuer Versuch…",
+    "updateTakingLonger": "Die Änderung ist bestätigt und braucht einen Moment bis zur Abwicklung."
   },
   "fundsFlow": {
     "back": "Zurück",
@@ -907,16 +914,21 @@
     "youWithdraw": "Sie zahlen aus",
     "bankComingSoonBody": "Bankauszahlungen werden mit unserem Zahlungspartner fertiggestellt. Zahlen Sie in der Zwischenzeit auf eine Krypto-Wallet aus.",
     "fiatDepositTitle": "Mit Karte oder Bank aufladen",
-    "fiatDepositSubtitle": "Laden Sie Ihre Wallet in Naira auf. Wird in USDC abgewickelt.",
+    "fiatDepositSubtitle": "Zahlen Sie mit Karte, Apple Pay oder Google Pay. Abgewickelt als USDC auf Base.",
     "youPay": "Sie zahlen",
     "card": "Karte",
     "bankTransfer": "Überweisung",
-    "fiatComingSoonBody": "Wir schließen die Verifizierung mit unserem Zahlungspartner ab. Karten- und Bankaufladung starten in Kürze. Zahlen Sie in der Zwischenzeit Krypto ein.",
     "searchPlaceholder": "Suchen",
     "selectNetwork": "Netzwerk wählen",
     "pickNetworkFirst": "Wählen Sie zuerst ein Netzwerk",
     "networksError": "Netzwerke konnten nicht geladen werden.",
-    "tokensError": "Tokens konnten nicht geladen werden."
+    "tokensError": "Tokens konnten nicht geladen werden.",
+    "fiatNote": "Die Zahlung wird sicher von Privy abgewickelt. Das Guthaben trifft meist wenige Minuten nach einem abgeschlossenen Kauf ein.",
+    "fiatWorking": "Warten auf die Zahlung…",
+    "fiatContinue": "Weiter — {amount} $",
+    "fiatMin": "Minimum ist {min} $",
+    "fiatSuccess": "Zahlung abgeschlossen. Ihre USDC sind unterwegs.",
+    "fiatFailed": "Die Zahlung wurde nicht abgeschlossen. Sie wurden nicht doppelt belastet — versuchen Sie es erneut."
   },
   "remit": {
     "sendMoney": "Geld senden",
@@ -1208,17 +1220,19 @@
         "toastConnect": "Verbinden Sie Ihre Wallet, um eine Partie zu erstellen.",
         "toastCreating": "Ihre Partie wird erstellt…",
         "toastCreatedAuto": "Partie erstellt. Ein Gegner wird gesucht.",
-        "toastCreatedInvite": "Partie erstellt. Teilen Sie Ihren Einladungslink.",
+        "toastCreatedInvite": "Herausforderungslink bereit. Senden Sie ihn manuell.",
         "toastCreateFailed": "Diese Partie konnte nicht erstellt werden.",
         "modeInvite": "Per Link einladen",
         "modeAuto": "Automatisch paaren",
         "timeControl": "Bedenkzeit",
         "randomColourNote": "Ihre Farbe wird ausgelost. Die Uhr startet, sobald Ihr Gegner beitritt.",
-        "inviteReady": "Ihre Partie ist offen. Teilen Sie diesen Link, wer ihn zuerst öffnet, übernimmt die andere Seite.",
+        "inviteReady": "Ihre Partie ist offen. Senden Sie diesen Herausforderungslink manuell; wer ihn zuerst öffnet, übernimmt die andere Seite.",
         "copy": "Kopieren",
         "linkCopied": "Link kopiert.",
+        "inviteExplainer": "Nach dem Erstellen öffnen wir das Wartebrett mit kopiertem Herausforderungslink und einem Button zum erneuten Kopieren. Senden Sie den Link manuell; wer ihn zuerst öffnet, übernimmt die andere Seite.",
+        "inviteCopyNote": "Der Link wird direkt nach dem Erstellen kopiert und kann auf dem Wartebrett erneut kopiert werden.",
         "creating": "Partie wird erstellt…",
-        "submitInvite": "Partie erstellen und Einladungslink erhalten",
+        "submitInvite": "Partie starten",
         "submitAuto": "Partie erstellen und Gegner finden"
       },
       "invite": {
@@ -1314,7 +1328,42 @@
         "backToLobby": "Zurück zur Lobby",
         "claimDraw": "Remis reklamieren",
         "toastDrawClaimed": "Remis reklamiert. Partie beendet.",
-        "toastNoClaimableDraw": "Noch kein Remis reklamierbar — dafür braucht es dreifache Stellungswiederholung oder fünfzig Züge ohne Schlagen und Bauernzug."
+        "toastNoClaimableDraw": "Noch kein Remis reklamierbar — dafür braucht es dreifache Stellungswiederholung oder fünfzig Züge ohne Schlagen und Bauernzug.",
+        "navNewGame": "Neue Partie",
+        "navGames": "Partien",
+        "navPlayers": "Spieler",
+        "railMoves": "Züge + Engine",
+        "railChat": "Chat",
+        "railInfo": "Info",
+        "challengeLink": "Herausforderungslink",
+        "shareManually": "Senden Sie diesen Link manuell. Wer ihn zuerst öffnet, übernimmt die andere Seite.",
+        "startGame": "Partie starten",
+        "movesTitle": "Züge",
+        "engineTitle": "Engine",
+        "engineDepth": "Tiefe {depth}",
+        "engineAbout": "Lokale Browser-Analyse über Stockfish WASM.",
+        "engineUnsupported": "Dieser Browser kann die lokale Engine nicht ausführen.",
+        "engineFailed": "Die Engine konnte nicht starten.",
+        "engineScore": "Bewertung",
+        "engineBestMove": "Bester Zug",
+        "engineStatus": "Status",
+        "engineLoading": "Lädt",
+        "engineAnalyzing": "Analysiert",
+        "engineReady": "Bereit",
+        "enginePv": "Hauptvariante",
+        "enginePvWaiting": "Warten auf die Engine-Linie…",
+        "chatTitle": "Chat",
+        "chatWaiting": "Der Chat wird sinnvoller, sobald Ihr Gegner beitritt. Senden Sie vorerst den Herausforderungslink; die Partie beginnt, sobald er geöffnet wird.",
+        "chatUnavailable": "Der Live-Chat ist noch nicht mit diesem Brett verbunden. Partiestand, Züge und Uhren bleiben hier maßgeblich.",
+        "infoTitle": "Info",
+        "infoStatus": "Status",
+        "infoTimeControl": "Bedenkzeit",
+        "infoWhite": "Weiß",
+        "infoBlack": "Schwarz",
+        "controlsWaiting": "Partie-Steuerung",
+        "controlsActions": "Aktionen",
+        "statusFlagged": "Ihre Zeit ist abgelaufen",
+        "navPlay": "Spielen"
       },
       "spectate": {
         "subject": "Diese Begegnung",
@@ -1346,6 +1395,12 @@
         "title": "Schach-Guthaben",
         "available": "Verfügbar",
         "locked": "Im Spiel",
+        "lockBreakdown": "Warum Mittel gebunden sind",
+        "lockedMatch": "Match-Einsätze",
+        "lockedSwiss": "Swiss-Startgelder",
+        "lockedBet": "Zuschauerwetten",
+        "pendingWithdrawal": "Ausstehende Auszahlungen",
+        "lockedOther": "Sonstige Sperren",
         "deposit": "Guthaben aufladen",
         "withdraw": "Auszahlen",
         "depositTitle": "Schach-Guthaben aufladen",
@@ -1481,5 +1536,19 @@
         "watch": "Zuschauen"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Kaufen Sie Kash und verdienen Sie mehr Geld durch Ihre Aktivitäten",
+    "bannerSub": "Handeln, spielen, empfehlen — jede Aktivität zahlt sich in Kash aus.",
+    "bannerCta": "Kash kaufen",
+    "balanceTitle": "Kash-Guthaben",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "activityTitle": "Aktivitätsprämien",
+    "activityTrading": "Trading",
+    "activityGames": "Spiele",
+    "activityReferrals": "Empfehlungen",
+    "activityHint": "Kash-Prämien sammeln sich durch Ihre Aktivität in der App und landen hier.",
+    "comingSoon": "Kash kommt bald. Kauf und Verkauf öffnen in Kürze."
   }
 }

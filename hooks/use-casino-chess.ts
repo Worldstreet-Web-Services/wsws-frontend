@@ -11,9 +11,9 @@ import {
   fetchJoinableMatches,
   fetchLobbyChallenges,
   fetchLiveMatches,
+  fetchPlayerMatches,
   fetchMatch,
   fetchMatchmakingTicket,
-  fetchPlayerMatches,
   fetchWaitingMatches,
   claimDraw,
   offerDraw,
@@ -27,22 +27,30 @@ import {
   applyPositionFrame,
   applyStateFrame,
   parseTimeControl,
+  toChessMatch,
   type ChessMatchWire,
   type ChessPositionFrame,
 } from "@/lib/casino/api/chess-wire";
 import { subscribeChessTopic } from "@/lib/casino/chess/live-socket";
 import { applyUciToFen } from "@/lib/casino/chess/engine";
-import type { ChessColor, ChessMatch, CreateChessChallengeInput } from "@/lib/casino/api/types";
+import { resolveViewerColor } from "@/lib/casino/chess/viewer";
+import type {
+  ChessColor,
+  ChessMatch,
+  ChessMatchState,
+  CreateChessChallengeInput,
+} from "@/lib/casino/api/types";
 
 // The socket is the live path; the poll is only a safety net. Before the first
 // live frame (or if the socket falls silent) the match polls fast, because a
 // board two seconds behind is visibly wrong. Once frames are flowing it backs
 // off to a slow reconcile that merely repairs a missed frame — this keeps a
 // spectator from hammering the gateway, which rate-limits per IP.
-const MATCH_POLL_MS = 2_000;
+const MATCH_POLL_MS = 1_000;
 const MATCH_POLL_LIVE_MS = 5_000;
+const MATCH_WAITING_POLL_MS = 1_000;
 const LOBBY_POLL_MS = 10_000;
-const TICKET_POLL_MS = 3_000;
+const TICKET_POLL_MS = 1_000;
 const OPTIMISTIC_RECONCILE_MS = 1_500;
 
 // How often the displayed clock is recomputed. Four times a second keeps the
@@ -107,6 +115,15 @@ function requireWallet(address: string | null): string {
   return address;
 }
 
+export function chessMatchRefetchMs(
+  state: ChessMatchState | undefined,
+  socketLive: boolean
+): number | false {
+  if (state === "settled" || state === "cancelled") return false;
+  if (state === "awaiting_opponent") return MATCH_WAITING_POLL_MS;
+  return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
+}
+
 export function useChessLobby(wallet: string | null) {
   const challenges = useQuery({
     queryKey: [...CHESS_KEYS.challenges, wallet ?? "anon"],
@@ -148,47 +165,27 @@ export function useChessLobby(wallet: string | null) {
 // actively watching the current server snapshot.
 //
 // The service reports the banked time snapshot, not a per-frame countdown. So
-// the UI has to tick locally between frames, but it must not back-charge time
-// the player did not actually watch: leaving the page, backgrounding the tab,
-// then coming back to an old snapshot must not instantly flag the mover.
+// the UI has to tick locally between frames from the server's own clock anchor:
+// the game start when no move was played yet, or the last move when one has.
+// A tab switch simply pauses the repaint and catches up to that same anchor on
+// return.
 function useTickingClocks(match: ChessMatch | undefined) {
   const [now, setNow] = useState(() => Date.now());
   const [visible, setVisible] = useState(
     () => typeof document === "undefined" || document.visibilityState === "visible"
   );
-  const [observed, setObserved] = useState<{ key: string | null; at: number }>({
-    key: null,
-    at: 0,
-  });
-  const wasVisibleRef = useRef(visible);
   const running = match?.state === "in_progress" && visible;
-
-  const snapshotKey = useMemo(() => {
-    if (!match) return null;
-    return [
-      match.id,
-      match.state,
-      match.turn,
-      match.clockUpdatedAt,
-      match.clocks.w,
-      match.clocks.b,
-    ].join("|");
-  }, [match]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const update = () => setVisible(document.visibilityState === "visible");
+    const update = () => {
+      const isVisible = document.visibilityState === "visible";
+      setVisible(isVisible);
+      if (isVisible) setNow(Date.now());
+    };
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
-
-  useEffect(() => {
-    const becameVisible = visible && !wasVisibleRef.current;
-    wasVisibleRef.current = visible;
-    if (snapshotKey && (becameVisible || observed.key !== snapshotKey)) {
-      setObserved({ key: snapshotKey, at: Date.now() });
-    }
-  }, [observed, snapshotKey, visible]);
 
   useEffect(() => {
     if (!running) return;
@@ -199,18 +196,18 @@ function useTickingClocks(match: ChessMatch | undefined) {
   return useMemo(() => {
     if (!match) return null;
     if (match.state !== "in_progress") return match.clocks;
-    const elapsed =
-      visible && observed.key === snapshotKey ? Math.max(0, (now - observed.at) / 1000) : 0;
+    const since = Date.parse(match.clockUpdatedAt);
+    const elapsed = Number.isFinite(since) ? Math.max(0, (now - since) / 1000) : 0;
     return {
       ...match.clocks,
       [match.turn]: Math.max(0, match.clocks[match.turn] - elapsed),
     } as Record<ChessColor, number>;
-  }, [match, now, observed, snapshotKey, visible]);
+  }, [match, now]);
 }
 
 // One live match. The board, clocks and result all come from the server; the
 // client submits intended moves and renders whatever comes back.
-export function useChessMatch(matchId: string | null) {
+export function useChessMatch(matchId: string | null, seatName: string | null = null) {
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
   const [optimistic, setOptimistic] = useState<OptimisticMatchState | null>(null);
@@ -224,12 +221,18 @@ export function useChessMatch(matchId: string | null) {
 
   const query = useQuery({
     queryKey: CHESS_KEYS.match(matchId ?? "none"),
-    queryFn: () => fetchMatch(matchId as string),
+    queryFn: () =>
+      fetchMatch(
+        matchId as string,
+        matchId ? (queryClient.getQueryData<ChessMatch>(CHESS_KEYS.match(matchId)) ?? null) : null
+      ),
     enabled: !!matchId,
-    refetchInterval: (q) => {
-      if (q.state.data && q.state.data.state !== "in_progress") return false;
-      return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
-    },
+    refetchInterval: (q) => chessMatchRefetchMs(q.state.data?.state, socketLive),
+    // A second browser/tab on the same game must keep moving even when it is
+    // backgrounded. If the live socket is absent or silent (local backend with
+    // no broker fanout, dropped relay, etc.), window-focus refetch is too late:
+    // the hidden board would only catch up when you click back into it.
+    refetchIntervalInBackground: true,
   });
 
   const baseMatch = query.data;
@@ -250,10 +253,11 @@ export function useChessMatch(matchId: string | null) {
   // frame marks the relay live, because a bare socket open does not prove this
   // topic is flowing and a false "live" state would stretch a broken relay into
   // a five-second poll delay for the opponent's move.
-  const liveTopic = match?.liveTopic ?? null;
-  const inProgress = match?.state === "in_progress";
+  const liveTopic = match?.liveTopic ?? (matchId ? `chess:match:${matchId}` : null);
+  const liveTrackable =
+    match?.state === undefined || (match.state !== "settled" && match.state !== "cancelled");
   useEffect(() => {
-    if (!liveTopic || !inProgress || !matchId) return;
+    if (!liveTopic || !matchId || !liveTrackable) return;
     return subscribeChessTopic(liveTopic, (frame) => {
       const { type, data } = frame;
       if (type === "__open") {
@@ -287,13 +291,15 @@ export function useChessMatch(matchId: string | null) {
         );
       } else if (type === "state" && data) {
         queryClient.setQueryData<ChessMatch>(CHESS_KEYS.match(matchId), (prev) =>
-          prev ? applyStateFrame(prev, data as ChessMatchWire) : prev
+          prev
+            ? applyStateFrame(prev, data as ChessMatchWire)
+            : toChessMatch(data as ChessMatchWire)
         );
       } else {
         void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.match(matchId) });
       }
     });
-  }, [liveTopic, inProgress, matchId, queryClient]);
+  }, [liveTopic, liveTrackable, matchId, queryClient]);
 
   useEffect(() => {
     if (!optimistic || !matchId) return;
@@ -311,13 +317,7 @@ export function useChessMatch(matchId: string | null) {
     [queryClient]
   );
 
-  const you: ChessColor | null = !match
-    ? null
-    : match.white?.walletAddress?.toLowerCase() === wallet.address?.toLowerCase()
-      ? "w"
-      : match.black?.walletAddress?.toLowerCase() === wallet.address?.toLowerCase()
-        ? "b"
-        : null;
+  const you = resolveViewerColor(match, wallet.address ?? null, seatName);
 
   const move = useMutation({
     mutationFn: (uci: string) =>
@@ -329,7 +329,6 @@ export function useChessMatch(matchId: string | null) {
       const next = optimisticMove(current, uci);
       if (next) {
         setOptimistic(next);
-        setLiveMatchId(matchId);
       }
     },
     onError: () => setOptimistic(null),
@@ -425,7 +424,8 @@ export function useCreateChallenge() {
   return useMutation({
     mutationFn: (input: CreateChessChallengeInput) =>
       createChallenge({ ...input, creator: requireWallet(wallet.address) }),
-    onSuccess: () => {
+    onSuccess: ({ match }) => {
+      queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
       void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.challenges });
     },
   });
@@ -470,6 +470,7 @@ export function useQuickMatch() {
       for (const candidate of oldest.slice(0, QUICK_MATCH_ATTEMPTS)) {
         try {
           const match = await acceptChallenge(candidate.id, address);
+          queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
           return { matchId: match.id, waitingOn: null };
         } catch {
           // Somebody else took the seat between the list and the join. Try the
@@ -478,7 +479,9 @@ export function useQuickMatch() {
         }
       }
 
-      const { challenge } = await createChallenge({ ...input, creator: address });
+      const { challenge, match, ticket } = await createChallenge({ ...input, creator: address });
+      queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
+      if (ticket) queryClient.setQueryData(CHESS_KEYS.ticket(ticket.id), ticket);
       return { matchId: null, waitingOn: challenge.id };
     },
     onSuccess: () => {

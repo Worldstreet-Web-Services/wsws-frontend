@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
 import { useChessCashier } from "@/hooks/use-chess-cashier";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { exceedsUsdcBalance, normalizeUsdcAmount } from "@/lib/casino/api/cashier";
+import { CHESS_PRIMARY_BUTTON_CLASS, CHESS_SECONDARY_BUTTON_CLASS } from "@/lib/casino/chess/ui";
+import { exceedsUsdcBalance, hasPositiveUsdc, normalizeUsdcAmount } from "@/lib/casino/api/cashier";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
@@ -111,6 +112,13 @@ export function CashierSheet({ onClose, initialMode = "deposit" }: CashierSheetP
     : isDeposit
       ? t("depositSubmit", { amount: normalized ?? "0" })
       : t("withdrawSubmit", { amount: normalized ?? "0" });
+  const lockRows = [
+    { label: t("lockedMatch"), value: cashier.lockBuckets.lockedMatchUsdc },
+    { label: t("lockedSwiss"), value: cashier.lockBuckets.lockedSwissUsdc },
+    { label: t("lockedBet"), value: cashier.lockBuckets.lockedBetUsdc },
+    { label: t("pendingWithdrawal"), value: cashier.lockBuckets.pendingWithdrawalUsdc },
+    { label: t("lockedOther"), value: cashier.lockBuckets.lockedOtherUsdc },
+  ].filter((row) => hasPositiveUsdc(row.value));
 
   return (
     <div>
@@ -128,15 +136,30 @@ export function CashierSheet({ onClose, initialMode = "deposit" }: CashierSheetP
         <span className="text-[13px] font-normal text-white/55">{t("locked")}</span>
         <span className="ws-display tnum text-[18px] text-white">{cashier.locked} USDC</span>
       </div>
+      {lockRows.length > 0 ? (
+        <div className="ws-inset mt-2 px-4 py-3.5">
+          <div className="mb-2 text-[12px] font-normal text-white/50">{t("lockBreakdown")}</div>
+          <div className="space-y-2">
+            {lockRows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3 text-[13px]">
+                <span className="text-white/58">{row.label}</span>
+                <span className="ws-display tnum text-white">{row.value} USDC</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="ws-inset mt-4 flex gap-2 rounded-full p-1">
         {(["deposit", "withdraw"] as const).map((m) => (
           <button
             key={m}
             onClick={() => switchMode(m)}
-            className={`flex-1 cursor-pointer rounded-full py-2.5 font-sans text-[13px] font-semibold transition-colors ${
-              mode === m ? "text-ink bg-white" : "text-white/50"
-            }`}
+            className={
+              mode === m
+                ? `${CHESS_PRIMARY_BUTTON_CLASS} flex-1 py-2.5 font-sans text-[13px] font-semibold`
+                : `${CHESS_SECONDARY_BUTTON_CLASS} flex-1 py-2.5 font-sans text-[13px] font-semibold`
+            }
           >
             {m === "deposit" ? t("deposit") : t("withdraw")}
           </button>
@@ -183,7 +206,7 @@ export function CashierSheet({ onClose, initialMode = "deposit" }: CashierSheetP
       <button
         onClick={() => void (isDeposit ? onDeposit() : onWithdraw())}
         disabled={!ready}
-        className="text-ink mt-[18px] w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className={`${CHESS_PRIMARY_BUTTON_CLASS} mt-[18px] w-full rounded-[14px] p-3.5 font-sans text-[15px] font-semibold`}
       >
         {submitLabel}
       </button>

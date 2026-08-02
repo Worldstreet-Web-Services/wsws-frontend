@@ -73,6 +73,8 @@ export interface ChessMoveWire {
   createdAt: string;
 }
 
+const EVM_WALLET = /^0x[0-9a-fA-F]{40}$/;
+
 // Match ids are UUIDs. A malformed id makes the gateway answer with plain text
 // instead of the usual envelope, which surfaces as a confusing transport error,
 // so callers check the shape before spending a request on it.
@@ -173,7 +175,7 @@ export function toPlayer(wallet: string | null): ChessPlayer | null {
   if (!wallet) return null;
   return {
     id: wallet,
-    username: truncateAddress(wallet),
+    username: EVM_WALLET.test(wallet) ? truncateAddress(wallet) : wallet,
     rating: 0,
     walletAddress: wallet,
   };
@@ -181,17 +183,44 @@ export function toPlayer(wallet: string | null): ChessPlayer | null {
 
 export interface ToChessMatchOptions {
   moves?: ChessMoveWire[];
+  moveSan?: string[];
+  clockUpdatedAt?: string;
+}
+
+function normalizeClocks(wire: ChessMatchWire): Record<ChessColor, number> {
+  const openingSnapshotMissingClocks =
+    wire.status === "active" &&
+    wire.ply === 0 &&
+    wire.result === null &&
+    wire.clocks.whiteMs === 0 &&
+    wire.clocks.blackMs === 0;
+
+  if (openingSnapshotMissingClocks) {
+    return {
+      w: wire.timeControl.initialSeconds,
+      b: wire.timeControl.initialSeconds,
+    };
+  }
+
+  return {
+    w: wire.clocks.whiteMs / 1000,
+    b: wire.clocks.blackMs / 1000,
+  };
 }
 
 export function toChessMatch(wire: ChessMatchWire, options: ToChessMatchOptions = {}): ChessMatch {
-  const moves = options.moves ?? [];
+  const moveWires = options.moves ?? [];
+  const moves = options.moveSan ?? moveWires.map((m) => m.san);
 
   // When the clocks were last true. The service has no "as of" field and does
   // not charge time on a read, so the last move is the only honest reference
   // point; using the moment the response arrived would restart the countdown on
   // every poll and freeze the displayed clock.
   const clockUpdatedAt =
-    moves.length > 0 ? moves[moves.length - 1].createdAt : (wire.startedAt ?? wire.createdAt);
+    options.clockUpdatedAt ??
+    (moveWires.length > 0
+      ? moveWires[moveWires.length - 1].createdAt
+      : (wire.startedAt ?? wire.createdAt));
 
   const drawOfferSide: ChessColor | null =
     wire.drawOfferBy === null
@@ -212,8 +241,8 @@ export function toChessMatch(wire: ChessMatchWire, options: ToChessMatchOptions 
       wire.timeControl.incrementSeconds
     ),
     fen: wire.fen,
-    moves: moves.map((m) => m.san),
-    clocks: { w: wire.clocks.whiteMs / 1000, b: wire.clocks.blackMs / 1000 },
+    moves,
+    clocks: normalizeClocks(wire),
     clockUpdatedAt,
     turn: toColor(wire.turn),
     result: toResult(wire.result, wire.resultReason),

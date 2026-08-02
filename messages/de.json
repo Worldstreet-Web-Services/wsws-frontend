@@ -585,7 +585,8 @@
     "proceedsBody": "Holen Sie Ihren Erlös zurück nach Base, wo der Rest Ihres Kontos liegt — etwa 10 Sekunden.",
     "proceedsCta": "Erlös nach Base holen",
     "proceedsWorking": "Wird übertragen…",
-    "proceedsDone": "Guthaben auf Base"
+    "proceedsDone": "Guthaben auf Base",
+    "fundSolanaFirst": "Zuerst Mittel nach Solana bewegen"
   },
   "prediction": {
     "eyebrow": "Prognosemärkte",

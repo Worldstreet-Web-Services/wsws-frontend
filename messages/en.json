@@ -585,7 +585,8 @@
     "proceedsBody": "Bring your proceeds back to Base, where the rest of your account lives — about 10 seconds.",
     "proceedsCta": "Bring proceeds to Base",
     "proceedsWorking": "Moving funds…",
-    "proceedsDone": "Funds are on Base"
+    "proceedsDone": "Funds are on Base",
+    "fundSolanaFirst": "Move funds to Solana first"
   },
   "prediction": {
     "eyebrow": "Prediction markets",

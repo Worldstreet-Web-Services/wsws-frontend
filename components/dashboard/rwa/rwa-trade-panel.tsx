@@ -147,6 +147,8 @@ export function RwaTradePanel({
     [portfolio.tokens, asset]
   );
   const payOption = payOptions.find((o) => o.key === payKey) ?? payOptions[0] ?? null;
+  // What the typed amount is worth in dollars on the buy side.
+  const payUsd = payValue * (payOption?.priceUsd ?? 1);
 
   // A Solana buy needs USDC (and a little SOL for the fee) on Solana. When the
   // wallet is short but holds Base USDC, the shortfall is bridgeable rather
@@ -158,20 +160,22 @@ export function RwaTradePanel({
       portfolio.tokens.find((t) => t.network === network && t.symbol.toUpperCase() === symbol)
         ?.balance ?? 0;
     return planSolanaFunding({
-      spendUsdc: payValue,
+      // The USD value of whatever token is paying, not the typed amount: 0.5
+      // SOL is ~$100, and a plan built from 0.5 would fund nothing.
+      spendUsdc: payUsd,
       solanaUsdc: balanceOf("solana-mainnet", "USDC"),
       solanaSol: balanceOf("solana-mainnet", "SOL"),
       baseUsdc: balanceOf("base-mainnet", "USDC"),
     });
-  }, [asset.chain, isBuy, payValue, portfolio.tokens]);
+  }, [asset.chain, isBuy, payUsd, portfolio.tokens]);
   const baseUsdcBalance =
     portfolio.tokens.find((t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "USDC")
       ?.balance ?? 0;
   const proceeds = useSolanaProceeds();
-  const solanaUsdcBalance =
-    portfolio.tokens.find(
-      (t) => t.network === "solana-mainnet" && t.symbol.toUpperCase() === "USDC"
-    )?.balance ?? 0;
+  const solanaUsdcHolding = portfolio.tokens.find(
+    (t) => t.network === "solana-mainnet" && t.symbol.toUpperCase() === "USDC"
+  );
+  const solanaUsdcBalance = solanaUsdcHolding?.balance ?? 0;
   // After selling a Solana asset the proceeds are USDC on Solana; the rest of
   // the account lives on Base, so offer to bring them back.
   const showProceeds =
@@ -180,7 +184,6 @@ export function RwaTradePanel({
   const needsFunding = solanaPlan != null && payValue > 0;
   const canFund = needsFunding && planAffordable(solanaPlan, baseUsdcBalance);
   const payInput = payOption?.input ?? null;
-  const payPrice = payOption?.priceUsd ?? 1;
 
   // Sell side: the held RWA, which carries the exact on-chain decimals we need to
   // size the input. Absent when the chain isn't indexed or the asset isn't held.
@@ -323,6 +326,10 @@ export function RwaTradePanel({
     setQuote(null);
     setNotice(null);
     setSignStep(null);
+    // Without this the proceeds step stays stuck on "done" and a second sale's
+    // funds have no way home, and a stale funding error outlives its plan.
+    funding.reset();
+    proceeds.reset();
   };
 
   const setPct = (pct: number) => {
@@ -413,7 +420,7 @@ export function RwaTradePanel({
     return <RwaIssuerCard asset={asset} />;
   }
 
-  const usdValue = payValue * (isBuy ? payPrice : (price ?? 0));
+  const usdValue = isBuy ? payUsd : payValue * (price ?? 0);
   // Once a quote exists, show its actual output rather than registry price
   // math. Output decimals are known for a sell (USDC) and for a buy of an asset
   // already held; otherwise fall back to the price-derived preview.
@@ -496,7 +503,7 @@ export function RwaTradePanel({
                 <p className="text-down mt-1.5 text-[11.5px] font-normal">{proceeds.error}</p>
               ) : null}
               <button
-                onClick={() => void proceeds.bringHome(solanaUsdcBalance)}
+                onClick={() => void proceeds.bringHome(solanaUsdcHolding?.rawBalance ?? "0")}
                 disabled={proceeds.busy || proceeds.phase === "done"}
                 className={`mt-2.5 w-full rounded-[12px] p-2.5 font-sans text-[13.5px] font-semibold ${
                   proceeds.busy || proceeds.phase === "done"
@@ -676,7 +683,7 @@ export function RwaTradePanel({
 
           <button
             onClick={() => void confirmTrade()}
-            disabled={!canConfirm || needsFunding}
+            disabled={!canConfirm || needsFunding || funding.busy}
             className={`mt-4 w-full rounded-[14px] p-[15px] font-sans text-[15px] font-semibold whitespace-nowrap transition-opacity ${
               canConfirm
                 ? "text-ink cursor-pointer bg-white hover:opacity-90"
@@ -687,15 +694,17 @@ export function RwaTradePanel({
               ? signStep
                 ? t("signingStep", { current: signStep.index + 1, total: signStep.total })
                 : t("buildingOrder")
-              : overBalance
-                ? tBuySell("notEnoughBalance")
-                : phase === "quoting"
-                  ? t("fetchingBestPrice")
-                  : quote
-                    ? isBuy
-                      ? t("buySymbol", { symbol: asset.symbol })
-                      : t("sellSymbol", { symbol: asset.symbol })
-                    : t("enterAmount")}
+              : needsFunding
+                ? t("fundSolanaFirst")
+                : overBalance
+                  ? tBuySell("notEnoughBalance")
+                  : phase === "quoting"
+                    ? t("fetchingBestPrice")
+                    : quote
+                      ? isBuy
+                        ? t("buySymbol", { symbol: asset.symbol })
+                        : t("sellSymbol", { symbol: asset.symbol })
+                      : t("enterAmount")}
           </button>
 
           {confirming && signStep ? (

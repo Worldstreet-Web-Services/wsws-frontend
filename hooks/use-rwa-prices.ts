@@ -59,7 +59,9 @@ export function useRwaEnrichedAssets(assets: RwaApiAsset[]): RwaApiAsset[] {
         },
         { requireAuth: true }
       );
-      if (!res.ok) return {};
+      // Throwing lets the retry engage; returning {} would cache "no prices"
+      // as a success for the whole stale window.
+      if (!res.ok) throw new Error("Could not load prices");
       const body = (await res.json()) as { prices?: Record<string, number> };
       return body.prices ?? {};
     },

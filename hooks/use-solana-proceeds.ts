@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { getBase58Decoder } from "@solana/kit";
@@ -9,7 +9,6 @@ import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
 import { fetchLifiStatus, fetchSolanaBridgeQuote } from "@/lib/trade/lifi";
 import { LIFI_BASE_CHAIN, BASE_USDC } from "@/lib/rwa/funding";
 import { USDC_BY_CHAIN } from "@/lib/rwa-api";
-import { toBaseUnits } from "@/lib/trade/math";
 import { getWalletAddress } from "@/lib/user";
 
 export type ProceedsPhase = "idle" | "quoting" | "signing" | "settling" | "done" | "failed";
@@ -43,23 +42,31 @@ export function useSolanaProceeds() {
   const portfolio = usePortfolio();
   const [phase, setPhase] = useState<ProceedsPhase>("idle");
   const [error, setError] = useState<string | null>(null);
+  // The signature is signed and sent before the bridge settles, so a retry
+  // after a slow settle would send the balance twice — and this leg costs the
+  // user real SOL each time.
+  const sentRef = useRef(false);
 
   const reset = useCallback(() => {
     setPhase("idle");
     setError(null);
+    sentRef.current = false;
   }, []);
 
+  // rawUsdc is the exact base-unit string from the holding; the display
+  // float rounds half-up and can ask for more than the wallet holds.
   const bringHome = useCallback(
-    async (usdc: number): Promise<boolean> => {
+    async (rawUsdc: string): Promise<boolean> => {
       const from = getWalletAddress(user, "solana");
       const to = getWalletAddress(user, "ethereum");
       const wallet = solanaWallets[0];
-      if (!from || !to || !wallet || usdc <= 0) {
+      if (!from || !to || !wallet || BigInt(rawUsdc || "0") <= 0n) {
         setError("No wallet");
         setPhase("failed");
         return false;
       }
 
+      if (sentRef.current) return false;
       setError(null);
       try {
         setPhase("quoting");
@@ -67,7 +74,7 @@ export function useSolanaProceeds() {
           fromToken: USDC_BY_CHAIN.solana.address,
           toChain: LIFI_BASE_CHAIN,
           toToken: BASE_USDC,
-          fromAmount: toBaseUnits(usdc.toFixed(6), 6),
+          fromAmount: BigInt(rawUsdc),
           fromAddress: from,
           toAddress: to,
           slippage: SLIPPAGE,
@@ -78,6 +85,7 @@ export function useSolanaProceeds() {
           transaction: base64ToBytes(quote.transaction),
           wallet,
         });
+        sentRef.current = true;
         const sig = getBase58Decoder().decode(signature);
         await confirmSolanaSignature(sig).catch(() => {
           // The bridge poll below is the real settlement signal.

@@ -585,7 +585,8 @@
     "proceedsBody": "Ramenez vos fonds vers Base, où réside le reste de votre compte — environ 10 secondes.",
     "proceedsCta": "Ramener vers Base",
     "proceedsWorking": "Transfert en cours…",
-    "proceedsDone": "Fonds sur Base"
+    "proceedsDone": "Fonds sur Base",
+    "fundSolanaFirst": "Transférez d'abord vers Solana"
   },
   "prediction": {
     "eyebrow": "Marchés de prédiction",

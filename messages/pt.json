@@ -585,7 +585,8 @@
     "proceedsBody": "Traga seus fundos de volta para a Base, onde fica o resto da sua conta — cerca de 10 segundos.",
     "proceedsCta": "Trazer fundos para a Base",
     "proceedsWorking": "Movendo fundos…",
-    "proceedsDone": "Fundos na Base"
+    "proceedsDone": "Fundos na Base",
+    "fundSolanaFirst": "Primeiro mova fundos para a Solana"
   },
   "prediction": {
     "eyebrow": "Mercados de previsão",

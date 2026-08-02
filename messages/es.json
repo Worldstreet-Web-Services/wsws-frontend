@@ -585,7 +585,8 @@
     "proceedsBody": "Trae tus fondos de vuelta a Base, donde vive el resto de tu cuenta — unos 10 segundos.",
     "proceedsCta": "Traer fondos a Base",
     "proceedsWorking": "Moviendo fondos…",
-    "proceedsDone": "Fondos en Base"
+    "proceedsDone": "Fondos en Base",
+    "fundSolanaFirst": "Primero mueve fondos a Solana"
   },
   "prediction": {
     "eyebrow": "Mercados de predicción",

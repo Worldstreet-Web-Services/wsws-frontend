@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useEvmSend } from "@/hooks/use-evm-send";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -10,6 +10,7 @@ import {
   LIFI_BASE_CHAIN,
   LIFI_SOLANA_CHAIN,
   fundingLegs,
+  planSignature,
   type FundingPlan,
 } from "@/lib/rwa/funding";
 import { toBaseUnits } from "@/lib/trade/math";
@@ -35,10 +36,18 @@ export function useSolanaFunding() {
   const portfolio = usePortfolio();
   const [phase, setPhase] = useState<FundingPhase>("idle");
   const [error, setError] = useState<string | null>(null);
+  // Legs already broadcast for the plan on screen. A retry after a slow settle
+  // must not re-send them: the balances a fresh plan would be derived from
+  // have not caught up precisely because the transfer is still in flight.
+  const sentRef = useRef<{ signature: string; kinds: Set<string> }>({
+    signature: "",
+    kinds: new Set(),
+  });
 
   const reset = useCallback(() => {
     setPhase("idle");
     setError(null);
+    sentRef.current = { signature: "", kinds: new Set() };
   }, []);
 
   const fund = useCallback(
@@ -51,9 +60,18 @@ export function useSolanaFunding() {
         return false;
       }
 
+      // A materially different plan starts a fresh record; the same plan
+      // resumes where it stopped.
+      const signature = planSignature(plan);
+      if (sentRef.current.signature !== signature) {
+        sentRef.current = { signature, kinds: new Set() };
+      }
+
       setError(null);
       try {
         for (const leg of fundingLegs(plan)) {
+          if (sentRef.current.kinds.has(leg.kind)) continue;
+
           setPhase("quoting");
           const quote = await fetchLifiQuote({
             fromChain: LIFI_BASE_CHAIN,
@@ -73,6 +91,9 @@ export function useSolanaFunding() {
             value: BigInt(quote.transactionRequest.value || "0"),
             chainId: quote.transactionRequest.chainId,
           });
+          // Recorded the moment it is broadcast, not when it settles: the
+          // money has left either way.
+          sentRef.current.kinds.add(leg.kind);
 
           // The Base transaction is confirmed; the funds still have to land on
           // Solana before the buy can spend them.
@@ -85,18 +106,19 @@ export function useSolanaFunding() {
             if (status === "DONE") settled = true;
             else if (status === "FAILED") throw new Error("The transfer did not complete.");
           }
-          // The funds are in flight, not lost: the plan is recomputed from
-          // balances, so retrying later never double-sends.
-          if (!settled) throw new Error("The transfer is taking longer than expected.");
+          if (!settled) throw new Error("The transfer is still on its way. Check back shortly.");
         }
 
-        void portfolio.refetch();
         setPhase("done");
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : "The transfer did not complete.");
         setPhase("failed");
         return false;
+      } finally {
+        // Balances moved on every path that broadcast anything, so the plan
+        // the panel derives from them is never left stale.
+        void portfolio.refetch();
       }
     },
     [user, evmSend, portfolio]

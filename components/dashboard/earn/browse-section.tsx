@@ -8,15 +8,29 @@ import { ListingFilters } from "@/components/dashboard/earn/listing-filters";
 import { useListingFeed } from "@/hooks/use-earn-listings";
 import { useCurrentSponsor } from "@/hooks/use-earn-sponsor";
 import { DEFAULT_BROWSE_QUERY, type BrowseQuery } from "@/lib/earn/api/types";
+import { BRAND } from "@/lib/brand";
 
-const PAGE = "mx-auto w-full max-w-[1100px] px-4 pt-8 pb-20 sm:px-6 lg:px-8";
+const PAGE = "mx-auto w-full max-w-[1520px] px-4 pt-8 pb-20 sm:px-6 lg:px-8";
 
 const UNCONFIGURED_DETAIL = "Bounties go live once the earn service is switched on.";
 
+const PAGE_SIZE = 12;
+
 export function BrowseSection() {
   const [query, setQuery] = useState<BrowseQuery>(DEFAULT_BROWSE_QUERY);
+  const [page, setPage] = useState(1);
   const { listings, count, isLoading, error } = useListingFeed(query);
   const { sponsor } = useCurrentSponsor();
+
+  // The feed arrives whole, so pagination is client-side; a filter change
+  // starts back at page one.
+  const pageCount = Math.max(1, Math.ceil(listings.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageListings = listings.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const changeQuery = (next: BrowseQuery) => {
+    setQuery(next);
+    setPage(1);
+  };
 
   return (
     <div className={PAGE}>
@@ -31,8 +45,7 @@ export function BrowseSection() {
             Earn
           </h1>
           <p className="mt-1.5 max-w-[52ch] font-sans text-[13.5px] font-normal text-white/55">
-            Paid work posted by companies building on Worldstreet. Pick something, ship it, get
-            paid.
+            Paid work posted by companies building on {BRAND}. Pick something, ship it, get paid.
           </p>
         </div>
 
@@ -45,7 +58,7 @@ export function BrowseSection() {
       </header>
 
       <div className="mt-7">
-        <ListingFilters query={query} onChange={setQuery} />
+        <ListingFilters query={query} onChange={changeQuery} />
       </div>
 
       <div className="mt-6">
@@ -62,11 +75,38 @@ export function BrowseSection() {
                 {count} {count === 1 ? "listing" : "listings"}
               </div>
             ) : null}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map((listing, index) => (
-                <ListingCard key={listing.id} listing={listing} featured={index === 0} />
+            <div className="grid gap-3 min-[1280px]:grid-cols-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pageListings.map((listing, index) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  featured={safePage === 1 && index === 0}
+                />
               ))}
             </div>
+            {pageCount > 1 ? (
+              <div className="mt-5 flex items-center justify-between">
+                <span className="tnum text-[12.5px] font-normal text-white/45">
+                  {safePage} / {pageCount}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="cursor-pointer rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-[12.5px] font-medium text-white/75 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={safePage >= pageCount}
+                    className="cursor-pointer rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-[12.5px] font-medium text-white/75 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </>
         )}
       </div>

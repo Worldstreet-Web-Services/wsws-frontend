@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useLoginWithPasskey } from "@privy-io/react-auth";
 import { useTranslations } from "next-intl";
-import { hasPasskeyDevice, markPasskeyDevice } from "@/lib/preferences";
 import { toast } from "@/lib/toast";
+
+const subscribeNever = () => () => {};
 
 function PasskeyIcon() {
   return (
@@ -30,9 +31,16 @@ function PasskeyIcon() {
 
 export function PasskeyButton() {
   const t = useTranslations("auth");
-  const [visible] = useState(hasPasskeyDevice);
+  // Shown wherever the browser can do WebAuthn; never gated on wipeable local
+  // state (clearing site data once hid a passkey holder's own login method).
+  // useSyncExternalStore keeps hydration clean: the server snapshot renders
+  // nothing, the client value takes over right after.
+  const visible = useSyncExternalStore(
+    subscribeNever,
+    () => !!window.PublicKeyCredential,
+    () => false
+  );
   const { loginWithPasskey, state } = useLoginWithPasskey({
-    onComplete: () => markPasskeyDevice(),
     onError: (err) => {
       console.error("Passkey login failed:", err);
       toast.error(t("passkeyError"));

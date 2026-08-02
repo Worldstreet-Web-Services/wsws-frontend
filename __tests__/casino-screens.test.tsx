@@ -29,6 +29,15 @@ const chessApi = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/casino/api/chess", () => chessApi);
 
+// Boards subscribe to the live socket even while waiting for an opponent; a
+// real jsdom WebSocket would dial out and its teardown throws cross-realm
+// Event errors on some Node versions, so the relay is stubbed out entirely.
+vi.mock("@/lib/casino/chess/live-socket", () => ({
+  SOCKET_CLOSED_FRAME: { type: "__closed" },
+  SOCKET_OPEN_FRAME: { type: "__open" },
+  subscribeChessTopic: () => () => {},
+}));
+
 const drawApi = vi.hoisted(() => ({
   fetchCurrentRound: vi.fn(),
   fetchPastResults: vi.fn(),

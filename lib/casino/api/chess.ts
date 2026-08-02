@@ -39,6 +39,11 @@ interface MoveResultWire {
   move: ChessMoveWire;
 }
 
+export interface LobbyChallenges {
+  challenges: ChessChallenge[];
+  myOpenGames: ChessChallenge[];
+}
+
 // The service has no server-side expiry for waiting matches, so the public
 // lobby and quick-match path hide seats that are old enough to read as
 // abandoned. Direct invite links still resolve by match id.
@@ -65,15 +70,39 @@ export async function fetchMatchMoves(matchId: string): Promise<ChessMoveWire[]>
   return data.moves;
 }
 
+function canReuseMoveHistory(
+  previous: ChessMatch | null | undefined,
+  wire: Pick<ChessMatchWire, "ply">
+): previous is ChessMatch {
+  return !!previous && previous.moves.length === wire.ply;
+}
+
 // The board and its move history are two endpoints, so they are fetched
-// together: a position without the moves that produced it would leave the move
-// list blank on every refresh.
-export async function fetchMatch(matchId: string): Promise<ChessMatch> {
+// together on first load. After that, the cached SAN list stays authoritative
+// until the service's ply says there is a gap to repair, so the steady-state
+// reconcile path does not re-download `/moves` on every poll.
+export async function fetchMatch(
+  matchId: string,
+  previous: ChessMatch | null = null
+): Promise<ChessMatch> {
   requireMatchId(matchId);
-  const [wire, moves] = await Promise.all([fetchMatchWire(matchId), fetchMatchMoves(matchId)]);
+  const wire = await fetchMatchWire(matchId);
+  if (canReuseMoveHistory(previous, wire)) {
+    return toChessMatch(wire, {
+      moveSan: previous.moves,
+      // When no new move landed, the last move timestamp we already have is
+      // still the honest clock reference. A no-move poll must not restart the
+      // displayed countdown.
+      clockUpdatedAt: previous.moves.length > 0 ? previous.clockUpdatedAt : undefined,
+    });
+  }
+  if (wire.ply === 0) return toChessMatch(wire);
+  const moves = await fetchMatchMoves(matchId);
   return toChessMatch(wire, { moves });
 }
 
+// Public open seats. Old waiting games read as abandoned in the lobby, so the
+// public list hides them even if the backend has not cleaned them up yet.
 export async function fetchOpenChallenges(): Promise<ChessChallenge[]> {
   const data = await chessGet<MatchListWire>("/matches", { status: "waiting", limit: "50" });
   return data.items.filter(isFreshWaitingMatch).map((wire) => toChessChallenge(wire));
@@ -88,6 +117,29 @@ export async function fetchLiveMatches(): Promise<ChessMatch[]> {
 export async function fetchWaitingMatches(): Promise<ChessMatchWire[]> {
   const data = await chessGet<MatchListWire>("/matches", { status: "waiting", limit: "50" });
   return data.items;
+}
+
+// The lobby treats the viewer's own open game differently from everybody
+// else's: it must stay resumable even if it is old, while stale public seats
+// stay hidden so the challenge list does not fill with abandoned games.
+export async function fetchLobbyChallenges(wallet: string | null): Promise<LobbyChallenges> {
+  const mine = wallet?.toLowerCase() ?? null;
+  const matches = await fetchWaitingMatches();
+  const challenges: ChessChallenge[] = [];
+  const myOpenGames: ChessChallenge[] = [];
+
+  for (const match of matches) {
+    const mineOnThisMatch =
+      !!mine && (match.white?.toLowerCase() === mine || match.black?.toLowerCase() === mine);
+    const challenge = toChessChallenge(match);
+    if (mineOnThisMatch) {
+      myOpenGames.push(challenge);
+    } else if (isFreshWaitingMatch(match)) {
+      challenges.push(challenge);
+    }
+  }
+
+  return { challenges, myOpenGames };
 }
 
 // Waiting games this player could join. Their own open games are excluded: the
@@ -117,7 +169,7 @@ export async function fetchChallengeByInvite(inviteCode: string): Promise<ChessC
 // always sent.
 export async function createChallenge(
   input: CreateChessChallengeInput & { creator: string; stakeUsdc?: string | null }
-): Promise<{ challenge: ChessChallenge; ticket: MatchmakingTicket | null }> {
+): Promise<{ challenge: ChessChallenge; match: ChessMatch; ticket: MatchmakingTicket | null }> {
   const { initialSeconds, incrementSeconds } = parseTimeControl(input.timeControl);
   const wire = await chessPost<ChessMatchWire>("/matches", {
     creator: input.creator,
@@ -129,6 +181,7 @@ export async function createChallenge(
 
   return {
     challenge: toChessChallenge(wire),
+    match: toChessMatch(wire),
     ticket:
       input.mode === "auto"
         ? {

@@ -4,22 +4,27 @@ The chess frontend is built against this contract. Every screen calls it;
 nothing is stubbed and there are no fixtures in the UI. Until the service
 answers, the screens show their "not available yet" state.
 
-Set `NEXT_PUBLIC_CHESS_API_URL` to the gateway base path, e.g.
-`https://api.worldstreetwebservices.com/v1/chess`. Unset, every chess screen
-reads as not configured.
+Set `CHESS_API_URL` to the chess service base path when you want a server-only
+override, for example a local Rust service at `http://127.0.0.1:18083`.
+
+`NEXT_PUBLIC_CHESS_API_URL` remains as the fallback for existing deployments,
+for example `https://api.worldstreetwebservices.com/v1/chess`. If neither is
+set, every chess screen reads as not configured.
 
 ## Transport
 
 All traffic goes through the frontend's own proxy at `/api/chess/*`, which
-forwards to `${NEXT_PUBLIC_CHESS_API_URL}/*`. The proxy:
+forwards to `${CHESS_API_URL ?? NEXT_PUBLIC_CHESS_API_URL}/*`. The proxy:
 
 - serves public reads (lobby, board, moves, PGN, tournaments) without a session
   and caches them for 1s, so two players watching one board collapse into a
   single upstream call
-- requires a verified Privy session for every write
-- requires a verified session for every `cashier/*` read, and never caches one:
-  a balance is per-caller
-- names the acting player from the session rather than from the request body
+- requires a verified Privy session and a proven wallet for every write
+- requires a verified session and a proven wallet for every per-caller read
+  (`cashier/players/*/balance`, and the caller's own bet-slip reads), and
+  never caches them
+- forwards that wallet as `x-wallet-address`, and rewrites the wallet-bearing
+  body fields to match it before the request leaves our origin
 
 Every response uses the platform envelope:
 
@@ -37,29 +42,38 @@ proxy itself. Anything else renders as a generic failure.
 The service does no token verification. It acts on the `player`, `creator` and
 `organizer` names it is handed, so the proxy is the trust boundary.
 
-For game actions the proxy overwrites those names with the wallet the session
-provably owns, when it can establish one. That needs a Privy identity token,
-which is optional and can be cold on first load. When it is missing the client's
-own claim stands, because a chess move is not worth blocking play over.
+For chess actions the proxy resolves the caller's Ethereum wallet from the
+verified Privy user. It prefers the identity token when one is present, and
+falls back to a server-side Privy lookup by the verified `userId` when that
+token is cold or absent. That keeps wallet binding deterministic instead of
+best-effort.
 
-**Money is different.** `POST /cashier/withdrawals` takes
-`{ player, amountUsdc, toAddress }`: a forged `player` there sends somebody
-else's balance to an address of the attacker's choosing. So for
+The proxy now requires that proven wallet on every write and on every
+per-caller read. It forwards the wallet in `x-wallet-address`, and overwrites
+`creator`, `player`, `bettor` and `walletAddress` in the outbound JSON body so
+the service never has to trust the browser's claim about who is acting.
 
-- anything under `cashier/`
-- any request whose body carries a stake or an entry fee above zero
+Swiss display names are still the player's own choice on free tournaments. The
+proxy only rewrites the refund-bearing `walletAddress`, not the human-facing
+`name`.
 
-the proxy requires a wallet it can prove, and answers `401 UNAUTHORIZED`
-otherwise. On those paths it also derives the swiss `organizer` and `name`
-tokens from that wallet, and overwrites `walletAddress` so a refund can only go
-to the session's own wallet.
+The route-shape rules live in `lib/casino/chess-identity.ts`, and the proxy
+enforcement lives in `app/api/chess/[...path]/route.ts`. They are covered by
+`__tests__/chess-identity.test.ts`, `__tests__/server-auth.test.ts` and
+`__tests__/chess-route.test.ts`.
 
-Swiss names are **not** rewritten on free tournaments: a player picks their own
-token there, and rewriting it would rename entrants out of tournaments they had
-already joined.
+## Local backend
 
-The rules live in `lib/casino/chess-identity.ts`, free of Next and of fetch, and
-are covered by `__tests__/chess-identity.test.ts`.
+For local chess-service work, put this in `.env.local`:
+
+```dotenv
+CHESS_API_URL=http://127.0.0.1:18083
+```
+
+That keeps your browser bundle free of the local upstream URL and lets the Next
+proxy talk to the Rust service directly. If you run the chess service without
+RabbitMQ or the WS gateway, live updates fall back to the client's HTTP poll
+path, which is enough for local edge-case testing.
 
 ## Money
 

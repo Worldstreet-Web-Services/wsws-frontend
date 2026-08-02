@@ -28,7 +28,20 @@ export interface CashierBalance {
   player: string;
   availableUsdc: string;
   lockedUsdc: string;
+  lockedMatchUsdc?: string;
+  lockedSwissUsdc?: string;
+  lockedBetUsdc?: string;
+  pendingWithdrawalUsdc?: string;
+  lockedOtherUsdc?: string;
   totalUsdc: string;
+}
+
+export interface CashierLockBuckets {
+  lockedMatchUsdc: string;
+  lockedSwissUsdc: string;
+  lockedBetUsdc: string;
+  pendingWithdrawalUsdc: string;
+  lockedOtherUsdc: string;
 }
 
 export interface CashierDeposit {
@@ -46,7 +59,11 @@ export async function fetchCashierConfig(): Promise<CashierConfig> {
 }
 
 export async function fetchChessBalance(wallet: string): Promise<CashierBalance> {
-  return chessGet<CashierBalance>(`/cashier/players/${encodeURIComponent(wallet)}/balance`);
+  return chessGet<CashierBalance>(
+    `/cashier/players/${encodeURIComponent(wallet)}/balance`,
+    undefined,
+    { requireAuth: true }
+  );
 }
 
 // Asks the service to credit an on-chain deposit. Idempotent by txHash, so a
@@ -71,6 +88,34 @@ export async function createChessWithdrawal(
 export function isCashierUnavailable(error: unknown): boolean {
   const code = (error as CasinoApiError | null)?.code;
   return code === "CONFLICT" || code === "NOT_CONFIGURED" || code === "SERVICE_UNAVAILABLE";
+}
+
+// The proxy now protects private chess reads with the caller's verified
+// session, so a 401 or "no wallet on the account" is not a transient fault.
+// Retrying or polling those only spams the console and burns rate limits.
+export function isCashierAccessDenied(error: unknown): boolean {
+  const code = (error as CasinoApiError | null)?.code;
+  return code === "UNAUTHORIZED" || code === "NO_WALLET";
+}
+
+function nonNegativeUsdc(value: string | undefined): string {
+  if (!value?.trim()) return "0";
+  const units = toBaseUnits(value, USDC_DECIMALS);
+  return units > 0n ? fromBaseUnits(units, USDC_DECIMALS) : "0";
+}
+
+export function cashierLockBuckets(balance: CashierBalance | null | undefined): CashierLockBuckets {
+  return {
+    lockedMatchUsdc: nonNegativeUsdc(balance?.lockedMatchUsdc),
+    lockedSwissUsdc: nonNegativeUsdc(balance?.lockedSwissUsdc),
+    lockedBetUsdc: nonNegativeUsdc(balance?.lockedBetUsdc),
+    pendingWithdrawalUsdc: nonNegativeUsdc(balance?.pendingWithdrawalUsdc),
+    lockedOtherUsdc: nonNegativeUsdc(balance?.lockedOtherUsdc),
+  };
+}
+
+export function hasPositiveUsdc(value: string): boolean {
+  return toBaseUnits(value, USDC_DECIMALS) > 0n;
 }
 
 // 500 bps reads as 5 (%). Display only; settlement math stays server-side.
@@ -103,4 +148,45 @@ export function exceedsUsdcBalance(amount: string, balance: string): boolean {
   const units = parseUsdcAmount(amount);
   if (units === null) return false;
   return units > toBaseUnits(balance, USDC_DECIMALS);
+}
+
+// What a stake does to the player's balance and pot, computed the way the
+// backend settles it: both sides lock the same stake, the winner takes the pot
+// (2 * stake) minus the platform fee, and a draw or abort refunds both. All
+// arithmetic is exact micro-USDC; the strings are display copies of it.
+export interface WagerBreakdown {
+  // What locks now (the stake).
+  youLock: string;
+  // Available balance after the lock, clamped at zero when it overdraws.
+  balanceAfter: string;
+  // The whole pot both sides make up.
+  pot: string;
+  // Platform fee taken from the pot on a decisive result.
+  fee: string;
+  // What the winner receives (pot minus fee).
+  winnerReceives: string;
+  // False when the stake exceeds the available balance.
+  sufficient: boolean;
+}
+
+export function wagerBreakdown(
+  stakeUsdc: string,
+  availableUsdc: string,
+  feeBps: number
+): WagerBreakdown {
+  const stake = toBaseUnits(stakeUsdc, USDC_DECIMALS);
+  const available = toBaseUnits(availableUsdc, USDC_DECIMALS);
+  const pot = stake * 2n;
+  // Basis points floor, matching the service's integer fee math.
+  const fee = (pot * BigInt(Math.max(0, Math.round(feeBps)))) / 10_000n;
+  const sufficient = available >= stake;
+  const after = sufficient ? available - stake : 0n;
+  return {
+    youLock: fromBaseUnits(stake, USDC_DECIMALS),
+    balanceAfter: fromBaseUnits(after, USDC_DECIMALS),
+    pot: fromBaseUnits(pot, USDC_DECIMALS),
+    fee: fromBaseUnits(fee, USDC_DECIMALS),
+    winnerReceives: fromBaseUnits(pot - fee, USDC_DECIMALS),
+    sufficient,
+  };
 }

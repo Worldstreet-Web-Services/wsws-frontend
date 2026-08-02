@@ -15,7 +15,7 @@ import {
 import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusProvider } from "@/components/providers/network-status";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
-import { RecordButton } from "@/components/voice/record-button";
+// import { RecordButton } from "@/components/voice/record-button";
 
 // Well-formed placeholder lets the app build before env vars are set.
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cl0123456789abcdefghijklm";
@@ -52,6 +52,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         },
         appearance: {
           walletChainType: "ethereum-and-solana",
+          // Login modal only — tx signing stays headless (showWalletUIs: false).
+          theme: "#0c0c0e",
+          accentColor: "#d4d4d8",
+          logo:
+            typeof window !== "undefined" ? `${window.location.origin}/ark-logo.svg` : undefined,
         },
       }}
     >
@@ -73,7 +78,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             {/* Inside BalanceVisibilityProvider so the voice command can read
                 the hide-balances state; needs Privy + React Query too, both of
                 which wrap this. */}
-            <RecordButton />
+            {/* <RecordButton /> */}
           </BalanceVisibilityProvider>
         </NetworkStatusProvider>
         <Toaster />

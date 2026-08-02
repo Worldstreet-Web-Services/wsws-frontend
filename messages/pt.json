@@ -59,6 +59,8 @@
     "confirmingNote": "O servidor está verificando a negociação na Base. Normalmente leva menos de um minuto.",
     "confirmedTitle": "Negociação confirmada",
     "confirmedBody": "Verificada on-chain. Seu saldo foi atualizado.",
+    "receivedTitle": "{amount} {symbol} recebidos",
+    "receivedBody": "Verificado on-chain na sua carteira. A confirmação final do servidor termina em segundo plano — você pode fechar.",
     "done": "Concluído",
     "cancel": "Cancelar",
     "sideDisabled": "As negociações estão pausadas para este token",
@@ -67,7 +69,11 @@
     "ctaSell": "Vender {symbol}",
     "riskDisclaimer": "Nenhuma verificação automática pode garantir que um token é seguro ou continuará vendável.",
     "prev": "Ant.",
-    "next": "Próx."
+    "next": "Próx.",
+    "confirmingLong": "Ainda verificando — a Base está ocupada. Você pode fechar; o resultado aparecerá assim que chegar.",
+    "closeAndNotify": "Fechar — avisar quando concluir",
+    "orderFailed": "A negociação não foi concluída.",
+    "max": "Máx"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -118,7 +124,9 @@
     "youPay": "Você paga",
     "youReceive": "Você recebe",
     "youSell": "Você vende",
-    "youSellRow": "Você vende"
+    "youSellRow": "Você vende",
+    "ctaNotSellable": "{symbol} não pode ser vendido desta carteira",
+    "ctaNeedsGas": "Você precisa de {symbol} na {chain} para a taxa de rede"
   },
   "topbar": {
     "searchPlaceholder": "Pesquisar ativos, mercados, tickers",
@@ -769,7 +777,9 @@
     "confirmRiskOpen": "Operações alavancadas podem perder valor rapidamente, e a execução acontece a preço de mercado. Continue apenas se estiver tudo certo.",
     "confirmRiskClose": "O fechamento é executado ao preço de mercado atual. Isso não pode ser desfeito.",
     "confirmCancel": "Cancelar",
-    "confirmContinue": "Continuar"
+    "confirmContinue": "Continuar",
+    "positionsUnavailable": "Não foi possível carregar suas posições. Elas estão seguras on-chain; tentando novamente…",
+    "updateTakingLonger": "A mudança está confirmada e leva um momento para liquidar."
   },
   "fundsFlow": {
     "back": "Voltar",
@@ -869,16 +879,21 @@
     "youWithdraw": "Levanta",
     "bankComingSoonBody": "Os pagamentos bancários estão a ser finalizados com o nosso parceiro de pagamentos. Entretanto, levante para uma carteira cripto.",
     "fiatDepositTitle": "Adicionar com cartão ou banco",
-    "fiatDepositSubtitle": "Financie a sua carteira em nairas. Liquida em USDC.",
+    "fiatDepositSubtitle": "Pague com cartão, Apple Pay ou Google Pay. Liquida como USDC na Base.",
     "youPay": "Paga",
     "card": "Cartão",
     "bankTransfer": "Transferência bancária",
-    "fiatComingSoonBody": "Estamos a finalizar a verificação com o nosso parceiro de pagamentos. O financiamento por cartão e banco chega em breve. Entretanto, deposite cripto.",
     "searchPlaceholder": "Pesquisar",
     "selectNetwork": "Escolha uma rede",
     "pickNetworkFirst": "Escolha uma rede primeiro",
     "networksError": "Não foi possível carregar as redes.",
-    "tokensError": "Não foi possível carregar os tokens."
+    "tokensError": "Não foi possível carregar os tokens.",
+    "fiatNote": "O pagamento é processado com segurança pela Privy. Os fundos costumam chegar poucos minutos após a compra concluída.",
+    "fiatWorking": "Aguardando o pagamento…",
+    "fiatContinue": "Continuar — {amount} $",
+    "fiatMin": "O mínimo é {min} $",
+    "fiatSuccess": "Pagamento concluído. Seus USDC estão a caminho.",
+    "fiatFailed": "O pagamento não foi concluído. Você não foi cobrado duas vezes — tente novamente."
   },
   "remit": {
     "sendMoney": "Enviar dinheiro",
@@ -1155,28 +1170,34 @@
         "liveNow": "Ao vivo",
         "liveEmpty": "Ainda não há partidas em andamento. Crie uma e ela aparece aqui.",
         "vs": "vs",
+        "yourActiveGames": "Seus jogos ativos",
         "openChallenges": "Desafios abertos",
         "challengesEmpty": "Nenhum desafio aberto. Crie um e outros jogadores poderão entrar.",
         "colOpponent": "Adversário",
         "colTimeControl": "Ritmo de jogo",
-        "join": "Entrar"
+        "join": "Entrar",
+        "yourOpenGames": "Seus jogos abertos",
+        "awaitingOpponent": "Aguardando um adversário",
+        "resume": "Retomar"
       },
       "create": {
         "title": "Criar uma partida",
         "toastConnect": "Conecte sua carteira para criar uma partida.",
         "toastCreating": "Criando sua partida…",
         "toastCreatedAuto": "Partida criada. Procurando um adversário.",
-        "toastCreatedInvite": "Partida criada. Compartilhe seu link de convite.",
+        "toastCreatedInvite": "Link de desafio pronto. Envie-o manualmente.",
         "toastCreateFailed": "Não foi possível criar essa partida.",
         "modeInvite": "Convidar por link",
         "modeAuto": "Parear automaticamente",
         "timeControl": "Ritmo de jogo",
         "randomColourNote": "Você joga com uma cor sorteada. O relógio começa quando seu adversário entra.",
-        "inviteReady": "Sua partida está aberta. Compartilhe este link e a primeira pessoa a abri-lo fica com o outro lado.",
+        "inviteReady": "Sua partida está aberta. Envie este link de desafio manualmente; a primeira pessoa a abri-lo fica com o outro lado.",
         "copy": "Copiar",
         "linkCopied": "Link copiado.",
+        "inviteExplainer": "Ao criar a partida, abrimos o tabuleiro de espera com o link de desafio copiado e um botão para copiá-lo novamente. Envie o link manualmente; a primeira pessoa a abri-lo fica com o outro lado.",
+        "inviteCopyNote": "O link é copiado logo após a criação, e você pode copiá-lo novamente no tabuleiro de espera.",
         "creating": "Criando a partida…",
-        "submitInvite": "Criar partida e obter link de convite",
+        "submitInvite": "Iniciar partida",
         "submitAuto": "Criar partida e encontrar adversário"
       },
       "invite": {
@@ -1272,7 +1293,40 @@
         "backToLobby": "Voltar ao salão",
         "claimDraw": "Reivindicar empate",
         "toastDrawClaimed": "Empate reivindicado. Fim de jogo.",
-        "toastNoClaimableDraw": "Ainda não é possível reivindicar empate — é preciso tripla repetição ou cinquenta lances sem capturas nem peões."
+        "toastNoClaimableDraw": "Ainda não é possível reivindicar empate — é preciso tripla repetição ou cinquenta lances sem capturas nem peões.",
+        "navNewGame": "Nova partida",
+        "navGames": "Partidas",
+        "navPlayers": "Jogadores",
+        "railMoves": "Lances + Motor",
+        "railChat": "Chat",
+        "railInfo": "Info",
+        "challengeLink": "Link de desafio",
+        "shareManually": "Envie este link manualmente. O primeiro jogador a abri-lo fica com o outro lado.",
+        "startGame": "Iniciar partida",
+        "movesTitle": "Lances",
+        "engineTitle": "Motor",
+        "engineDepth": "Profundidade {depth}",
+        "engineAbout": "Análise local no navegador via Stockfish WASM.",
+        "engineUnsupported": "Este navegador não consegue executar o motor local.",
+        "engineFailed": "O motor não pôde iniciar.",
+        "engineScore": "Avaliação",
+        "engineBestMove": "Melhor lance",
+        "engineStatus": "Status",
+        "engineLoading": "Carregando",
+        "engineAnalyzing": "Analisando",
+        "engineReady": "Pronto",
+        "enginePv": "Variante principal",
+        "enginePvWaiting": "Aguardando a linha do motor…",
+        "chatTitle": "Chat",
+        "chatWaiting": "O chat fará mais sentido quando seu oponente entrar. Por enquanto, envie o link de desafio; a partida começa assim que ele for aberto.",
+        "chatUnavailable": "O chat ao vivo ainda não está ligado a este tabuleiro. O estado da partida, os lances e os relógios mandam aqui.",
+        "infoTitle": "Info",
+        "infoStatus": "Estado",
+        "infoTimeControl": "Controle de tempo",
+        "infoWhite": "Brancas",
+        "infoBlack": "Pretas",
+        "controlsWaiting": "Controles da partida",
+        "controlsActions": "Ações"
       },
       "spectate": {
         "subject": "este confronto",
@@ -1304,6 +1358,12 @@
         "title": "Saldo de xadrez",
         "available": "Disponível",
         "locked": "Em jogo",
+        "lockBreakdown": "Por que os fundos estão bloqueados",
+        "lockedMatch": "Apostas de partidas",
+        "lockedSwiss": "Entradas swiss",
+        "lockedBet": "Apostas de espectadores",
+        "pendingWithdrawal": "Saques pendentes",
+        "lockedOther": "Outros bloqueios",
         "deposit": "Adicionar fundos",
         "withdraw": "Sacar",
         "depositTitle": "Adicionar fundos de xadrez",
@@ -1333,7 +1393,13 @@
         "joinLocks": "Entrar bloqueia {amount} USDC do seu saldo de xadrez.",
         "wagerEach": "Aposta · {amount} USDC cada",
         "wagerRefunded": "Apostas reembolsadas aos dois jogadores.",
-        "wagerSettled": "Pote entregue ao vencedor (após a taxa de {pct}%)."
+        "wagerSettled": "Pote entregue ao vencedor (após a taxa de {pct}%).",
+        "summaryStake": "Stake, each side",
+        "summaryYouLock": "You lock now",
+        "summaryAfter": "Balance after",
+        "summaryWinner": "Winner receives",
+        "summaryFee": "Platform fee ({pct}%)",
+        "available": "{amount} USDC available"
       },
       "swiss": {
         "entryTitle": "Torneios suíços",
@@ -1433,5 +1499,19 @@
         "watch": "Assistir"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Compre Kash e ganhe mais dinheiro com suas atividades",
+    "bannerSub": "Negocie, jogue e indique — cada atividade recompensa você em Kash.",
+    "bannerCta": "Comprar Kash",
+    "balanceTitle": "Saldo de Kash",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "activityTitle": "Recompensas por atividade",
+    "activityTrading": "Trading",
+    "activityGames": "Jogos",
+    "activityReferrals": "Indicações",
+    "activityHint": "As recompensas Kash se acumulam com sua atividade no aplicativo e chegam aqui.",
+    "comingSoon": "Kash chega em breve. Compra e venda abrem em breve."
   }
 }

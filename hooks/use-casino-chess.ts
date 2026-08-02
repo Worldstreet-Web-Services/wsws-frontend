@@ -9,10 +9,11 @@ import {
   claimTimeout,
   createChallenge,
   fetchJoinableMatches,
+  fetchLobbyChallenges,
   fetchLiveMatches,
   fetchMatch,
   fetchMatchmakingTicket,
-  fetchOpenChallenges,
+  fetchPlayerMatches,
   fetchWaitingMatches,
   claimDraw,
   offerDraw,
@@ -20,29 +21,35 @@ import {
   resignMatch,
   respondToDraw,
   submitMove,
-  fetchPlayerMatches,
 } from "@/lib/casino/api/chess";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import {
   applyPositionFrame,
   applyStateFrame,
   parseTimeControl,
+  toChessMatch,
   type ChessMatchWire,
   type ChessPositionFrame,
 } from "@/lib/casino/api/chess-wire";
 import { subscribeChessTopic } from "@/lib/casino/chess/live-socket";
 import { applyUciToFen } from "@/lib/casino/chess/engine";
-import type { ChessColor, ChessMatch, CreateChessChallengeInput } from "@/lib/casino/api/types";
+import type {
+  ChessColor,
+  ChessMatch,
+  ChessMatchState,
+  CreateChessChallengeInput,
+} from "@/lib/casino/api/types";
 
 // The socket is the live path; the poll is only a safety net. Before the first
 // live frame (or if the socket falls silent) the match polls fast, because a
 // board two seconds behind is visibly wrong. Once frames are flowing it backs
 // off to a slow reconcile that merely repairs a missed frame — this keeps a
 // spectator from hammering the gateway, which rate-limits per IP.
-const MATCH_POLL_MS = 2_000;
+const MATCH_POLL_MS = 1_000;
 const MATCH_POLL_LIVE_MS = 5_000;
+const MATCH_WAITING_POLL_MS = 1_000;
 const LOBBY_POLL_MS = 10_000;
-const TICKET_POLL_MS = 3_000;
+const TICKET_POLL_MS = 1_000;
 const OPTIMISTIC_RECONCILE_MS = 1_500;
 
 // How often the displayed clock is recomputed. Four times a second keeps the
@@ -107,10 +114,19 @@ function requireWallet(address: string | null): string {
   return address;
 }
 
-export function useChessLobby() {
+export function chessMatchRefetchMs(
+  state: ChessMatchState | undefined,
+  socketLive: boolean
+): number | false {
+  if (state === "settled" || state === "cancelled") return false;
+  if (state === "awaiting_opponent") return MATCH_WAITING_POLL_MS;
+  return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
+}
+
+export function useChessLobby(wallet: string | null) {
   const challenges = useQuery({
-    queryKey: CHESS_KEYS.challenges,
-    queryFn: fetchOpenChallenges,
+    queryKey: [...CHESS_KEYS.challenges, wallet ?? "anon"],
+    queryFn: () => fetchLobbyChallenges(wallet),
     refetchInterval: LOBBY_POLL_MS,
   });
   const live = useQuery({
@@ -118,10 +134,23 @@ export function useChessLobby() {
     queryFn: fetchLiveMatches,
     refetchInterval: LOBBY_POLL_MS,
   });
-
+  const mine = wallet?.toLowerCase() ?? null;
+  const allLive =
+    live.data
+      ?.filter((match) => match.state === "in_progress")
+      .sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }) ?? [];
+  const isMine = (match: ChessMatch) =>
+    !!mine &&
+    (match.white?.walletAddress?.toLowerCase() === mine ||
+      match.black?.walletAddress?.toLowerCase() === mine);
+  const myActiveGames = mine ? allLive.filter(isMine) : [];
   return {
-    challenges: challenges.data ?? [],
-    liveMatches: live.data ?? [],
+    challenges: challenges.data?.challenges ?? [],
+    myActiveGames,
+    myOpenGames: challenges.data?.myOpenGames ?? [],
+    liveMatches: allLive.filter((match) => !isMine(match)),
     isLoading: challenges.isLoading || live.isLoading,
     error: challenges.error ?? live.error,
     refetch: () => {
@@ -211,12 +240,18 @@ export function useChessMatch(matchId: string | null) {
 
   const query = useQuery({
     queryKey: CHESS_KEYS.match(matchId ?? "none"),
-    queryFn: () => fetchMatch(matchId as string),
+    queryFn: () =>
+      fetchMatch(
+        matchId as string,
+        matchId ? (queryClient.getQueryData<ChessMatch>(CHESS_KEYS.match(matchId)) ?? null) : null
+      ),
     enabled: !!matchId,
-    refetchInterval: (q) => {
-      if (q.state.data && q.state.data.state !== "in_progress") return false;
-      return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
-    },
+    refetchInterval: (q) => chessMatchRefetchMs(q.state.data?.state, socketLive),
+    // A second browser/tab on the same game must keep moving even when it is
+    // backgrounded. If the live socket is absent or silent (local backend with
+    // no broker fanout, dropped relay, etc.), window-focus refetch is too late:
+    // the hidden board would only catch up when you click back into it.
+    refetchIntervalInBackground: true,
   });
 
   const baseMatch = query.data;
@@ -237,10 +272,11 @@ export function useChessMatch(matchId: string | null) {
   // frame marks the relay live, because a bare socket open does not prove this
   // topic is flowing and a false "live" state would stretch a broken relay into
   // a five-second poll delay for the opponent's move.
-  const liveTopic = match?.liveTopic ?? null;
-  const inProgress = match?.state === "in_progress";
+  const liveTopic = match?.liveTopic ?? (matchId ? `chess:match:${matchId}` : null);
+  const liveTrackable =
+    match?.state === undefined || (match.state !== "settled" && match.state !== "cancelled");
   useEffect(() => {
-    if (!liveTopic || !inProgress || !matchId) return;
+    if (!liveTopic || !matchId || !liveTrackable) return;
     return subscribeChessTopic(liveTopic, (frame) => {
       const { type, data } = frame;
       if (type === "__open") {
@@ -274,13 +310,15 @@ export function useChessMatch(matchId: string | null) {
         );
       } else if (type === "state" && data) {
         queryClient.setQueryData<ChessMatch>(CHESS_KEYS.match(matchId), (prev) =>
-          prev ? applyStateFrame(prev, data as ChessMatchWire) : prev
+          prev
+            ? applyStateFrame(prev, data as ChessMatchWire)
+            : toChessMatch(data as ChessMatchWire)
         );
       } else {
         void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.match(matchId) });
       }
     });
-  }, [liveTopic, inProgress, matchId, queryClient]);
+  }, [liveTopic, liveTrackable, matchId, queryClient]);
 
   useEffect(() => {
     if (!optimistic || !matchId) return;
@@ -316,7 +354,6 @@ export function useChessMatch(matchId: string | null) {
       const next = optimisticMove(current, uci);
       if (next) {
         setOptimistic(next);
-        setLiveMatchId(matchId);
       }
     },
     onError: () => setOptimistic(null),
@@ -412,7 +449,8 @@ export function useCreateChallenge() {
   return useMutation({
     mutationFn: (input: CreateChessChallengeInput) =>
       createChallenge({ ...input, creator: requireWallet(wallet.address) }),
-    onSuccess: () => {
+    onSuccess: ({ match }) => {
+      queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
       void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.challenges });
     },
   });
@@ -457,6 +495,7 @@ export function useQuickMatch() {
       for (const candidate of oldest.slice(0, QUICK_MATCH_ATTEMPTS)) {
         try {
           const match = await acceptChallenge(candidate.id, address);
+          queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
           return { matchId: match.id, waitingOn: null };
         } catch {
           // Somebody else took the seat between the list and the join. Try the
@@ -465,7 +504,9 @@ export function useQuickMatch() {
         }
       }
 
-      const { challenge } = await createChallenge({ ...input, creator: address });
+      const { challenge, match, ticket } = await createChallenge({ ...input, creator: address });
+      queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
+      if (ticket) queryClient.setQueryData(CHESS_KEYS.ticket(ticket.id), ticket);
       return { matchId: null, waitingOn: challenge.id };
     },
     onSuccess: () => {

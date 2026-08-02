@@ -11,6 +11,7 @@ import {
   fetchJoinableMatches,
   fetchLobbyChallenges,
   fetchLiveMatches,
+  fetchPlayerMatches,
   fetchMatch,
   fetchMatchmakingTicket,
   fetchWaitingMatches,

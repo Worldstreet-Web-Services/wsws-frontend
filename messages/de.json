@@ -7,15 +7,16 @@
     "rwa": "Sachwerte",
     "prediction": "Prognosen",
     "earn": "Verdienen",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Aktivität"
   },
   "explore": {
     "predictionTitle": "Prognosemärkte",
     "predictionBody": "Handeln Sie Politik, Sport und Weltereignisse.",
     "earnTitle": "Verdienen",
     "earnBody": "Echte Aufgaben, onchain bezahlt.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Schach um Einsätze, Last Man Standing und mehr.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Schach um Einsätze, The Last Man und mehr.",
     "cta": "Entdecken"
   },
   "meme": {
@@ -72,7 +73,8 @@
     "next": "Weiter",
     "confirmingLong": "Wird noch verifiziert — Base ist ausgelastet. Sie können dies schließen; das Ergebnis erscheint, sobald es vorliegt.",
     "closeAndNotify": "Schließen — Ergebnis melden",
-    "orderFailed": "Der Handel wurde nicht abgeschlossen."
+    "orderFailed": "Der Handel wurde nicht abgeschlossen.",
+    "max": "Max"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -123,7 +125,9 @@
     "youPay": "Sie zahlen",
     "youReceive": "Sie erhalten",
     "youSell": "Sie verkaufen",
-    "youSellRow": "Sie verkaufen"
+    "youSellRow": "Sie verkaufen",
+    "ctaNotSellable": "{symbol} kann aus dieser Wallet nicht verkauft werden",
+    "ctaNeedsGas": "Sie brauchen {symbol} auf {chain} für die Netzwerkgebühr"
   },
   "topbar": {
     "searchPlaceholder": "Assets, Märkte, Ticker suchen",
@@ -378,8 +382,8 @@
     "perpsDesc": "Long oder Short mit bis zu 100x Hebel.",
     "predictionTitle": "Prognosemärkte",
     "predictionDesc": "Handeln Sie Politik, Sport und Weltereignisse.",
-    "casinoTitle": "Casino & Spiele",
-    "casinoDesc": "Last Man Standing, Schach um Einsätze und mehr.",
+    "casinoTitle": "Arkade & Spiele",
+    "casinoDesc": "The Last Man, Schach um Einsätze und mehr.",
     "realestateTitle": "Immobilien",
     "realestateDesc": "Anteiliges Eigentum mit Mieteinnahmen.",
     "treasuriesTitle": "Staatsanleihen",
@@ -570,7 +574,19 @@
     "route": "Route",
     "priceImpact": "Preisauswirkung",
     "minReceived": "Mindestens erhalten",
-    "maxSlippage": "Max. Slippage"
+    "maxSlippage": "Max. Slippage",
+    "fundSolanaTitle": "Zuerst {amount} nach Solana bewegen",
+    "fundSolanaBody": "Ihre USDC liegen auf Base. Wir überbrücken sie nach Solana — etwa 30 Sekunden, ohne Gasgebühr.",
+    "fundSolanaWithGas": "Wir überbrücken Ihre USDC nach Solana und kaufen etwas SOL für die Netzwerkgebühr — etwa 30 Sekunden, ohne Gasgebühr.",
+    "fundSolanaCta": "Mittel nach Solana bewegen",
+    "fundSolanaWorking": "Wird übertragen…",
+    "fundSolanaShort": "Nicht genug USDC auf Base",
+    "proceedsTitle": "{amount} liegen auf Solana",
+    "proceedsBody": "Holen Sie Ihren Erlös zurück nach Base, wo der Rest Ihres Kontos liegt — etwa 10 Sekunden.",
+    "proceedsCta": "Erlös nach Base holen",
+    "proceedsWorking": "Wird übertragen…",
+    "proceedsDone": "Guthaben auf Base",
+    "fundSolanaFirst": "Zuerst Mittel nach Solana bewegen"
   },
   "prediction": {
     "eyebrow": "Prognosemärkte",
@@ -774,7 +790,9 @@
     "confirmRiskOpen": "Gehebelte Trades können schnell an Wert verlieren, die Ausführung erfolgt zum Marktpreis. Fahren Sie nur fort, wenn alles stimmt.",
     "confirmRiskClose": "Die Schließung erfolgt zum aktuellen Marktpreis. Dies kann nicht rückgängig gemacht werden.",
     "confirmCancel": "Abbrechen",
-    "confirmContinue": "Fortfahren"
+    "confirmContinue": "Fortfahren",
+    "positionsUnavailable": "Ihre Positionen konnten nicht geladen werden. Sie sind on-chain sicher; neuer Versuch…",
+    "updateTakingLonger": "Die Änderung ist bestätigt und braucht einen Moment bis zur Abwicklung."
   },
   "fundsFlow": {
     "back": "Zurück",
@@ -878,12 +896,12 @@
     "youPay": "Sie zahlen",
     "card": "Karte",
     "bankTransfer": "Überweisung",
-    "fiatComingSoonBody": "Wir schließen die Verifizierung mit unserem Zahlungspartner ab. Karten- und Bankaufladung starten in Kürze. Zahlen Sie in der Zwischenzeit Krypto ein.",
     "searchPlaceholder": "Suchen",
     "selectNetwork": "Netzwerk wählen",
     "pickNetworkFirst": "Wählen Sie zuerst ein Netzwerk",
     "networksError": "Netzwerke konnten nicht geladen werden.",
-    "tokensError": "Tokens konnten nicht geladen werden."
+    "tokensError": "Tokens konnten nicht geladen werden.",
+    "fiatComingSoonBody": "Wir schließen die Verifizierung mit unserem Zahlungspartner ab. Karten- und Bankaufladung starten in Kürze. Zahlen Sie in der Zwischenzeit Krypto ein."
   },
   "remit": {
     "sendMoney": "Geld senden",
@@ -934,13 +952,13 @@
       "loading": "Wird geladen…",
       "tryAgain": "Erneut versuchen",
       "unavailableTitle": "{subject} ist noch nicht verfügbar.",
-      "unavailableDetail": "Dieses Spiel startet, sobald der Casino-Dienst aktiviert ist.",
+      "unavailableDetail": "Dieses Spiel startet, sobald der Arkade-Dienst aktiviert ist.",
       "loadFailedTitle": "{subject} konnte nicht geladen werden.",
       "loadFailedDetail": "Bei uns ist etwas schiefgelaufen."
     },
     "hub": {
-      "eyebrow": "Casino · Können und Glück",
-      "title": "Casino",
+      "eyebrow": "Arkade · Können und Glück",
+      "title": "Arkade",
       "tagline": "Können und Glück. Echte Einsätze.",
       "yourBalance": "Ihr Guthaben",
       "recentWins": "Letzte Gewinne",
@@ -965,7 +983,7 @@
           "note": "Duell mit Einsatz, per Einladung oder Schnellpartie"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Überdauern Sie alle, der Gewinner nimmt den Pot"
         },
         "draw": {
@@ -989,8 +1007,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · Der Gewinner bekommt alles",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · Der Gewinner bekommt alles",
+      "title": "The Last Man",
       "intro": "Spielen Sie, um als Letzter übrig zu bleiben. Läuft die Uhr ab, nimmt der letzte Spieler, der gespielt hat, den ganzen Pot.",
       "live": "Live",
       "offline": "Offline",
@@ -1316,7 +1334,9 @@
         "infoWhite": "Weiß",
         "infoBlack": "Schwarz",
         "controlsWaiting": "Partie-Steuerung",
-        "controlsActions": "Aktionen"
+        "controlsActions": "Aktionen",
+        "statusFlagged": "Ihre Zeit ist abgelaufen",
+        "navPlay": "Spielen"
       },
       "spectate": {
         "subject": "Diese Begegnung",
@@ -1489,5 +1509,43 @@
         "watch": "Zuschauen"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Kaufen Sie Kash und verdienen Sie mehr Geld durch Ihre Aktivitäten",
+    "bannerSub": "Handeln, spielen, empfehlen — jede Aktivität zahlt sich in Kash aus.",
+    "bannerCta": "Kash kaufen",
+    "balanceTitle": "Kash-Guthaben",
+    "buy": "Kaufen",
+    "sell": "Verkaufen",
+    "activityTitle": "Aktivitätsprämien",
+    "activityTrading": "Trading",
+    "activityGames": "Spiele",
+    "activityReferrals": "Empfehlungen",
+    "activityHint": "Kash-Prämien sammeln sich durch Ihre Aktivität in der App und landen hier.",
+    "comingSoon": "Kash kommt bald. Kauf und Verkauf öffnen in Kürze."
+  },
+  "activity": {
+    "eyebrow": "Aktivität",
+    "subtitle": "Jeder Ein- und Ausgang Ihrer Wallets über alle unterstützten Chains. Tippen Sie auf eine Zeile, um sie im Explorer zu öffnen.",
+    "loading": "Aktivität wird geladen…",
+    "errorBody": "Ihre Aktivität konnte nicht geladen werden.",
+    "tryAgain": "Erneut versuchen",
+    "emptyTitle": "Noch nichts hier",
+    "emptyBody": "Einzahlungen, Trades und Auszahlungen erscheinen hier, sobald sie abgewickelt sind.",
+    "justNow": "Gerade eben",
+    "minutesAgo": "vor {n} Min.",
+    "hoursAgo": "vor {n} Std.",
+    "daysAgo": "vor {n} T.",
+    "receivedSymbol": "{symbol} erhalten",
+    "sentSymbol": "{symbol} gesendet",
+    "from": "von",
+    "to": "an",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "unknownDate": "Früher",
+    "recentEyebrow": "Letzte Aktivität",
+    "viewAll": "Gesamte Aktivität ansehen",
+    "toastReceived": "{amount} {symbol} auf {network} erhalten",
+    "toastSent": "{amount} {symbol} auf {network} gesendet"
   }
 }

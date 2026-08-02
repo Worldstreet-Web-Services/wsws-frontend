@@ -14,7 +14,7 @@
 @theme inline {
   --font-sans: var(--font-body);
   /* Header font. Kept under the --font-serif token (and the ws-display utility)
-     to avoid renaming 47 call sites, but it is now Space Grotesk, a sans display
+     to avoid renaming 47 call sites, but it is now Mona Sans, a sans display
      face, not a serif. */
   --font-serif: var(--font-display);
 
@@ -79,9 +79,9 @@ body {
 
 @utility ws-display {
   font-family: var(--font-serif), sans-serif;
-  /* Space Grotesk at medium weight, not the old italic serif. Component tracking
-     utilities still override the letter-spacing where a title needs it tighter. */
-  font-weight: 500;
+  /* Mona Sans at bold, per the design team. Component tracking utilities
+     still override the letter-spacing where a title needs it tighter. */
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -482,5 +482,56 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .ws-voice-glow {
     animation: none;
+  }
+}
+
+/* Kash: the promo banner's ad-style shine — a sheen sweeping across, sparkles
+   blinking, the coin bobbing, and a soft gold glow breathing. */
+@keyframes kash-sheen {
+  0% {
+    transform: translateX(-150%) skewX(-18deg);
+  }
+  60%,
+  100% {
+    transform: translateX(350%) skewX(-18deg);
+  }
+}
+
+@keyframes kash-blink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kash-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(6deg);
+  }
+}
+
+@keyframes kash-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(255, 196, 0, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 34px rgba(255, 196, 0, 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kash-banner,
+  .kash-banner * {
+    animation: none !important;
   }
 }

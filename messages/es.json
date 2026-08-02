@@ -7,15 +7,16 @@
     "rwa": "Activos reales",
     "prediction": "Predicción",
     "earn": "Ganar",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Actividad"
   },
   "explore": {
     "predictionTitle": "Mercados de predicción",
     "predictionBody": "Opera política, deportes y eventos mundiales.",
     "earnTitle": "Ganar",
     "earnBody": "Tareas reales pagadas onchain.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Ajedrez con apuestas, Last Man Standing y más.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Ajedrez con apuestas, The Last Man y más.",
     "cta": "Explorar"
   },
   "meme": {
@@ -72,7 +73,8 @@
     "next": "Sig.",
     "confirmingLong": "Aún verificando: Base está ocupada. Puedes cerrar esto; el resultado aparecerá en cuanto llegue.",
     "closeAndNotify": "Cerrar — avisarme del resultado",
-    "orderFailed": "La operación no se completó."
+    "orderFailed": "La operación no se completó.",
+    "max": "Máx"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -123,7 +125,9 @@
     "youPay": "Pagas",
     "youReceive": "Recibes",
     "youSell": "Vendes",
-    "youSellRow": "Vendes"
+    "youSellRow": "Vendes",
+    "ctaNotSellable": "{symbol} no se puede vender desde esta billetera",
+    "ctaNeedsGas": "Necesitas {symbol} en {chain} para la tarifa de red"
   },
   "topbar": {
     "searchPlaceholder": "Buscar activos, mercados, tickers",
@@ -378,8 +382,8 @@
     "perpsDesc": "Long o short con hasta 100x de apalancamiento.",
     "predictionTitle": "Mercados de predicción",
     "predictionDesc": "Opera política, deportes y eventos mundiales.",
-    "casinoTitle": "Casino y juegos",
-    "casinoDesc": "Last Man Standing, ajedrez con apuestas y más.",
+    "casinoTitle": "Arkade y juegos",
+    "casinoDesc": "The Last Man, ajedrez con apuestas y más.",
     "realestateTitle": "Bienes raíces",
     "realestateDesc": "Propiedad fraccionada que paga renta.",
     "treasuriesTitle": "Bonos del Tesoro",
@@ -570,7 +574,19 @@
     "route": "Ruta",
     "priceImpact": "Impacto en el precio",
     "minReceived": "Mínimo recibido",
-    "maxSlippage": "Slippage máx"
+    "maxSlippage": "Slippage máx",
+    "fundSolanaTitle": "Primero mueve {amount} a Solana",
+    "fundSolanaBody": "Tus USDC están en Base. Los transferimos a Solana — unos 30 segundos, sin comisión de gas.",
+    "fundSolanaWithGas": "Transferimos tus USDC a Solana y compramos un poco de SOL para la comisión de red — unos 30 segundos, sin comisión de gas.",
+    "fundSolanaCta": "Mover fondos a Solana",
+    "fundSolanaWorking": "Moviendo fondos…",
+    "fundSolanaShort": "USDC insuficientes en Base",
+    "proceedsTitle": "{amount} está en Solana",
+    "proceedsBody": "Trae tus fondos de vuelta a Base, donde vive el resto de tu cuenta — unos 10 segundos.",
+    "proceedsCta": "Traer fondos a Base",
+    "proceedsWorking": "Moviendo fondos…",
+    "proceedsDone": "Fondos en Base",
+    "fundSolanaFirst": "Primero mueve fondos a Solana"
   },
   "prediction": {
     "eyebrow": "Mercados de predicción",
@@ -774,7 +790,9 @@
     "confirmRiskOpen": "Las operaciones con apalancamiento pueden perder valor rápidamente y se ejecutan a precio de mercado. Continúa solo si todo es correcto.",
     "confirmRiskClose": "El cierre se ejecuta al precio de mercado actual. Esto no se puede deshacer.",
     "confirmCancel": "Cancelar",
-    "confirmContinue": "Continuar"
+    "confirmContinue": "Continuar",
+    "positionsUnavailable": "No se pudieron cargar tus posiciones. Están seguras on-chain; reintentando…",
+    "updateTakingLonger": "El cambio está confirmado y tarda un momento en liquidarse."
   },
   "fundsFlow": {
     "back": "Atrás",
@@ -878,12 +896,12 @@
     "youPay": "Pagas",
     "card": "Tarjeta",
     "bankTransfer": "Transferencia bancaria",
-    "fiatComingSoonBody": "Estamos terminando la verificación con nuestro socio de pagos. El fondeo con tarjeta y banco llega en breve. Mientras tanto, deposita cripto.",
     "searchPlaceholder": "Buscar",
     "selectNetwork": "Elige una red",
     "pickNetworkFirst": "Elige primero una red",
     "networksError": "No se pudieron cargar las redes.",
-    "tokensError": "No se pudieron cargar los tokens."
+    "tokensError": "No se pudieron cargar los tokens.",
+    "fiatComingSoonBody": "Estamos terminando la verificación con nuestro socio de pagos. El fondeo con tarjeta y banco llega en breve. Mientras tanto, deposita cripto."
   },
   "remit": {
     "sendMoney": "Enviar dinero",
@@ -934,13 +952,13 @@
       "loading": "Cargando…",
       "tryAgain": "Reintentar",
       "unavailableTitle": "{subject} aún no está disponible.",
-      "unavailableDetail": "Este juego se activará cuando el servicio del casino esté encendido.",
+      "unavailableDetail": "Este juego se activará cuando el servicio Arkade esté encendido.",
       "loadFailedTitle": "No se pudo cargar {subject}.",
       "loadFailedDetail": "Algo salió mal de nuestro lado."
     },
     "hub": {
-      "eyebrow": "Casino · Habilidad y azar",
-      "title": "Casino",
+      "eyebrow": "Arkade · Habilidad y azar",
+      "title": "Arkade",
       "tagline": "Habilidad y azar. Apuestas reales.",
       "yourBalance": "Tu saldo",
       "recentWins": "Ganancias recientes",
@@ -965,7 +983,7 @@
           "note": "Uno contra uno con apuesta, por invitación o partida rápida"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Sobrevive a todos, el ganador se lleva el pozo"
         },
         "draw": {
@@ -989,8 +1007,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · El ganador se lo lleva todo",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · El ganador se lo lleva todo",
+      "title": "The Last Man",
       "intro": "Juega para ser el último en pie. Cuando el tiempo se agota, el último jugador en jugar se lleva todo el pozo.",
       "live": "En vivo",
       "offline": "Sin conexión",
@@ -1316,7 +1334,9 @@
         "infoWhite": "Blancas",
         "infoBlack": "Negras",
         "controlsWaiting": "Controles de la partida",
-        "controlsActions": "Acciones"
+        "controlsActions": "Acciones",
+        "statusFlagged": "Se te acabó el tiempo",
+        "navPlay": "Jugar"
       },
       "spectate": {
         "subject": "este encuentro",
@@ -1489,5 +1509,43 @@
         "watch": "Ver"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Compra Kash y gana más dinero con tus actividades",
+    "bannerSub": "Opera, juega y refiere — cada actividad te recompensa en Kash.",
+    "bannerCta": "Comprar Kash",
+    "balanceTitle": "Saldo de Kash",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "activityTitle": "Recompensas por actividad",
+    "activityTrading": "Trading",
+    "activityGames": "Juegos",
+    "activityReferrals": "Referidos",
+    "activityHint": "Las recompensas Kash se acumulan con tu actividad en la aplicación y llegan aquí.",
+    "comingSoon": "Kash llega pronto. La compra y venta abren en breve."
+  },
+  "activity": {
+    "eyebrow": "Actividad",
+    "subtitle": "Cada transferencia de entrada y salida de tus billeteras, en todas las redes admitidas. Toca una fila para verla en el explorador.",
+    "loading": "Cargando tu actividad…",
+    "errorBody": "No pudimos cargar tu actividad.",
+    "tryAgain": "Reintentar",
+    "emptyTitle": "Aún no hay nada",
+    "emptyBody": "Los depósitos, operaciones y retiros aparecerán aquí cuando se liquiden.",
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {n} min",
+    "hoursAgo": "hace {n} h",
+    "daysAgo": "hace {n} d",
+    "receivedSymbol": "{symbol} recibido",
+    "sentSymbol": "{symbol} enviado",
+    "from": "de",
+    "to": "a",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "unknownDate": "Antes",
+    "recentEyebrow": "Actividad reciente",
+    "viewAll": "Ver toda la actividad",
+    "toastReceived": "Recibiste {amount} {symbol} en {network}",
+    "toastSent": "Enviaste {amount} {symbol} en {network}"
   }
 }

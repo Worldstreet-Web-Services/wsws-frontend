@@ -7,15 +7,16 @@
     "rwa": "Ativos reais",
     "prediction": "Previsão",
     "earn": "Ganhar",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Atividade"
   },
   "explore": {
     "predictionTitle": "Mercados de previsão",
     "predictionBody": "Negocie política, esportes e eventos mundiais.",
     "earnTitle": "Ganhar",
     "earnBody": "Tarefas reais pagas onchain.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Xadrez com apostas, Last Man Standing e mais.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Xadrez com apostas, The Last Man e mais.",
     "cta": "Explorar"
   },
   "meme": {
@@ -72,7 +73,8 @@
     "next": "Próx.",
     "confirmingLong": "Ainda verificando — a Base está ocupada. Você pode fechar; o resultado aparecerá assim que chegar.",
     "closeAndNotify": "Fechar — avisar quando concluir",
-    "orderFailed": "A negociação não foi concluída."
+    "orderFailed": "A negociação não foi concluída.",
+    "max": "Máx"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -123,7 +125,9 @@
     "youPay": "Você paga",
     "youReceive": "Você recebe",
     "youSell": "Você vende",
-    "youSellRow": "Você vende"
+    "youSellRow": "Você vende",
+    "ctaNotSellable": "{symbol} não pode ser vendido desta carteira",
+    "ctaNeedsGas": "Você precisa de {symbol} na {chain} para a taxa de rede"
   },
   "topbar": {
     "searchPlaceholder": "Pesquisar ativos, mercados, tickers",
@@ -378,8 +382,8 @@
     "perpsDesc": "Long ou short com alavancagem até 100x.",
     "predictionTitle": "Mercados de previsão",
     "predictionDesc": "Negoceie política, desporto e eventos mundiais.",
-    "casinoTitle": "Cassino e jogos",
-    "casinoDesc": "Last Man Standing, xadrez com apostas e muito mais.",
+    "casinoTitle": "Arkade e jogos",
+    "casinoDesc": "The Last Man, xadrez com apostas e muito mais.",
     "realestateTitle": "Imobiliário",
     "realestateDesc": "Propriedade fracionada que paga rendas.",
     "treasuriesTitle": "Títulos do Tesouro",
@@ -570,7 +574,19 @@
     "route": "Rota",
     "priceImpact": "Impacto no preço",
     "minReceived": "Mínimo recebido",
-    "maxSlippage": "Slippage máx"
+    "maxSlippage": "Slippage máx",
+    "fundSolanaTitle": "Primeiro mova {amount} para a Solana",
+    "fundSolanaBody": "Seus USDC estão na Base. Vamos transferi-los para a Solana — cerca de 30 segundos, sem taxa de gás.",
+    "fundSolanaWithGas": "Vamos transferir seus USDC para a Solana e comprar um pouco de SOL para a taxa de rede — cerca de 30 segundos, sem taxa de gás.",
+    "fundSolanaCta": "Mover fundos para a Solana",
+    "fundSolanaWorking": "Movendo fundos…",
+    "fundSolanaShort": "USDC insuficientes na Base",
+    "proceedsTitle": "{amount} está na Solana",
+    "proceedsBody": "Traga seus fundos de volta para a Base, onde fica o resto da sua conta — cerca de 10 segundos.",
+    "proceedsCta": "Trazer fundos para a Base",
+    "proceedsWorking": "Movendo fundos…",
+    "proceedsDone": "Fundos na Base",
+    "fundSolanaFirst": "Primeiro mova fundos para a Solana"
   },
   "prediction": {
     "eyebrow": "Mercados de previsão",
@@ -774,7 +790,9 @@
     "confirmRiskOpen": "Operações alavancadas podem perder valor rapidamente, e a execução acontece a preço de mercado. Continue apenas se estiver tudo certo.",
     "confirmRiskClose": "O fechamento é executado ao preço de mercado atual. Isso não pode ser desfeito.",
     "confirmCancel": "Cancelar",
-    "confirmContinue": "Continuar"
+    "confirmContinue": "Continuar",
+    "positionsUnavailable": "Não foi possível carregar suas posições. Elas estão seguras on-chain; tentando novamente…",
+    "updateTakingLonger": "A mudança está confirmada e leva um momento para liquidar."
   },
   "fundsFlow": {
     "back": "Voltar",
@@ -878,12 +896,12 @@
     "youPay": "Paga",
     "card": "Cartão",
     "bankTransfer": "Transferência bancária",
-    "fiatComingSoonBody": "Estamos a finalizar a verificação com o nosso parceiro de pagamentos. O financiamento por cartão e banco chega em breve. Entretanto, deposite cripto.",
     "searchPlaceholder": "Pesquisar",
     "selectNetwork": "Escolha uma rede",
     "pickNetworkFirst": "Escolha uma rede primeiro",
     "networksError": "Não foi possível carregar as redes.",
-    "tokensError": "Não foi possível carregar os tokens."
+    "tokensError": "Não foi possível carregar os tokens.",
+    "fiatComingSoonBody": "Estamos a finalizar a verificação com o nosso parceiro de pagamentos. O financiamento por cartão e banco chega em breve. Entretanto, deposite cripto."
   },
   "remit": {
     "sendMoney": "Enviar dinheiro",
@@ -934,13 +952,13 @@
       "loading": "Carregando…",
       "tryAgain": "Tentar novamente",
       "unavailableTitle": "{subject} ainda não está disponível.",
-      "unavailableDetail": "Este jogo entra no ar assim que o serviço do casino for ativado.",
+      "unavailableDetail": "Este jogo entra no ar assim que o serviço Arkade for ativado.",
       "loadFailedTitle": "Não foi possível carregar {subject}.",
       "loadFailedDetail": "Algo deu errado do nosso lado."
     },
     "hub": {
-      "eyebrow": "Casino · Habilidade e sorte",
-      "title": "Casino",
+      "eyebrow": "Arkade · Habilidade e sorte",
+      "title": "Arkade",
       "tagline": "Habilidade e sorte. Apostas reais.",
       "yourBalance": "Seu saldo",
       "recentWins": "Ganhos recentes",
@@ -965,7 +983,7 @@
           "note": "Um contra um com aposta, por convite ou partida rápida"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Sobreviva a todos, o vencedor leva o pote"
         },
         "draw": {
@@ -989,8 +1007,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · O vencedor leva tudo",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · O vencedor leva tudo",
+      "title": "The Last Man",
       "intro": "Jogue para ser o último de pé. Quando o tempo acaba, o último jogador a jogar leva o pote inteiro.",
       "live": "Ao vivo",
       "offline": "Offline",
@@ -1316,7 +1334,9 @@
         "infoWhite": "Brancas",
         "infoBlack": "Pretas",
         "controlsWaiting": "Controles da partida",
-        "controlsActions": "Ações"
+        "controlsActions": "Ações",
+        "statusFlagged": "Seu tempo acabou",
+        "navPlay": "Jogar"
       },
       "spectate": {
         "subject": "este confronto",
@@ -1489,5 +1509,43 @@
         "watch": "Assistir"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Compre Kash e ganhe mais dinheiro com suas atividades",
+    "bannerSub": "Negocie, jogue e indique — cada atividade recompensa você em Kash.",
+    "bannerCta": "Comprar Kash",
+    "balanceTitle": "Saldo de Kash",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "activityTitle": "Recompensas por atividade",
+    "activityTrading": "Trading",
+    "activityGames": "Jogos",
+    "activityReferrals": "Indicações",
+    "activityHint": "As recompensas Kash se acumulam com sua atividade no aplicativo e chegam aqui.",
+    "comingSoon": "Kash chega em breve. Compra e venda abrem em breve."
+  },
+  "activity": {
+    "eyebrow": "Atividade",
+    "subtitle": "Cada transferência de entrada e saída das suas carteiras, em todas as redes suportadas. Toque numa linha para vê-la no explorador.",
+    "loading": "Carregando sua atividade…",
+    "errorBody": "Não foi possível carregar sua atividade.",
+    "tryAgain": "Tentar novamente",
+    "emptyTitle": "Nada aqui ainda",
+    "emptyBody": "Depósitos, negociações e saques aparecerão aqui quando forem liquidados.",
+    "justNow": "Agora mesmo",
+    "minutesAgo": "há {n} min",
+    "hoursAgo": "há {n} h",
+    "daysAgo": "há {n} d",
+    "receivedSymbol": "{symbol} recebido",
+    "sentSymbol": "{symbol} enviado",
+    "from": "de",
+    "to": "para",
+    "today": "Hoje",
+    "yesterday": "Ontem",
+    "unknownDate": "Antes",
+    "recentEyebrow": "Atividade recente",
+    "viewAll": "Ver toda a atividade",
+    "toastReceived": "Recebeu {amount} {symbol} na {network}",
+    "toastSent": "Enviou {amount} {symbol} na {network}"
   }
 }

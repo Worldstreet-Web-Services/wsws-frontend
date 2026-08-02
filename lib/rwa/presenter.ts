@@ -34,9 +34,19 @@ export function isTradable(a: RwaApiAsset): boolean {
   return a.freelyTradable === true && a.accessMode !== "issuer";
 }
 
-// The table shows Base-network assets only.
-export function isBaseAsset(a: RwaApiAsset): boolean {
-  return a.chain === "base";
+// Chains the RWA table trades on. Quote and build route both live (verified
+// against the gateway: Jupiter on Solana, aggregators on Base); the catalog's
+// other chains stay hidden until their portfolio and gas support lands.
+export const LIVE_RWA_CHAINS: readonly RwaChain[] = ["base", "solana"];
+
+export function isLiveChain(a: RwaApiAsset): boolean {
+  return (LIVE_RWA_CHAINS as readonly string[]).includes(a.chain);
+}
+
+// The gateway payload is cast, not validated, so one malformed row would
+// otherwise crash the table, the modal or the voice prefill on a null field.
+export function isUsableAsset(a: RwaApiAsset): boolean {
+  return Boolean(a && a.id && a.chain && a.address && a.symbol);
 }
 
 // Native gas token and portfolio network id per chain. The portfolio source
@@ -178,9 +188,14 @@ export function rwaErrorInfo(code: string | undefined, fallback?: string): RwaEr
         requote: true,
       };
     case "SIMULATION_FAILED":
+      // Two very different causes reach this code: a size the pool cannot
+      // fill, and a wallet that is not ready on that chain (no token account
+      // or no gas). Advising a smaller size would be wrong for the second, so
+      // the copy names both.
       return {
-        message: "This trade would fail on-chain, try a smaller size",
-        retryable: false,
+        message:
+          "This trade could not be prepared. Check your balance and network fee on this chain, or try a smaller size.",
+        retryable: true,
         requote: false,
       };
     case "ASSET_NOT_TRADABLE":

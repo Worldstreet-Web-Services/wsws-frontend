@@ -16,18 +16,24 @@ const PREVIEW_DEBOUNCE_MS = 600;
 interface MemeTradeSheetProps {
   token: MemeToken;
   onClose: () => void;
+  // Opens on this side; a portfolio-initiated sell starts on SELL.
+  defaultSide?: "BUY" | "SELL";
 }
 
 // The whole trade flow in one sheet: side + amount → live indicative preview →
 // explicit confirm → firm quote, sponsored calls, submission registration and
 // status polling. Success is only ever the backend's CONFIRMED.
-export function MemeTradeSheet({ token: listed, onClose }: MemeTradeSheetProps) {
+export function MemeTradeSheet({
+  token: listed,
+  onClose,
+  defaultSide = "BUY",
+}: MemeTradeSheetProps) {
   const t = useTranslations("meme");
   // Fresh risk/tradability for the trade surface; the list row may be stale.
   const { token: fresh } = useMemeToken(listed.address);
   const token = fresh ?? listed;
 
-  const [side, setSide] = useState<"BUY" | "SELL">("BUY");
+  const [side, setSide] = useState<"BUY" | "SELL">(defaultSide);
   const [amount, setAmount] = useState("");
   const [debouncedAmount, setDebouncedAmount] = useState("");
   const { wallet, phase, error, received, trade, reset, linkForPreview } = useMemeTrade();
@@ -55,6 +61,19 @@ export function MemeTradeSheet({ token: listed, onClose }: MemeTradeSheetProps) 
     )?.balance ?? 0;
   const balance = buying ? usdcBalance : heldBalance;
   const overBalance = amountValid && Number(debouncedAmount) > balance + 1e-9;
+
+  // One-tap full balance: buys floor to cents so 100% never rounds above the
+  // USDC balance; sells render at the token's own precision (String() would
+  // emit scientific notation for dust).
+  const fillMax = () => {
+    if (balance <= 0) return;
+    if (buying) {
+      setAmount((Math.floor(balance * 100) / 100).toFixed(2));
+      return;
+    }
+    const fixed = balance.toFixed(token.decimals ?? 18);
+    setAmount(fixed.includes(".") ? fixed.replace(/\.?0+$/, "") || "0" : fixed);
+  };
 
   const previewInput = useMemo(
     () =>
@@ -251,11 +270,20 @@ export function MemeTradeSheet({ token: listed, onClose }: MemeTradeSheetProps) 
             <div className={`ws-inset mt-3 p-4 ${overBalance ? "ws-invalid" : ""}`}>
               <div className="mb-2 flex items-center justify-between text-xs font-normal text-white/55">
                 <span>{buying ? t("youPay") : t("youSell")}</span>
-                <span className="tnum">
-                  {t("balance", {
-                    amount: balance.toLocaleString(undefined, { maximumFractionDigits: 6 }),
-                    symbol: buying ? "USDC" : (token.symbol ?? ""),
-                  })}
+                <span className="flex items-center gap-2">
+                  <span className="tnum">
+                    {t("balance", {
+                      amount: balance.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+                      symbol: buying ? "USDC" : (token.symbol ?? ""),
+                    })}
+                  </span>
+                  <button
+                    onClick={fillMax}
+                    disabled={balance <= 0}
+                    className="cursor-pointer rounded-full border border-white/15 px-2 py-0.5 font-sans text-[10.5px] font-semibold text-white/70 hover:border-white/35 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {t("max")}
+                  </button>
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">

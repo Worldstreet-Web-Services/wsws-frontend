@@ -7,15 +7,16 @@
     "rwa": "Real assets",
     "prediction": "Prediction",
     "earn": "Earn",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Activity"
   },
   "explore": {
     "predictionTitle": "Prediction markets",
     "predictionBody": "Trade politics, sports and world events.",
     "earnTitle": "Earn",
     "earnBody": "Real tasks that pay out onchain.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Staked chess, Last Man Standing and more.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Staked chess, The Last Man and more.",
     "cta": "Explore"
   },
   "meme": {
@@ -72,7 +73,8 @@
     "next": "Next",
     "confirmingLong": "Still verifying — Base is busy. You can close this; we'll show the result the moment it lands.",
     "closeAndNotify": "Close — notify me when done",
-    "orderFailed": "The trade didn't complete."
+    "orderFailed": "The trade didn't complete.",
+    "max": "Max"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -123,7 +125,9 @@
     "youPay": "You pay",
     "youReceive": "You receive",
     "youSell": "You're selling",
-    "youSellRow": "You sell"
+    "youSellRow": "You sell",
+    "ctaNotSellable": "{symbol} can't be sold from this wallet",
+    "ctaNeedsGas": "You need {symbol} on {chain} for the network fee"
   },
   "topbar": {
     "searchPlaceholder": "Search assets, markets, tickers",
@@ -378,8 +382,8 @@
     "perpsDesc": "Long or short with up to 100x leverage.",
     "predictionTitle": "Prediction markets",
     "predictionDesc": "Trade politics, sports and world events.",
-    "casinoTitle": "Casino & games",
-    "casinoDesc": "Last Man Standing, staked chess and more.",
+    "casinoTitle": "Arkade & games",
+    "casinoDesc": "The Last Man, staked chess and more.",
     "realestateTitle": "Real estate",
     "realestateDesc": "Fractional property that pays rental income.",
     "treasuriesTitle": "Treasuries & bonds",
@@ -570,7 +574,19 @@
     "route": "Route",
     "priceImpact": "Price impact",
     "minReceived": "Min received",
-    "maxSlippage": "Max slippage"
+    "maxSlippage": "Max slippage",
+    "fundSolanaTitle": "Move {amount} to Solana first",
+    "fundSolanaBody": "Your USDC is on Base. We'll bridge it to Solana — about 30 seconds, no gas fee.",
+    "fundSolanaWithGas": "We'll bridge your USDC to Solana and buy a little SOL for the network fee — about 30 seconds, no gas fee.",
+    "fundSolanaCta": "Move funds to Solana",
+    "fundSolanaWorking": "Moving funds…",
+    "fundSolanaShort": "Not enough USDC on Base",
+    "proceedsTitle": "{amount} is on Solana",
+    "proceedsBody": "Bring your proceeds back to Base, where the rest of your account lives — about 10 seconds.",
+    "proceedsCta": "Bring proceeds to Base",
+    "proceedsWorking": "Moving funds…",
+    "proceedsDone": "Funds are on Base",
+    "fundSolanaFirst": "Move funds to Solana first"
   },
   "prediction": {
     "eyebrow": "Prediction markets",
@@ -774,7 +790,9 @@
     "confirmRiskOpen": "Leveraged trades can lose value fast, and fills happen at market. Continue only if this looks right.",
     "confirmRiskClose": "The close fills at the current market price. This can't be undone.",
     "confirmCancel": "Cancel",
-    "confirmContinue": "Continue"
+    "confirmContinue": "Continue",
+    "positionsUnavailable": "Couldn't load your positions. They are safe on-chain; retrying…",
+    "updateTakingLonger": "The change is confirmed and is taking a moment to settle."
   },
   "fundsFlow": {
     "back": "Back",
@@ -878,12 +896,12 @@
     "youPay": "You pay",
     "card": "Card",
     "bankTransfer": "Bank transfer",
-    "fiatComingSoonBody": "We are finishing verification with our payments partner. Card and bank funding go live shortly. Deposit crypto in the meantime.",
     "searchPlaceholder": "Search",
     "selectNetwork": "Select network",
     "pickNetworkFirst": "Pick a network first",
     "networksError": "Couldn't load networks.",
-    "tokensError": "Couldn't load tokens."
+    "tokensError": "Couldn't load tokens.",
+    "fiatComingSoonBody": "We are finishing verification with our payments partner. Card and bank funding go live shortly. Deposit crypto in the meantime."
   },
   "remit": {
     "sendMoney": "Send money",
@@ -934,13 +952,13 @@
       "loading": "Loading…",
       "tryAgain": "Try again",
       "unavailableTitle": "{subject} isn't available yet.",
-      "unavailableDetail": "This game goes live once the casino service is switched on.",
+      "unavailableDetail": "This game goes live once the Arkade service is switched on.",
       "loadFailedTitle": "Couldn't load {subject}.",
       "loadFailedDetail": "Something went wrong on our side."
     },
     "hub": {
-      "eyebrow": "Casino · Skill and chance",
-      "title": "Casino",
+      "eyebrow": "Arkade · Skill and chance",
+      "title": "Arkade",
       "tagline": "Skill and chance. Real stakes.",
       "yourBalance": "Your balance",
       "recentWins": "Recent wins",
@@ -965,7 +983,7 @@
           "note": "Staked head-to-head, invite or quick match"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Outlast everyone, winner takes the pot"
         },
         "draw": {
@@ -989,8 +1007,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · Winner takes all",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · Winner takes all",
+      "title": "The Last Man",
       "intro": "Play to become the last one standing. When the timer runs out, the last player to play takes the whole pot.",
       "live": "Live",
       "offline": "Offline",
@@ -1317,7 +1335,8 @@
         "infoWhite": "White",
         "infoBlack": "Black",
         "controlsWaiting": "Game controls",
-        "controlsActions": "Actions"
+        "controlsActions": "Actions",
+        "navPlay": "Play"
       },
       "spectate": {
         "subject": "this match",
@@ -1490,5 +1509,43 @@
         "watch": "Watch"
       }
     }
+  },
+  "kash": {
+    "bannerTitle": "Buy Kash to earn more cash by your activities",
+    "bannerSub": "Trade, play and refer — every activity pays you back in Kash.",
+    "bannerCta": "Buy Kash",
+    "balanceTitle": "Kash balance",
+    "buy": "Buy",
+    "sell": "Sell",
+    "activityTitle": "Activity rewards",
+    "activityTrading": "Trading",
+    "activityGames": "Games",
+    "activityReferrals": "Referrals",
+    "activityHint": "Kash rewards accrue from your activity across the app and land here.",
+    "comingSoon": "Kash is almost here. Buying and selling open soon."
+  },
+  "activity": {
+    "eyebrow": "Activity",
+    "subtitle": "Every transfer in and out of your wallets, across all supported chains. Tap a row to view it on the block explorer.",
+    "loading": "Loading your activity…",
+    "errorBody": "We couldn't load your activity.",
+    "tryAgain": "Try again",
+    "emptyTitle": "Nothing here yet",
+    "emptyBody": "Deposits, trades and withdrawals will appear here as they settle.",
+    "justNow": "Just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago",
+    "receivedSymbol": "Received {symbol}",
+    "sentSymbol": "Sent {symbol}",
+    "from": "from",
+    "to": "to",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "unknownDate": "Earlier",
+    "recentEyebrow": "Recent activity",
+    "viewAll": "View all activity",
+    "toastReceived": "Received {amount} {symbol} on {network}",
+    "toastSent": "Sent {amount} {symbol} on {network}"
   }
 }

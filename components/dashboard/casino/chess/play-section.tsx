@@ -60,6 +60,7 @@ const CARD_BG =
 const SHADOW = "0 .1rem .1rem 0 rgba(0, 0, 0, 0.20)";
 const CARD_SHADOW =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.07), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.20)";
+const PLAY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 280px))";
 
 type Translator = ReturnType<typeof useTranslations>;
 
@@ -493,7 +494,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
         >
-          <div className="mx-auto max-w-[944px]">
+          <div className="mx-auto w-full" style={{ maxWidth: PLAY_BOARD_MAX_WIDTH }}>
             <div className="mb-4 flex items-center justify-between gap-4">
               <div
                 className="flex min-w-0 items-center gap-4 rounded-[8px] px-3 py-3"
@@ -587,7 +588,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
               </div>
               <div
                 className={`tnum flex min-w-[126px] shrink-0 items-center justify-center gap-2 rounded-[8px] px-5 py-3 text-[1.15rem] font-semibold ${
-                  yourTurn ? "border border-[#81B64C]/45 text-white" : "text-white/88"
+                  yourTurn ? "border border-[#B7B1A8]/45 text-white" : "text-white/88"
                 }`}
                 style={{ background: SHELL_BG, boxShadow: SHADOW }}
               >
@@ -690,7 +691,7 @@ export function PlaySection({ matchId }: { matchId: string | null }) {
                             const copied = await copyText(inviteUrl);
                             if (copied) toast.success(tCreate("linkCopied"));
                           }}
-                          className="cursor-pointer rounded-[12px] bg-[#81B64C] px-4 py-3 font-sans text-[12px] font-bold text-white"
+                          className="cursor-pointer rounded-[12px] bg-[#8B847B] px-4 py-3 font-sans text-[12px] font-bold text-white"
                         >
                           {tCreate("copy")}
                         </button>

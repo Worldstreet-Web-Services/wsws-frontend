@@ -35,10 +35,12 @@ describe("server auth helpers", () => {
   it("prefers the identity token when one is present", async () => {
     privy.getByToken.mockResolvedValue({ id: "user_token" });
 
-    const user = await getRequestUser(
-      makeReq({ "privy-id-token": "id-token" }),
-      { userId: "user_claim", sessionId: "session_1", issuedAt: 1, expiration: 2 }
-    );
+    const user = await getRequestUser(makeReq({ "privy-id-token": "id-token" }), {
+      userId: "user_claim",
+      sessionId: "session_1",
+      issuedAt: 1,
+      expiration: 2,
+    });
 
     expect(privy.getByToken).toHaveBeenCalledWith({ id_token: "id-token" });
     expect(privy.getById).not.toHaveBeenCalled();
@@ -48,10 +50,12 @@ describe("server auth helpers", () => {
   it("falls back to the verified user id when the identity token is missing", async () => {
     privy.getById.mockResolvedValue({ id: "user_claim" });
 
-    const user = await getRequestUser(
-      makeReq(),
-      { userId: "user_claim", sessionId: "session_1", issuedAt: 1, expiration: 2 }
-    );
+    const user = await getRequestUser(makeReq(), {
+      userId: "user_claim",
+      sessionId: "session_1",
+      issuedAt: 1,
+      expiration: 2,
+    });
 
     expect(privy.getByToken).not.toHaveBeenCalled();
     expect(privy.getById).toHaveBeenCalledWith("user_claim");

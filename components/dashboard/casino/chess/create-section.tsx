@@ -35,6 +35,7 @@ const CARD_SHADOW =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.07), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.20)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
+const CREATE_BOARD_MAX_WIDTH = "min(100%, 760px, calc(100vh - 300px))";
 
 const CREATE_TIME_GROUPS = [
   {
@@ -57,7 +58,7 @@ const CREATE_TIME_GROUPS = [
   },
   {
     title: "Rapid",
-    tone: "#81B64C",
+    tone: "#B7B1A8",
     options: [
       { value: "10+0", label: "10 min" },
       { value: "10+5", label: "10 + 5" },
@@ -228,8 +229,8 @@ function PlayerBar({
         <span className="truncate font-sans text-[1.05rem] font-bold text-white">{label}</span>
         {active ? (
           <span aria-hidden className="inline-flex gap-[3px]">
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#81B64C]" />
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#5D9948]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-[#B7B1A8]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-[#8B847B]" />
           </span>
         ) : null}
       </span>
@@ -335,7 +336,7 @@ function StakeCard({
   const chipClass = (active: boolean) =>
     `cursor-pointer rounded-[12px] border px-3.5 py-2 font-sans text-[13px] transition-colors ${
       active
-        ? "border-[#81B64C] bg-[#4B5E2F] font-semibold text-white"
+        ? "border-[#B7B1A8] bg-[#4A4641] font-semibold text-white"
         : "border-white/10 bg-black/8 text-white/80 hover:border-white/25"
     }`;
 
@@ -448,7 +449,7 @@ export function CreateSection() {
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: SURFACE_BG }}
         >
-          <div className="mx-auto max-w-[944px]">
+          <div className="mx-auto w-full" style={{ maxWidth: CREATE_BOARD_MAX_WIDTH }}>
             <div className="mb-4 flex items-center justify-between gap-4">
               <PlayerBar label="Opponent" />
               <div className="flex items-center gap-3">
@@ -523,8 +524,8 @@ export function CreateSection() {
               <FieldRow
                 label="Time Control"
                 value={selectedTime.panelLabel}
-                icon={<ClockIcon size={22} className="text-[#81B64C]" />}
-                accent="#81B64C"
+                icon={<ClockIcon size={22} className="text-[#B7B1A8]" />}
+                accent="#B7B1A8"
                 open
               />
 
@@ -543,7 +544,7 @@ export function CreateSection() {
                           onClick={() => setTimeControl(option.value)}
                           className={`cursor-pointer rounded-[12px] border px-3 py-3 text-center font-sans text-[1rem] font-extrabold transition-colors ${
                             active
-                              ? "border-[#81B64C] bg-[#3F3D37] text-white shadow-[0_0_0_1px_rgba(129,182,76,0.35)]"
+                              ? "border-[#B7B1A8] bg-[#3F3D37] text-white shadow-[0_0_0_1px_rgba(183,177,168,0.35)]"
                               : "border-white/6 bg-[#3A3833] text-white/82 hover:border-white/18 hover:text-white"
                           }`}
                         >
@@ -577,7 +578,7 @@ export function CreateSection() {
               <button
                 onClick={() => void onCreate()}
                 disabled={create.isPending || stakeOverBalance}
-                className="w-full cursor-pointer rounded-[16px] bg-[#81B64C] px-4 py-4 font-sans text-[1.06rem] font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_24px_rgba(0,0,0,0.18)] transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                className="w-full cursor-pointer rounded-[16px] bg-[#8B847B] px-4 py-4 font-sans text-[1.06rem] font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_24px_rgba(0,0,0,0.18)] transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {create.isPending ? t("creating") : t("submitInvite")}
               </button>

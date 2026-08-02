@@ -48,12 +48,7 @@ export async function unwrap<T>(res: Response, fallbackMessage: string): Promise
   if (res.ok && body && body.success === true) return body.data as T;
   const err = body?.error;
   const message = err?.message ?? (text.trim() || fallbackMessage);
-  throw apiError(
-    err?.code ?? fallbackCode(res.status),
-    message,
-    res.status,
-    err?.details
-  );
+  throw apiError(err?.code ?? fallbackCode(res.status), message, res.status, err?.details);
 }
 
 // True when a failure means "nothing configured yet" rather than a real outage,

@@ -210,8 +210,8 @@ function PlayerBar({
         <span className="truncate font-sans text-[1.05rem] font-bold text-white">{label}</span>
         {active ? (
           <span aria-hidden className="inline-flex gap-[3px]">
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#81B64C]" />
-            <span className="h-4 w-[8px] rounded-[2px] bg-[#5D9948]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-[#B7B1A8]" />
+            <span className="h-4 w-[8px] rounded-[2px] bg-[#8B847B]" />
           </span>
         ) : null}
       </span>

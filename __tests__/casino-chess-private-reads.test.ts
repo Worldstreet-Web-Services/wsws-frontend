@@ -7,11 +7,12 @@ vi.mock("@/lib/api", () => api);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  global.fetch = vi.fn(async () =>
-    new Response(JSON.stringify({ success: true, data: {} }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    })
+  global.fetch = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ success: true, data: {} }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
   ) as unknown as typeof fetch;
   api.apiFetch.mockResolvedValue(
     new Response(JSON.stringify({ success: true, data: {} }), {

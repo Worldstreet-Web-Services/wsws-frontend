@@ -40,9 +40,9 @@ describe("friendlyError", () => {
   });
 
   it("explains chess cashier balance failures precisely", () => {
-    expect(
-      friendlyError(apiError("CONFLICT", "insufficient available balance", 409))
-    ).toMatch(/chess balance/i);
+    expect(friendlyError(apiError("CONFLICT", "insufficient available balance", 409))).toMatch(
+      /chess balance/i
+    );
   });
 
   it("keeps safe gateway messages instead of flattening them to the fallback", () => {

@@ -7,15 +7,16 @@
     "rwa": "Activos reales",
     "prediction": "Predicción",
     "earn": "Ganar",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Actividad"
   },
   "explore": {
     "predictionTitle": "Mercados de predicción",
     "predictionBody": "Opera política, deportes y eventos mundiales.",
     "earnTitle": "Ganar",
     "earnBody": "Tareas reales pagadas onchain.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Ajedrez con apuestas, Last Man Standing y más.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Ajedrez con apuestas, The Last Man y más.",
     "cta": "Explorar"
   },
   "meme": {
@@ -381,8 +382,8 @@
     "perpsDesc": "Long o short con hasta 100x de apalancamiento.",
     "predictionTitle": "Mercados de predicción",
     "predictionDesc": "Opera política, deportes y eventos mundiales.",
-    "casinoTitle": "Casino y juegos",
-    "casinoDesc": "Last Man Standing, ajedrez con apuestas y más.",
+    "casinoTitle": "Arkade y juegos",
+    "casinoDesc": "The Last Man, ajedrez con apuestas y más.",
     "realestateTitle": "Bienes raíces",
     "realestateDesc": "Propiedad fraccionada que paga renta.",
     "treasuriesTitle": "Bonos del Tesoro",
@@ -573,7 +574,13 @@
     "route": "Ruta",
     "priceImpact": "Impacto en el precio",
     "minReceived": "Mínimo recibido",
-    "maxSlippage": "Slippage máx"
+    "maxSlippage": "Slippage máx",
+    "fundSolanaTitle": "Primero mueve {amount} a Solana",
+    "fundSolanaBody": "Tus USDC están en Base. Los transferimos a Solana — unos 30 segundos, sin comisión de gas.",
+    "fundSolanaWithGas": "Transferimos tus USDC a Solana y compramos un poco de SOL para la comisión de red — unos 30 segundos, sin comisión de gas.",
+    "fundSolanaCta": "Mover fondos a Solana",
+    "fundSolanaWorking": "Moviendo fondos…",
+    "fundSolanaShort": "USDC insuficientes en Base"
   },
   "prediction": {
     "eyebrow": "Mercados de predicción",
@@ -982,13 +989,13 @@
       "loading": "Cargando…",
       "tryAgain": "Reintentar",
       "unavailableTitle": "{subject} aún no está disponible.",
-      "unavailableDetail": "Este juego se activará cuando el servicio del casino esté encendido.",
+      "unavailableDetail": "Este juego se activará cuando el servicio Arkade esté encendido.",
       "loadFailedTitle": "No se pudo cargar {subject}.",
       "loadFailedDetail": "Algo salió mal de nuestro lado."
     },
     "hub": {
-      "eyebrow": "Casino · Habilidad y azar",
-      "title": "Casino",
+      "eyebrow": "Arkade · Habilidad y azar",
+      "title": "Arkade",
       "tagline": "Habilidad y azar. Apuestas reales.",
       "yourBalance": "Tu saldo",
       "recentWins": "Ganancias recientes",
@@ -1013,7 +1020,7 @@
           "note": "Uno contra uno con apuesta, por invitación o partida rápida"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Sobrevive a todos, el ganador se lleva el pozo"
         },
         "draw": {
@@ -1037,8 +1044,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · El ganador se lo lleva todo",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · El ganador se lo lleva todo",
+      "title": "The Last Man",
       "intro": "Juega para ser el último en pie. Cuando el tiempo se agota, el último jugador en jugar se lleva todo el pozo.",
       "live": "En vivo",
       "offline": "Sin conexión",
@@ -1553,5 +1560,27 @@
     "activityReferrals": "Referidos",
     "activityHint": "Las recompensas Kash se acumulan con tu actividad en la aplicación y llegan aquí.",
     "comingSoon": "Kash llega pronto. La compra y venta abren en breve."
+  },
+  "activity": {
+    "eyebrow": "Actividad",
+    "subtitle": "Cada transferencia de entrada y salida de tus billeteras, en todas las redes admitidas. Toca una fila para verla en el explorador.",
+    "loading": "Cargando tu actividad…",
+    "errorBody": "No pudimos cargar tu actividad.",
+    "tryAgain": "Reintentar",
+    "emptyTitle": "Aún no hay nada",
+    "emptyBody": "Los depósitos, operaciones y retiros aparecerán aquí cuando se liquiden.",
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {n} min",
+    "hoursAgo": "hace {n} h",
+    "daysAgo": "hace {n} d",
+    "receivedSymbol": "{symbol} recibido",
+    "sentSymbol": "{symbol} enviado",
+    "from": "de",
+    "to": "a",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "unknownDate": "Antes",
+    "recentEyebrow": "Actividad reciente",
+    "viewAll": "Ver toda la actividad"
   }
 }

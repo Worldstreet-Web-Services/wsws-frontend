@@ -7,15 +7,16 @@
     "rwa": "Real assets",
     "prediction": "Prediction",
     "earn": "Earn",
-    "casino": "Casino"
+    "casino": "Arkade",
+    "activity": "Activity"
   },
   "explore": {
     "predictionTitle": "Prediction markets",
     "predictionBody": "Trade politics, sports and world events.",
     "earnTitle": "Earn",
     "earnBody": "Real tasks that pay out onchain.",
-    "casinoTitle": "Casino",
-    "casinoBody": "Staked chess, Last Man Standing and more.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Staked chess, The Last Man and more.",
     "cta": "Explore"
   },
   "meme": {
@@ -381,8 +382,8 @@
     "perpsDesc": "Long or short with up to 100x leverage.",
     "predictionTitle": "Prediction markets",
     "predictionDesc": "Trade politics, sports and world events.",
-    "casinoTitle": "Casino & games",
-    "casinoDesc": "Last Man Standing, staked chess and more.",
+    "casinoTitle": "Arkade & games",
+    "casinoDesc": "The Last Man, staked chess and more.",
     "realestateTitle": "Real estate",
     "realestateDesc": "Fractional property that pays rental income.",
     "treasuriesTitle": "Treasuries & bonds",
@@ -573,7 +574,13 @@
     "route": "Route",
     "priceImpact": "Price impact",
     "minReceived": "Min received",
-    "maxSlippage": "Max slippage"
+    "maxSlippage": "Max slippage",
+    "fundSolanaTitle": "Move {amount} to Solana first",
+    "fundSolanaBody": "Your USDC is on Base. We'll bridge it to Solana — about 30 seconds, no gas fee.",
+    "fundSolanaWithGas": "We'll bridge your USDC to Solana and buy a little SOL for the network fee — about 30 seconds, no gas fee.",
+    "fundSolanaCta": "Move funds to Solana",
+    "fundSolanaWorking": "Moving funds…",
+    "fundSolanaShort": "Not enough USDC on Base"
   },
   "prediction": {
     "eyebrow": "Prediction markets",
@@ -982,13 +989,13 @@
       "loading": "Loading…",
       "tryAgain": "Try again",
       "unavailableTitle": "{subject} isn't available yet.",
-      "unavailableDetail": "This game goes live once the casino service is switched on.",
+      "unavailableDetail": "This game goes live once the Arkade service is switched on.",
       "loadFailedTitle": "Couldn't load {subject}.",
       "loadFailedDetail": "Something went wrong on our side."
     },
     "hub": {
-      "eyebrow": "Casino · Skill and chance",
-      "title": "Casino",
+      "eyebrow": "Arkade · Skill and chance",
+      "title": "Arkade",
       "tagline": "Skill and chance. Real stakes.",
       "yourBalance": "Your balance",
       "recentWins": "Recent wins",
@@ -1013,7 +1020,7 @@
           "note": "Staked head-to-head, invite or quick match"
         },
         "last-standing": {
-          "name": "Last Man Standing",
+          "name": "The Last Man",
           "note": "Outlast everyone, winner takes the pot"
         },
         "draw": {
@@ -1037,8 +1044,8 @@
       }
     },
     "lastStanding": {
-      "eyebrow": "Casino · Winner takes all",
-      "title": "Last Man Standing",
+      "eyebrow": "Arkade · Winner takes all",
+      "title": "The Last Man",
       "intro": "Play to become the last one standing. When the timer runs out, the last player to play takes the whole pot.",
       "live": "Live",
       "offline": "Offline",
@@ -1553,5 +1560,27 @@
     "activityReferrals": "Referrals",
     "activityHint": "Kash rewards accrue from your activity across the app and land here.",
     "comingSoon": "Kash is almost here. Buying and selling open soon."
+  },
+  "activity": {
+    "eyebrow": "Activity",
+    "subtitle": "Every transfer in and out of your wallets, across all supported chains. Tap a row to view it on the block explorer.",
+    "loading": "Loading your activity…",
+    "errorBody": "We couldn't load your activity.",
+    "tryAgain": "Try again",
+    "emptyTitle": "Nothing here yet",
+    "emptyBody": "Deposits, trades and withdrawals will appear here as they settle.",
+    "justNow": "Just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago",
+    "receivedSymbol": "Received {symbol}",
+    "sentSymbol": "Sent {symbol}",
+    "from": "from",
+    "to": "to",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "unknownDate": "Earlier",
+    "recentEyebrow": "Recent activity",
+    "viewAll": "View all activity"
   }
 }

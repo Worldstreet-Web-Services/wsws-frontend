@@ -1147,7 +1147,7 @@
     "unavailable": "Nicht verfügbar",
     "gettingRate": "Kurs wird geholt…",
     "sending": "Wird gesendet…",
-    "withdrawUsdc": "USDC auszahlen",
+    "withdrawAsset": "{symbol} auszahlen",
     "quoteNoRoute": "Für dieses Ziel gab es kein Angebot. Prüfen Sie die Adresse oder versuchen Sie einen anderen Token oder ein anderes Netzwerk.",
     "quoteBelowMinimum": "Der Betrag liegt unter dem Minimum für diese Route. Versuchen Sie einen größeren Betrag.",
     "quoteRateLimited": "Gerade zu viele Kursanfragen. Warten Sie kurz und versuchen Sie es erneut.",

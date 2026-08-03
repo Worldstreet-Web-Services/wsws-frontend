@@ -1147,7 +1147,7 @@
     "unavailable": "Indisponible",
     "gettingRate": "Obtention du taux…",
     "sending": "Envoi…",
-    "withdrawUsdc": "Retirer l'USDC",
+    "withdrawAsset": "Retirer des {symbol}",
     "quoteNoRoute": "Impossible d'obtenir un devis vers cette destination. Vérifiez l'adresse, ou essayez un autre jeton ou réseau.",
     "quoteBelowMinimum": "Ce montant est sous le minimum pour cette route. Essayez un montant plus élevé.",
     "quoteRateLimited": "Trop de demandes de devis. Patientez un instant et réessayez.",

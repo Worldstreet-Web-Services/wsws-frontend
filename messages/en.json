@@ -1147,7 +1147,7 @@
     "unavailable": "Unavailable",
     "gettingRate": "Getting rate…",
     "sending": "Sending…",
-    "withdrawUsdc": "Withdraw USDC",
+    "withdrawAsset": "Withdraw {symbol}",
     "quoteNoRoute": "We couldn't get a quote to this destination. Double-check the address, or try a different token or network.",
     "quoteBelowMinimum": "That amount is below the minimum for this route. Try a larger amount.",
     "quoteRateLimited": "Too many quote requests just now. Wait a moment and try again.",

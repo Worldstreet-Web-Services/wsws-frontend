@@ -1147,7 +1147,7 @@
     "unavailable": "Indisponível",
     "gettingRate": "A obter a taxa…",
     "sending": "A enviar…",
-    "withdrawUsdc": "Levantar USDC",
+    "withdrawAsset": "Levantar {symbol}",
     "quoteNoRoute": "Não conseguimos cotar para esse destino. Verifique o endereço ou tente outro token ou rede.",
     "quoteBelowMinimum": "Esse montante está abaixo do mínimo para esta rota. Tente um montante maior.",
     "quoteRateLimited": "Demasiados pedidos de cotação. Aguarde um momento e tente novamente.",

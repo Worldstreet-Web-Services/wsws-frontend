@@ -1147,7 +1147,7 @@
     "unavailable": "No disponible",
     "gettingRate": "Obteniendo tasa…",
     "sending": "Enviando…",
-    "withdrawUsdc": "Retirar USDC",
+    "withdrawAsset": "Retirar {symbol}",
     "quoteNoRoute": "No pudimos cotizar hacia ese destino. Revisa la dirección o prueba otro token u otra red.",
     "quoteBelowMinimum": "Ese importe está por debajo del mínimo para esta ruta. Prueba con uno mayor.",
     "quoteRateLimited": "Demasiadas cotizaciones seguidas. Espera un momento y reintenta.",

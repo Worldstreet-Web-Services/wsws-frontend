@@ -700,7 +700,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
           ? t("sending")
           : quoteInput && quote.isFetching
             ? t("gettingRate")
-            : t("withdrawUsdc")}
+            : t("withdrawAsset", { symbol: destSymbol ?? "USDC" })}
       </button>
     </div>
   );

@@ -580,7 +580,13 @@
     "fundSolanaWithGas": "Nous transférons vos USDC vers Solana et achetons un peu de SOL pour les frais de réseau — environ 30 secondes, sans frais de gaz.",
     "fundSolanaCta": "Transférer vers Solana",
     "fundSolanaWorking": "Transfert en cours…",
-    "fundSolanaShort": "USDC insuffisants sur Base"
+    "fundSolanaShort": "USDC insuffisants sur Base",
+    "proceedsTitle": "{amount} est sur Solana",
+    "proceedsBody": "Ramenez vos fonds vers Base, où réside le reste de votre compte — environ 10 secondes.",
+    "proceedsCta": "Ramener vers Base",
+    "proceedsWorking": "Transfert en cours…",
+    "proceedsDone": "Fonds sur Base",
+    "fundSolanaFirst": "Transférez d'abord vers Solana"
   },
   "prediction": {
     "eyebrow": "Marchés de prédiction",
@@ -968,7 +974,7 @@
     "youWithdraw": "Vous retirez",
     "bankComingSoonBody": "Les virements bancaires sont en cours de finalisation avec notre partenaire de paiement. Retirez vers un portefeuille crypto en attendant.",
     "fiatDepositTitle": "Ajouter par carte ou banque",
-    "fiatDepositSubtitle": "Payez par carte, Apple Pay ou Google Pay. Réglé en USDC sur Base.",
+    "fiatDepositSubtitle": "Alimentez votre portefeuille en nairas. Réglé en USDC.",
     "youPay": "Vous payez",
     "card": "Carte",
     "bankTransfer": "Virement bancaire",
@@ -977,12 +983,7 @@
     "pickNetworkFirst": "Choisissez d'abord un réseau",
     "networksError": "Impossible de charger les réseaux.",
     "tokensError": "Impossible de charger les tokens.",
-    "fiatNote": "Le paiement est géré en toute sécurité par Privy. Les fonds arrivent généralement quelques minutes après un achat finalisé.",
-    "fiatWorking": "En attente du paiement…",
-    "fiatContinue": "Continuer — {amount} $",
-    "fiatMin": "Le minimum est {min} $",
-    "fiatSuccess": "Paiement terminé. Vos USDC arrivent.",
-    "fiatFailed": "Le paiement n'a pas abouti. Vous n'avez pas été débité deux fois — réessayez."
+    "fiatComingSoonBody": "Nous finalisons la vérification avec notre partenaire de paiement. Le financement par carte et banque arrive sous peu. Déposez des cryptos en attendant."
   },
   "remit": {
     "sendMoney": "Envoyer de l'argent",
@@ -1625,6 +1626,8 @@
     "yesterday": "Hier",
     "unknownDate": "Plus tôt",
     "recentEyebrow": "Activité récente",
-    "viewAll": "Voir toute l'activité"
+    "viewAll": "Voir toute l'activité",
+    "toastReceived": "{amount} {symbol} reçus sur {network}",
+    "toastSent": "{amount} {symbol} envoyés sur {network}"
   }
 }

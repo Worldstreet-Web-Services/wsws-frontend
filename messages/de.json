@@ -1141,7 +1141,7 @@
     "unrecognizedAddress": "Unbekanntes Adressformat",
     "addressKindMismatch": "Das sieht nicht nach einer {kind}-Adresse aus, die für {chain} nötig ist.",
     "pickDestinationFirst": "Wählen Sie zuerst ein Zielnetzwerk.",
-    "maxBalance": "Max. {amount} USDC",
+    "maxBalance": "Max. {amount} $",
     "overBalanceUsdc": "Mehr als Ihr USDC-Guthaben",
     "recipientGets": "Empfänger erhält",
     "unavailable": "Nicht verfügbar",

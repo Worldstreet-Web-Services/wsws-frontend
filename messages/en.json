@@ -1141,7 +1141,7 @@
     "unrecognizedAddress": "Unrecognized address format",
     "addressKindMismatch": "This doesn't look like a {kind} address, needed for {chain}.",
     "pickDestinationFirst": "Pick a destination network first.",
-    "maxBalance": "Max {amount} USDC",
+    "maxBalance": "Max ${amount}",
     "overBalanceUsdc": "More than your USDC balance",
     "recipientGets": "Recipient gets",
     "unavailable": "Unavailable",

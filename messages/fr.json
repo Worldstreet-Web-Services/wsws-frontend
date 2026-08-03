@@ -1141,7 +1141,7 @@
     "unrecognizedAddress": "Format d'adresse non reconnu",
     "addressKindMismatch": "Cela ne ressemble pas à une adresse {kind}, requise pour {chain}.",
     "pickDestinationFirst": "Choisissez d'abord un réseau de destination.",
-    "maxBalance": "Max {amount} USDC",
+    "maxBalance": "Max {amount} $",
     "overBalanceUsdc": "Supérieur à votre solde USDC",
     "recipientGets": "Le destinataire reçoit",
     "unavailable": "Indisponible",

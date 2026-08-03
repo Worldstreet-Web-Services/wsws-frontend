@@ -650,7 +650,8 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
               {t("maxBalance", { amount: formatAmount(balance) })}
             </button>
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            <span className="ws-display shrink-0 text-[28px] text-white/70">$</span>
             <input
               inputMode="decimal"
               placeholder="0"
@@ -659,7 +660,6 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
               disabled={submitting}
               className="ws-display tnum w-full min-w-0 bg-transparent text-[28px] text-white outline-none placeholder:text-white/30 disabled:opacity-50"
             />
-            <span className="shrink-0 font-sans text-[14px] font-medium text-white/70">USDC</span>
           </div>
           {overBalance ? (
             <div className="text-down mt-1.5 text-[12px] font-normal">{t("overBalanceUsdc")}</div>

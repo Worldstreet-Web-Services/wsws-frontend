@@ -138,27 +138,6 @@ function SpeedIcon({ tone }: { tone: string }) {
   );
 }
 
-function CaretIcon({ open = false }: { open?: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 20 20"
-      fill="none"
-      className={open ? "rotate-180" : undefined}
-      aria-hidden
-    >
-      <path
-        d="m5 7.5 5 5 5-5"
-        stroke="currentColor"
-        strokeWidth="2.1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function UsersIcon({ className = "text-white/70" }: { className?: string }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
@@ -270,13 +249,11 @@ function FieldRow({
   value,
   icon,
   accent,
-  open = false,
 }: {
   label: string;
   value: string;
   icon: ReactNode;
   accent?: string;
-  open?: boolean;
 }) {
   return (
     <div>
@@ -292,9 +269,6 @@ function FieldRow({
           {icon}
         </span>
         <span className="min-w-0 flex-1 truncate text-[1.06rem] font-extrabold">{value}</span>
-        <span className="text-white/58">
-          <CaretIcon open={open} />
-        </span>
       </div>
     </div>
   );
@@ -515,7 +489,6 @@ export function CreateSection() {
                 value={selectedTime.panelLabel}
                 icon={<ClockIcon size={22} className="text-[#B7B1A8]" />}
                 accent="#B7B1A8"
-                open
               />
 
               {CREATE_TIME_GROUPS.map((group) => (

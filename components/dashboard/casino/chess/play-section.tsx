@@ -24,7 +24,12 @@ import {
   CHESS_SIDEBAR_BG,
   CHESS_SURFACE_BG,
 } from "@/lib/casino/chess/ui";
-import { moveSoundFromSan, playGameEndSound, playMoveSound } from "@/lib/casino/chess/sound";
+import {
+  moveSoundFromSan,
+  playGameEndSound,
+  playGameStartSound,
+  playMoveSound,
+} from "@/lib/casino/chess/sound";
 import { FinalCountdown } from "@/components/dashboard/casino/chess/final-countdown";
 import {
   CasinoEmpty,
@@ -374,8 +379,14 @@ export function PlaySection({
   const inProgress = match?.state === "in_progress";
   const result = match?.result ?? null;
   useEffect(() => {
+    // The first time this board reads as in progress with no moves yet, the game
+    // just went live — announce it. Opening an already-running board (moves > 0)
+    // stays silent, so it only sounds a genuine start.
+    if (inProgress && !sawInProgress.current && (match?.moves.length ?? 0) === 0) {
+      playGameStartSound();
+    }
     if (inProgress) sawInProgress.current = true;
-  }, [inProgress]);
+  }, [inProgress, match?.moves.length]);
   useEffect(() => {
     if (!result) {
       sawResult.current = false;

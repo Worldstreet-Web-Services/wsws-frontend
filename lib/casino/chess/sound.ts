@@ -151,6 +151,21 @@ export function playCountdownBeep(n: number): void {
   }
 }
 
+// A bright two-note flourish when a game goes live, so the board announces
+// itself the moment both players are seated and the clocks start.
+export function playGameStartSound(): void {
+  const ac = audioContext();
+  if (!ac) return;
+  if (ac.state === "suspended") void ac.resume();
+  try {
+    // A confident perfect-fifth lift (G4 → D5) with a soft tail.
+    tone(ac, { freqStart: 392, freqEnd: 392, attack: 0.008, hold: 0.14, peak: 0.2, type: "sine" });
+    tone(ac, { freqStart: 587, freqEnd: 587, at: 0.11, attack: 0.008, hold: 0.22, peak: 0.22, type: "sine" });
+  } catch {
+    // The game still started; stay silent.
+  }
+}
+
 // A short three-note chime when the game ends: rising and bright for a win,
 // falling and softer for a loss or a draw.
 export function playGameEndSound(outcome: "win" | "loss" | "draw"): void {

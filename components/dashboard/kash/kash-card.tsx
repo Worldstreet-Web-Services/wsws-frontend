@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
 
-const COIN = "https://commons.wikimedia.org/wiki/Special:FilePath/Noto_Emoji_v2.034_1fa99.svg";
+const COIN = "/kash-coin.jpg";
 
 // Activity streams that will earn Kash. Balances are zero until the token
 // service ships; the card is the product surface, wired first.
@@ -17,13 +17,13 @@ export function KashCard() {
     <div className="ws-card flex h-full flex-col p-5 sm:p-[26px]">
       <div className="flex items-center gap-2 text-[13px] font-normal text-white/60">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={COIN} alt="" className="h-5 w-5" />
+        <img src={COIN} alt="" className="h-6 w-6 rounded-full object-cover" />
         {t("balanceTitle")}
       </div>
 
       <div className="mt-2">
         <div className="ws-display tnum text-[34px] leading-none tracking-[-0.02em]">
-          0 <span className="text-[20px] text-amber-200/90">KASH</span>
+          0 <span className="ml-2 text-[20px] text-amber-200/90">KASH</span>
         </div>
         <div className="tnum mt-1 text-[12.5px] font-normal text-white/45">$0.00</div>
       </div>

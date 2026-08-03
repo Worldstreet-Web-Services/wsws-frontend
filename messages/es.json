@@ -127,7 +127,7 @@
     "youSell": "Vendes",
     "youSellRow": "Vendes",
     "ctaNotSellable": "{symbol} no se puede vender desde esta billetera",
-    "ctaNeedsGas": "Necesitas {symbol} en {chain} para la tarifa de red"
+    "ctaNeedsGas": "Preparando tu monedero de {chain}: añade un poco de {symbol} para continuar"
   },
   "topbar": {
     "searchPlaceholder": "Buscar activos, mercados, tickers",
@@ -147,7 +147,14 @@
     "couldntLoad": "No se pudo cargar",
     "addFunds": "Añadir fondos",
     "withdraw": "Retirar",
-    "assetPrice": "Precio de {name}"
+    "readyToSpend": "{amount} disponible para gastar",
+    "breakdownTitle": "Dónde está tu dinero",
+    "assetsHeld": "activos",
+    "breakdownEmpty": "Aún no tienes nada.",
+    "slice_cash": "Efectivo",
+    "slice_coins": "Monedas",
+    "slice_realAssets": "Activos reales",
+    "slice_tokens": "Tokens"
   },
   "remitBanner": {
     "title": "Envía dinero al extranjero",
@@ -494,7 +501,7 @@
     "overBalance": "Más que tu saldo de {symbol}",
     "max": "Máx",
     "settlesToUsdc": "Se liquida en tu saldo USDC en Base.",
-    "needGasFee": "Necesitas un poco de {symbol} en {network} para la comisión de red. Añade algo e inténtalo de nuevo.",
+    "needGasFee": "Tu monedero de {network} necesita un poco de {symbol} para enviar. Añade y vuelve a intentarlo.",
     "purchaseFailedFallback": "No pudimos completar tu compra. Inténtalo de nuevo.",
     "saleFailedFallback": "No pudimos completar tu venta. Inténtalo de nuevo.",
     "network": "Red",
@@ -543,7 +550,7 @@
     "cantTradeNow": "No se puede operar {symbol} ahora",
     "fetchingFromRegistry": "Obteniendo {symbol} del registro RWA.",
     "notFoundInRegistry": "No encontramos {symbol} en el registro RWA. Inténtalo en breve.",
-    "gasNeeded": "Necesitas un poco de {symbol} para la comisión de red",
+    "gasNeeded": "Estamos preparando tu monedero. Añade al menos {amount} {symbol} para continuar.",
     "connectWallet": "Conecta tu billetera para operar",
     "buyingSymbol": "Comprando {symbol}…",
     "sellingSymbol": "Vendiendo {symbol}…",
@@ -572,8 +579,8 @@
     "minReceived": "Mínimo recibido",
     "maxSlippage": "Slippage máx",
     "fundSolanaTitle": "Primero mueve {amount} a Solana",
-    "fundSolanaBody": "Tus USDC están en Base. Los transferimos a Solana — unos 30 segundos, sin comisión de gas.",
-    "fundSolanaWithGas": "Transferimos tus USDC a Solana y compramos un poco de SOL para la comisión de red — unos 30 segundos, sin comisión de gas.",
+    "fundSolanaBody": "Tus USDC están en Base. Los moveremos a Solana: unos 30 segundos, gratis.",
+    "fundSolanaWithGas": "Moveremos tus USDC a Solana y prepararemos el monedero: unos 30 segundos, gratis.",
     "fundSolanaCta": "Mover fondos a Solana",
     "fundSolanaWorking": "Moviendo fondos…",
     "fundSolanaShort": "USDC insuficientes en Base",
@@ -602,11 +609,11 @@
     "tvl": "TVL",
     "fundSolanaProgress": "Moviendo tus fondos a Solana",
     "fundSolanaRetry": "Reintentar",
-    "stepGas": "Comprar {amount} de SOL para las comisiones de red",
+    "stepGas": "Preparar tu monedero de Solana ({amount})",
     "stepBridge": "Mover {amount} de USDC a Solana",
     "stepBuy": "Comprar {symbol}",
     "stepQuoting": "Buscando la mejor ruta…",
-    "stepSigning": "Enviando desde Base: sin comisión de gas",
+    "stepSigning": "Enviando desde Base: gratis",
     "stepSettling": "Esperando a que llegue a Solana…",
     "stepBuilding": "Preparando tu orden…",
     "useLandedBalance": "Comprar con los {amount} que tienes",
@@ -679,7 +686,7 @@
     "notTradable": "Este mercado aún no es operable. Los mercados en vivo de Polymarket llegarán aquí pronto.",
     "payoutIfRight": "Pago si aciertas",
     "usdcOnBase": "USDC en Base: {amount}.",
-    "betFundingNote": "Colocar una apuesta toma lo necesario de tu USDC en Base y se liquida en pUSD. Sin comisión de red para operar.",
+    "betFundingNote": "Apostar mueve lo necesario de tus USDC en Base y se liquida en pUSD. Gratis.",
     "betSlip": "Boleto de apuesta",
     "amountStaked": "Importe apostado",
     "shares": "Participaciones",
@@ -868,8 +875,8 @@
     "depositRefundedNote": "El depósito fue reembolsado a la billetera de origen.",
     "depositFailedNote": "El depósito no pudo completarse. Los fondos se reembolsan al remitente.",
     "statusCheckFailed": "No se pudo comprobar el estado",
-    "gasWarningTitle": "Se necesita comisión de red",
-    "gasWarningBody": "Necesitas un poco de {symbol} en esta billetera para cubrir la comisión de red de {chain} antes de enviar.",
+    "gasWarningTitle": "El monedero aún no está listo",
+    "gasWarningBody": "Este monedero de {chain} necesita un poco de {symbol} antes de poder enviar.",
     "searchNetworks": "Buscar redes",
     "loadingNetworks": "Cargando redes",
     "loadNetworksError": "No se pudieron cargar las redes.",
@@ -1591,6 +1598,8 @@
     "toastDeposited": "{amount} {symbol} depositado en {network}",
     "toastWithdrew": "{amount} {symbol} retirado en {network}",
     "moved": "{symbol} movido",
-    "toastMoved": "{amount} {symbol} movido"
+    "toastMoved": "{amount} {symbol} movido",
+    "notifications": "Notificaciones",
+    "newCount": "{count} nuevas"
   }
 }

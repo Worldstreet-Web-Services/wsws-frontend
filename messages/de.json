@@ -127,7 +127,7 @@
     "youSell": "Sie verkaufen",
     "youSellRow": "Sie verkaufen",
     "ctaNotSellable": "{symbol} kann aus dieser Wallet nicht verkauft werden",
-    "ctaNeedsGas": "Sie brauchen {symbol} auf {chain} für die Netzwerkgebühr"
+    "ctaNeedsGas": "Wir richten deine {chain}-Wallet ein — füge etwas {symbol} hinzu"
   },
   "topbar": {
     "searchPlaceholder": "Assets, Märkte, Ticker suchen",
@@ -147,7 +147,14 @@
     "couldntLoad": "Laden fehlgeschlagen",
     "addFunds": "Geld einzahlen",
     "withdraw": "Auszahlen",
-    "assetPrice": "{name}-Kurs"
+    "readyToSpend": "{amount} verfügbar",
+    "breakdownTitle": "Wo dein Geld liegt",
+    "assetsHeld": "Werte",
+    "breakdownEmpty": "Noch nichts im Bestand.",
+    "slice_cash": "Bargeld",
+    "slice_coins": "Coins",
+    "slice_realAssets": "Reale Werte",
+    "slice_tokens": "Token"
   },
   "remitBanner": {
     "title": "Geld über Grenzen senden",
@@ -494,7 +501,7 @@
     "overBalance": "Mehr als Ihr {symbol}-Guthaben",
     "max": "Max",
     "settlesToUsdc": "Wird Ihrem USDC-Guthaben auf Base gutgeschrieben.",
-    "needGasFee": "Sie brauchen etwas {symbol} auf {network} für die Netzwerkgebühr. Laden Sie etwas auf und versuchen Sie es erneut.",
+    "needGasFee": "Deine {network}-Wallet braucht etwas {symbol} zum Senden. Lade auf und versuche es erneut.",
     "purchaseFailedFallback": "Wir konnten Ihren Kauf nicht abschließen. Bitte erneut versuchen.",
     "saleFailedFallback": "Wir konnten Ihren Verkauf nicht abschließen. Bitte erneut versuchen.",
     "network": "Netzwerk",
@@ -543,7 +550,7 @@
     "cantTradeNow": "{symbol} kann gerade nicht gehandelt werden",
     "fetchingFromRegistry": "{symbol} wird aus dem RWA-Register geholt.",
     "notFoundInRegistry": "Wir konnten {symbol} nicht im RWA-Register finden. Versuchen Sie es gleich erneut.",
-    "gasNeeded": "Sie brauchen etwas {symbol} für die Netzwerkgebühr",
+    "gasNeeded": "Wir richten deine Wallet ein. Füge mindestens {amount} {symbol} hinzu.",
     "connectWallet": "Verbinden Sie Ihre Wallet zum Handeln",
     "buyingSymbol": "{symbol} wird gekauft…",
     "sellingSymbol": "{symbol} wird verkauft…",
@@ -572,8 +579,8 @@
     "minReceived": "Mindestens erhalten",
     "maxSlippage": "Max. Slippage",
     "fundSolanaTitle": "Zuerst {amount} nach Solana bewegen",
-    "fundSolanaBody": "Ihre USDC liegen auf Base. Wir überbrücken sie nach Solana — etwa 30 Sekunden, ohne Gasgebühr.",
-    "fundSolanaWithGas": "Wir überbrücken Ihre USDC nach Solana und kaufen etwas SOL für die Netzwerkgebühr — etwa 30 Sekunden, ohne Gasgebühr.",
+    "fundSolanaBody": "Dein USDC liegt auf Base. Wir bewegen es nach Solana — etwa 30 Sekunden, kostenlos.",
+    "fundSolanaWithGas": "Wir bewegen dein USDC nach Solana und richten die Wallet zum Handeln ein — etwa 30 Sekunden, kostenlos.",
     "fundSolanaCta": "Mittel nach Solana bewegen",
     "fundSolanaWorking": "Wird übertragen…",
     "fundSolanaShort": "Nicht genug USDC auf Base",
@@ -602,11 +609,11 @@
     "tvl": "TVL",
     "fundSolanaProgress": "Deine Mittel werden nach Solana bewegt",
     "fundSolanaRetry": "Erneut versuchen",
-    "stepGas": "{amount} SOL für Netzwerkgebühren kaufen",
+    "stepGas": "Solana-Wallet einrichten ({amount})",
     "stepBridge": "{amount} USDC nach Solana bewegen",
     "stepBuy": "{symbol} kaufen",
     "stepQuoting": "Beste Route wird gesucht…",
-    "stepSigning": "Wird von Base gesendet — ohne Gasgebühr",
+    "stepSigning": "Wird von Base gesendet — kostenlos",
     "stepSettling": "Warten auf Ankunft auf Solana…",
     "stepBuilding": "Deine Order wird vorbereitet…",
     "useLandedBalance": "Stattdessen mit deinen {amount} kaufen",
@@ -679,7 +686,7 @@
     "notTradable": "Dieser Markt ist noch nicht handelbar. Live-Polymarket-Märkte können hier bald gehandelt werden.",
     "payoutIfRight": "Auszahlung bei Erfolg",
     "usdcOnBase": "USDC auf Base: {amount}.",
-    "betFundingNote": "Eine Wette zieht den Bedarf aus Ihrem Base-USDC und wird in pUSD abgewickelt. Keine Netzwerkgebühr fürs Handeln.",
+    "betFundingNote": "Eine Wette nimmt das Nötige aus deinem Base-USDC und wird in pUSD abgerechnet. Kostenlos.",
     "betSlip": "Wettschein",
     "amountStaked": "Eingesetzter Betrag",
     "shares": "Anteile",
@@ -868,8 +875,8 @@
     "depositRefundedNote": "Die Einzahlung wurde an die sendende Wallet erstattet.",
     "depositFailedNote": "Die Einzahlung konnte nicht abgeschlossen werden. Gelder werden dem Absender erstattet.",
     "statusCheckFailed": "Status konnte nicht geprüft werden",
-    "gasWarningTitle": "Netzwerkgebühr nötig",
-    "gasWarningBody": "Sie brauchen etwas {symbol} in dieser Wallet für die {chain}-Netzwerkgebühr, bevor Sie senden können.",
+    "gasWarningTitle": "Wallet noch nicht bereit",
+    "gasWarningBody": "Diese {chain}-Wallet braucht etwas {symbol}, bevor sie senden kann.",
     "searchNetworks": "Netzwerke suchen",
     "loadingNetworks": "Netzwerke werden geladen",
     "loadNetworksError": "Netzwerke konnten nicht geladen werden.",
@@ -1591,6 +1598,8 @@
     "toastDeposited": "{amount} {symbol} auf {network} eingezahlt",
     "toastWithdrew": "{amount} {symbol} auf {network} abgehoben",
     "moved": "{symbol} bewegt",
-    "toastMoved": "{amount} {symbol} bewegt"
+    "toastMoved": "{amount} {symbol} bewegt",
+    "notifications": "Benachrichtigungen",
+    "newCount": "{count} neu"
   }
 }

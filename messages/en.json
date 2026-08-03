@@ -127,7 +127,7 @@
     "youSell": "You're selling",
     "youSellRow": "You sell",
     "ctaNotSellable": "{symbol} can't be sold from this wallet",
-    "ctaNeedsGas": "You need {symbol} on {chain} for the network fee"
+    "ctaNeedsGas": "Getting your {chain} wallet ready — add a little {symbol} to continue"
   },
   "topbar": {
     "searchPlaceholder": "Search assets, markets, tickers",
@@ -147,7 +147,14 @@
     "couldntLoad": "Couldn't load",
     "addFunds": "Add funds",
     "withdraw": "Withdraw",
-    "assetPrice": "{name} price"
+    "readyToSpend": "{amount} ready to spend",
+    "breakdownTitle": "Where your money is",
+    "assetsHeld": "assets",
+    "breakdownEmpty": "Nothing held yet.",
+    "slice_cash": "Cash",
+    "slice_coins": "Coins",
+    "slice_realAssets": "Real assets",
+    "slice_tokens": "Tokens"
   },
   "remitBanner": {
     "title": "Send money across borders",
@@ -494,7 +501,7 @@
     "overBalance": "More than your {symbol} balance",
     "max": "Max",
     "settlesToUsdc": "Settles to your USDC balance on Base.",
-    "needGasFee": "You'll need a little {symbol} on {network} to cover the network fee. Add some, then try again.",
+    "needGasFee": "Your {network} wallet needs a little {symbol} before it can send. Add some, then try again.",
     "purchaseFailedFallback": "We couldn't complete your purchase. Please try again.",
     "saleFailedFallback": "We couldn't complete your sale. Please try again.",
     "network": "Network",
@@ -543,7 +550,7 @@
     "cantTradeNow": "Can't trade {symbol} right now",
     "fetchingFromRegistry": "Fetching {symbol} from the RWA registry.",
     "notFoundInRegistry": "We couldn't find {symbol} in the RWA registry. Try again shortly.",
-    "gasNeeded": "You need a little {symbol} for the network fee",
+    "gasNeeded": "We're getting your wallet ready. Add at least {amount} {symbol} to continue.",
     "connectWallet": "Connect your wallet to trade",
     "buyingSymbol": "Buying {symbol}…",
     "sellingSymbol": "Selling {symbol}…",
@@ -572,8 +579,8 @@
     "minReceived": "Min received",
     "maxSlippage": "Max slippage",
     "fundSolanaTitle": "Move {amount} to Solana first",
-    "fundSolanaBody": "Your USDC is on Base. We'll bridge it to Solana — about 30 seconds, no gas fee.",
-    "fundSolanaWithGas": "We'll bridge your USDC to Solana and buy a little SOL for the network fee — about 30 seconds, no gas fee.",
+    "fundSolanaBody": "Your USDC is on Base. We'll move it to Solana — about 30 seconds, free.",
+    "fundSolanaWithGas": "We'll move your USDC to Solana and set the wallet up to trade there — about 30 seconds, free.",
     "fundSolanaCta": "Move funds to Solana",
     "fundSolanaWorking": "Moving funds…",
     "fundSolanaShort": "Not enough USDC on Base",
@@ -602,11 +609,11 @@
     "tvl": "TVL",
     "fundSolanaProgress": "Moving your funds to Solana",
     "fundSolanaRetry": "Try again",
-    "stepGas": "Buy {amount} of SOL for network fees",
+    "stepGas": "Set up your Solana wallet ({amount})",
     "stepBridge": "Move {amount} of USDC to Solana",
     "stepBuy": "Buy {symbol}",
     "stepQuoting": "Finding the best route…",
-    "stepSigning": "Sending from Base — no gas fee",
+    "stepSigning": "Sending from Base — free",
     "stepSettling": "Waiting for it to land on Solana…",
     "stepBuilding": "Preparing your order…",
     "useLandedBalance": "Buy with the {amount} you have instead",
@@ -679,7 +686,7 @@
     "notTradable": "This market isn't tradable yet. Live Polymarket markets can be traded here soon.",
     "payoutIfRight": "Payout if right",
     "usdcOnBase": "USDC on Base: {amount}.",
-    "betFundingNote": "Placing a bet moves what it needs from your Base USDC and settles in pUSD. No network fee to trade.",
+    "betFundingNote": "Placing a bet moves what it needs from your Base USDC and settles in pUSD. Free to trade.",
     "betSlip": "Bet slip",
     "amountStaked": "Amount staked",
     "shares": "Shares",
@@ -868,8 +875,8 @@
     "depositRefundedNote": "The deposit was refunded to the sending wallet.",
     "depositFailedNote": "The deposit could not be completed. Any funds are refunded to the sender.",
     "statusCheckFailed": "Couldn't check status",
-    "gasWarningTitle": "Network fee needed",
-    "gasWarningBody": "You need a little {symbol} in this wallet to cover the {chain} network fee before you can send.",
+    "gasWarningTitle": "Wallet not ready yet",
+    "gasWarningBody": "This {chain} wallet needs a little {symbol} before it can send.",
     "searchNetworks": "Search networks",
     "loadingNetworks": "Loading networks",
     "loadNetworksError": "Couldn't load networks.",
@@ -1591,6 +1598,8 @@
     "toastDeposited": "Deposited {amount} {symbol} on {network}",
     "toastWithdrew": "Withdrew {amount} {symbol} on {network}",
     "moved": "Moved {symbol}",
-    "toastMoved": "Moved {amount} {symbol}"
+    "toastMoved": "Moved {amount} {symbol}",
+    "notifications": "Notifications",
+    "newCount": "{count} new"
   }
 }

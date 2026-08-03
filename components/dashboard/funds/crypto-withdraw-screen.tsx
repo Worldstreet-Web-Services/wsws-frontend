@@ -22,7 +22,6 @@ import {
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { getWalletAddress } from "@/lib/user";
 import {
-  BASE_CHAIN_ID,
   SETTLE_CHAINS,
   txExplorerUrl,
   type AddressKind,

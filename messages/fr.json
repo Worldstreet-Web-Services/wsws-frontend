@@ -127,7 +127,7 @@
     "youSell": "Vous vendez",
     "youSellRow": "Vous vendez",
     "ctaNotSellable": "{symbol} ne peut pas être vendu depuis ce portefeuille",
-    "ctaNeedsGas": "Il vous faut du {symbol} sur {chain} pour les frais de réseau"
+    "ctaNeedsGas": "Préparation de votre portefeuille {chain} — ajoutez un peu de {symbol} pour continuer"
   },
   "topbar": {
     "searchPlaceholder": "Rechercher actifs, marchés, tickers",
@@ -147,7 +147,14 @@
     "couldntLoad": "Chargement impossible",
     "addFunds": "Ajouter des fonds",
     "withdraw": "Retirer",
-    "assetPrice": "Cours de {name}"
+    "readyToSpend": "{amount} disponible à dépenser",
+    "breakdownTitle": "Où est votre argent",
+    "assetsHeld": "actifs",
+    "breakdownEmpty": "Rien en portefeuille.",
+    "slice_cash": "Liquidités",
+    "slice_coins": "Cryptos",
+    "slice_realAssets": "Actifs réels",
+    "slice_tokens": "Jetons"
   },
   "remitBanner": {
     "title": "Envoyez de l'argent à l'étranger",
@@ -494,7 +501,7 @@
     "overBalance": "Supérieur à votre solde {symbol}",
     "max": "Max",
     "settlesToUsdc": "Réglé sur votre solde USDC sur Base.",
-    "needGasFee": "Il vous faut un peu de {symbol} sur {network} pour couvrir les frais de réseau. Ajoutez-en, puis réessayez.",
+    "needGasFee": "Votre portefeuille {network} a besoin d'un peu de {symbol} pour envoyer. Ajoutez-en, puis réessayez.",
     "purchaseFailedFallback": "Nous n'avons pas pu finaliser votre achat. Réessayez.",
     "saleFailedFallback": "Nous n'avons pas pu finaliser votre vente. Réessayez.",
     "network": "Réseau",
@@ -543,7 +550,7 @@
     "cantTradeNow": "Impossible de trader {symbol} pour le moment",
     "fetchingFromRegistry": "Récupération de {symbol} depuis le registre RWA.",
     "notFoundInRegistry": "Nous n'avons pas trouvé {symbol} dans le registre RWA. Réessayez sous peu.",
-    "gasNeeded": "Il vous faut un peu de {symbol} pour les frais de réseau",
+    "gasNeeded": "Nous préparons votre portefeuille. Ajoutez au moins {amount} {symbol} pour continuer.",
     "connectWallet": "Connectez votre portefeuille pour trader",
     "buyingSymbol": "Achat de {symbol}…",
     "sellingSymbol": "Vente de {symbol}…",
@@ -572,8 +579,8 @@
     "minReceived": "Minimum reçu",
     "maxSlippage": "Slippage max",
     "fundSolanaTitle": "Transférez d'abord {amount} vers Solana",
-    "fundSolanaBody": "Vos USDC sont sur Base. Nous les transférons vers Solana — environ 30 secondes, sans frais de gaz.",
-    "fundSolanaWithGas": "Nous transférons vos USDC vers Solana et achetons un peu de SOL pour les frais de réseau — environ 30 secondes, sans frais de gaz.",
+    "fundSolanaBody": "Vos USDC sont sur Base. Nous les transférerons vers Solana — environ 30 secondes, gratuit.",
+    "fundSolanaWithGas": "Nous transférerons vos USDC vers Solana et préparerons le portefeuille — environ 30 secondes, gratuit.",
     "fundSolanaCta": "Transférer vers Solana",
     "fundSolanaWorking": "Transfert en cours…",
     "fundSolanaShort": "USDC insuffisants sur Base",
@@ -602,11 +609,11 @@
     "tvl": "TVL",
     "fundSolanaProgress": "Transfert de vos fonds vers Solana",
     "fundSolanaRetry": "Réessayer",
-    "stepGas": "Acheter {amount} de SOL pour les frais réseau",
+    "stepGas": "Préparer votre portefeuille Solana ({amount})",
     "stepBridge": "Transférer {amount} d'USDC vers Solana",
     "stepBuy": "Acheter {symbol}",
     "stepQuoting": "Recherche du meilleur itinéraire…",
-    "stepSigning": "Envoi depuis Base — sans frais de gas",
+    "stepSigning": "Envoi depuis Base — gratuit",
     "stepSettling": "En attente de l'arrivée sur Solana…",
     "stepBuilding": "Préparation de votre ordre…",
     "useLandedBalance": "Acheter avec les {amount} dont vous disposez",
@@ -679,7 +686,7 @@
     "notTradable": "Ce marché n'est pas encore tradable. Les marchés Polymarket en direct arrivent bientôt ici.",
     "payoutIfRight": "Gain si vous avez raison",
     "usdcOnBase": "USDC sur Base : {amount}.",
-    "betFundingNote": "Placer un pari prélève le nécessaire sur votre USDC Base et se règle en pUSD. Aucun frais de réseau pour trader.",
+    "betFundingNote": "Un pari prélève ce qu'il faut sur vos USDC Base et se règle en pUSD. Gratuit.",
     "betSlip": "Ticket de pari",
     "amountStaked": "Montant misé",
     "shares": "Parts",
@@ -868,8 +875,8 @@
     "depositRefundedNote": "Le dépôt a été remboursé au portefeuille expéditeur.",
     "depositFailedNote": "Le dépôt n'a pas pu aboutir. Les fonds sont remboursés à l'expéditeur.",
     "statusCheckFailed": "Impossible de vérifier le statut",
-    "gasWarningTitle": "Frais de réseau requis",
-    "gasWarningBody": "Il vous faut un peu de {symbol} dans ce portefeuille pour couvrir les frais de réseau {chain} avant d'envoyer.",
+    "gasWarningTitle": "Portefeuille pas encore prêt",
+    "gasWarningBody": "Ce portefeuille {chain} a besoin d'un peu de {symbol} avant de pouvoir envoyer.",
     "searchNetworks": "Rechercher des réseaux",
     "loadingNetworks": "Chargement des réseaux",
     "loadNetworksError": "Impossible de charger les réseaux.",
@@ -1591,6 +1598,8 @@
     "toastDeposited": "{amount} {symbol} déposé sur {network}",
     "toastWithdrew": "{amount} {symbol} retiré sur {network}",
     "moved": "{symbol} transféré",
-    "toastMoved": "{amount} {symbol} transféré"
+    "toastMoved": "{amount} {symbol} transféré",
+    "notifications": "Notifications",
+    "newCount": "{count} nouvelles"
   }
 }

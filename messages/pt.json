@@ -127,7 +127,7 @@
     "youSell": "Você vende",
     "youSellRow": "Você vende",
     "ctaNotSellable": "{symbol} não pode ser vendido desta carteira",
-    "ctaNeedsGas": "Você precisa de {symbol} na {chain} para a taxa de rede"
+    "ctaNeedsGas": "A preparar a sua carteira {chain} — adicione um pouco de {symbol} para continuar"
   },
   "topbar": {
     "searchPlaceholder": "Pesquisar ativos, mercados, tickers",
@@ -147,7 +147,14 @@
     "couldntLoad": "Não foi possível carregar",
     "addFunds": "Adicionar fundos",
     "withdraw": "Retirar",
-    "assetPrice": "Preço de {name}"
+    "readyToSpend": "{amount} disponível para gastar",
+    "breakdownTitle": "Onde está o seu dinheiro",
+    "assetsHeld": "ativos",
+    "breakdownEmpty": "Ainda não tem nada.",
+    "slice_cash": "Dinheiro",
+    "slice_coins": "Moedas",
+    "slice_realAssets": "Ativos reais",
+    "slice_tokens": "Tokens"
   },
   "remitBanner": {
     "title": "Envie dinheiro para o estrangeiro",
@@ -494,7 +501,7 @@
     "overBalance": "Mais do que o seu saldo de {symbol}",
     "max": "Máx",
     "settlesToUsdc": "Liquida no seu saldo USDC na Base.",
-    "needGasFee": "Precisa de um pouco de {symbol} na {network} para a taxa de rede. Adicione e tente novamente.",
+    "needGasFee": "A sua carteira {network} precisa de um pouco de {symbol} para enviar. Adicione e tente de novo.",
     "purchaseFailedFallback": "Não conseguimos concluir a sua compra. Tente novamente.",
     "saleFailedFallback": "Não conseguimos concluir a sua venda. Tente novamente.",
     "network": "Rede",
@@ -543,7 +550,7 @@
     "cantTradeNow": "Não é possível negociar {symbol} agora",
     "fetchingFromRegistry": "A obter {symbol} do registo RWA.",
     "notFoundInRegistry": "Não encontrámos {symbol} no registo RWA. Tente novamente em breve.",
-    "gasNeeded": "Precisa de um pouco de {symbol} para a taxa de rede",
+    "gasNeeded": "Estamos a preparar a sua carteira. Adicione pelo menos {amount} {symbol} para continuar.",
     "connectWallet": "Ligue a sua carteira para negociar",
     "buyingSymbol": "A comprar {symbol}…",
     "sellingSymbol": "A vender {symbol}…",
@@ -572,8 +579,8 @@
     "minReceived": "Mínimo recebido",
     "maxSlippage": "Slippage máx",
     "fundSolanaTitle": "Primeiro mova {amount} para a Solana",
-    "fundSolanaBody": "Seus USDC estão na Base. Vamos transferi-los para a Solana — cerca de 30 segundos, sem taxa de gás.",
-    "fundSolanaWithGas": "Vamos transferir seus USDC para a Solana e comprar um pouco de SOL para a taxa de rede — cerca de 30 segundos, sem taxa de gás.",
+    "fundSolanaBody": "Os seus USDC estão na Base. Vamos movê-los para a Solana — cerca de 30 segundos, grátis.",
+    "fundSolanaWithGas": "Vamos mover os seus USDC para a Solana e preparar a carteira — cerca de 30 segundos, grátis.",
     "fundSolanaCta": "Mover fundos para a Solana",
     "fundSolanaWorking": "Movendo fundos…",
     "fundSolanaShort": "USDC insuficientes na Base",
@@ -602,11 +609,11 @@
     "tvl": "TVL",
     "fundSolanaProgress": "A mover os seus fundos para a Solana",
     "fundSolanaRetry": "Tentar novamente",
-    "stepGas": "Comprar {amount} de SOL para as taxas de rede",
+    "stepGas": "Preparar a sua carteira Solana ({amount})",
     "stepBridge": "Mover {amount} de USDC para a Solana",
     "stepBuy": "Comprar {symbol}",
     "stepQuoting": "A procurar a melhor rota…",
-    "stepSigning": "A enviar a partir da Base — sem taxa de gas",
+    "stepSigning": "A enviar a partir da Base — grátis",
     "stepSettling": "A aguardar a chegada à Solana…",
     "stepBuilding": "A preparar a sua ordem…",
     "useLandedBalance": "Comprar com os {amount} que tem",
@@ -679,7 +686,7 @@
     "notTradable": "Este mercado ainda não é negociável. Os mercados ao vivo da Polymarket chegam aqui em breve.",
     "payoutIfRight": "Pagamento se acertar",
     "usdcOnBase": "USDC na Base: {amount}.",
-    "betFundingNote": "Colocar uma aposta usa o necessário do seu USDC na Base e liquida em pUSD. Sem taxa de rede para negociar.",
+    "betFundingNote": "Apostar move o necessário dos seus USDC na Base e liquida em pUSD. Grátis.",
     "betSlip": "Talão de aposta",
     "amountStaked": "Montante apostado",
     "shares": "Participações",
@@ -868,8 +875,8 @@
     "depositRefundedNote": "O depósito foi reembolsado à carteira de origem.",
     "depositFailedNote": "O depósito não pôde ser concluído. Os fundos são reembolsados ao remetente.",
     "statusCheckFailed": "Não foi possível verificar o estado",
-    "gasWarningTitle": "Taxa de rede necessária",
-    "gasWarningBody": "Precisa de um pouco de {symbol} nesta carteira para a taxa de rede da {chain} antes de enviar.",
+    "gasWarningTitle": "Carteira ainda não pronta",
+    "gasWarningBody": "Esta carteira {chain} precisa de um pouco de {symbol} antes de poder enviar.",
     "searchNetworks": "Pesquisar redes",
     "loadingNetworks": "A carregar redes",
     "loadNetworksError": "Não foi possível carregar as redes.",
@@ -1591,6 +1598,8 @@
     "toastDeposited": "{amount} {symbol} depositado na {network}",
     "toastWithdrew": "{amount} {symbol} levantado na {network}",
     "moved": "{symbol} movido",
-    "toastMoved": "{amount} {symbol} movido"
+    "toastMoved": "{amount} {symbol} movido",
+    "notifications": "Notificações",
+    "newCount": "{count} novas"
   }
 }

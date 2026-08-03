@@ -308,6 +308,7 @@ export function LobbySection() {
         >
           <MenuHeader />
           <div className="space-y-4 p-4 sm:p-6">
+            <ChessCashierLauncher />
             <div className="space-y-4">
               <MenuActionButton
                 title="Live Now"
@@ -373,8 +374,6 @@ export function LobbySection() {
                 <span className="sr-only">{t("challengesEmpty")}</span>
               </>
             ) : null}
-
-            <ChessCashierLauncher />
           </div>
         </aside>
       </div>

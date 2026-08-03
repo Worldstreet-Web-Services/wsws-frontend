@@ -292,7 +292,7 @@ function StakeCard({
   stakeOverBalance: boolean;
   cashierAvailable: string;
   feeBps: number;
-  feePct: string | null;
+  feePct: number | null;
 }) {
   const chipClass = (active: boolean) =>
     `cursor-pointer rounded-[12px] border px-3.5 py-2 font-sans text-[13px] transition-colors ${

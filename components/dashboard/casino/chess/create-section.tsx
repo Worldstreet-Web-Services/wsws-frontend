@@ -40,6 +40,7 @@ const CREATE_TIME_GROUPS = [
   {
     title: "Game Clock",
     options: [
+      { value: "1+0", label: "1 min" },
       { value: "5+0", label: "5 min" },
       { value: "10+0", label: "10 min" },
       { value: "15+0", label: "15 min" },
@@ -443,7 +444,7 @@ export function CreateSection() {
                       {selectedTime.panelLabel}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {group.options.map((option) => {
                       const active = timeControl === option.value;
                       return (

@@ -786,7 +786,6 @@
     "comments_empty": "No comments yet. Be the first.",
     "commentPlaceholder": "Add a comment…",
     "commentConnect": "Connect a wallet to comment.",
-    "commentSignNote": "You sign with your wallet — no gas.",
     "commentPost": "Post",
     "commentPosting": "Signing…",
     "commentFailed": "Could not post comment.",
@@ -833,7 +832,9 @@
     "positionLost": "Lost",
     "noPositionYet": "No position in this market yet.",
     "noPositionThisSide": "No position on this side.",
-    "redeemCta": "Redeem winnings"
+    "redeemCta": "Redeem winnings",
+    "tab_positions": "Positions",
+    "positionConnect": "Connect a wallet to see your position."
   },
   "perps": {
     "eyebrow": "Perpétuels",

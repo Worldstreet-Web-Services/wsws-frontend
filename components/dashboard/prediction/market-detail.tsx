@@ -25,8 +25,8 @@ import type { ChartInterval, Side, Trade } from "@/lib/prediction/types";
 // A compact set of intervals for the smaller chart.
 const INTERVALS: ChartInterval[] = ["1h", "4h", "1d"];
 
-type DetailTab = "activity" | "holders" | "comments" | "rules";
-const DETAIL_TABS: DetailTab[] = ["activity", "holders", "comments", "rules"];
+type DetailTab = "positions" | "activity" | "holders" | "comments" | "rules";
+const DETAIL_TABS: DetailTab[] = ["positions", "activity", "holders", "comments", "rules"];
 
 interface MarketDetailProps {
   id: string;
@@ -187,6 +187,7 @@ export function MarketDetail({ id }: MarketDetailProps) {
             </div>
           </div>
 
+          {tab === "positions" ? <MarketPositions market={market} /> : null}
           {tab === "activity" ? <ActivityFeed marketId={id} /> : null}
           {tab === "holders" ? <TopHolders marketId={id} /> : null}
           {tab === "comments" ? <CommentsPanel marketId={id} /> : null}
@@ -197,7 +198,6 @@ export function MarketDetail({ id }: MarketDetailProps) {
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-6">
           <ExecutionPanel market={market} initialSide={initialSide} />
-          <MarketPositions market={market} />
           <LiquidityPanel market={market} />
 
           {canResolve ? (

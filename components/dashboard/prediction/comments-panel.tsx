@@ -60,8 +60,7 @@ export function CommentsPanel({ marketId, groupId }: CommentsPanelProps) {
           disabled={!canComment || busy}
           className="ws-inset w-full resize-none rounded-xl px-3.5 py-2.5 text-[13.5px] text-white placeholder:text-white/35 focus:outline-none disabled:opacity-60"
         />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[11.5px] font-normal text-white/35">{t("commentSignNote")}</span>
+        <div className="mt-2 flex items-center justify-end">
           <button
             onClick={onSubmit}
             disabled={!canComment || busy || !draft.trim()}

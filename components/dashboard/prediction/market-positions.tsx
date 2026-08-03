@@ -38,7 +38,16 @@ export function MarketPositions({ market }: MarketPositionsProps) {
     : null;
   const canRedeem = resolved && winningSide === side && shares > 0n;
 
-  if (!actions.wallet) return null; // no wallet → nothing to show
+  if (!actions.wallet) {
+    return (
+      <div className="ws-card p-5 sm:p-6">
+        <span className="ws-display mb-3 block text-[15px]">{t("yourPosition")}</span>
+        <p className="py-4 text-center text-[13px] font-normal text-white/45">
+          {t("positionConnect")}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="ws-card p-5 sm:p-6">

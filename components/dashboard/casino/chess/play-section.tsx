@@ -935,6 +935,10 @@ export function PlaySection({
             </Link>
           </div>
 
+          <div className="shrink-0 border-b border-white/6 px-4 pt-4 pb-4 sm:px-5">
+            <ChessCashierLauncher compact />
+          </div>
+
           <div className="grid grid-cols-3 border-b border-white/6 bg-black/8">
             {(["moves", "chat", "info"] as const).map((tab) => {
               const label =
@@ -1427,8 +1431,6 @@ export function PlaySection({
                 </button>
               </div>
             ) : null}
-
-            <ChessCashierLauncher compact className="mt-4 shrink-0" />
           </div>
         </aside>
       </div>

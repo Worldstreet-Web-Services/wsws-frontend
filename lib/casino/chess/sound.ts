@@ -123,6 +123,30 @@ export function playMoveSound(kind: MoveSound = "move"): void {
   }
 }
 
+// A single robotic countdown beep for the final seconds of a clock. The pitch
+// climbs as the number falls (10 low, 1 high) so the urgency is audible, and
+// the last three tick harder. `n` is the whole second being shown.
+export function playCountdownBeep(n: number): void {
+  const ac = audioContext();
+  if (!ac) return;
+  if (ac.state === "suspended") void ac.resume();
+  try {
+    const clamped = Math.max(0, Math.min(10, n));
+    const freq = 440 + (10 - clamped) * 55; // 440Hz at 10 → ~990Hz at 1
+    const urgent = clamped <= 3;
+    tone(ac, {
+      freqStart: freq,
+      freqEnd: freq,
+      attack: 0.004,
+      hold: urgent ? 0.16 : 0.1,
+      peak: urgent ? 0.26 : 0.18,
+      type: "square",
+    });
+  } catch {
+    // A missed beep must never interrupt the game.
+  }
+}
+
 // A short three-note chime when the game ends: rising and bright for a win,
 // falling and softer for a loss or a draw.
 export function playGameEndSound(outcome: "win" | "loss" | "draw"): void {

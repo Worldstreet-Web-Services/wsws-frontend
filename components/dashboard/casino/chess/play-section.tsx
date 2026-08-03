@@ -25,6 +25,7 @@ import {
   CHESS_SURFACE_BG,
 } from "@/lib/casino/chess/ui";
 import { armAudioUnlock, moveSoundFromSan, playGameEndSound, playMoveSound } from "@/lib/casino/chess/sound";
+import { FinalCountdown } from "@/components/dashboard/casino/chess/final-countdown";
 import {
   CasinoEmpty,
   CasinoError,
@@ -816,7 +817,7 @@ export function PlaySection({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2px]">
+            <div className="relative overflow-hidden rounded-[2px]">
               <ChessBoard
                 board={board}
                 selected={selected}
@@ -829,6 +830,10 @@ export function PlaySection({
                     ? (r, c) => void onSquareClick(r, c)
                     : undefined
                 }
+              />
+              <FinalCountdown
+                secondsLeft={clocks?.[displayTurn] ?? 0}
+                live={match.state === "in_progress"}
               />
             </div>
 

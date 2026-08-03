@@ -109,9 +109,9 @@ describe("access classification", () => {
     expect(isTradable(asset({ accessMode: "issuer", freelyTradable: true }))).toBe(false);
   });
 
-  it("trades on the live chains only", () => {
+  it("trades on Base only while the Solana purchase flow is parked", () => {
     expect(isLiveChain(asset({ chain: "base" }))).toBe(true);
-    expect(isLiveChain(asset({ chain: "solana" }))).toBe(true);
+    expect(isLiveChain(asset({ chain: "solana" }))).toBe(false);
     expect(isLiveChain(asset({ chain: "ethereum" }))).toBe(false);
     expect(isLiveChain(asset({ chain: "bsc" }))).toBe(false);
   });

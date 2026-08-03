@@ -85,10 +85,13 @@ export function isTradable(a: RwaApiAsset): boolean {
   return a.freelyTradable === true && a.accessMode !== "issuer";
 }
 
-// Chains the RWA table trades on. Quote and build route both live (verified
-// against the gateway: Jupiter on Solana, aggregators on Base); the catalog's
-// other chains stay hidden until their portfolio and gas support lands.
-export const LIVE_RWA_CHAINS: readonly RwaChain[] = ["base", "solana"];
+// Chains the RWA table trades on. Base only for now: Solana routes through the
+// gateway too, but its purchases need SOL for rent and fees plus a funding
+// bridge, and that flow is parked until it is production-ready — so Solana
+// assets are hidden from the buy table rather than offered with a rough edge.
+// Selling a Solana RWA already held still works: the Holdings sheet resolves
+// its asset from the raw registry, not this filter.
+export const LIVE_RWA_CHAINS: readonly RwaChain[] = ["base"];
 
 export function isLiveChain(a: RwaApiAsset): boolean {
   return (LIVE_RWA_CHAINS as readonly string[]).includes(a.chain);

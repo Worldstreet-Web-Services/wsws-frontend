@@ -8,7 +8,7 @@ import {
   useWallets,
 } from "@privy-io/react-auth";
 import type { EIP1193Provider } from "viem";
-import { sendSponsoredEvmCalls } from "@/lib/trade/base-sponsor";
+import { sendSponsoredEvmCalls } from "@/lib/trade/sponsor";
 import { getSponsoredEvmChainById, isSponsoredEvmChainId } from "@/lib/trade/sponsored-evm";
 
 export interface EvmSendInput {

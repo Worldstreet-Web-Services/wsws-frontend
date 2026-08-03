@@ -75,7 +75,10 @@ const OPENINGS: Record<string, Opening> = {
 };
 
 // The deepest line in the table, so the matcher knows how far back to look.
-const MAX_PLIES = Object.keys(OPENINGS).reduce((max, key) => Math.max(max, key.split(" ").length), 0);
+const MAX_PLIES = Object.keys(OPENINGS).reduce(
+  (max, key) => Math.max(max, key.split(" ").length),
+  0
+);
 
 // SAN carries check/mate/annotation marks that never appear in an opening key,
 // so they are stripped before comparison ("Nf6+" matches the line "Nf6").

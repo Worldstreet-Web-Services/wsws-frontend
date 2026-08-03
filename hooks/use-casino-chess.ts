@@ -85,7 +85,8 @@ export const CHESS_KEYS = {
   challenges: ["casino", "chess", "challenges"] as const,
   liveMatches: ["casino", "chess", "live"] as const,
   match: (id: string) => ["casino", "chess", "match", id] as const,
-  chat: (id: string, room: ChessChatRoom) => ["casino", "chess", "match", id, "chat", room] as const,
+  chat: (id: string, room: ChessChatRoom) =>
+    ["casino", "chess", "match", id, "chat", room] as const,
   note: (id: string, viewer: string) => ["casino", "chess", "match", id, "note", viewer] as const,
   comments: (id: string, ply: number) => ["casino", "chess", "match", id, "comments", ply] as const,
   history: (wallet: string) => ["casino", "chess", "history", wallet] as const,
@@ -511,7 +512,7 @@ export function useChessMatchSocial(
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
   const viewer = wallet.address?.toLowerCase() ?? "anon";
-  const activeRoom = room === "player" && canUsePlayerRoom ? "player" : "spectator";
+  const activeRoom: ChessChatRoom = room === "player" && canUsePlayerRoom ? "player" : "spectator";
 
   const chat = useQuery({
     queryKey: CHESS_KEYS.chat(matchId ?? "none", activeRoom),
@@ -535,8 +536,10 @@ export function useChessMatchSocial(
     mutationFn: (input: { room: ChessChatRoom; text: string }) =>
       postMatchChatMessage(matchId as string, input.room, input.text),
     onSuccess: (line) => {
-      queryClient.setQueryData<ChessChatMessage[]>(CHESS_KEYS.chat(matchId as string, line.room), (prev) =>
-        prev && prev.some((item) => item.id === line.id) ? prev : [...(prev ?? []), line]
+      queryClient.setQueryData<ChessChatMessage[]>(
+        CHESS_KEYS.chat(matchId as string, line.room),
+        (prev) =>
+          prev && prev.some((item) => item.id === line.id) ? prev : [...(prev ?? []), line]
       );
     },
   });
@@ -549,7 +552,8 @@ export function useChessMatchSocial(
   });
 
   const upsertComment = useMutation({
-    mutationFn: (input: { ply: number; text: string }) => upsertMatchComment(matchId as string, input),
+    mutationFn: (input: { ply: number; text: string }) =>
+      upsertMatchComment(matchId as string, input),
     onSuccess: (saved) => {
       queryClient.setQueryData<ChessMatchComment[]>(
         CHESS_KEYS.comments(matchId as string, saved.ply),
@@ -571,8 +575,9 @@ export function useChessMatchSocial(
         ply: input.ply,
       })),
     onSuccess: ({ deleted, ply }) => {
-      queryClient.setQueryData<ChessMatchComment[]>(CHESS_KEYS.comments(matchId as string, ply), (prev) =>
-        (prev ?? []).filter((comment) => comment.id !== deleted.id)
+      queryClient.setQueryData<ChessMatchComment[]>(
+        CHESS_KEYS.comments(matchId as string, ply),
+        (prev) => (prev ?? []).filter((comment) => comment.id !== deleted.id)
       );
     },
   });

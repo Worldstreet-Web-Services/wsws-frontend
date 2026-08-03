@@ -44,12 +44,12 @@ describe("chess identity helper", () => {
     expect(chessReadNeedsSession("cashier/config")).toBe(false);
     expect(chessReadNeedsSession("betting/markets/match-1/bets")).toBe(true);
     expect(chessReadNeedsSession("matches/123/note")).toBe(true);
-    expect(
-      chessReadNeedsSession("matches/123/chat", new URLSearchParams("room=player"))
-    ).toBe(true);
-    expect(
-      chessReadNeedsSession("matches/123/chat", new URLSearchParams("room=spectator"))
-    ).toBe(false);
+    expect(chessReadNeedsSession("matches/123/chat", new URLSearchParams("room=player"))).toBe(
+      true
+    );
+    expect(chessReadNeedsSession("matches/123/chat", new URLSearchParams("room=spectator"))).toBe(
+      false
+    );
     expect(chessReadNeedsSession("matches/123")).toBe(false);
   });
 

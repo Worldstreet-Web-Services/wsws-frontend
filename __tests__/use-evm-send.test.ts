@@ -8,7 +8,7 @@ const { sendSponsoredEvmCalls, sendTransaction, signAuthorization } = vi.hoisted
   signAuthorization: vi.fn(),
 }));
 
-vi.mock("@/lib/trade/base-sponsor", () => ({ sendSponsoredEvmCalls }));
+vi.mock("@/lib/trade/sponsor", () => ({ sendSponsoredEvmCalls }));
 vi.mock("@privy-io/react-auth", () => ({
   useSendTransaction: () => ({ sendTransaction }),
   useSign7702Authorization: () => ({ signAuthorization }),

@@ -60,10 +60,10 @@ interface MatchChatQuery {
   limit?: number;
 }
 
-interface UpsertMatchCommentInput {
+type UpsertMatchCommentInput = {
   ply: number;
   text: string;
-}
+};
 
 export interface LobbyChallenges {
   challenges: ChessChallenge[];
@@ -426,9 +426,12 @@ export async function fetchMatchComments(
   matchId: string,
   ply?: number
 ): Promise<ChessMatchComment[]> {
-  const data = await chessGet<ChessMatchCommentsWire>(`/matches/${requireMatchId(matchId)}/comments`, {
-    ...(typeof ply === "number" ? { ply: String(ply) } : {}),
-  });
+  const data = await chessGet<ChessMatchCommentsWire>(
+    `/matches/${requireMatchId(matchId)}/comments`,
+    {
+      ...(typeof ply === "number" ? { ply: String(ply) } : {}),
+    }
+  );
   return data.items.map((wire) => toChessMatchComment(wire));
 }
 

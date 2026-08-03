@@ -10,7 +10,11 @@ import {
 import { truncateAddress } from "@/lib/format";
 import type { ChessMatch } from "@/lib/casino/api/types";
 
-function publicLabel(name: string | null | undefined, wallet: string | null | undefined, fallback = "Player") {
+function publicLabel(
+  name: string | null | undefined,
+  wallet: string | null | undefined,
+  fallback = "Player"
+) {
   if (name && name !== "Account" && name !== "World Street user") return name;
   return wallet ? truncateAddress(wallet) : fallback;
 }
@@ -44,10 +48,16 @@ export function ChessLiveNowDialog({ open, onClose, myMatches, matches }: ChessL
   const hasAnyLive = myMatches.length > 0 || matches.length > 0;
 
   return (
-    <ChessDialogFrame open={open} onClose={onClose} title="Live Now" iconSrc="/chesscom-icons/time-blitz.svg">
+    <ChessDialogFrame
+      open={open}
+      onClose={onClose}
+      title="Live Now"
+      iconSrc="/chesscom-icons/time-blitz.svg"
+    >
       <div className="space-y-4">
         <div className="text-[13px] leading-6 text-white/60">
-          Watch games that are already live, then open the market to spectate and bet from your chess balance.
+          Watch games that are already live, then open the market to spectate and bet from your
+          chess balance.
         </div>
 
         {!hasAnyLive ? (
@@ -65,7 +75,7 @@ export function ChessLiveNowDialog({ open, onClose, myMatches, matches }: ChessL
                 className="rounded-[18px] border border-white/8 px-5 py-5"
                 style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
               >
-                <div className="mb-2 font-sans text-[1.15rem] font-extrabold leading-none tracking-[-0.03em] text-white">
+                <div className="mb-2 font-sans text-[1.15rem] leading-none font-extrabold tracking-[-0.03em] text-white">
                   {liveMatchLabel(match)}
                 </div>
                 <div className="mb-4 text-[13px] leading-6 text-white/62">
@@ -87,7 +97,7 @@ export function ChessLiveNowDialog({ open, onClose, myMatches, matches }: ChessL
                 className="rounded-[18px] border border-white/8 px-5 py-5"
                 style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
               >
-                <div className="mb-2 font-sans text-[1.15rem] font-extrabold leading-none tracking-[-0.03em] text-white">
+                <div className="mb-2 font-sans text-[1.15rem] leading-none font-extrabold tracking-[-0.03em] text-white">
                   {liveMatchLabel(match)}
                 </div>
                 <div className="mb-4 text-[13px] leading-6 text-white/62">

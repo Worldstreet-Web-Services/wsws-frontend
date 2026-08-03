@@ -42,11 +42,12 @@ describe("chess proxy route", () => {
   beforeEach(() => {
     auth.verifyRequest.mockReset();
     auth.getRequestUser.mockReset();
-    global.fetch = vi.fn(async () =>
-      new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      })
+    global.fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
     ) as unknown as typeof fetch;
   });
 
@@ -90,10 +91,9 @@ describe("chess proxy route", () => {
   it("requires a session for private chess reads", async () => {
     auth.verifyRequest.mockResolvedValue(null);
     const { GET } = await loadRoute();
-    const res = await GET(
-      makeReq("https://app.test/api/chess/cashier/players/0xabc/balance"),
-      { params: Promise.resolve({ path: ["cashier", "players", "0xabc", "balance"] }) }
-    );
+    const res = await GET(makeReq("https://app.test/api/chess/cashier/players/0xabc/balance"), {
+      params: Promise.resolve({ path: ["cashier", "players", "0xabc", "balance"] }),
+    });
 
     expect(res.status).toBe(401);
     expect(global.fetch).not.toHaveBeenCalled();
@@ -140,10 +140,9 @@ describe("chess proxy route", () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
     auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
     const { GET } = await loadRoute();
-    const res = await GET(
-      makeReq("https://app.test/api/chess/cashier/players/0xstale/balance"),
-      { params: Promise.resolve({ path: ["cashier", "players", "0xstale", "balance"] }) }
-    );
+    const res = await GET(makeReq("https://app.test/api/chess/cashier/players/0xstale/balance"), {
+      params: Promise.resolve({ path: ["cashier", "players", "0xstale", "balance"] }),
+    });
 
     expect(res.status).toBe(200);
     const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock

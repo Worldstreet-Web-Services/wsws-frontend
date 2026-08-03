@@ -305,11 +305,9 @@ describe("match social api", () => {
     const note = await fetchMatchNote(id);
     const saved = await saveMatchNote(id, "updated prep");
 
-    expect(chessClient.chessGet).toHaveBeenCalledWith(
-      `/matches/${id}/note`,
-      undefined,
-      { requireAuth: true }
-    );
+    expect(chessClient.chessGet).toHaveBeenCalledWith(`/matches/${id}/note`, undefined, {
+      requireAuth: true,
+    });
     expect(chessClient.chessPut).toHaveBeenCalledWith(`/matches/${id}/note`, {
       text: "updated prep",
     });
@@ -358,10 +356,7 @@ describe("match social api", () => {
     const saved = await upsertMatchComment(id, { ply: 3, text: "new idea" });
     const deleted = await deleteMatchComment(id, "c2");
 
-    expect(chessClient.chessGet).toHaveBeenCalledWith(
-      `/matches/${id}/comments`,
-      { ply: "3" }
-    );
+    expect(chessClient.chessGet).toHaveBeenCalledWith(`/matches/${id}/comments`, { ply: "3" });
     expect(chessClient.chessPost).toHaveBeenCalledWith(`/matches/${id}/comments`, {
       ply: 3,
       text: "new idea",

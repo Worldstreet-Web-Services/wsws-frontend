@@ -15,9 +15,7 @@ function loadBsoRegistry() {
 
 const NETWORK_REGISTRY = loadBsoRegistry();
 const DEFAULT_REQUIRED_NETWORKS = NETWORK_REGISTRY.map((entry) => entry.policyNetwork);
-const BY_POLICY_NETWORK = new Map(
-  NETWORK_REGISTRY.map((entry) => [entry.policyNetwork, entry])
-);
+const BY_POLICY_NETWORK = new Map(NETWORK_REGISTRY.map((entry) => [entry.policyNetwork, entry]));
 const BY_NETWORK = new Map(NETWORK_REGISTRY.map((entry) => [entry.network, entry]));
 
 const NETWORK_ALIASES = new Map([
@@ -174,9 +172,7 @@ async function fetchJsonWithCredential(url, credential) {
 }
 
 function summarizePolicy(policy, required, stats) {
-  const networks = Array.isArray(policy.networks)
-    ? [...policy.networks].map(String).sort()
-    : [];
+  const networks = Array.isArray(policy.networks) ? [...policy.networks].map(String).sort() : [];
   const missing = required.filter((network) => !networks.includes(network));
   const extra = networks.filter((network) => !required.includes(network));
   const statRows = Array.isArray(stats?.policyNetworkStats)
@@ -373,7 +369,8 @@ async function main() {
     const legacy = process.env.ALCHEMY_ADMIN_ACCESS_TOKEN;
     const apiKey = process.env.ALCHEMY_API_KEY;
     if (preferred) credentials.push({ source: "ALCHEMY_ACCESS_KEY", value: preferred });
-    if (gasManager) credentials.push({ source: "ALCHEMY_GAS_MANAGER_ACCESS_KEY", value: gasManager });
+    if (gasManager)
+      credentials.push({ source: "ALCHEMY_GAS_MANAGER_ACCESS_KEY", value: gasManager });
     if (legacy) credentials.push({ source: "ALCHEMY_ADMIN_ACCESS_TOKEN", value: legacy });
     if (apiKey) credentials.push({ source: "ALCHEMY_API_KEY", value: apiKey });
   }
@@ -402,14 +399,17 @@ async function main() {
   if (!policyPayload || !credentialUsed) {
     const sources = credentials.map((credential) => credential.source).join(", ");
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`Alchemy rejected the tested credential(s) [${sources}]. Last error: ${detail}`);
+    throw new Error(
+      `Alchemy rejected the tested credential(s) [${sources}]. Last error: ${detail}`
+    );
   }
 
-  const statsRes = await fetchJson(`${base}/${policyId}/stats/detailed`, credentialUsed.value).catch(
-    (error) => ({
-      error: error instanceof Error ? error.message : String(error),
-    })
-  );
+  const statsRes = await fetchJson(
+    `${base}/${policyId}/stats/detailed`,
+    credentialUsed.value
+  ).catch((error) => ({
+    error: error instanceof Error ? error.message : String(error),
+  }));
 
   const summary = summarizePolicy(
     policyPayload?.data?.policy ?? {},

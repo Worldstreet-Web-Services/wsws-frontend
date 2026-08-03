@@ -246,7 +246,8 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
             >
               <div className="mb-1 text-[1.2rem] font-extrabold text-white">{t("liveMarket")}</div>
               <div className="text-[0.92rem] leading-6 text-white/60">
-                Watching is free. Betting here uses your chess balance, not the Base wallet directly.
+                Watching is free. Betting here uses your chess balance, not the Base wallet
+                directly.
               </div>
               <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] bg-black/10 px-3 py-2.5">
                 <span className="text-white/55">{t("timeControl")}</span>
@@ -325,7 +326,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                     <div className="mb-3.5 border-t border-white/8 pt-3.5">
                       <div className="mb-2 flex items-center justify-between text-[11px] font-normal text-white/50">
                         <span>{t("placeABet")}</span>
-                        <span className="tnum">{t("balance", { amount: usd(Number(available)) })}</span>
+                        <span className="tnum">
+                          {t("balance", { amount: usd(Number(available)) })}
+                        </span>
                       </div>
                       <div className="mb-2.5 flex gap-2">
                         <input
@@ -360,7 +363,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
 
                   {myBets.length > 0 ? (
                     <div className="mt-3.5 border-t border-white/8 pt-3.5">
-                      <div className="mb-2 text-[11px] font-normal text-white/50">{t("yourBets")}</div>
+                      <div className="mb-2 text-[11px] font-normal text-white/50">
+                        {t("yourBets")}
+                      </div>
                       <div className="flex flex-col gap-1.5">
                         {myBets.map((b) => (
                           <div

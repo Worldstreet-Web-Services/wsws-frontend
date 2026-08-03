@@ -4,6 +4,7 @@ import {
   buildPayOptions,
   buyQuoteRequest,
   clampPage,
+  dedupeByChain,
   errorCode,
   estimateReceiveTokens,
   estimateReceiveUsdc,
@@ -12,6 +13,7 @@ import {
   findRwaHolding,
   formatApy,
   formatCompactUsd,
+  gasMinimumForChain,
   gasSymbolForChain,
   gradientFor,
   hasNativeGas,
@@ -530,5 +532,81 @@ describe("isUsableAsset", () => {
     expect(isUsableAsset(asset({ symbol: null as unknown as string }))).toBe(false);
     expect(isUsableAsset(asset({ address: null as unknown as string }))).toBe(false);
     expect(isUsableAsset(asset({ chain: null as unknown as RwaApiAsset["chain"] }))).toBe(false);
+  });
+});
+
+describe("hasNativeGas minimum", () => {
+  const sol = (balance: number) =>
+    [
+      {
+        symbol: "SOL",
+        name: "Solana",
+        network: "solana-mainnet",
+        address: null,
+        decimals: 9,
+        kind: "coin",
+        balance,
+        rawBalance: String(Math.round(balance * 1e9)),
+        priceUsd: 73,
+        valueUsd: balance * 73,
+        logo: null,
+      },
+    ] as never;
+
+  it("rejects dust that cannot open a token account", () => {
+    // 0.002142 SOL is what a first purchase actually cost: the rent-exempt
+    // deposit for the new account plus the fee. A > 0 check let this through
+    // and the difference came out of the wallet unannounced.
+    expect(hasNativeGas(sol(0.0001), "solana")).toBe(false);
+    expect(hasNativeGas(sol(0.002), "solana")).toBe(false);
+  });
+
+  it("accepts a balance that covers the account plus fees", () => {
+    expect(hasNativeGas(sol(0.005), "solana")).toBe(true);
+    expect(hasNativeGas(sol(0.0117), "solana")).toBe(true);
+  });
+
+  it("still reports nothing held as false", () => {
+    expect(hasNativeGas([], "solana")).toBe(false);
+  });
+
+  it("never gates Base, which is sponsored", () => {
+    expect(gasMinimumForChain("base")).toBe(0);
+  });
+
+  it("cannot judge a chain the portfolio does not index", () => {
+    expect(hasNativeGas([], "bsc")).toBeNull();
+  });
+});
+
+describe("dedupeByChain", () => {
+  const base = asset({ id: "base:0x66", chain: "base", symbol: "syrupUSDC" });
+  const solana = asset({ id: "solana:Avz", chain: "solana", symbol: "syrupUSDC" });
+
+  it("keeps the Base listing when an asset is on both chains", () => {
+    // Maple Syrup USDC ships on Base and Solana; two identical-looking rows
+    // gave no way to tell them apart, and Base trades are gas-sponsored.
+    expect(dedupeByChain([solana, base]).map((a) => a.chain)).toEqual(["base"]);
+    expect(dedupeByChain([base, solana]).map((a) => a.chain)).toEqual(["base"]);
+  });
+
+  it("keeps a Solana-only asset", () => {
+    expect(dedupeByChain([solana]).map((a) => a.id)).toEqual(["solana:Avz"]);
+  });
+
+  it("leaves distinct symbols alone and preserves order", () => {
+    const a = asset({ id: "base:1", chain: "base", symbol: "AAA" });
+    const b = asset({ id: "solana:2", chain: "solana", symbol: "BBB" });
+    const c = asset({ id: "base:3", chain: "base", symbol: "CCC" });
+    expect(dedupeByChain([a, b, c]).map((x) => x.symbol)).toEqual(["AAA", "BBB", "CCC"]);
+  });
+
+  it("matches symbols case-insensitively", () => {
+    const lower = asset({ id: "solana:x", chain: "solana", symbol: "syrupusdc" });
+    expect(dedupeByChain([lower, base]).map((a) => a.chain)).toEqual(["base"]);
+  });
+
+  it("returns an empty list unchanged", () => {
+    expect(dedupeByChain([])).toEqual([]);
   });
 });

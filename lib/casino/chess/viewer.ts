@@ -6,7 +6,8 @@ function matchesViewer(
   seatName: string | null
 ): boolean {
   if (!player) return false;
-  if (walletAddress && player.walletAddress.toLowerCase() === walletAddress.toLowerCase()) return true;
+  if (walletAddress && player.walletAddress.toLowerCase() === walletAddress.toLowerCase())
+    return true;
   if (!seatName) return false;
   return player.username === seatName || player.walletAddress === seatName;
 }

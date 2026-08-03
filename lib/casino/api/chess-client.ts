@@ -57,10 +57,7 @@ export async function chessPut<T>(path: string, body: Record<string, unknown> = 
   );
 }
 
-export async function chessDelete<T>(
-  path: string,
-  body: Record<string, unknown> = {}
-): Promise<T> {
+export async function chessDelete<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   return unwrap<T>(
     await apiFetch(
       `${BASE_PATH}${path}`,

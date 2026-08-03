@@ -678,7 +678,7 @@ export function PlaySection({
   );
   const viewerWallet = wallet.address?.toLowerCase() ?? null;
   const yourCurrentComment = viewerWallet
-    ? comments.find((comment) => comment.author.toLowerCase() === viewerWallet) ?? null
+    ? (comments.find((comment) => comment.author.toLowerCase() === viewerWallet) ?? null)
     : null;
   const sortedComments = [...comments].sort(
     (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt)
@@ -748,7 +748,9 @@ export function PlaySection({
   const canWriteChat = !!wallet.address;
   const canEditComments = you !== null && currentPly !== null;
   const currentPositionLabel =
-    currentPly === 0 ? t("commentPositionStart") : t("commentPositionMove", { ply: currentPly ?? 0 });
+    currentPly === 0
+      ? t("commentPositionStart")
+      : t("commentPositionMove", { ply: currentPly ?? 0 });
 
   return (
     <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
@@ -961,9 +963,7 @@ export function PlaySection({
                           {tCreate("copy")}
                         </button>
                       </div>
-                      <div className="mt-3 text-[11.5px] text-white/44">
-                        {t("shareManually")}
-                      </div>
+                      <div className="mt-3 text-[11.5px] text-white/44">{t("shareManually")}</div>
                     </div>
                   ) : null}
 
@@ -998,7 +998,9 @@ export function PlaySection({
                         {t("engineTitle")}
                       </div>
                       <div className="text-[12px] text-white/46">
-                        {engine.depth !== null ? t("engineDepth", { depth: engine.depth }) : engine.label}
+                        {engine.depth !== null
+                          ? t("engineDepth", { depth: engine.depth })
+                          : engine.label}
                       </div>
                     </div>
                     <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
@@ -1050,9 +1052,7 @@ export function PlaySection({
                             {t("enginePv")}
                           </div>
                           <div className="tnum text-[0.92rem] leading-6 break-words text-white/72">
-                            {enginePvSan.length > 0
-                              ? enginePvSan.join(" ")
-                              : t("enginePvWaiting")}
+                            {enginePvSan.length > 0 ? enginePvSan.join(" ") : t("enginePvWaiting")}
                           </div>
                         </div>
                       </div>
@@ -1066,7 +1066,9 @@ export function PlaySection({
                     style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="text-[1.2rem] font-extrabold text-white">{t("chatTitle")}</div>
+                      <div className="text-[1.2rem] font-extrabold text-white">
+                        {t("chatTitle")}
+                      </div>
                       {canUsePlayerChat ? (
                         <div className="flex gap-2">
                           {(["spectator", "player"] as const).map((room) => {
@@ -1089,7 +1091,11 @@ export function PlaySection({
                       ) : null}
                     </div>
                     <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
-                      {waiting ? t("chatWaiting") : activeChatRoom === "player" ? t("chatPlayersHint") : t("chatSpectatorsHint")}
+                      {waiting
+                        ? t("chatWaiting")
+                        : activeChatRoom === "player"
+                          ? t("chatPlayersHint")
+                          : t("chatSpectatorsHint")}
                     </div>
                     <div className="space-y-2">
                       {chatLoading ? (
@@ -1120,7 +1126,9 @@ export function PlaySection({
                               </span>
                               <span className="shrink-0">{formatShortTime(line.createdAt)}</span>
                             </div>
-                            <div className="text-[0.94rem] leading-6 text-white/78">{line.text}</div>
+                            <div className="text-[0.94rem] leading-6 text-white/78">
+                              {line.text}
+                            </div>
                           </div>
                         ))
                       )}
@@ -1196,8 +1204,12 @@ export function PlaySection({
                     className="rounded-[16px] border border-white/6 px-4 py-4"
                     style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                   >
-                    <div className="mb-2 text-[1.2rem] font-extrabold text-white">{t("noteTitle")}</div>
-                    <div className="mb-3 text-[0.9rem] leading-6 text-white/60">{t("noteHint")}</div>
+                    <div className="mb-2 text-[1.2rem] font-extrabold text-white">
+                      {t("noteTitle")}
+                    </div>
+                    <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
+                      {t("noteHint")}
+                    </div>
                     {!wallet.address ? (
                       <div className="rounded-[10px] bg-black/10 px-3 py-2 text-[0.92rem] text-white/55">
                         {t("noteLogin")}
@@ -1220,10 +1232,14 @@ export function PlaySection({
                     style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
                   >
                     <div className="mb-2 flex items-center justify-between gap-3">
-                      <div className="text-[1.2rem] font-extrabold text-white">{t("commentTitle")}</div>
+                      <div className="text-[1.2rem] font-extrabold text-white">
+                        {t("commentTitle")}
+                      </div>
                       <div className="text-[12px] text-white/46">{currentPositionLabel}</div>
                     </div>
-                    <div className="mb-3 text-[0.9rem] leading-6 text-white/60">{t("commentHint")}</div>
+                    <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
+                      {t("commentHint")}
+                    </div>
                     <div className="space-y-2">
                       {commentsLoading ? (
                         <div className="rounded-[10px] bg-black/10 px-3 py-2 text-[0.92rem] text-white/55">
@@ -1235,7 +1251,8 @@ export function PlaySection({
                         </div>
                       ) : (
                         sortedComments.map((comment) => {
-                          const own = viewerWallet !== null && comment.author.toLowerCase() === viewerWallet;
+                          const own =
+                            viewerWallet !== null && comment.author.toLowerCase() === viewerWallet;
                           return (
                             <div
                               key={comment.id}
@@ -1253,9 +1270,13 @@ export function PlaySection({
                                     t("you")
                                   )}
                                 </span>
-                                <span className="shrink-0">{formatShortTime(comment.updatedAt)}</span>
+                                <span className="shrink-0">
+                                  {formatShortTime(comment.updatedAt)}
+                                </span>
                               </div>
-                              <div className="text-[0.94rem] leading-6 text-white/78">{comment.text}</div>
+                              <div className="text-[0.94rem] leading-6 text-white/78">
+                                {comment.text}
+                              </div>
                               {own ? (
                                 <div className="mt-2 flex justify-end">
                                   <button

@@ -51,9 +51,7 @@ describe("alchemy-solana-sponsor route", () => {
   it("forwards sponsorship requests to the Solana host with the configured policy", async () => {
     verifyRequest.mockResolvedValue({ sub: "user" });
     const { POST } = await loadRoute();
-    const res = await POST(
-      makeReq({ serializedTransaction: "AQIDBA==", prefundRent: true })
-    );
+    const res = await POST(makeReq({ serializedTransaction: "AQIDBA==", prefundRent: true }));
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledOnce();
     const [url, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })

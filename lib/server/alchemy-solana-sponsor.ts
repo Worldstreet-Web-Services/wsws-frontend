@@ -66,7 +66,10 @@ export async function forwardAlchemySolanaSponsorRequest(req: NextRequest) {
 
     const result = data?.result;
     if (!result?.serializedTransaction || typeof result.serializedTransaction !== "string") {
-      return NextResponse.json({ error: "Alchemy returned no sponsored transaction" }, { status: 502 });
+      return NextResponse.json(
+        { error: "Alchemy returned no sponsored transaction" },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({

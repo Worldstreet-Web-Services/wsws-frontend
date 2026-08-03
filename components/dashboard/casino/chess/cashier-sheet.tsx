@@ -5,15 +5,8 @@ import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
 import { useChessCashier } from "@/hooks/use-chess-cashier";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import {
-  CHESS_PRIMARY_BUTTON_CLASS,
-  CHESS_SECONDARY_BUTTON_CLASS,
-} from "@/lib/casino/chess/ui";
-import {
-  exceedsUsdcBalance,
-  hasPositiveUsdc,
-  normalizeUsdcAmount,
-} from "@/lib/casino/api/cashier";
+import { CHESS_PRIMARY_BUTTON_CLASS, CHESS_SECONDARY_BUTTON_CLASS } from "@/lib/casino/chess/ui";
+import { exceedsUsdcBalance, hasPositiveUsdc, normalizeUsdcAmount } from "@/lib/casino/api/cashier";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 

@@ -29,6 +29,9 @@ export function useSwapExecute() {
       const { signature } = await signAndSendTransaction({
         transaction,
         wallet,
+        // Broadcast-only: the confirmation below polls the RPC we send
+        // through, rather than a WebSocket we do not proxy.
+        options: { optimisticBroadcast: true },
       });
       await confirmSolanaSignature(getBase58Decoder().decode(signature));
     },

@@ -23,6 +23,10 @@ export interface Market {
   question: string | null;
   category: string | null;
   imageUrl: string | null;
+  // Extended off-chain metadata for the rules panel (nullable until attached).
+  description: string | null;
+  rules: string | null;
+  resolutionSource: string | null;
   status: MarketStatus;
   outcome: Outcome;
   closeTime: number; // unix seconds; trading stops at/after this
@@ -70,4 +74,92 @@ export interface Position {
 export interface LpPosition {
   marketId: bigint;
   lpShares: bigint;
+}
+
+// ── Multi-outcome EVENTS (Polymarket-style grouped markets) ──────────────────
+// An event groups N independent on-chain binary markets, one per outcome (e.g. a
+// candidate). Each outcome carries its own YES/NO price + volume; the group is
+// off-chain presentation only.
+
+export interface GroupOutcome {
+  memberId: string;
+  marketId: bigint;
+  label: string; // "Marine Le Pen"
+  imageUrl: string | null;
+  status: MarketStatus | "Pending";
+  outcome: Outcome;
+  priceYes: bigint; // 0..PRICE_SCALE (raw pool price)
+  priceNo: bigint;
+  normalizedYes: bigint; // this YES ÷ Σ YES across outcomes, 0..PRICE_SCALE (display)
+  volumeUsdc: bigint;
+  closeTime: number;
+}
+
+export interface MarketGroup {
+  id: string;
+  slug: string;
+  title: string;
+  category: string | null;
+  description: string | null;
+  rules: string | null;
+  resolutionSource: string | null;
+  imageUrl: string | null;
+  closeTime: number | null;
+  status: "Open" | "Closed" | "Resolved";
+  volumeUsdc: bigint; // event rollup
+  outcomeCount: number;
+  outcomes: GroupOutcome[];
+}
+
+// ── Top holders / activity / comments / quotes ───────────────────────────────
+
+export interface Holder {
+  holder: string;
+  shares: bigint; // 6-dec
+  costUsdc: bigint; // 6-dec
+  marketId: bigint;
+}
+
+export type ActivityKind = "trade" | "lp_add" | "lp_remove" | "redeem" | "resolved";
+
+export interface ActivityItem {
+  id: string;
+  txHash: string;
+  kind: ActivityKind;
+  marketId: bigint;
+  actor: string;
+  side: Side | null;
+  buy: boolean | null;
+  usdcAmount: bigint | null;
+  shareAmount: bigint | null;
+  priceYes: bigint | null;
+  block: number;
+  at: number; // unix ms
+}
+
+export interface ActivityPage {
+  items: ActivityItem[];
+  nextCursor: string | null;
+}
+
+export interface Comment {
+  id: string;
+  wallet: string;
+  body: string;
+  parentId: string | null;
+  likeCount: number;
+  deleted: boolean;
+  at: number; // unix ms
+}
+
+// A size-aware CPMM quote (preview before signing).
+export interface Quote {
+  kind: "buy" | "sell";
+  side: Side;
+  sharesOut?: bigint; // for buy
+  usdcOut?: bigint; // for sell
+  avgPriceCents: number;
+  priceYesBefore: bigint;
+  priceYesAfter: bigint;
+  priceImpactBps: number;
 }

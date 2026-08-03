@@ -3,22 +3,34 @@
 import { apiFetch } from "@/lib/api";
 import {
   PredictionApiError,
+  normalizeActivityPage,
   normalizeChart,
+  normalizeComment,
+  normalizeComments,
+  normalizeGroup,
+  normalizeGroups,
+  normalizeHolders,
   normalizeLpPositions,
   normalizeMarket,
   normalizeMarkets,
   normalizePositions,
   normalizePrices,
+  normalizeQuote,
   normalizeTrades,
 } from "@/lib/prediction/normalize";
 import type {
+  ActivityPage,
   ChartInterval,
   ChartPoint,
+  Comment,
   LpPosition,
   Market,
+  MarketGroup,
   MarketStatus,
   Position,
   PricePoint,
+  Quote,
+  Side,
   Trade,
 } from "@/lib/prediction/types";
 
@@ -111,6 +123,105 @@ export async function getPositionsForMarket(id: string, wallet: string): Promise
 export async function getLpPositions(wallet: string): Promise<LpPosition[]> {
   const raw = await request<unknown>(`/lp?wallet=${wallet}`);
   return normalizeLpPositions(raw);
+}
+
+// ── Top holders / activity / quote (per-market detail surfaces) ──────────────
+
+export async function getHolders(id: string, side: Side, limit = 20): Promise<import("@/lib/prediction/types").Holder[]> {
+  return normalizeHolders(await request<unknown>(`/markets/${id}/holders?side=${side}&limit=${limit}`));
+}
+
+export async function getActivity(id: string, cursor?: string, limit = 30): Promise<ActivityPage> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set("cursor", cursor);
+  return normalizeActivityPage(await request<unknown>(`/markets/${id}/activity?${q.toString()}`));
+}
+
+// A size-aware CPMM quote. amount is USDC (buy) or shares (sell) in 6-dec base
+// units, sent as a base-unit integer string.
+export async function getQuote(
+  id: string,
+  side: Side,
+  kind: "buy" | "sell",
+  amount: bigint
+): Promise<Quote> {
+  const q = new URLSearchParams({ side, kind, amount: amount.toString() });
+  return normalizeQuote(await request<unknown>(`/markets/${id}/quote?${q.toString()}`));
+}
+
+// ── Multi-outcome EVENTS (groups) ────────────────────────────────────────────
+
+export async function listGroups(filter?: { category?: string; status?: string }): Promise<MarketGroup[]> {
+  const q = new URLSearchParams();
+  if (filter?.category) q.set("category", filter.category);
+  if (filter?.status) q.set("status", filter.status);
+  const qs = q.toString();
+  return normalizeGroups(await request<unknown>(`/groups${qs ? `?${qs}` : ""}`));
+}
+
+export async function getGroup(idOrSlug: string): Promise<MarketGroup> {
+  return normalizeGroup(await request<unknown>(`/groups/${idOrSlug}`));
+}
+
+export interface CreateGroupInput {
+  slug: string;
+  title: string;
+  category?: string;
+  description?: string;
+  rules?: string;
+  resolutionSource?: string;
+  imageUrl?: string;
+  closeTime?: number;
+}
+
+export function createGroup(input: CreateGroupInput, idempotencyKey: string): Promise<{ id: string }> {
+  return post("/groups", input, idempotencyKey);
+}
+
+export function addGroupMember(
+  groupId: string,
+  member: { marketId: string; label: string; imageUrl?: string; sortOrder?: number },
+  idempotencyKey: string
+): Promise<unknown> {
+  return post(`/groups/${groupId}/members`, member, idempotencyKey);
+}
+
+export function uploadGroupImage(
+  groupId: string,
+  dataUrl: string,
+  idempotencyKey: string
+): Promise<{ groupId: string; imageUrl: string }> {
+  return post(`/groups/${groupId}/image`, { image: dataUrl }, idempotencyKey);
+}
+
+// ── Comments (signature-verified writes) ─────────────────────────────────────
+
+export async function listComments(scope: { groupId?: string; marketId?: string }, limit = 50): Promise<Comment[]> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (scope.groupId) q.set("groupId", scope.groupId);
+  if (scope.marketId) q.set("marketId", scope.marketId);
+  return normalizeComments(await request<unknown>(`/comments?${q.toString()}`));
+}
+
+export interface SignedComment {
+  scope: "group" | "market";
+  scopeId: string;
+  body: string;
+  wallet: string;
+  signature: string;
+  timestamp: number;
+  parentId?: string;
+}
+
+export function postComment(input: SignedComment): Promise<{ id: string }> {
+  return post("/comments", input);
+}
+
+export function likeComment(
+  id: string,
+  signed: { wallet: string; signature: string; timestamp: number }
+): Promise<{ commentId: string; likeCount: number }> {
+  return post(`/comments/${id}/like`, signed);
 }
 
 export interface MarketMetadata {

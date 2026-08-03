@@ -38,7 +38,17 @@ export type MarketFrame =
   | { type: "closed" }
   | { type: "resolved"; outcome: Outcome }
   | { type: "invalidated" }
-  | { type: "redeemed"; holder: string; payout: bigint };
+  | { type: "redeemed"; holder: string; payout: bigint }
+  | {
+      type: "comment";
+      id: string;
+      wallet: string;
+      body: string;
+      parentId: string | null;
+      likeCount: number;
+      deleted: boolean;
+      at: number;
+    };
 
 // A non-negative integer string/number to bigint, or null if malformed.
 function big(value: unknown): bigint | null {
@@ -112,6 +122,19 @@ export function parseMarketFrame(raw: unknown): MarketFrame | null {
       const payout = big(d.payout);
       if (payout == null) return null;
       return { type: "redeemed", holder: typeof d.holder === "string" ? d.holder : "", payout };
+    }
+    case "comment": {
+      if (typeof d.id !== "string" || typeof d.body !== "string") return null;
+      return {
+        type: "comment",
+        id: d.id,
+        wallet: typeof d.wallet === "string" ? d.wallet : "",
+        body: d.body,
+        parentId: typeof d.parentId === "string" ? d.parentId : null,
+        likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
+        deleted: Boolean(d.deleted),
+        at: typeof d.at === "number" ? d.at : Date.parse(String(d.at ?? "")) || 0,
+      };
     }
     default:
       return null;

@@ -7,13 +7,21 @@
 
 import {
   PRICE_SCALE,
+  type ActivityItem,
+  type ActivityKind,
+  type ActivityPage,
   type ChartPoint,
+  type Comment,
+  type GroupOutcome,
+  type Holder,
   type LpPosition,
   type Market,
+  type MarketGroup,
   type MarketStatus,
   type Outcome,
   type Position,
   type PricePoint,
+  type Quote,
   type Side,
   type Trade,
 } from "@/lib/prediction/types";
@@ -115,6 +123,9 @@ export function normalizeMarket(raw: unknown): Market {
     question: toNullableStr(m.question),
     category: toNullableStr(m.category),
     imageUrl: toNullableStr(m.imageUrl),
+    description: toNullableStr(m.description),
+    rules: toNullableStr(m.rules),
+    resolutionSource: toNullableStr(m.resolutionSource),
     status: toStatus(m.status),
     outcome: toOutcome(m.outcome),
     closeTime: toUnixSeconds(m.closeTime, "closeTime"),
@@ -220,4 +231,163 @@ export function normalizeLpPosition(raw: unknown): LpPosition {
 
 export function normalizeLpPositions(raw: unknown): LpPosition[] {
   return mapValid(raw, normalizeLpPosition, "LP position");
+}
+
+// ── Groups / holders / activity / comments / quote ───────────────────────────
+
+// A possibly-negative integer (price impact bps) to a JS number.
+function toInt(value: unknown, field: string): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "string" && /^-?\d+$/.test(value.trim())) return Number(value.trim());
+  throw new PredictionApiError(MALFORMED, `Field "${field}" is not an integer.`);
+}
+
+// An ISO datetime or unix-ms number to unix ms.
+function toUnixMs(value: unknown, field: string): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const ms = Date.parse(value);
+    if (Number.isFinite(ms)) return ms;
+  }
+  throw new PredictionApiError(MALFORMED, `Field "${field}" is not a valid time.`);
+}
+
+const GROUP_STATUSES = ["Open", "Closed", "Resolved"] as const;
+function toGroupStatus(value: unknown): MarketGroup["status"] {
+  if (typeof value === "string" && (GROUP_STATUSES as readonly string[]).includes(value)) {
+    return value as MarketGroup["status"];
+  }
+  return "Open";
+}
+
+export function normalizeGroupOutcome(raw: unknown): GroupOutcome {
+  const o = asRecord(raw);
+  const priceYes = toBig(o.priceYes, "priceYes");
+  return {
+    memberId: typeof o.memberId === "string" ? o.memberId : "",
+    marketId: toBig(o.marketId, "marketId"),
+    label: typeof o.label === "string" ? o.label : "",
+    imageUrl: toNullableStr(o.imageUrl),
+    status: o.status === "Pending" ? "Pending" : toStatus(o.status),
+    outcome: toOutcome(o.outcome),
+    priceYes,
+    priceNo: PRICE_SCALE - priceYes,
+    normalizedYes: toBig(o.normalizedYes, "normalizedYes"),
+    volumeUsdc: toBig(o.volumeUsdc, "volumeUsdc"),
+    closeTime: toUnixSeconds(o.closeTime, "closeTime"),
+  };
+}
+
+export function normalizeGroup(raw: unknown): MarketGroup {
+  const g = asRecord(raw);
+  const outcomes = Array.isArray(g.outcomes)
+    ? mapValid(g.outcomes, normalizeGroupOutcome, "outcome")
+    : [];
+  return {
+    id: typeof g.id === "string" ? g.id : "",
+    slug: typeof g.slug === "string" ? g.slug : "",
+    title: typeof g.title === "string" ? g.title : "",
+    category: toNullableStr(g.category),
+    description: toNullableStr(g.description),
+    rules: toNullableStr(g.rules),
+    resolutionSource: toNullableStr(g.resolutionSource),
+    imageUrl: toNullableStr(g.imageUrl),
+    closeTime:
+      typeof g.closeTime === "number" && Number.isFinite(g.closeTime)
+        ? Math.floor(g.closeTime)
+        : null,
+    status: toGroupStatus(g.status),
+    volumeUsdc: toBig(g.volumeUsdc, "volumeUsdc"),
+    outcomeCount: outcomes.length,
+    outcomes,
+  };
+}
+
+export function normalizeGroups(raw: unknown): MarketGroup[] {
+  return mapValid(raw, normalizeGroup, "group");
+}
+
+export function normalizeHolder(raw: unknown): Holder {
+  const h = asRecord(raw);
+  return {
+    holder: typeof h.holder === "string" ? h.holder : "",
+    shares: toBig(h.shares, "shares"),
+    costUsdc: toBig(h.costUsdc, "costUsdc"),
+    marketId: toBig(h.marketId, "marketId"),
+  };
+}
+
+export function normalizeHolders(raw: unknown): Holder[] {
+  return mapValid(raw, normalizeHolder, "holder");
+}
+
+const ACTIVITY_KINDS: readonly ActivityKind[] = [
+  "trade",
+  "lp_add",
+  "lp_remove",
+  "redeem",
+  "resolved",
+];
+function toActivityKind(value: unknown): ActivityKind {
+  if (typeof value === "string" && (ACTIVITY_KINDS as readonly string[]).includes(value)) {
+    return value as ActivityKind;
+  }
+  throw new PredictionApiError(MALFORMED, `Unknown activity kind "${String(value)}".`);
+}
+
+export function normalizeActivityItem(raw: unknown): ActivityItem {
+  const a = asRecord(raw);
+  return {
+    id: typeof a.id === "string" ? a.id : "",
+    txHash: typeof a.txHash === "string" ? a.txHash : "",
+    kind: toActivityKind(a.kind),
+    marketId: toBig(a.marketId, "marketId"),
+    actor: typeof a.actor === "string" ? a.actor : "",
+    side: a.side == null ? null : toSide(a.side),
+    buy: typeof a.buy === "boolean" ? a.buy : null,
+    usdcAmount: a.usdcAmount == null ? null : toBig(a.usdcAmount, "usdcAmount"),
+    shareAmount: a.shareAmount == null ? null : toBig(a.shareAmount, "shareAmount"),
+    priceYes: a.priceYes == null ? null : toBig(a.priceYes, "priceYes"),
+    block: Number(toBig(a.block, "block")),
+    at: toUnixMs(a.at, "at"),
+  };
+}
+
+export function normalizeActivityPage(raw: unknown): ActivityPage {
+  const p = asRecord(raw);
+  return {
+    items: Array.isArray(p.items) ? mapValid(p.items, normalizeActivityItem, "activity") : [],
+    nextCursor: typeof p.nextCursor === "string" ? p.nextCursor : null,
+  };
+}
+
+export function normalizeComment(raw: unknown): Comment {
+  const c = asRecord(raw);
+  return {
+    id: typeof c.id === "string" ? c.id : "",
+    wallet: typeof c.wallet === "string" ? c.wallet : "",
+    body: typeof c.body === "string" ? c.body : "",
+    parentId: toNullableStr(c.parentId),
+    likeCount: typeof c.likeCount === "number" ? c.likeCount : 0,
+    deleted: Boolean(c.deleted),
+    at: toUnixMs(c.at, "at"),
+  };
+}
+
+export function normalizeComments(raw: unknown): Comment[] {
+  return mapValid(raw, normalizeComment, "comment");
+}
+
+export function normalizeQuote(raw: unknown): Quote {
+  const q = asRecord(raw);
+  return {
+    kind: q.kind === "sell" ? "sell" : "buy",
+    side: toSide(q.side),
+    sharesOut: q.sharesOut == null ? undefined : toBig(q.sharesOut, "sharesOut"),
+    usdcOut: q.usdcOut == null ? undefined : toBig(q.usdcOut, "usdcOut"),
+    avgPriceCents: typeof q.avgPriceCents === "number" ? q.avgPriceCents : 0,
+    priceYesBefore: toBig(q.priceYesBefore, "priceYesBefore"),
+    priceYesAfter: toBig(q.priceYesAfter, "priceYesAfter"),
+    priceImpactBps: toInt(q.priceImpactBps, "priceImpactBps"),
+  };
 }

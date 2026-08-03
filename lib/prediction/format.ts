@@ -36,3 +36,21 @@ export function compactUsd(raw: bigint): string {
 export function sideLabel(side: Side): "Yes" | "No" {
   return side === "yes" ? "Yes" : "No";
 }
+
+// A wallet address shortened for display, e.g. 0x1234…aBcD.
+export function shortAddress(address: string): string {
+  if (!address || address.length < 10) return address || "—";
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+// A unix-ms timestamp as a compact relative age, e.g. "3m", "2h", "5d".
+export function timeAgo(ms: number, nowMs: number = Date.now()): string {
+  const s = Math.max(0, Math.floor((nowMs - ms) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d`;
+}

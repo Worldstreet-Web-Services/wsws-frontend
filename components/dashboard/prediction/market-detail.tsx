@@ -10,6 +10,10 @@ import { ProbabilityChart } from "@/components/dashboard/prediction/probability-
 import { TradeTape } from "@/components/dashboard/prediction/trade-tape";
 import { ExecutionPanel } from "@/components/dashboard/prediction/execution-panel";
 import { LiquidityPanel } from "@/components/dashboard/prediction/liquidity-panel";
+import { TopHolders } from "@/components/dashboard/prediction/top-holders";
+import { ActivityFeed } from "@/components/dashboard/prediction/activity-feed";
+import { CommentsPanel } from "@/components/dashboard/prediction/comments-panel";
+import { MarketRules } from "@/components/dashboard/prediction/market-rules";
 import { useMarket, useMarketChart, useMarketTrades } from "@/hooks/use-prediction-markets";
 import { useMyMarkets } from "@/hooks/use-prediction-portfolio";
 import { usePredictionMarketStream } from "@/hooks/use-prediction-market-stream";
@@ -20,6 +24,9 @@ import type { ChartInterval, Side, Trade } from "@/lib/prediction/types";
 // A compact set of intervals for the smaller chart.
 const INTERVALS: ChartInterval[] = ["1h", "4h", "1d"];
 
+type DetailTab = "activity" | "holders" | "comments" | "rules";
+const DETAIL_TABS: DetailTab[] = ["activity", "holders", "comments", "rules"];
+
 interface MarketDetailProps {
   id: string;
 }
@@ -29,6 +36,7 @@ export function MarketDetail({ id }: MarketDetailProps) {
   const searchParams = useSearchParams();
   const initialSide: Side = searchParams.get("side") === "no" ? "no" : "yes";
   const [interval, setInterval] = useState<ChartInterval>("1h");
+  const [tab, setTab] = useState<DetailTab>("activity");
 
   const { data: market, isLoading } = useMarket(id);
   const { data: chart } = useMarketChart(id, interval);
@@ -156,6 +164,29 @@ export function MarketDetail({ id }: MarketDetailProps) {
             </div>
             <ProbabilityChart points={chart ?? []} height={150} />
           </div>
+
+          {/* Tabbed detail surfaces — Polymarket-style: activity, top holders,
+              comments, and the resolution rules. */}
+          <div className="ws-card p-1.5">
+            <div className="flex gap-1 overflow-x-auto">
+              {DETAIL_TABS.map((tb) => (
+                <button
+                  key={tb}
+                  onClick={() => setTab(tb)}
+                  className={`shrink-0 cursor-pointer rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+                    tab === tb ? "bg-white/10 text-white" : "text-white/45 hover:text-white/70"
+                  }`}
+                >
+                  {t(`tab_${tb}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {tab === "activity" ? <ActivityFeed marketId={id} /> : null}
+          {tab === "holders" ? <TopHolders marketId={id} /> : null}
+          {tab === "comments" ? <CommentsPanel marketId={id} /> : null}
+          {tab === "rules" ? <MarketRules market={market} /> : null}
 
           <TradeTape trades={trades} />
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
 import { useChessMatch, useChessMatchSocial } from "@/hooks/use-casino-chess";
@@ -37,6 +38,19 @@ import type { BetSelection, ChessColor } from "@/lib/casino/api/types";
 // carries the localized side names.
 const SELECTIONS: readonly BetSelection[] = ["white", "draw", "black"];
 
+// A running clock reads as urgent under 20s and critical under 10s, so a
+// watcher sees both sides' flags approach zero in red, the same warning the
+// players get. Empty string keeps the normal styling when there is time to
+// spare or the game is not live.
+const LOW_CLOCK_SECONDS = 20;
+const CRITICAL_CLOCK_SECONDS = 10;
+function lowClockClass(seconds: number, live: boolean): string {
+  if (!live || seconds <= 0 || seconds > LOW_CLOCK_SECONDS) return "";
+  return seconds <= CRITICAL_CLOCK_SECONDS
+    ? "border border-[#E5484D]/70 text-[#FF6B6B] animate-pulse"
+    : "text-[#FF8A5B]";
+}
+
 function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -48,12 +62,14 @@ function PlayerStrip({
   lead,
   color,
   clock,
+  lowClock = "",
 }: {
   label: string;
   pieces: ReturnType<typeof capturedFromBoard>["w"];
   lead: number;
   color: ChessColor;
   clock: string;
+  lowClock?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -70,7 +86,7 @@ function PlayerStrip({
         </div>
       </div>
       <div
-        className="tnum flex min-w-[108px] shrink-0 items-center justify-center rounded-[8px] px-3.5 py-2 text-[1rem] font-semibold text-white/88"
+        className={`tnum flex min-w-[108px] shrink-0 items-center justify-center rounded-[8px] px-3.5 py-2 text-[1rem] font-semibold text-white/88 ${lowClock}`}
         style={{ background: CHESS_SHELL_BG, boxShadow: CHESS_SHELL_SHADOW }}
       >
         {clock}
@@ -214,8 +230,35 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
     }
   };
 
+  const live = match.state === "in_progress";
+  const over = match.state === "settled" || match.state === "cancelled";
+  // The result told from the board's side, reusing the play screen's phrasing so
+  // the watcher reads the same "Checkmate · White won" the players do.
+  const resultText = (() => {
+    const r = match.result;
+    if (!r) return over ? tPlay("resultAborted") : "";
+    if (r.kind === "draw") {
+      const reasonKey = {
+        stalemate: "reasonStalemate",
+        agreement: "reasonAgreement",
+        repetition: "reasonRepetition",
+        insufficient: "reasonInsufficient",
+      }[r.reason];
+      return tPlay("resultDraw", { reason: tPlay(reasonKey) });
+    }
+    const how =
+      r.kind === "checkmate"
+        ? tPlay("howCheckmate")
+        : r.kind === "resignation"
+          ? tPlay("howResignation")
+          : tPlay("howTimeout");
+    return r.winner === "w"
+      ? tPlay("resultWhiteWon", { how })
+      : tPlay("resultBlackWon", { how });
+  })();
+
   return (
-    <div className="mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
+    <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
@@ -229,6 +272,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                 lead={leadFor("b")}
                 color="w"
                 clock={formatClock(clocks?.b ?? 0)}
+                lowClock={lowClockClass(clocks?.b ?? 0, live)}
               />
             </div>
 
@@ -247,6 +291,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                 lead={leadFor("w")}
                 color="b"
                 clock={formatClock(clocks?.w ?? 0)}
+                lowClock={lowClockClass(clocks?.w ?? 0, live)}
               />
             </div>
           </div>
@@ -478,6 +523,20 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
           </div>
         </aside>
       </div>
+
+      {over ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 px-4 backdrop-blur-md">
+          <div className="ws-glass w-[340px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+            <div className="text-[1.2rem] font-extrabold text-white">{resultText}</div>
+            <Link
+              href="/casino/chess"
+              className="text-ink mt-6 inline-block w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold"
+            >
+              {tPlay("backToLobby")}
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

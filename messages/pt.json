@@ -948,7 +948,8 @@
     "noPositionThisSide": "No position on this side.",
     "redeemCta": "Redeem winnings",
     "tab_positions": "Positions",
-    "positionConnect": "Connect a wallet to see your position."
+    "positionConnect": "Connect a wallet to see your position.",
+    "noEarlyExitNote": "Sem saída antecipada. Você poderá resgatar quando o mercado for resolvido."
   },
   "perps": {
     "eyebrow": "Perpétuos",
@@ -1341,11 +1342,6 @@
       "playersCount": "{count, plural, one {# jogador} other {# jogadores}}",
       "latest": "Mais recente",
       "pagerWinners": "vencedores",
-      "overlayYoureIn": "VOCÊ ESTÁ DENTRO!",
-      "overlayLastStanding": "Último de pé",
-      "overlayChasing": "Atrás de um pote de",
-      "overlaySurvive": "Sobreviva ao relógio para levar tudo",
-      "overlayLetsGo": "Vamos lá",
       "revealJackpot": "Jackpot",
       "revealYouWon": "Você ganhou!",
       "revealCredited": "Creditado para {winner}",
@@ -1358,7 +1354,9 @@
       "revealGotIt": "Entendi",
       "calcTitle": "Calculando o vencedor…",
       "calcBody": "Decidindo quem leva o pote. Aguente firme.",
-      "calcOnTheLine": "{amount} em jogo"
+      "calcOnTheLine": "{amount} em jogo",
+      "soundPlay": "Som",
+      "soundMute": "Mudo"
     },
     "fund": {
       "title": "Adicionar dinheiro",

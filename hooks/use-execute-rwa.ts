@@ -9,8 +9,8 @@ import { useEvmSend } from "@/hooks/use-evm-send";
 import type { RwaAction, RwaChain, RwaStep } from "@/lib/rwa-api";
 
 // EVM chain ids per RWA chain. Without an explicit chainId, Privy defaults to
-// Ethereum mainnet (1), so a Base/Arbitrum/Polygon RWA buy would be signed on
-// the wrong chain and fail with "insufficient funds for gas".
+// Ethereum mainnet (1), so a non-Ethereum RWA buy would be signed on the wrong
+// chain and fail with "insufficient funds for gas".
 const EVM_CHAIN_ID: Partial<Record<RwaChain, number>> = {
   ethereum: 1,
   base: 8453,
@@ -78,7 +78,7 @@ export function useExecuteRwa() {
           if (!step.tx.to) throw new Error("The transaction is missing.");
           const chainId = EVM_CHAIN_ID[step.chain];
           if (!chainId) throw new Error(`Unsupported chain for this trade: ${step.chain}`);
-          // On Base this is gasless (EIP-7702 sponsored); other chains send
+          // Sponsored EVM chains route through the 7702 path; the rest send
           // normally. Either way we get an on-chain hash to confirm below.
           const hash = await evmSend({
             to: step.tx.to as `0x${string}`,
@@ -94,8 +94,8 @@ export function useExecuteRwa() {
       }
 
       // Wait for the balance-changing transaction to confirm. EVM waits for a
-      // receipt where we have a read client (Base/Arbitrum/Polygon); other chains
-      // are best-effort. Solana polls the signature status.
+      // receipt where we have a pinned read client; other chains are best-effort.
+      // Solana polls the signature status.
       if (lastEvm && isReceiptChain(lastEvm.chainId)) {
         await awaitReceipt(publicClientForChain(lastEvm.chainId), lastEvm.hash, "The trade");
       } else if (lastSolanaSig) {

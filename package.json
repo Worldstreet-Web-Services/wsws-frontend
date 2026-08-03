@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "alchemy:policy-check": "node scripts/alchemy-policy-check.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",

@@ -46,6 +46,7 @@ const CREATE_TIME_GROUPS = [
     title: "Game Clock",
     tone: "#B7B1A8",
     options: [
+      { value: "1+0", label: "1 min" },
       { value: "5+0", label: "5 min" },
       { value: "10+0", label: "10 min" },
       { value: "15+0", label: "15 min" },
@@ -497,7 +498,7 @@ export function CreateSection() {
                     <SpeedIcon tone={group.tone} />
                     <span>{group.title}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {group.options.map((option) => {
                       const active = timeControl === option.value;
                       return (

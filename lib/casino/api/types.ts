@@ -26,7 +26,7 @@ export type ChessTimeControl = string;
 
 // The controls offered on the create screens.
 // These are whole-game clocks, not per-move resets.
-export const TIME_CONTROL_PRESETS: readonly ChessTimeControl[] = ["5+0", "10+0", "15+0"];
+export const TIME_CONTROL_PRESETS: readonly ChessTimeControl[] = ["1+0", "5+0", "10+0", "15+0"];
 
 export type ChessColor = "w" | "b";
 

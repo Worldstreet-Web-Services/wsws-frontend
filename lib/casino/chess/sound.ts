@@ -23,6 +23,23 @@ function audioContext(): AudioContext | null {
   return context;
 }
 
+// Browsers keep a freshly-created AudioContext suspended until a user gesture.
+// Resuming from inside a move handler usually works for your own move, but the
+// first sound can be the opponent's move with no local gesture yet. Arm a
+// one-shot resume on the first pointer or key gesture so audio is unlocked
+// before it is needed. Safe to call repeatedly — it arms only once.
+let unlockArmed = false;
+export function armAudioUnlock(): void {
+  if (unlockArmed || typeof window === "undefined") return;
+  unlockArmed = true;
+  const unlock = () => {
+    const ac = audioContext();
+    if (ac && ac.state === "suspended") void ac.resume();
+  };
+  window.addEventListener("pointerdown", unlock, { once: true });
+  window.addEventListener("keydown", unlock, { once: true });
+}
+
 // One synthesised note. `at` is an offset in seconds from now, so several tones
 // compose into a short motif (a castle's double knock, an end chime). Always
 // silent and never throwing on failure — the move still went through.

@@ -33,7 +33,15 @@ const DURATIONS: { key: string; label: string; seconds: number }[] = [
 
 // Fallback categories (from the platform's category taxonomy) so users can
 // always pick one even before the live category list is populated.
-const DEFAULT_CATEGORIES = ["Crypto", "Forex", "Commodities", "Equities", "Sports", "Politics", "Other"];
+const DEFAULT_CATEGORIES = [
+  "Crypto",
+  "Forex",
+  "Commodities",
+  "Equities",
+  "Sports",
+  "Politics",
+  "Other",
+];
 
 // Target landscape aspect ratio for the market image. Market cards render the
 // image in a 16:9 box (see prediction-card.tsx), so we crop to match — any
@@ -113,7 +121,10 @@ async function processImage(file: File): Promise<ProcessedImage> {
     // within the 16:9 frame and centered, with the surrounding space padded — so
     // no part of the picture is ever cut off. A portrait/square photo keeps all
     // of its content, with padding on the sides; a wide photo pads top/bottom.
-    const outWidth = Math.max(1, Math.min(MAX_IMAGE_WIDTH, decoded.width, Math.round(MAX_IMAGE_WIDTH)));
+    const outWidth = Math.max(
+      1,
+      Math.min(MAX_IMAGE_WIDTH, decoded.width, Math.round(MAX_IMAGE_WIDTH))
+    );
     const frameWidth = outWidth;
     const frameHeight = Math.max(1, Math.round(frameWidth / TARGET_ASPECT));
 
@@ -342,152 +353,156 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
           />
         </div>
       ) : (
-      <div className="mt-4 flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className={labelClass}>{t("questionLabel")}</span>
-          <input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t("questionPlaceholder")}
-            className={inputClass}
-          />
-        </label>
-
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>{t("categoryLabel")}</span>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={`${inputClass} cursor-pointer`}
-            >
-              <option value="" className="bg-sheet">
-                {t("categoryPlaceholder")}
-              </option>
-              {categories.map((c) => (
-                <option key={c} value={c} className="bg-sheet">
-                  {c}
+            <span className={labelClass}>{t("questionLabel")}</span>
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder={t("questionPlaceholder")}
+              className={inputClass}
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>{t("categoryLabel")}</span>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={`${inputClass} cursor-pointer`}
+              >
+                <option value="" className="bg-sheet">
+                  {t("categoryPlaceholder")}
                 </option>
-              ))}
-            </select>
-          </label>
+                {categories.map((c) => (
+                  <option key={c} value={c} className="bg-sheet">
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex flex-col gap-1.5">
-            <span className={labelClass}>{t("seedLabel")}</span>
-            <input
-              inputMode="decimal"
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              placeholder="1"
-              className={inputClass}
-            />
-            {seedTooLow ? <span className="text-down text-[11.5px]">{t("seedMin")}</span> : null}
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className={labelClass}>{t("closesIn")}</span>
-            <button
-              type="button"
-              onClick={() => setUseCustom((v) => !v)}
-              className="text-accent cursor-pointer text-[12px] font-medium"
-            >
-              {useCustom ? t("usePresets") : t("useCustomDate")}
-            </button>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelClass}>{t("seedLabel")}</span>
+              <input
+                inputMode="decimal"
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
+                placeholder="1"
+                className={inputClass}
+              />
+              {seedTooLow ? <span className="text-down text-[11.5px]">{t("seedMin")}</span> : null}
+            </label>
           </div>
-          {useCustom ? (
-            <input
-              type="datetime-local"
-              value={customClose}
-              onChange={(e) => setCustomClose(e.target.value)}
-              className={inputClass}
-            />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {DURATIONS.map((d) => (
-                <button
-                  key={d.key}
-                  type="button"
-                  onClick={() => setDurationKey(d.key)}
-                  className={`cursor-pointer rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
-                    durationKey === d.key
-                      ? "border-accent/45 bg-accent/12 text-white"
-                      : "border-white/10 bg-white/4 text-white/60 hover:bg-white/8"
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Image: uploaded to Cloudinary on selection; a preview and status show
-            the secure URL is attached before creation is allowed. */}
-        <div className="flex flex-col gap-1.5">
-          <span className={labelClass}>
-            {t("imageLabel")}
-            {!hostingUnavailable ? <span className="text-down ml-1">*</span> : null}
-          </span>
-          {imageUrl ? (
-            <div className="ws-inset relative overflow-hidden rounded-[14px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl} alt="" className="aspect-[16/7] w-full object-cover" />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className={labelClass}>{t("closesIn")}</span>
               <button
                 type="button"
-                onClick={removeImage}
-                className="absolute top-2 right-2 cursor-pointer rounded-lg border border-white/15 bg-black/55 px-2.5 py-1 text-[12px] font-medium text-white/85 backdrop-blur-sm hover:text-white"
+                onClick={() => setUseCustom((v) => !v)}
+                className="text-accent cursor-pointer text-[12px] font-medium"
               >
-                {t("removeImage")}
+                {useCustom ? t("usePresets") : t("useCustomDate")}
               </button>
             </div>
-          ) : (
-            <>
+            {useCustom ? (
               <input
-                key={fileInputKey}
-                type="file"
-                accept="image/*"
-                disabled={uploading}
-                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                className="font-sans text-[12.5px] text-white/60 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-white disabled:opacity-50"
+                type="datetime-local"
+                value={customClose}
+                onChange={(e) => setCustomClose(e.target.value)}
+                className={inputClass}
               />
-              <span className={uploading ? "text-accent text-[11.5px]" : "text-[11.5px] text-white/40"}>
-                {uploading ? t("uploadingImage") : t("imageHint")}
-              </span>
-              {imageError ? (
-                <span className="text-down text-[11.5px]">{t("imageUploadFailed")}</span>
-              ) : null}
-            </>
-          )}
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {DURATIONS.map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => setDurationKey(d.key)}
+                    className={`cursor-pointer rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
+                      durationKey === d.key
+                        ? "border-accent/45 bg-accent/12 text-white"
+                        : "border-white/10 bg-white/4 text-white/60 hover:bg-white/8"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Image: uploaded to Cloudinary on selection; a preview and status show
+            the secure URL is attached before creation is allowed. */}
+          <div className="flex flex-col gap-1.5">
+            <span className={labelClass}>
+              {t("imageLabel")}
+              {!hostingUnavailable ? <span className="text-down ml-1">*</span> : null}
+            </span>
+            {imageUrl ? (
+              <div className="ws-inset relative overflow-hidden rounded-[14px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="aspect-[16/7] w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute top-2 right-2 cursor-pointer rounded-lg border border-white/15 bg-black/55 px-2.5 py-1 text-[12px] font-medium text-white/85 backdrop-blur-sm hover:text-white"
+                >
+                  {t("removeImage")}
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  key={fileInputKey}
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading}
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  className="font-sans text-[12.5px] text-white/60 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-white disabled:opacity-50"
+                />
+                <span
+                  className={
+                    uploading ? "text-accent text-[11.5px]" : "text-[11.5px] text-white/40"
+                  }
+                >
+                  {uploading ? t("uploadingImage") : t("imageHint")}
+                </span>
+                {imageError ? (
+                  <span className="text-down text-[11.5px]">{t("imageUploadFailed")}</span>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className={labelClass}>{t("rulesLabel")}</span>
+            <textarea
+              value={rules}
+              onChange={(e) => setRules(e.target.value)}
+              placeholder={t("rulesPlaceholder")}
+              rows={3}
+              maxLength={8000}
+              className={`${inputClass} resize-none`}
+            />
+          </label>
+
+          <p className="text-[12px] font-normal text-white/45">{t("createFeeNote")}</p>
+
+          <button
+            onClick={submit}
+            disabled={!valid}
+            className="text-ink mt-1 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {actions.busy
+              ? t("creatingMarket")
+              : uploading
+                ? t("uploadingImage")
+                : t("createMarketCta")}
+          </button>
         </div>
-
-        <label className="flex flex-col gap-1.5">
-          <span className={labelClass}>{t("rulesLabel")}</span>
-          <textarea
-            value={rules}
-            onChange={(e) => setRules(e.target.value)}
-            placeholder={t("rulesPlaceholder")}
-            rows={3}
-            maxLength={8000}
-            className={`${inputClass} resize-none`}
-          />
-        </label>
-
-        <p className="text-[12px] font-normal text-white/45">{t("createFeeNote")}</p>
-
-        <button
-          onClick={submit}
-          disabled={!valid}
-          className="text-ink mt-1 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {actions.busy
-            ? t("creatingMarket")
-            : uploading
-              ? t("uploadingImage")
-              : t("createMarketCta")}
-        </button>
-      </div>
       )}
     </div>
   );

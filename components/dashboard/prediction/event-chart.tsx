@@ -100,7 +100,10 @@ export function EventChart({ series, height = 260 }: EventChartProps) {
       {/* Colour legend, matching the line order. */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
         {series.map((s, i) => (
-          <span key={s.marketId.toString()} className="flex items-center gap-1.5 text-[12px] text-white/70">
+          <span
+            key={s.marketId.toString()}
+            className="flex items-center gap-1.5 text-[12px] text-white/70"
+          >
             <span
               className="inline-block h-2 w-2 rounded-full"
               style={{ background: PALETTE[i % PALETTE.length] }}

@@ -101,7 +101,11 @@ export function useCreateEvent() {
         } catch {
           // Non-fatal: the on-chain market exists; metadata can be re-attached.
         }
-        created.push({ label: outcome.label, marketId: marketId.toString(), imageUrl: outcome.imageUrl });
+        created.push({
+          label: outcome.label,
+          marketId: marketId.toString(),
+          imageUrl: outcome.imageUrl,
+        });
         setProgress((p) =>
           p.map((row, idx) =>
             idx === i ? { ...row, status: "done", marketId: marketId.toString() } : row
@@ -141,5 +145,11 @@ export function useCreateEvent() {
     [actions, queryClient]
   );
 
-  return { create, progress, phase, busy: phase === "creating" || phase === "grouping", uploadGroupImage };
+  return {
+    create,
+    progress,
+    phase,
+    busy: phase === "creating" || phase === "grouping",
+    uploadGroupImage,
+  };
 }

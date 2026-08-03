@@ -21,8 +21,7 @@ export function MarketPositions({ market }: MarketPositionsProps) {
   const { data: positions, isLoading } = useMarketPositions(market.marketId.toString());
   const actions = usePredictionActions();
 
-  const bySide = (s: Side): Position | undefined =>
-    (positions ?? []).find((p) => p.side === s);
+  const bySide = (s: Side): Position | undefined => (positions ?? []).find((p) => p.side === s);
   const current = bySide(side);
   const shares = current?.shares ?? 0n;
   const cost = current?.costUsdc ?? 0n;
@@ -73,12 +72,14 @@ export function MarketPositions({ market }: MarketPositionsProps) {
       ) : (
         <div className="flex flex-col gap-2.5">
           <Row label={t("positionShares")}>
-            <span className={`font-semibold tabular-nums ${side === "yes" ? "text-up" : "text-down"}`}>
+            <span
+              className={`font-semibold tabular-nums ${side === "yes" ? "text-up" : "text-down"}`}
+            >
               {toNumber(shares).toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>
           </Row>
           <Row label={t("positionCost")}>
-            <span className="tabular-nums text-white/85">{compactUsd(cost)}</span>
+            <span className="text-white/85 tabular-nums">{compactUsd(cost)}</span>
           </Row>
           {resolved ? (
             <Row label={t("positionOutcome")}>

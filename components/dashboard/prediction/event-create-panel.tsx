@@ -26,7 +26,12 @@ interface EventCreatePanelProps {
   categories: string[];
 }
 
-export function EventCreatePanel({ onDone, inputClass, labelClass, categories }: EventCreatePanelProps) {
+export function EventCreatePanel({
+  onDone,
+  inputClass,
+  labelClass,
+  categories,
+}: EventCreatePanelProps) {
   const t = useTranslations("prediction");
   const { create, progress, phase, busy } = useCreateEvent();
 
@@ -41,10 +46,7 @@ export function EventCreatePanel({ onDone, inputClass, labelClass, categories }:
   const seedUnits = toBaseUnits(seed, USDC_DECIMALS);
   const filledOutcomes = outcomes.filter((o) => o.label.trim().length > 0);
   const valid =
-    title.trim().length > 0 &&
-    seedUnits >= MIN_SEED_USDC &&
-    filledOutcomes.length >= 2 &&
-    !busy;
+    title.trim().length > 0 && seedUnits >= MIN_SEED_USDC && filledOutcomes.length >= 2 && !busy;
 
   const setLabel = (i: number, label: string) =>
     setOutcomes((prev) => prev.map((o, idx) => (idx === i ? { ...o, label } : o)));
@@ -146,7 +148,7 @@ export function EventCreatePanel({ onDone, inputClass, labelClass, categories }:
               ) : outcomes.length > 2 && !busy ? (
                 <button
                   onClick={() => removeOutcome(i)}
-                  className="shrink-0 cursor-pointer px-2 text-[16px] text-white/40 hover:text-down"
+                  className="hover:text-down shrink-0 cursor-pointer px-2 text-[16px] text-white/40"
                   aria-label="remove"
                 >
                   ×
@@ -160,7 +162,7 @@ export function EventCreatePanel({ onDone, inputClass, labelClass, categories }:
         {!busy ? (
           <button
             onClick={addOutcome}
-            className="self-start cursor-pointer text-[12.5px] font-medium text-white/55 hover:text-white/85"
+            className="cursor-pointer self-start text-[12.5px] font-medium text-white/55 hover:text-white/85"
           >
             + {t("addOutcome")}
           </button>

@@ -129,11 +129,7 @@ export function LocalPredictionView() {
         <PortfolioPanel />
       </div>
 
-      <ModalShell
-        open={creating}
-        onClose={() => setCreating(false)}
-        panelClassName="max-w-[560px]"
-      >
+      <ModalShell open={creating} onClose={() => setCreating(false)} panelClassName="max-w-[560px]">
         <CreateMarketFlow onDone={() => setCreating(false)} />
       </ModalShell>
     </div>

@@ -948,7 +948,8 @@
     "noPositionThisSide": "No position on this side.",
     "redeemCta": "Redeem winnings",
     "tab_positions": "Positions",
-    "positionConnect": "Connect a wallet to see your position."
+    "positionConnect": "Connect a wallet to see your position.",
+    "noEarlyExitNote": "Pas de sortie anticipée. Vous pourrez récupérer une fois le marché résolu."
   },
   "perps": {
     "eyebrow": "Perpétuels",
@@ -1358,7 +1359,9 @@
       "revealGotIt": "Compris",
       "calcTitle": "Calcul du gagnant…",
       "calcBody": "On détermine qui remporte le pot. Tenez bon.",
-      "calcOnTheLine": "{amount} en jeu"
+      "calcOnTheLine": "{amount} en jeu",
+      "soundPlay": "Son",
+      "soundMute": "Muet"
     },
     "fund": {
       "title": "Ajouter de l'argent",

@@ -358,6 +358,18 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                                 : "border-white/10 bg-white/4 text-white hover:border-white/25"
                           }`}
                         >
+                          {s === "draw" ? (
+                            // Draw stays label-only; the spacer keeps all three
+                            // outcome buttons the same height as the king icons.
+                            <span className="mx-auto mb-0.5 block h-6" aria-hidden />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={s === "white" ? "/piece/neo/wk.png" : "/piece/neo/bk.png"}
+                              alt=""
+                              className="mx-auto mb-0.5 h-6 w-6"
+                            />
+                          )}
                           <span className="block text-[11px] opacity-70">{tCommon(s)}</span>
                           <span className="tnum block text-[18px]">
                             {outcome.odds !== null ? outcome.odds.toFixed(2) : "—"}

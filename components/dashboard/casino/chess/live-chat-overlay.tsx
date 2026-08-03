@@ -33,18 +33,18 @@ export function LiveChatOverlay({ messages }: { messages: ChessChatMessage[] }) 
     const ids = new Set(fresh.map((m) => m.id));
     const timer = setTimeout(() => {
       setItems((prev) => prev.filter((it) => !ids.has(it.id)));
-    }, 6500);
+    }, 8200);
     return () => clearTimeout(timer);
   }, [messages]);
 
   if (items.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end gap-2 overflow-hidden p-4">
+    <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
       {items.map((it) => (
         <div
           key={it.id}
-          className="ws-float-chat w-fit max-w-[85%] rounded-2xl bg-black/55 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+          className="ws-float-chat absolute left-3 w-fit max-w-[85%] rounded-2xl bg-black/55 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-sm"
         >
           <span className="mr-2 text-[11px] font-bold text-white/55">
             {truncateAddress(it.author)}
@@ -54,12 +54,14 @@ export function LiveChatOverlay({ messages }: { messages: ChessChatMessage[] }) 
       ))}
       <style>{`
         @keyframes wsFloatChat {
-          0% { opacity: 0; transform: translateY(18px) scale(0.96); }
-          12% { opacity: 1; transform: translateY(0) scale(1); }
-          78% { opacity: 1; transform: translateY(0); }
-          100% { opacity: 0; transform: translateY(-26px); }
+          0% { bottom: 0.75rem; opacity: 0; }
+          6% { opacity: 1; }
+          88% { opacity: 1; }
+          100% { bottom: 100%; opacity: 0; }
         }
-        .ws-float-chat { animation: wsFloatChat 6.5s ease-out forwards; }
+        /* Each line rises from the foot of the board to the top and fades out,
+           the way a livestream scrolls its comments up over the video. */
+        .ws-float-chat { animation: wsFloatChat 8s linear forwards; }
       `}</style>
     </div>
   );

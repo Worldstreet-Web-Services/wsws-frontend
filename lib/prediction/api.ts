@@ -5,7 +5,6 @@ import {
   PredictionApiError,
   normalizeActivityPage,
   normalizeChart,
-  normalizeComment,
   normalizeComments,
   normalizeEventChart,
   normalizeGroup,

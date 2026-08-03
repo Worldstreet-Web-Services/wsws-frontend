@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toBaseUnits } from "@/lib/trade/math";
 import { USDC_DECIMALS } from "@/lib/prediction/types";
@@ -54,11 +54,18 @@ export function EventCreatePanel({
   const removeOutcome = (i: number) =>
     setOutcomes((prev) => (prev.length <= 2 ? prev : prev.filter((_, idx) => idx !== i)));
 
+  // Resolve the close time to unix seconds, reading the clock in the handler (not
+  // during render) so the preset stays relative to submit time. useCallback marks
+  // it as a stable event-scope function (satisfies the purity lint on Date.now).
+  const resolveCloseTime = useCallback((): number => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const duration = DURATIONS.find((d) => d.key === durationKey)?.seconds ?? 604_800;
+    return nowSeconds + duration;
+  }, [durationKey]);
+
   const submit = async () => {
     if (!valid) return;
-    const closeTime =
-      Math.floor(Date.now() / 1000) +
-      (DURATIONS.find((d) => d.key === durationKey)?.seconds ?? 604_800);
+    const closeTime = resolveCloseTime();
     try {
       const result = await create({
         title: title.trim(),

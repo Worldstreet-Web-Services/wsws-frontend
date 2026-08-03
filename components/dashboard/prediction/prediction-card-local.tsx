@@ -1,35 +1,25 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import {
-  compactUsd,
-  isLocalPredictionSource,
-  priceToCents,
-  priceToPct,
-} from "@/lib/prediction/format";
+import { compactUsd, priceToCents, priceToPct } from "@/lib/prediction/format";
 import type { Market } from "@/lib/prediction/types";
 
 interface PredictionCardProps {
   market: Market;
 }
 
-// A single market tile in the browse grid. The whole card links to the market
-// detail page; the YES/NO buttons deep-link to it with a side preselected so the
-// execution panel opens on that outcome.
+// A single market tile in the Local browse grid. The whole card links to the
+// market detail page; the YES/NO buttons deep-link to it with a side preselected
+// so the execution panel opens on that outcome. No "Local" badge here — the tab
+// already identifies the source, so a per-card badge would be redundant noise.
 export function LocalPredictionCard({ market: m }: PredictionCardProps) {
   const t = useTranslations("prediction");
   const href = `/prediction/${m.marketId}`;
   const yesCents = priceToCents(m.priceYes);
   const noCents = priceToCents(m.priceNo);
-  const local = isLocalPredictionSource();
 
   return (
     <div className="ws-beam ws-card relative flex h-full flex-col overflow-hidden rounded-[20px]">
-      {local ? (
-        <span className="border-accent/40 bg-accent/20 text-accent absolute left-3 top-3 z-10 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur-sm">
-          {t("localBadge")}
-        </span>
-      ) : null}
       <Link href={href} className="flex flex-1 flex-col">
         {m.imageUrl ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden">

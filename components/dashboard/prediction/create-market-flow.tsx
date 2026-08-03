@@ -184,6 +184,10 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  // Set when the deployment has no image host configured. An image is REQUIRED
+  // to create a market, but we can't require it when hosting is unavailable —
+  // in that case we relax the requirement so creation isn't impossible.
+  const [hostingUnavailable, setHostingUnavailable] = useState(false);
   // Bumping this remounts the file input to clear its value on removal.
   const [fileInputKey, setFileInputKey] = useState(0);
 
@@ -205,10 +209,14 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
   const hasCloseChoice = useCustom ? customClose !== "" : durationKey !== "";
   // A chosen image must finish uploading (or be removed) before creation.
   const imageBlocking = uploading || imageError;
+  // An image is REQUIRED so every market card/detail has art — unless the
+  // deployment has no image host, in which case we can't require one.
+  const imageRequiredMet = imageUrl !== null || hostingUnavailable;
   const valid =
     question.trim().length > 0 &&
     seedUnits >= MIN_SEED_USDC &&
     hasCloseChoice &&
+    imageRequiredMet &&
     !imageBlocking &&
     !actions.busy;
 
@@ -246,8 +254,9 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
     } catch (error) {
       if (isImageNotConfigured(error)) {
         // Image hosting isn't set up on the deployment: don't block creation,
-        // just let the user proceed without an image.
+        // just let the user proceed without an image (relax the requirement).
         setImageError(false);
+        setHostingUnavailable(true);
         toast.info(t("imageHostingUnavailable"));
       } else {
         setImageError(true);
@@ -398,7 +407,10 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
         {/* Image: uploaded to Cloudinary on selection; a preview and status show
             the secure URL is attached before creation is allowed. */}
         <div className="flex flex-col gap-1.5">
-          <span className={labelClass}>{t("imageLabel")}</span>
+          <span className={labelClass}>
+            {t("imageLabel")}
+            {!hostingUnavailable ? <span className="text-down ml-1">*</span> : null}
+          </span>
           {imageUrl ? (
             <div className="ws-inset relative overflow-hidden rounded-[14px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}

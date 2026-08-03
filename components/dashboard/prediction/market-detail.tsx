@@ -18,12 +18,7 @@ import { useMarket, useMarketChart, useMarketTrades } from "@/hooks/use-predicti
 import { useMyMarkets } from "@/hooks/use-prediction-portfolio";
 import { usePredictionMarketStream } from "@/hooks/use-prediction-market-stream";
 import { usePredictionActions } from "@/hooks/use-prediction-actions";
-import {
-  compactUsd,
-  isLocalPredictionSource,
-  priceToCents,
-  priceToPct,
-} from "@/lib/prediction/format";
+import { compactUsd, priceToCents, priceToPct } from "@/lib/prediction/format";
 import type { ChartInterval, Side, Trade } from "@/lib/prediction/types";
 
 // A compact set of intervals for the smaller chart.
@@ -102,11 +97,6 @@ export function MarketDetail({ id }: MarketDetailProps) {
 
           {/* Top row: category, volume, status. */}
           <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 text-[12px] font-medium sm:p-5">
-            {isLocalPredictionSource() ? (
-              <span className="border-accent/40 bg-accent/20 text-accent rounded-full border px-2.5 py-1 backdrop-blur-sm">
-                {t("localBadge")}
-              </span>
-            ) : null}
             {market.category ? (
               <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-white/90 backdrop-blur-sm">
                 {market.category}

@@ -670,7 +670,7 @@
     "toastSellingPosition": "Ihre Position wird verkauft…",
     "toastSoldPosition": "Für etwa {amount} verkauft. Der Betrag liegt in Ihrem Prognose-Guthaben.",
     "toastSellFailed": "Diese Position konnte nicht ausgezahlt werden. Versuchen Sie es erneut.",
-    "sourceTab_polymarket": "Polymarket",
+    "sourceTab_polymarket": "Global",
     "sourceTab_local": "Local",
     "localTabBlurb": "Our own on-chain markets — trade, provide liquidity, and resolve, with holders, activity, and comments.",
     "createMarket": "Markt erstellen",

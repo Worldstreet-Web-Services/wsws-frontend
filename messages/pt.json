@@ -670,7 +670,7 @@
     "toastSellingPosition": "Vendendo sua posição…",
     "toastSoldPosition": "Vendido por cerca de {amount}. Está no seu saldo de previsões.",
     "toastSellFailed": "Não foi possível sacar esta posição. Tente novamente.",
-    "sourceTab_polymarket": "Polymarket",
+    "sourceTab_polymarket": "Global",
     "sourceTab_local": "Local",
     "localTabBlurb": "Our own on-chain markets — trade, provide liquidity, and resolve, with holders, activity, and comments.",
     "createMarket": "Criar mercado",

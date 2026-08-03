@@ -256,6 +256,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
       ? tPlay("resultWhiteWon", { how })
       : tPlay("resultBlackWon", { how });
   })();
+  // A glanceable icon per outcome so a watcher sees at once whether the board
+  // was won, drawn, or aborted before it counted.
+  const resultIcon = !match.result ? "⚠️" : match.result.kind === "draw" ? "🤝" : "🏆";
 
   return (
     <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
@@ -546,6 +549,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
       {over ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 px-4 backdrop-blur-md">
           <div className="ws-glass w-[340px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+            <div className="mb-3 text-[2.6rem] leading-none" aria-hidden>
+              {resultIcon}
+            </div>
             <div className="text-[1.2rem] font-extrabold text-white">{resultText}</div>
             <Link
               href="/casino/chess"

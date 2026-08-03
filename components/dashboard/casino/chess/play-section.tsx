@@ -104,6 +104,33 @@ function resultLine(t: Translator, match: ChessMatch, you: ChessColor | null): s
   return r.winner === you ? t("resultYouWon", { how }) : t("resultYouLost", { how });
 }
 
+// The outcome as one of a few visual tones, so the end-of-game modal reads at a
+// glance and every edge case is distinct: a decisive game the viewer played
+// (win/loss), a draw, a game aborted before it counted, or — for a spectator —
+// a decisive game they had no side in.
+type ResultTone = "win" | "loss" | "draw" | "aborted" | "decisive";
+function resultTone(match: ChessMatch, you: ChessColor | null): ResultTone {
+  const r = match.result;
+  if (!r) return "aborted";
+  if (r.kind === "draw") return "draw";
+  if (you === null) return "decisive";
+  return r.winner === you ? "win" : "loss";
+}
+const RESULT_ICON: Record<ResultTone, string> = {
+  win: "🏆",
+  loss: "💔",
+  draw: "🤝",
+  aborted: "⚠️",
+  decisive: "♟️",
+};
+const RESULT_TEXT_TONE: Record<ResultTone, string> = {
+  win: "text-up",
+  loss: "text-down",
+  draw: "text-white",
+  aborted: "text-white/80",
+  decisive: "text-white",
+};
+
 const actionButton =
   "cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap text-white/70 transition-colors hover:border-white/35 hover:text-white disabled:opacity-50";
 
@@ -1429,7 +1456,10 @@ export function PlaySection({
       {over ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-md">
           <div className="ws-glass w-[320px] rounded-2xl px-8 py-9 text-center shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-            <div className="text-[12px] font-semibold tracking-[0.06em] text-white/70 uppercase">
+            <div className="mb-3 text-[2.6rem] leading-none" aria-hidden>
+              {RESULT_ICON[resultTone(match, you)]}
+            </div>
+            <div className={`text-[1.15rem] font-extrabold ${RESULT_TEXT_TONE[resultTone(match, you)]}`}>
               {resultLine(t, match, you)}
             </div>
             {you !== null && rematchReadyId ? (

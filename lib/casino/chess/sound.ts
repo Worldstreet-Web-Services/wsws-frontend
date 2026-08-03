@@ -115,7 +115,11 @@ export function playMoveSound(kind: MoveSound = "move"): void {
         break;
       case "move":
       default:
-        tone(ac, { freqStart: 250, freqEnd: 150 });
+        // A wood-block "clack": a bright, near-instant click transient sitting
+        // over a short low body, which reads as a piece being set down rather
+        // than a bare beep.
+        tone(ac, { freqStart: 900, freqEnd: 520, attack: 0.001, hold: 0.045, peak: 0.16 });
+        tone(ac, { freqStart: 240, freqEnd: 150, attack: 0.002, hold: 0.09, peak: 0.2 });
         break;
     }
   } catch {

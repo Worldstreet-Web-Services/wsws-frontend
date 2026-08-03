@@ -25,6 +25,7 @@ import {
   CHESS_SURFACE_BG,
 } from "@/lib/casino/chess/ui";
 import { moveSoundFromSan, playGameEndSound, playMoveSound } from "@/lib/casino/chess/sound";
+import { FinalCountdown } from "@/components/dashboard/casino/chess/final-countdown";
 import {
   CasinoEmpty,
   CasinoError,
@@ -321,7 +322,7 @@ export function PlaySection({
     savingComment,
     deleteComment,
     deletingComment,
-  } = useChessMatchSocial(matchId, chatRoom, canUsePlayerChat, currentPly);
+  } = useChessMatchSocial(matchId, chatRoom, canUsePlayerChat, currentPly, seatName);
 
   // A soft "thock" whenever the move count grows — the player's own move and the
   // opponent's alike. The first render only records the starting count, so
@@ -788,7 +789,7 @@ export function PlaySection({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2px]">
+            <div className="relative overflow-hidden rounded-[2px]">
               <ChessBoard
                 board={board}
                 selected={selected}
@@ -801,6 +802,10 @@ export function PlaySection({
                     ? (r, c) => void onSquareClick(r, c)
                     : undefined
                 }
+              />
+              <FinalCountdown
+                secondsLeft={clocks?.[displayTurn] ?? 0}
+                live={match.state === "in_progress"}
               />
             </div>
 

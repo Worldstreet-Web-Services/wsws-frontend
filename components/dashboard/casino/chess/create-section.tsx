@@ -475,6 +475,7 @@ export function CreateSection() {
             </div>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+              <ChessCashierLauncher compact />
               <FieldRow
                 label="Opponent"
                 value="Challenge link"
@@ -531,8 +532,6 @@ export function CreateSection() {
                   feePct={cashier.feePct}
                 />
               ) : null}
-
-              <ChessCashierLauncher compact />
 
               <div className="rounded-[16px] border border-white/6 px-4 py-4 text-[0.92rem] leading-6 text-white/60">
                 After you create the game, we open the waiting board, copy the challenge link, and show a copy button there again. Send that link manually for now, the first person who opens it takes the other side.

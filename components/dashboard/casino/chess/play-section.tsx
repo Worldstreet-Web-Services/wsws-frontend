@@ -773,6 +773,12 @@ export function PlaySection({
 
   return (
     <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
+      {/* On narrow screens the side rail stacks below the board, so the balance
+          would sit down by the footer. Surface it as the first thing here, and
+          hide it once the rail becomes a column that already shows it up top. */}
+      <div className="mb-6 xl:hidden">
+        <ChessCashierLauncher compact />
+      </div>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,944px)_430px]">
         <section
           className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
@@ -935,7 +941,7 @@ export function PlaySection({
             </Link>
           </div>
 
-          <div className="shrink-0 border-b border-white/6 px-4 pt-4 pb-4 sm:px-5">
+          <div className="hidden shrink-0 border-b border-white/6 px-4 pt-4 pb-4 sm:px-5 xl:block">
             <ChessCashierLauncher compact />
           </div>
 

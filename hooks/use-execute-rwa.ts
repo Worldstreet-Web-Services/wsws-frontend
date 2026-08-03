@@ -5,6 +5,7 @@ import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/sola
 import { getBase58Decoder } from "@solana/kit";
 import { awaitReceipt, isReceiptChain, publicClientForChain } from "@/lib/trade/receipt";
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
+import { sponsorSolanaTransaction } from "@/lib/trade/solana-sponsor";
 import { useEvmSend } from "@/hooks/use-evm-send";
 import type { RwaAction, RwaChain, RwaStep } from "@/lib/rwa-api";
 
@@ -18,13 +19,6 @@ const EVM_CHAIN_ID: Partial<Record<RwaChain, number>> = {
   bsc: 56,
   polygon: 137,
 };
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
 
 // Signs and sends each step of a built RWA action with the embedded wallet.
 // Solana steps carry a base64 versioned transaction; EVM steps carry to/data.
@@ -69,8 +63,9 @@ export function useExecuteRwa() {
           const wallet = solanaWallets[0];
           if (!wallet) throw new Error("No Solana wallet is connected.");
           if (!step.tx.base64) throw new Error("The transaction is missing.");
+          const transaction = await sponsorSolanaTransaction(step.tx.base64);
           const { signature } = await signAndSendTransaction({
-            transaction: base64ToBytes(step.tx.base64),
+            transaction,
             wallet,
           });
           lastSolanaSig = getBase58Decoder().decode(signature);

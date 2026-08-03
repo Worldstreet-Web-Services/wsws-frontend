@@ -805,7 +805,8 @@
     "quoteAvgPrice": "Avg price",
     "quoteImpact": "Price impact",
     "outcomeCount": "{count} outcomes",
-    "localBadge": "Local"
+    "localBadge": "Local",
+    "chartEmpty": "No price history yet."
   },
   "perps": {
     "eyebrow": "Perpétuels",

@@ -9,12 +9,13 @@ import {
 import {
   getActivity,
   getGroup,
+  getGroupChart,
   getHolders,
   getQuote,
   listComments,
   listGroups,
 } from "@/lib/prediction/api";
-import type { Side } from "@/lib/prediction/types";
+import type { ChartInterval, Side } from "@/lib/prediction/types";
 
 // TanStack Query hooks for the Polymarket-style market/event detail surfaces:
 // top holders, the activity feed, comments, the CPMM quote, and multi-outcome
@@ -77,6 +78,18 @@ export function useGroup(idOrSlug: string | null) {
     enabled: !!idOrSlug,
     staleTime: 10_000,
     refetchInterval: 20_000,
+  });
+}
+
+// Multi-series event chart (one line per outcome). Interval-driven like the
+// single-market chart.
+export function useGroupChart(idOrSlug: string | null, interval: ChartInterval) {
+  return useQuery({
+    queryKey: ["prediction", "group-chart", idOrSlug, interval],
+    queryFn: () => getGroupChart(idOrSlug as string, interval),
+    enabled: !!idOrSlug,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
 

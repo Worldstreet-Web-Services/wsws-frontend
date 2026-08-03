@@ -95,6 +95,13 @@ export interface GroupOutcome {
   closeTime: number;
 }
 
+// Multi-series event chart: one YES-probability line per outcome over time.
+export interface EventChartSeries {
+  marketId: bigint;
+  label: string;
+  points: Array<{ t: number; yes: bigint }>; // t unix seconds, yes 0..PRICE_SCALE
+}
+
 export interface MarketGroup {
   id: string;
   slug: string;

@@ -12,6 +12,7 @@ import {
   type ActivityPage,
   type ChartPoint,
   type Comment,
+  type EventChartSeries,
   type GroupOutcome,
   type Holder,
   type LpPosition,
@@ -305,6 +306,33 @@ export function normalizeGroup(raw: unknown): MarketGroup {
 
 export function normalizeGroups(raw: unknown): MarketGroup[] {
   return mapValid(raw, normalizeGroup, "group");
+}
+
+export function normalizeEventChart(raw: unknown): EventChartSeries[] {
+  const r = asRecord(raw);
+  if (!Array.isArray(r.outcomes)) return [];
+  return mapValid(
+    r.outcomes,
+    (item) => {
+      const o = asRecord(item);
+      const points = Array.isArray(o.points)
+        ? mapValid(
+            o.points,
+            (pt) => {
+              const p = asRecord(pt);
+              return { t: toUnixSeconds(p.t, "t"), yes: toBig(p.yes, "yes") };
+            },
+            "chart point"
+          )
+        : [];
+      return {
+        marketId: toBig(o.marketId, "marketId"),
+        label: typeof o.label === "string" ? o.label : "",
+        points,
+      };
+    },
+    "event series"
+  );
 }
 
 export function normalizeHolder(raw: unknown): Holder {

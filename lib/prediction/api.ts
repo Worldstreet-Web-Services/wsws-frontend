@@ -7,6 +7,7 @@ import {
   normalizeChart,
   normalizeComment,
   normalizeComments,
+  normalizeEventChart,
   normalizeGroup,
   normalizeGroups,
   normalizeHolders,
@@ -161,6 +162,13 @@ export async function listGroups(filter?: { category?: string; status?: string }
 
 export async function getGroup(idOrSlug: string): Promise<MarketGroup> {
   return normalizeGroup(await request<unknown>(`/groups/${idOrSlug}`));
+}
+
+export async function getGroupChart(
+  idOrSlug: string,
+  interval: ChartInterval
+): Promise<import("@/lib/prediction/types").EventChartSeries[]> {
+  return normalizeEventChart(await request<unknown>(`/groups/${idOrSlug}/chart?interval=${interval}`));
 }
 
 export interface CreateGroupInput {

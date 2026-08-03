@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronLeftIcon } from "@/components/ui/icons";
-import { useGroup } from "@/hooks/use-prediction-detail";
+import { useGroup, useGroupChart } from "@/hooks/use-prediction-detail";
 import { CommentsPanel } from "@/components/dashboard/prediction/comments-panel";
+import { EventChart } from "@/components/dashboard/prediction/event-chart";
 import { OutcomeRow } from "@/components/dashboard/prediction/outcome-row";
 import { compactUsd } from "@/lib/prediction/format";
+import type { ChartInterval } from "@/lib/prediction/types";
+
+const INTERVALS: ChartInterval[] = ["1h", "4h", "1d"];
 
 // Event (multi-outcome) detail page — Polymarket's grouped-market view: an event
 // header, then a list of candidate/outcome rows (each its own on-chain YES/NO
@@ -18,7 +23,9 @@ interface EventDetailProps {
 
 export function EventDetail({ idOrSlug }: EventDetailProps) {
   const t = useTranslations("prediction");
+  const [interval, setInterval] = useState<ChartInterval>("1h");
   const { data: group, isLoading } = useGroup(idOrSlug);
+  const { data: chart } = useGroupChart(idOrSlug, interval);
 
   if (isLoading || !group) {
     return (
@@ -72,6 +79,33 @@ export function EventDetail({ idOrSlug }: EventDetailProps) {
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
+          {/* Multi-line chart: one probability line per outcome over time. */}
+          <div className="ws-card p-5 sm:p-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="ws-display text-[15px]">{t("probability")}</span>
+              <div className="flex gap-1">
+                {INTERVALS.map((iv) => (
+                  <button
+                    key={iv}
+                    onClick={() => setInterval(iv)}
+                    className={`cursor-pointer rounded-md px-2 py-1 text-[12px] font-medium transition-colors ${
+                      interval === iv ? "bg-white/12 text-white" : "text-white/45 hover:text-white/70"
+                    }`}
+                  >
+                    {iv}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {chart && chart.some((s) => s.points.length > 0) ? (
+              <EventChart series={chart} height={220} />
+            ) : (
+              <p className="py-10 text-center text-[13px] font-normal text-white/45">
+                {t("chartEmpty")}
+              </p>
+            )}
+          </div>
+
           {/* Outcome (candidate) rows */}
           <div className="ws-card p-3 sm:p-4">
             <span className="ws-display mb-2 block px-2 pt-1 text-[14px]">{t("outcomesTitle")}</span>

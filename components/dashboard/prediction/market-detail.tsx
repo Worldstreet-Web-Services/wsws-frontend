@@ -86,10 +86,13 @@ export function MarketDetail({ id }: MarketDetailProps) {
       {/* Hero banner: the market image spans the full width with the question and
           live prices laid over a gradient, so the page opens on something rich. */}
       <div className="ws-card relative overflow-hidden rounded-[22px] p-0">
-        <div className="relative h-[220px] w-full sm:h-[300px]">
+        <div className="relative h-[220px] w-full bg-[#0c0c0e] sm:h-[300px]">
           {market.imageUrl ? (
+            // object-contain (not cover) so the FULL image shows in the hero
+            // without cutting the sides; the #0c0c0e frame matches the upload
+            // padding so it reads as one piece.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={market.imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={market.imageUrl} alt="" className="h-full w-full object-contain" />
           ) : (
             <div className="h-full w-full bg-[radial-gradient(120%_120%_at_20%_0%,rgba(124,231,176,0.22),transparent),radial-gradient(120%_120%_at_100%_100%,rgba(120,140,255,0.18),transparent)]" />
           )}

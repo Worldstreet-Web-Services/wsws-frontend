@@ -98,8 +98,8 @@ async function decodeImage(file: File): Promise<DecodedImage> {
 
 // Center-crops the source to the market card's 16:9 aspect ratio and compresses
 // it (resize + JPEG) before it ever hits the network. Any orientation is
-// accepted: a portrait photo simply has its top/bottom trimmed to fit the
-// landscape frame, so the upload always matches how the card renders it. A
+// accepted: the WHOLE image is fit inside the landscape frame with padding (no
+// cropping), so nothing is cut off regardless of the source aspect ratio. A
 // multi-MB photo becomes a few hundred KB.
 async function processImage(file: File): Promise<ProcessedImage> {
   let decoded: DecodedImage;
@@ -109,37 +109,31 @@ async function processImage(file: File): Promise<ProcessedImage> {
     return { ok: false, reason: "read" };
   }
   try {
-    // Largest 16:9 rectangle that fits inside the source, centered — this is the
-    // region of the original we keep.
-    const sourceAspect = decoded.width / decoded.height;
-    let sx: number, sy: number, sw: number, sh: number;
-    if (sourceAspect > TARGET_ASPECT) {
-      // Source is wider than 16:9 → full height, crop the sides.
-      sh = decoded.height;
-      sw = Math.round(sh * TARGET_ASPECT);
-      sx = Math.round((decoded.width - sw) / 2);
-      sy = 0;
-    } else {
-      // Source is taller/narrower than 16:9 → full width, crop top and bottom.
-      sw = decoded.width;
-      sh = Math.round(sw / TARGET_ASPECT);
-      sx = 0;
-      sy = Math.round((decoded.height - sh) / 2);
-    }
+    // FIT-INSIDE (letterbox), not crop-to-fill: the WHOLE image is scaled to fit
+    // within the 16:9 frame and centered, with the surrounding space padded — so
+    // no part of the picture is ever cut off. A portrait/square photo keeps all
+    // of its content, with padding on the sides; a wide photo pads top/bottom.
+    const outWidth = Math.max(1, Math.min(MAX_IMAGE_WIDTH, decoded.width, Math.round(MAX_IMAGE_WIDTH)));
+    const frameWidth = outWidth;
+    const frameHeight = Math.max(1, Math.round(frameWidth / TARGET_ASPECT));
 
-    // Output canvas: 16:9, capped at MAX_IMAGE_WIDTH (never upscale past source).
-    const outWidth = Math.max(1, Math.min(MAX_IMAGE_WIDTH, sw));
-    const outHeight = Math.max(1, Math.round(outWidth / TARGET_ASPECT));
+    // Scale the full source to fit inside the frame (never upscale past source).
+    const scale = Math.min(frameWidth / decoded.width, frameHeight / decoded.height, 1);
+    const drawW = Math.max(1, Math.round(decoded.width * scale));
+    const drawH = Math.max(1, Math.round(decoded.height * scale));
+    const dx = Math.round((frameWidth - drawW) / 2);
+    const dy = Math.round((frameHeight - drawH) / 2);
+
     const canvas = document.createElement("canvas");
-    canvas.width = outWidth;
-    canvas.height = outHeight;
+    canvas.width = frameWidth;
+    canvas.height = frameHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return { ok: false, reason: "read" };
-    // Flatten onto white so transparent PNGs don't turn black as JPEG.
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, outWidth, outHeight);
-    // Draw only the cropped region, scaled to fill the 16:9 output.
-    ctx.drawImage(decoded.source, sx, sy, sw, sh, 0, 0, outWidth, outHeight);
+    // Neutral padding behind the image (also flattens transparent PNGs for JPEG).
+    ctx.fillStyle = "#0c0c0e";
+    ctx.fillRect(0, 0, frameWidth, frameHeight);
+    // Draw the ENTIRE source (0,0,width,height), scaled to fit — nothing clipped.
+    ctx.drawImage(decoded.source, 0, 0, decoded.width, decoded.height, dx, dy, drawW, drawH);
     return { ok: true, dataUrl: canvas.toDataURL("image/jpeg", IMAGE_QUALITY) };
   } catch {
     return { ok: false, reason: "read" };

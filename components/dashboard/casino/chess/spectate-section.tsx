@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChessCashierLauncher } from "@/components/dashboard/casino/chess/chess-cashier-launcher";
-import { useChessMatch } from "@/hooks/use-casino-chess";
+import { useChessMatch, useChessMatchSocial } from "@/hooks/use-casino-chess";
 import { useMatchMarket, usePlaceBet } from "@/hooks/use-casino-betting";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
@@ -29,6 +29,7 @@ import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
 import { exceedsUsdcBalance, normalizeUsdcAmount, parseUsdcAmount } from "@/lib/casino/api/cashier";
 import { estimatePariMutuelReturn, impliedProbability } from "@/lib/casino/betting-math";
 import { friendlyError } from "@/lib/errors";
+import { truncateAddress } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import type { BetSelection, ChessColor } from "@/lib/casino/api/types";
 
@@ -81,15 +82,19 @@ function PlayerStrip({
 export function SpectateSection({ matchId }: { matchId: string | null }) {
   const t = useTranslations("casino.chess.spectate");
   const tCommon = useTranslations("casino.chess.common");
+  const tPlay = useTranslations("casino.chess.play");
   const wallet = useCasinoWallet();
   const { match, clocks, isLoading, error } = useChessMatch(matchId);
   const theme = useBoardTheme();
   const { odds, myBets } = useMatchMarket(matchId, wallet.address ?? null);
   const cashier = useChessCashierStatus();
   const placeBet = usePlaceBet();
+  // A watcher is a spectator: only the public spectator room, never a seat.
+  const social = useChessMatchSocial(matchId, "spectator", false, null, null);
 
   const [selection, setSelection] = useState<BetSelection | null>(null);
   const [stakeInput, setStakeInput] = useState("");
+  const [chatDraft, setChatDraft] = useState("");
 
   if (!matchId) {
     return (
@@ -194,6 +199,18 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
       setSelection(null);
     } catch (e) {
       toast.error(friendlyError(e, t("toastPlaceFailed")), { id });
+    }
+  };
+
+  const canWriteChat = !!wallet.address;
+  const onPostChat = async () => {
+    const text = chatDraft.trim();
+    if (!text || social.postingChat) return;
+    try {
+      await social.postChat({ room: "spectator", text });
+      setChatDraft("");
+    } catch (e) {
+      toast.error(friendlyError(e, tPlay("toastChatFailed")));
     }
   };
 
@@ -393,6 +410,70 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
                   ) : null}
                 </>
               )}
+            </div>
+
+            <div
+              className="rounded-[16px] border border-white/6 px-4 py-4"
+              style={{ background: CHESS_CARD_BG, boxShadow: CHESS_CARD_SHADOW }}
+            >
+              <div className="mb-1 text-[1.2rem] font-extrabold text-white">{tPlay("chatTitle")}</div>
+              <div className="mb-3 text-[0.9rem] leading-6 text-white/60">
+                {tPlay("chatSpectatorsHint")}
+              </div>
+              <div className="max-h-[300px] space-y-2 overflow-y-auto">
+                {social.chatLoading ? (
+                  <div className="rounded-[10px] bg-black/10 px-3 py-2 text-[0.92rem] text-white/55">
+                    {tPlay("chatLoading")}
+                  </div>
+                ) : social.chatMessages.length === 0 ? (
+                  <div className="rounded-[10px] bg-black/10 px-3 py-2 text-[0.92rem] text-white/55">
+                    {tPlay("chatEmpty")}
+                  </div>
+                ) : (
+                  social.chatMessages.map((line) => (
+                    <div
+                      key={line.id}
+                      className="rounded-[10px] border border-white/6 bg-black/10 px-3 py-2.5"
+                    >
+                      <div className="mb-1 truncate text-[11px] text-white/42">
+                        {truncateAddress(line.author)}
+                      </div>
+                      <div className="text-[0.94rem] leading-6 text-white/78">{line.text}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 space-y-2">
+                {!canWriteChat ? (
+                  <div className="rounded-[10px] bg-black/10 px-3 py-2 text-[0.92rem] text-white/55">
+                    {tPlay("chatLogin")}
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      rows={3}
+                      value={chatDraft}
+                      onChange={(event) => setChatDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" || event.shiftKey) return;
+                        event.preventDefault();
+                        void onPostChat();
+                      }}
+                      placeholder={tPlay("chatPlaceholderSpectator")}
+                      className="min-h-[76px] w-full rounded-[12px] border border-white/10 bg-black/12 px-3 py-3 text-[0.94rem] text-white outline-none placeholder:text-white/28"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => void onPostChat()}
+                        disabled={social.postingChat || chatDraft.trim().length === 0}
+                        className="cursor-pointer rounded-full bg-[#8B847B] px-4 py-2 font-sans text-[12px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {social.postingChat ? tPlay("chatSending") : tPlay("chatSend")}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </aside>

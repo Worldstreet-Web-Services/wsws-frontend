@@ -33,7 +33,10 @@ export type ChessColor = "w" | "b";
 export interface ChessPlayer {
   id: string;
   username: string;
-  rating: number;
+  // Null until the service exposes ratings. The chess backend models a game and
+  // nothing else, so there is no honest number to show yet; the UI hides the
+  // rating rather than printing a fabricated zero.
+  rating: number | null;
   walletAddress: string;
 }
 

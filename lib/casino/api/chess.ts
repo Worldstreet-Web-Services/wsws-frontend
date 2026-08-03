@@ -266,7 +266,7 @@ export async function fetchMatchmakingTicket(ticketId: string): Promise<Matchmak
     matchId: wire.id,
     acceptSecondsRemaining: null,
     opponent: opponentWallet
-      ? { id: opponentWallet, username: opponentWallet, rating: 0, walletAddress: opponentWallet }
+      ? { id: opponentWallet, username: opponentWallet, rating: null, walletAddress: opponentWallet }
       : null,
   };
 }

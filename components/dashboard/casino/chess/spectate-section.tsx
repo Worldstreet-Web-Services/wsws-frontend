@@ -130,12 +130,12 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
     const advantage = colour === "w" ? captured.advantage : -captured.advantage;
     return advantage > 0 ? advantage : 0;
   };
-  const blackLabel = match.black
-    ? `${match.black.username} (${match.black.rating})`
-    : tCommon("black");
-  const whiteLabel = match.white
-    ? `${match.white.username} (${match.white.rating})`
-    : tCommon("white");
+  // Ratings are hidden until the service actually exposes them: a real one gets
+  // shown in parentheses, an unknown one just shows the name.
+  const seatLabel = (player: { username: string; rating: number | null }) =>
+    player.rating !== null ? `${player.username} (${player.rating})` : player.username;
+  const blackLabel = match.black ? seatLabel(match.black) : tCommon("black");
+  const whiteLabel = match.white ? seatLabel(match.white) : tCommon("white");
 
   // Money here is USDC from the chess cashier, the same balance staked matches
   // use, in exact decimal strings. A USDC figure formatted for display only.

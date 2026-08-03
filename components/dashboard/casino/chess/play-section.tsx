@@ -135,6 +135,10 @@ const RESULT_TEXT_TONE: Record<ResultTone, string> = {
   aborted: "text-white/80",
   decisive: "text-white",
 };
+// The end-of-game modal's primary action, in the green chess boards use for a
+// go-again button — a solid lift against the dark card.
+const RESULT_PRIMARY_BTN =
+  "w-full cursor-pointer rounded-full bg-[#81b64c] p-3 font-sans text-[13px] font-bold text-white shadow-[0_2px_14px_rgba(129,182,76,0.35)] transition-colors hover:bg-[#8fc356] disabled:opacity-50";
 
 const actionButton =
   "cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 font-sans text-[11.5px] font-semibold whitespace-nowrap text-white/70 transition-colors hover:border-white/35 hover:text-white disabled:opacity-50";
@@ -1476,7 +1480,7 @@ export function PlaySection({
             {you !== null && rematchReadyId ? (
               <button
                 onClick={() => router.push(`/casino/chess/play?match=${rematchReadyId}`)}
-                className="text-ink mt-5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-medium"
+                className={`mt-5 ${RESULT_PRIMARY_BTN}`}
               >
                 {t("openRematch")}
               </button>
@@ -1489,7 +1493,7 @@ export function PlaySection({
                 <button
                   onClick={() => void onAcceptRematch()}
                   disabled={requestingRematch}
-                  className="text-ink mt-2.5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-medium disabled:opacity-50"
+                  className={`mt-2.5 ${RESULT_PRIMARY_BTN}`}
                 >
                   {requestingRematch ? t("joining") : t("acceptRematch")}
                 </button>
@@ -1520,7 +1524,7 @@ export function PlaySection({
               <button
                 onClick={() => void onRematch()}
                 disabled={requestingRematch}
-                className="text-ink mt-5 w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-medium disabled:opacity-50"
+                className={`mt-5 ${RESULT_PRIMARY_BTN}`}
               >
                 {requestingRematch ? t("opening") : t("rematch")}
               </button>

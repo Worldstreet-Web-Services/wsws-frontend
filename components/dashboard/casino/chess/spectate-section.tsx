@@ -555,7 +555,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
             <div className="text-[1.2rem] font-extrabold text-white">{resultText}</div>
             <Link
               href="/casino/chess"
-              className="text-ink mt-6 inline-block w-full cursor-pointer rounded-full bg-white p-3 font-sans text-[13px] font-bold"
+              className="mt-6 inline-block w-full cursor-pointer rounded-full bg-[#81b64c] p-3 font-sans text-[13px] font-bold text-white shadow-[0_2px_14px_rgba(129,182,76,0.35)] transition-colors hover:bg-[#8fc356]"
             >
               {tPlay("backToLobby")}
             </Link>

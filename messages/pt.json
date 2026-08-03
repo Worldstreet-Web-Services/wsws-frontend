@@ -824,7 +824,16 @@
     "eventCreated": "Event created",
     "dur_1d": "1 day",
     "dur_1w": "1 week",
-    "dur_1m": "1 month"
+    "dur_1m": "1 month",
+    "yourPosition": "Your position",
+    "positionShares": "Shares",
+    "positionCost": "Cost",
+    "positionOutcome": "Outcome",
+    "positionWon": "Won",
+    "positionLost": "Lost",
+    "noPositionYet": "No position in this market yet.",
+    "noPositionThisSide": "No position on this side.",
+    "redeemCta": "Redeem winnings"
   },
   "perps": {
     "eyebrow": "Perpétuos",

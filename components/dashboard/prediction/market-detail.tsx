@@ -9,6 +9,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ProbabilityChart } from "@/components/dashboard/prediction/probability-chart";
 import { TradeTape } from "@/components/dashboard/prediction/trade-tape";
 import { ExecutionPanel } from "@/components/dashboard/prediction/execution-panel";
+import { MarketPositions } from "@/components/dashboard/prediction/market-positions";
 import { LiquidityPanel } from "@/components/dashboard/prediction/liquidity-panel";
 import { TopHolders } from "@/components/dashboard/prediction/top-holders";
 import { ActivityFeed } from "@/components/dashboard/prediction/activity-feed";
@@ -196,6 +197,7 @@ export function MarketDetail({ id }: MarketDetailProps) {
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-6">
           <ExecutionPanel market={market} initialSide={initialSide} />
+          <MarketPositions market={market} />
           <LiquidityPanel market={market} />
 
           {canResolve ? (

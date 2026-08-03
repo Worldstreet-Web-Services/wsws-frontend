@@ -2,7 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
-import { getLpPositions, getMyMarkets, getPositions } from "@/lib/prediction/api";
+import {
+  getLpPositions,
+  getMyMarkets,
+  getPositions,
+  getPositionsForMarket,
+} from "@/lib/prediction/api";
 import { readPendingWithdrawals } from "@/lib/prediction/chain-reads";
 import { getWalletAddress } from "@/lib/user";
 
@@ -31,6 +36,20 @@ export function usePositions() {
     queryKey: ["prediction", "positions", wallet],
     queryFn: () => getPositions(wallet as string),
     enabled: !!wallet,
+    staleTime: 10_000,
+    refetchInterval: 20_000,
+  });
+}
+
+// The connected wallet's positions in ONE market (both sides), for the detail
+// page's positions panel. Disabled until a wallet + market id are known.
+export function useMarketPositions(marketId: string | null) {
+  const { user } = usePrivy();
+  const wallet = getWalletAddress(user, "ethereum");
+  return useQuery({
+    queryKey: ["prediction", "market-positions", marketId, wallet],
+    queryFn: () => getPositionsForMarket(marketId as string, wallet as string),
+    enabled: !!wallet && !!marketId,
     staleTime: 10_000,
     refetchInterval: 20_000,
   });

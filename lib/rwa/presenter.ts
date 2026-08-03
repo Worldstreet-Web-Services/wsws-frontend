@@ -3,7 +3,13 @@
 // exact base-unit helpers from lib/trade/math and never floating point.
 
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
-import { USDC_BY_CHAIN, type RwaApiAsset, type RwaChain, type RwaQuote } from "@/lib/rwa-api";
+import {
+  assetPriceUsd,
+  USDC_BY_CHAIN,
+  type RwaApiAsset,
+  type RwaChain,
+  type RwaQuote,
+} from "@/lib/rwa-api";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 // Yield APY as a percent number. yieldApyBps is in basis points, so 485 -> 4.85.
@@ -15,6 +21,50 @@ export function apyPercent(bps?: number): number | null {
 export function formatApy(bps?: number): string | null {
   const pct = apyPercent(bps);
   return pct == null ? null : `${pct.toFixed(2)}%`;
+}
+
+// Live market stats sourced outside the RWA backend, which serves a price for
+// almost no asset and a TVL for one. Kept alongside the asset rather than in a
+// parallel map so every consumer reads one object.
+export interface RwaMarketStats {
+  priceUsd?: number;
+  change24h?: number;
+  liquidityUsd?: number;
+  marketCapUsd?: number;
+}
+
+export interface RwaAssetView extends RwaApiAsset {
+  market?: RwaMarketStats;
+}
+
+// What actually bounds a trade in this asset. Live DEX liquidity is the honest
+// number here: the registry's TVL is the issuer's total across every chain it
+// has ever deployed on, which for a Solana row can overstate the tradable depth
+// by three orders of magnitude.
+export function assetLiquidityUsd(a: RwaAssetView): number | undefined {
+  return a.market?.liquidityUsd;
+}
+
+// A signed percent, e.g. "+1.86%". Zero is a real reading and formats as such.
+export function formatChange(pct?: number): string | null {
+  if (pct == null || !Number.isFinite(pct)) return null;
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+}
+
+// Attaches market stats to each asset and backfills the price the backend
+// omitted. The backend's own price always wins where it has one.
+export function mergeMarket(
+  assets: RwaApiAsset[],
+  byId: Map<string, RwaMarketStats>
+): RwaAssetView[] {
+  if (byId.size === 0) return assets;
+  return assets.map((a) => {
+    const market = byId.get(a.id);
+    if (!market) return a;
+    const priceUsd =
+      assetPriceUsd(a) == null && market.priceUsd != null ? String(market.priceUsd) : a.priceUsd;
+    return { ...a, priceUsd, market };
+  });
 }
 
 // Compact USD like $1.2M. Returns a muted dash for missing or non-positive input.

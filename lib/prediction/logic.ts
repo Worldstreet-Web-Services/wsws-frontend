@@ -48,3 +48,13 @@ export function predictionContractAddress(): `0x${string}` {
 export function needsApproval(allowance: bigint, spend: bigint): boolean {
   return allowance < spend;
 }
+
+// Generates an unused market id off-chain: a random uint256 (the contract lets
+// the creator pick the id; a wide random space avoids collisions). Shared by the
+// single-market create flow and the multi-outcome event flow.
+export function randomMarketId(): bigint {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let id = 0n;
+  for (const b of bytes) id = (id << 8n) | BigInt(b);
+  return id;
+}

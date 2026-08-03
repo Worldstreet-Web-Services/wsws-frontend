@@ -236,6 +236,9 @@ export interface MarketMetadata {
   question?: string;
   category?: string;
   imageUrl?: string;
+  description?: string;
+  rules?: string;
+  resolutionSource?: string;
 }
 
 export function attachMetadata(

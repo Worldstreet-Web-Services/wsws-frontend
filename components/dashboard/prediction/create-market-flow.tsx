@@ -10,6 +10,8 @@ import { attachMetadata, newIdempotencyKey, uploadImage } from "@/lib/prediction
 import { isImageNotConfigured } from "@/lib/prediction/normalize";
 import { toBaseUnits } from "@/lib/trade/math";
 import { USDC_DECIMALS } from "@/lib/prediction/types";
+import { randomMarketId } from "@/lib/prediction/logic";
+import { EventCreatePanel } from "@/components/dashboard/prediction/event-create-panel";
 import { toast } from "@/lib/toast";
 
 interface CreateMarketFlowProps {
@@ -32,15 +34,6 @@ const DURATIONS: { key: string; label: string; seconds: number }[] = [
 // Fallback categories (from the platform's category taxonomy) so users can
 // always pick one even before the live category list is populated.
 const DEFAULT_CATEGORIES = ["Crypto", "Forex", "Commodities", "Equities", "Sports", "Politics", "Other"];
-
-// Generates an unused market id off-chain: a random uint256 (the contract lets
-// the creator pick the id; a wide random space avoids collisions).
-function randomMarketId(): bigint {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  let id = 0n;
-  for (const b of bytes) id = (id << 8n) | BigInt(b);
-  return id;
-}
 
 // Target landscape aspect ratio for the market image. Market cards render the
 // image in a 16:9 box (see prediction-card.tsx), so we crop to match — any
@@ -173,8 +166,14 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
     return marketIdRef.current;
   };
 
+  // Single vs multi-outcome mode. Single = one YES/NO market (today's flow).
+  // Multi = an event grouping several outcome markets (Fed brackets, cap colours…).
+  const [mode, setMode] = useState<"single" | "multi">("single");
+
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState("");
+  // Resolution rules text (the "Market Context" / how-it-resolves blurb).
+  const [rules, setRules] = useState("");
   const [durationKey, setDurationKey] = useState("1w");
   const [useCustom, setUseCustom] = useState(false);
   const [customClose, setCustomClose] = useState("");
@@ -299,6 +298,7 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
           question: question.trim(),
           category: category.trim() || undefined,
           imageUrl: imageUrl ?? undefined,
+          rules: rules.trim() || undefined,
         },
         newIdempotencyKey()
       );
@@ -323,6 +323,31 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
       <Eyebrow>{t("createMarket")}</Eyebrow>
       <p className="mt-1 text-[12.5px] font-normal text-white/45">{t("createMarketSubtitle")}</p>
 
+      {/* Single market vs multi-outcome event. */}
+      <div className="mt-4 inline-flex gap-1 rounded-xl bg-white/5 p-1">
+        {(["single", "multi"] as const).map((mo) => (
+          <button
+            key={mo}
+            onClick={() => setMode(mo)}
+            className={`cursor-pointer rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+              mode === mo ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
+            }`}
+          >
+            {t(`createMode_${mo}`)}
+          </button>
+        ))}
+      </div>
+
+      {mode === "multi" ? (
+        <div className="mt-4">
+          <EventCreatePanel
+            onDone={onDone}
+            inputClass={inputClass}
+            labelClass={labelClass}
+            categories={categories}
+          />
+        </div>
+      ) : (
       <div className="mt-4 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelClass}>{t("questionLabel")}</span>
@@ -443,6 +468,18 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
           )}
         </div>
 
+        <label className="flex flex-col gap-1.5">
+          <span className={labelClass}>{t("rulesLabel")}</span>
+          <textarea
+            value={rules}
+            onChange={(e) => setRules(e.target.value)}
+            placeholder={t("rulesPlaceholder")}
+            rows={3}
+            maxLength={8000}
+            className={`${inputClass} resize-none`}
+          />
+        </label>
+
         <p className="text-[12px] font-normal text-white/45">{t("createFeeNote")}</p>
 
         <button
@@ -457,6 +494,7 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
               : t("createMarketCta")}
         </button>
       </div>
+      )}
     </div>
   );
 }

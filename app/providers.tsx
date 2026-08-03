@@ -55,8 +55,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           // Login modal only — tx signing stays headless (showWalletUIs: false).
           theme: "#0c0c0e",
           accentColor: "#d4d4d8",
-          logo:
-            typeof window !== "undefined" ? `${window.location.origin}/ark-logo.svg` : undefined,
+          // A stable path so the server and client render the same logo. Using
+          // `window.location.origin` here made SSR emit undefined and the client
+          // emit an absolute URL, which tripped a hydration mismatch; the browser
+          // resolves this relative path against the origin all the same.
+          logo: "/ark-logo.svg",
         },
       }}
     >

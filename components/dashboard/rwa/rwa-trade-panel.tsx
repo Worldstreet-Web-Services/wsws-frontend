@@ -34,6 +34,7 @@ import {
   estimateReceiveUsdc,
   exceedsBalance,
   findRwaHolding,
+  gasMinimumForChain,
   gasSymbolForChain,
   gradientFor,
   hasNativeGas,
@@ -145,6 +146,10 @@ export function RwaTradePanel({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [signStep, setSignStep] = useState<SignStep | null>(null);
   const [payKey, setPayKey] = useState<string | null>(null);
+  // The amount funding has already run for. Without this, a purchase that
+  // stalled after its bridge offers to bridge again — the user pays twice and
+  // still holds no asset.
+  const [fundedFor, setFundedFor] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const logos = useTokenLogos([{ chain: asset.chain, address: asset.address }]);
@@ -244,8 +249,15 @@ export function RwaTradePanel({
   // leaves behind. Offering the landed balance is the way out; without it the
   // buy is stranded behind a top-up the user can no longer afford.
   const spendableNow = payOption?.balance ?? 0;
+  // Funding already ran for exactly this purchase. Whatever it delivered is
+  // what there is; asking again just buys another bridge.
+  const alreadyFunded = fundedFor !== null && fundedFor === amount;
   const offerSpendable =
-    needsFunding && !canFund && spendableNow > 0 && spendableNow < payValue && !funding.busy;
+    needsFunding &&
+    (!canFund || alreadyFunded) &&
+    spendableNow > 0 &&
+    spendableNow < payValue &&
+    !funding.busy;
 
   // Nothing this buy could draw on: no funded token on the asset's chain, and
   // for Solana no Base USDC to bridge over either. A bare zero balance reads as
@@ -408,6 +420,7 @@ export function RwaTradePanel({
     // Any in-flight quote priced the amount being replaced; drop its response.
     quoteSeqRef.current++;
     setAmount(value);
+    setFundedFor(null);
     const num = Number.parseFloat(value);
     if (num > 0) {
       setPhase("quoting");
@@ -440,6 +453,7 @@ export function RwaTradePanel({
     // funds have no way home, and a stale funding error outlives its plan.
     funding.reset();
     proceeds.reset();
+    setFundedFor(null);
   };
 
   const setPct = (pct: number) => {
@@ -460,19 +474,13 @@ export function RwaTradePanel({
     reset();
   };
 
-  const confirmTrade = async () => {
-    if (!quote || overBalance) return;
+  // The trade itself. Split from confirmTrade so funding can run straight into
+  // it: the build re-prices server-side, so the staleness gate below is about
+  // what the USER last saw, and a purchase they already committed to by funding
+  // must not stop to ask again.
+  const executeTrade = async () => {
     const req = buildReq(amount);
     if (!req) return;
-
-    // Never execute against stale numbers. Refresh the quote and require a
-    // second confirm; the notice is set after runQuote's synchronous start so
-    // its setNotice(null) does not wipe it.
-    if (Date.now() - quotedAtRef.current > QUOTE_TTL_MS) {
-      void runQuote(amount);
-      setNotice({ kind: "info", message: rwaErrorInfo("QUOTE_EXPIRED").message });
-      return;
-    }
 
     // Base trades are gas-sponsored, so the native-gas check only applies to
     // the chains where the wallet really pays its own fee.
@@ -481,7 +489,10 @@ export function RwaTradePanel({
     if (requiresNativeGas(asset.chain) && gasKnown && gas === false) {
       setNotice({
         kind: "gas",
-        message: t("gasNeeded", { symbol: gasSymbolForChain(asset.chain) }),
+        message: t("gasNeeded", {
+          symbol: gasSymbolForChain(asset.chain),
+          amount: gasMinimumForChain(asset.chain),
+        }),
       });
       return;
     }
@@ -527,6 +538,33 @@ export function RwaTradePanel({
       setPhase("quoted");
       if (info.requote) void runQuote(amount);
     }
+  };
+
+  const confirmTrade = async () => {
+    if (!quote || overBalance) return;
+    // Never execute against numbers the user has not seen. Refresh the quote
+    // and require a second confirm; the notice is set after runQuote's
+    // synchronous start so its setNotice(null) does not wipe it.
+    if (Date.now() - quotedAtRef.current > QUOTE_TTL_MS) {
+      void runQuote(amount);
+      setNotice({ kind: "info", message: rwaErrorInfo("QUOTE_EXPIRED").message });
+      return;
+    }
+    await executeTrade();
+  };
+
+  // Moving funds is not the goal — the purchase is. Stopping after the bridge
+  // leaves the user staring at a card they already acted on, and tapping it
+  // again is how one purchase became two bridges and no trade.
+  const fundThenBuy = async () => {
+    if (!solanaPlan || fundedFor === amount) return;
+    setFundedFor(amount);
+    const funded = await funding.fund(solanaPlan);
+    if (!funded) return;
+    // The buy is sized and simulated against the arrived balance, so it cannot
+    // run until the balance index reflects it.
+    await portfolio.refetchUntilChanged();
+    await executeTrade();
   };
 
   if (isIssuerAccess(asset)) {
@@ -865,10 +903,10 @@ export function RwaTradePanel({
                 </button>
               ) : canFund || !onAddFunds ? (
                 <button
-                  onClick={() => void funding.fund(solanaPlan)}
-                  disabled={!canFund || funding.busy}
+                  onClick={() => void fundThenBuy()}
+                  disabled={!canFund || alreadyFunded || funding.busy}
                   className={`mt-2.5 w-full rounded-[12px] p-2.5 font-sans text-[13.5px] font-semibold ${
-                    canFund && !funding.busy
+                    canFund && !alreadyFunded && !funding.busy
                       ? "text-ink cursor-pointer bg-white hover:opacity-90"
                       : "cursor-not-allowed bg-white/10 text-white/40"
                   }`}

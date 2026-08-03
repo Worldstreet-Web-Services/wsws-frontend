@@ -8,6 +8,7 @@ import { useChessMatch, useChessMatchSocial } from "@/hooks/use-casino-chess";
 import { useMatchMarket, usePlaceBet } from "@/hooks/use-casino-betting";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
+import { LiveChatOverlay } from "@/components/dashboard/casino/chess/live-chat-overlay";
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import {
@@ -276,12 +277,13 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
               />
             </div>
 
-            <div className="overflow-hidden rounded-[2px]">
+            <div className="relative overflow-hidden rounded-[2px]">
               {board ? (
                 <ChessBoard board={board} theme={theme} checkSquare={checkSquare} />
               ) : (
                 <CasinoLoading rows={1} />
               )}
+              <LiveChatOverlay messages={social.chatMessages} />
             </div>
 
             <div className="mt-3">

@@ -1,0 +1,66 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { truncateAddress } from "@/lib/format";
+import type { ChessChatMessage } from "@/lib/casino/api/types";
+
+interface FloatItem {
+  id: number;
+  author: string;
+  text: string;
+}
+
+// Chat lines drift up over the board and fade, the way a livestream floats
+// incoming comments over the video. Only lines that arrive after mount float —
+// the backlog already loaded stays in the side panel and never bursts onscreen —
+// and at most a handful are shown at once so a busy chat does not bury the board.
+export function LiveChatOverlay({ messages }: { messages: ChessChatMessage[] }) {
+  const [items, setItems] = useState<FloatItem[]>([]);
+  // null until the first run, which seeds "seen" with the existing backlog.
+  const seen = useRef<Set<number> | null>(null);
+
+  useEffect(() => {
+    if (seen.current === null) {
+      seen.current = new Set(messages.map((m) => m.id));
+      return;
+    }
+    const fresh = messages.filter((m) => !seen.current!.has(m.id));
+    if (fresh.length === 0) return;
+    fresh.forEach((m) => seen.current!.add(m.id));
+    setItems((prev) =>
+      [...prev, ...fresh.map((m) => ({ id: m.id, author: m.author, text: m.text }))].slice(-5)
+    );
+    const ids = new Set(fresh.map((m) => m.id));
+    const timer = setTimeout(() => {
+      setItems((prev) => prev.filter((it) => !ids.has(it.id)));
+    }, 6500);
+    return () => clearTimeout(timer);
+  }, [messages]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end gap-2 overflow-hidden p-4">
+      {items.map((it) => (
+        <div
+          key={it.id}
+          className="ws-float-chat w-fit max-w-[85%] rounded-2xl bg-black/55 px-3 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        >
+          <span className="mr-2 text-[11px] font-bold text-white/55">
+            {truncateAddress(it.author)}
+          </span>
+          <span className="text-[0.9rem] leading-5 text-white">{it.text}</span>
+        </div>
+      ))}
+      <style>{`
+        @keyframes wsFloatChat {
+          0% { opacity: 0; transform: translateY(18px) scale(0.96); }
+          12% { opacity: 1; transform: translateY(0) scale(1); }
+          78% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-26px); }
+        }
+        .ws-float-chat { animation: wsFloatChat 6.5s ease-out forwards; }
+      `}</style>
+    </div>
+  );
+}

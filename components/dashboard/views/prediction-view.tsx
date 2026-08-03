@@ -9,19 +9,27 @@ import { PredictionSlider } from "@/components/dashboard/prediction/prediction-s
 import { PortfolioPanel } from "@/components/dashboard/prediction/positions-panel";
 import { CreateMarketFlow } from "@/components/dashboard/prediction/create-market-flow";
 import { useMarkets, useCategories } from "@/hooks/use-prediction-markets";
+import type { MarketStatus } from "@/lib/prediction/types";
 
-// Browse (Execution) view: the market grid with category filters, an entry to
-// the create-market flow, and the portfolio panel underneath. Each card links to
-// the market detail page where trading, liquidity, and resolution live.
+// Status tabs shown above the grid: live markets, markets whose trading has
+// closed but aren't resolved yet, and settled markets. "Invalid" (void) markets
+// are an edge case and not browsable here.
+const STATUS_TABS: MarketStatus[] = ["Open", "Closed", "Resolved"];
+
+// Browse (Execution) view: the market grid with status + category filters, an
+// entry to the create-market flow, and the portfolio panel underneath. Each card
+// links to the market detail page where trading, liquidity, and resolution live.
 export function PredictionView() {
   const t = useTranslations("prediction");
   const [desktop, setDesktop] = useState(false);
+  const [status, setStatus] = useState<MarketStatus>("Open");
   const [category, setCategory] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Fetch the full open set once; tabs are derived from it so a topic appears as
-  // soon as a market carries it, and filtering happens client-side.
-  const { data: markets, isLoading } = useMarkets("Open");
+  // Fetch the set for the selected status; category tabs are derived from it so a
+  // topic appears as soon as a market carries it, and category filtering happens
+  // client-side.
+  const { data: markets, isLoading } = useMarkets(status);
   const { data: categories } = useCategories();
 
   const tabs = useMemo(() => {
@@ -54,6 +62,26 @@ export function PredictionView() {
         >
           {t("createMarket")}
         </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {STATUS_TABS.map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              // A category from one status may not exist in another, so reset it.
+              setStatus(s);
+              setCategory(null);
+            }}
+            className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+              status === s
+                ? "border-accent/45 bg-accent/12 text-white"
+                : "border-white/10 bg-white/4 text-white/65 hover:bg-white/8"
+            }`}
+          >
+            {t(`status_${s}`)}
+          </button>
+        ))}
       </div>
 
       {tabs.length > 0 ? (
@@ -91,7 +119,7 @@ export function PredictionView() {
           </div>
         ) : list.length === 0 ? (
           <div className="ws-card px-6 py-12 text-center text-[13.5px] font-normal text-white/55">
-            {t("noMarkets")}
+            {t(`noMarkets_${status}`)}
           </div>
         ) : desktop ? (
           <div className="@container">

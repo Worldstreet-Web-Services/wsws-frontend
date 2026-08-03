@@ -12,8 +12,14 @@ import { getWalletAddress } from "@/lib/user";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import { PREDICTION_ABI } from "@/lib/prediction/abi";
+import { fromBaseUnits } from "@/lib/trade/math";
 import { minOut, quoteBuy, quoteSell } from "@/lib/prediction/math";
-import { readPoolState, readShareBalance, readUsdcAllowance } from "@/lib/prediction/chain-reads";
+import {
+  readPoolState,
+  readShareBalance,
+  readUsdcAllowance,
+  readUsdcBalance,
+} from "@/lib/prediction/chain-reads";
 import {
   CREATION_FEE_USDC,
   LARGE_APPROVAL_USDC,
@@ -23,7 +29,19 @@ import {
   predictionContractAddress,
   sideToUint,
 } from "@/lib/prediction/logic";
-import type { Outcome, Side } from "@/lib/prediction/types";
+import { USDC_DECIMALS, type Outcome, type Side } from "@/lib/prediction/types";
+
+// Thrown when a spend would exceed the wallet's on-chain USDC balance. Carries
+// the human-readable required/available amounts for a specific error message.
+class InsufficientUsdcError extends Error {
+  constructor(
+    readonly required: string,
+    readonly balance: string
+  ) {
+    super("Insufficient USDC balance");
+    this.name = "InsufficientUsdcError";
+  }
+}
 
 // Orchestrates every on-chain prediction-market action from the user's embedded
 // wallet, gaslessly on Base. Value-moving calls that spend USDC (buy, create,
@@ -103,6 +121,24 @@ export function usePredictionActions() {
     [sendBatch, invalidate, t]
   );
 
+  // Reads the wallet's live USDC balance and throws a specific
+  // InsufficientUsdcError when it cannot cover `spend`, so the caller can show a
+  // clear "insufficient balance" message instead of letting the sponsored tx
+  // revert on transferFrom with an opaque reason.
+  const ensureUsdcBalance = useCallback(
+    async (spend: bigint): Promise<void> => {
+      if (!wallet) throw new Error("No wallet connected.");
+      const balance = await readUsdcBalance(wallet);
+      if (balance < spend) {
+        throw new InsufficientUsdcError(
+          fromBaseUnits(spend, USDC_DECIMALS),
+          fromBaseUnits(balance, USDC_DECIMALS)
+        );
+      }
+    },
+    [wallet]
+  );
+
   // Builds the USDC approve call when the current allowance does not cover the
   // spend. A large approval means later trades skip this step.
   const approveIfNeeded = useCallback(
@@ -138,6 +174,7 @@ export function usePredictionActions() {
         const { sharesOut } = quoteBuy(pool.rYes, pool.rNo, side, usdcIn, pool.feeBps);
         const minSharesOut = minOut(sharesOut, toleranceBps);
 
+        await ensureUsdcBalance(usdcIn);
         const calls = await approveIfNeeded(usdcIn);
         calls.push({
           to: predictionContractAddress(),
@@ -152,6 +189,12 @@ export function usePredictionActions() {
         toast.success(t(side === "yes" ? "betPlacedYes" : "betPlacedNo"), { id: toastId });
         return true;
       } catch (error) {
+        if (error instanceof InsufficientUsdcError) {
+          toast.error(t("insufficientUsdc", { required: error.required, balance: error.balance }), {
+            id: toastId,
+          });
+          return false;
+        }
         // Log the raw reason: friendlyError hides RPC/sponsorship text from the
         // toast, so the console is where a failed trade's real cause shows up.
         console.error("[prediction] buy failed", error);
@@ -161,7 +204,7 @@ export function usePredictionActions() {
         setPhase("idle");
       }
     },
-    [wallet, approveIfNeeded, runBatch, t]
+    [wallet, ensureUsdcBalance, approveIfNeeded, runBatch, t]
   );
 
   const sellShares = useCallback(
@@ -217,6 +260,7 @@ export function usePredictionActions() {
       const toastId = toast.loading(t("addingLiquidity"));
       try {
         setPhase("reading");
+        await ensureUsdcBalance(usdcIn);
         const calls = await approveIfNeeded(usdcIn);
         calls.push({
           to: predictionContractAddress(),
@@ -231,13 +275,19 @@ export function usePredictionActions() {
         toast.success(t("liquidityAdded"), { id: toastId });
         return true;
       } catch (error) {
+        if (error instanceof InsufficientUsdcError) {
+          toast.error(t("insufficientUsdc", { required: error.required, balance: error.balance }), {
+            id: toastId,
+          });
+          return false;
+        }
         toast.error(friendlyError(error, t("liquidityFailed")), { id: toastId });
         return false;
       } finally {
         setPhase("idle");
       }
     },
-    [wallet, approveIfNeeded, runBatch, t]
+    [wallet, ensureUsdcBalance, approveIfNeeded, runBatch, t]
   );
 
   const removeLiquidity = useCallback(
@@ -281,8 +331,11 @@ export function usePredictionActions() {
       const toastId = toast.loading(t("creatingMarket"));
       try {
         setPhase("reading");
-        // Approval must cover the seed plus the flat creation fee.
-        const calls = await approveIfNeeded(seedUsdc + CREATION_FEE_USDC);
+        // The spend is the seed plus the flat creation fee; both the balance
+        // check and the approval are gated on it.
+        const spend = seedUsdc + CREATION_FEE_USDC;
+        await ensureUsdcBalance(spend);
+        const calls = await approveIfNeeded(spend);
         calls.push({
           to: predictionContractAddress(),
           data: encodeFunctionData({
@@ -296,13 +349,22 @@ export function usePredictionActions() {
         toast.success(t("marketCreated"), { id: toastId });
         return true;
       } catch (error) {
+        if (error instanceof InsufficientUsdcError) {
+          toast.error(t("insufficientUsdc", { required: error.required, balance: error.balance }), {
+            id: toastId,
+          });
+          return false;
+        }
+        // Log the raw reason: friendlyError hides RPC/sponsorship text from the
+        // toast, so the console is where a failed creation's real cause shows up.
+        console.error("[prediction] createMarket failed", error);
         toast.error(friendlyError(error, t("createMarketFailed")), { id: toastId });
         return false;
       } finally {
         setPhase("idle");
       }
     },
-    [wallet, approveIfNeeded, runBatch, t]
+    [wallet, ensureUsdcBalance, approveIfNeeded, runBatch, t]
   );
 
   // One-call actions that spend nothing: run through the single send path.

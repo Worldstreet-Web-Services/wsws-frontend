@@ -2,6 +2,7 @@
 // read fresh here (never trusted from a possibly-stale REST/WS value) right
 // before a trade so the slippage guard is computed against the live pool.
 
+import { erc20Abi } from "viem";
 import { encodeAllowanceCall, parseAllowance } from "@/lib/trade/erc20";
 import { publicClientForChain } from "@/lib/trade/receipt";
 import { PREDICTION_ABI } from "@/lib/prediction/abi";
@@ -45,6 +46,18 @@ export async function readUsdcAllowance(owner: string): Promise<bigint> {
     data: encodeAllowanceCall(owner, predictionContractAddress()),
   });
   return parseAllowance(data ?? "0x");
+}
+
+// The wallet's USDC balance on Base, read fresh to gate a spend (create/buy/add
+// liquidity) with a specific "insufficient balance" error before the user signs
+// a transaction that would otherwise revert on transferFrom.
+export async function readUsdcBalance(owner: string): Promise<bigint> {
+  return client().readContract({
+    address: USDC_ADDRESS as `0x${string}`,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [owner as `0x${string}`],
+  });
 }
 
 // The wallet's ERC-1155 balance of one outcome's shares, to cap a sell.

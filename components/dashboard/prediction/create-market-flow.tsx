@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { usePredictionActions } from "@/hooks/use-prediction-actions";
-import { useCategories } from "@/hooks/use-prediction-markets";
+import { useCategories, refreshMarketsUntilPresent } from "@/hooks/use-prediction-markets";
 import { attachMetadata, newIdempotencyKey, uploadImage } from "@/lib/prediction/api";
 import { isImageNotConfigured } from "@/lib/prediction/normalize";
 import { toBaseUnits } from "@/lib/trade/math";
@@ -42,45 +42,116 @@ function randomMarketId(): bigint {
   return id;
 }
 
-// Downscale the longest edge to this many pixels before upload.
-const MAX_IMAGE_DIM = 1280;
+// Target landscape aspect ratio for the market image. Market cards render the
+// image in a 16:9 box (see prediction-card.tsx), so we crop to match — any
+// source orientation is accepted and center-cropped to fit.
+const TARGET_ASPECT = 16 / 9;
+// Cap the output width; height follows from TARGET_ASPECT. Keeps the JPEG small.
+const MAX_IMAGE_WIDTH = 1280;
 // JPEG quality for the compressed upload (0..1). Heavy compression keeps the
 // payload small so the upload is fast and well under any body-size limit.
 const IMAGE_QUALITY = 0.7;
 
-type ProcessedImage = { ok: true; dataUrl: string } | { ok: false; reason: "landscape" | "read" };
+type ProcessedImage = { ok: true; dataUrl: string } | { ok: false; reason: "read" };
 
-// Validates orientation and compresses the image on a canvas (resize + JPEG)
-// before it ever hits the network. A multi-MB photo becomes a few hundred KB,
-// which is what we send to the upload API.
-async function processImage(file: File): Promise<ProcessedImage> {
+// A decoded source image plus the orientation-corrected dimensions we should
+// draw it at. `source` is drawable directly onto a 2D canvas.
+type DecodedImage = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close: () => void;
+};
+
+// Decodes a file into an orientation-corrected drawable. Camera photos frequently
+// store their pixels rotated via an EXIF flag; we prefer
+// `createImageBitmap(..., { imageOrientation: "from-image" })`, which bakes the
+// EXIF rotation into the bitmap so width/height (and therefore the crop we take)
+// reflect what the user actually sees. Browsers without that option fall back to
+// <img>, which applies EXIF to naturalWidth/naturalHeight in every
+// currently-shipping engine.
+async function decodeImage(file: File): Promise<DecodedImage> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall through to the <img> path (e.g. unsupported option or codec).
+    }
+  }
   const url = URL.createObjectURL(file);
   try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("read"));
-      el.src = url;
+    const el = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("read"));
+      img.src = url;
     });
-    if (img.naturalWidth < img.naturalHeight) return { ok: false, reason: "landscape" };
+    return {
+      source: el,
+      width: el.naturalWidth,
+      height: el.naturalHeight,
+      close: () => {},
+    };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
-    const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.max(1, Math.round(img.naturalWidth * scale));
-    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+// Center-crops the source to the market card's 16:9 aspect ratio and compresses
+// it (resize + JPEG) before it ever hits the network. Any orientation is
+// accepted: a portrait photo simply has its top/bottom trimmed to fit the
+// landscape frame, so the upload always matches how the card renders it. A
+// multi-MB photo becomes a few hundred KB.
+async function processImage(file: File): Promise<ProcessedImage> {
+  let decoded: DecodedImage;
+  try {
+    decoded = await decodeImage(file);
+  } catch {
+    return { ok: false, reason: "read" };
+  }
+  try {
+    // Largest 16:9 rectangle that fits inside the source, centered — this is the
+    // region of the original we keep.
+    const sourceAspect = decoded.width / decoded.height;
+    let sx: number, sy: number, sw: number, sh: number;
+    if (sourceAspect > TARGET_ASPECT) {
+      // Source is wider than 16:9 → full height, crop the sides.
+      sh = decoded.height;
+      sw = Math.round(sh * TARGET_ASPECT);
+      sx = Math.round((decoded.width - sw) / 2);
+      sy = 0;
+    } else {
+      // Source is taller/narrower than 16:9 → full width, crop top and bottom.
+      sw = decoded.width;
+      sh = Math.round(sw / TARGET_ASPECT);
+      sx = 0;
+      sy = Math.round((decoded.height - sh) / 2);
+    }
+
+    // Output canvas: 16:9, capped at MAX_IMAGE_WIDTH (never upscale past source).
+    const outWidth = Math.max(1, Math.min(MAX_IMAGE_WIDTH, sw));
+    const outHeight = Math.max(1, Math.round(outWidth / TARGET_ASPECT));
     const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = outWidth;
+    canvas.height = outHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return { ok: false, reason: "read" };
     // Flatten onto white so transparent PNGs don't turn black as JPEG.
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.fillRect(0, 0, outWidth, outHeight);
+    // Draw only the cropped region, scaled to fill the 16:9 output.
+    ctx.drawImage(decoded.source, sx, sy, sw, sh, 0, 0, outWidth, outHeight);
     return { ok: true, dataUrl: canvas.toDataURL("image/jpeg", IMAGE_QUALITY) };
   } catch {
     return { ok: false, reason: "read" };
   } finally {
-    URL.revokeObjectURL(url);
+    decoded.close();
   }
 }
 
@@ -148,18 +219,18 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
     setFileInputKey((k) => k + 1);
   };
 
-  // Uploads on selection so the secure URL is ready before creation. Validates
-  // size and landscape orientation client-side first.
+  // Uploads on selection so the secure URL is ready before creation. Checks the
+  // size, then crops + compresses to 16:9 client-side before the network call.
   const onPickFile = async (picked: File | null) => {
     if (!picked) return;
     if (picked.size > MAX_IMAGE_BYTES) {
       toast.error(t("imageTooLarge"));
       return;
     }
-    // Validate + heavily compress on a canvas before touching the network.
+    // Crop to 16:9 + heavily compress on a canvas before touching the network.
     const processed = await processImage(picked);
     if (!processed.ok) {
-      toast.error(processed.reason === "landscape" ? t("imageNotLandscape") : t("imageUploadFailed"));
+      toast.error(t("imageUploadFailed"));
       return;
     }
     setImageUrl(null);
@@ -226,12 +297,12 @@ export function CreateMarketFlow({ onDone }: CreateMarketFlowProps) {
       toast.info(t("metadataDeferred"));
     }
 
-    // Refetch the lists so the new market shows up with its question, category,
-    // and image (the on-chain create already invalidated once, before metadata).
-    void queryClient.invalidateQueries({ queryKey: ["prediction"] });
-
+    // Close the create panel immediately, then poll the lists until the indexer
+    // has mirrored the new market so it appears (with its question, category, and
+    // image) without the user reloading the page.
     toast.success(t("marketCreated"));
     onDone();
+    void refreshMarketsUntilPresent(queryClient, marketId());
   };
 
   const inputClass =

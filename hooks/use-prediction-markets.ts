@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import {
   getCategories,
   getMarket,
@@ -62,4 +62,34 @@ export function useCategories() {
     queryFn: getCategories,
     staleTime: 300_000,
   });
+}
+
+// A freshly-created market only lands in the read-model once the chain indexer
+// mirrors its MarketCreated event (a poll cycle after the tx confirms), so a
+// single invalidate right after create usually refetches too early to see it.
+// This polls the markets list — invalidating the prediction cache each round so
+// every consumer refreshes — until the target market appears or we time out,
+// giving the UI a "refresh itself after create" behavior without a manual reload.
+export async function refreshMarketsUntilPresent(
+  queryClient: QueryClient,
+  marketId: bigint,
+  { attempts = 10, intervalMs = 1500 }: { attempts?: number; intervalMs?: number } = {}
+): Promise<boolean> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    // Invalidate broadly so any mounted prediction query (grid, positions, etc.)
+    // refetches in step with our probe.
+    await queryClient.invalidateQueries({ queryKey: ["prediction"] });
+    try {
+      const markets = await listMarkets();
+      if (markets.some((m) => m.marketId === marketId)) return true;
+    } catch {
+      // Transient read failure — keep trying until attempts run out.
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+  // Give up polling but leave the cache invalidated so the next background
+  // refetch (or the 30s interval) will still surface the market eventually.
+  return false;
 }

@@ -224,12 +224,13 @@ export function hasNativeGas(tokens: TokenBalance[], chain: RwaChain): boolean |
   return balance > 0 && balance >= min;
 }
 
-// Sponsored EVM transactions do not require the wallet to hold native gas
-// before the trade can go through. Solana still does.
+// Sponsored transactions do not require the wallet to hold native gas before
+// the trade can go through. Solana is sponsored too: the sponsorship call pays
+// the fee and prefunds token-account rent, so a zero-SOL wallet can trade.
 export function requiresNativeGas(chain: RwaChain): boolean {
   const network = CHAIN_GAS[chain]?.network;
   if (!network) return true;
-  if (network === "solana-mainnet") return true;
+  if (network === "solana-mainnet") return false;
   return !isSponsoredEvmNetwork(network);
 }
 

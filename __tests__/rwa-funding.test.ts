@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  GAS_TOPUP_USDC,
+  LIFI_NATIVE_SOL,
+  SOL_GAS_MIN,
+  fundingLegs,
   planAffordable,
   planSignature,
   planBaseFunding,
@@ -7,51 +11,60 @@ import {
   resizeBridgeSend,
 } from "@/lib/rwa/funding";
 
-const base = { spendUsdc: 20, solanaUsdc: 0, baseUsdc: 100 };
+const base = { spendUsdc: 20, solanaUsdc: 0, solanaSol: 0, baseUsdc: 100 };
 
 describe("planSolanaFunding", () => {
-  it("needs nothing when Solana already holds the funds", () => {
-    expect(planSolanaFunding({ ...base, solanaUsdc: 25 })).toBeNull();
-  });
-
-  it("needs nothing when the wallet holds USDC but no SOL", () => {
-    // Solana is gasless for us: the sponsor pays the fee and prefunds rent,
-    // so a wallet with zero SOL is fully able to buy.
-    expect(planSolanaFunding({ ...base, solanaUsdc: 25 })).toBeNull();
+  it("needs nothing when Solana already holds the funds and gas", () => {
+    expect(planSolanaFunding({ ...base, solanaUsdc: 25, solanaSol: 0.02 })).toBeNull();
   });
 
   it("sends more than the shortfall so the arrival covers it", () => {
     // A bridge takes a fixed fee plus a rate; sending exactly 8 would land
     // short and leave the buy unaffordable.
-    const plan = planSolanaFunding({ ...base, solanaUsdc: 12 });
+    const plan = planSolanaFunding({ ...base, solanaUsdc: 12, solanaSol: 0.02 });
     expect(plan?.bridgeUsdc).toBeGreaterThan(8);
     expect(plan?.bridgeUsdc).toBeLessThanOrEqual(8.5);
     expect(plan?.requiredArrivalUsdc).toBe(8);
+    expect(plan?.topUpGas).toBe(false);
   });
 
   it("covers the fixed bridge fee that sank a real $3 hop", () => {
     // Measured live: $3.06 sent delivered $2.876, six percent down, because at
     // this size the relayer's flat fee dominates. A purely proportional 2%
     // allowance under-sent and stranded the buy.
-    const plan = planSolanaFunding({ ...base, spendUsdc: 3 });
+    const plan = planSolanaFunding({ ...base, spendUsdc: 3, solanaSol: 0.02 });
     expect(plan?.bridgeUsdc).toBeGreaterThanOrEqual(3.26);
   });
 
   it("raises a dust hop to the minimum instead of bridging pennies", () => {
     // 4%+ of a $0.50 hop is lost to fees, and the arrival would still miss.
-    const plan = planSolanaFunding({ ...base, spendUsdc: 20, solanaUsdc: 19.7 });
+    const plan = planSolanaFunding({ ...base, spendUsdc: 20, solanaUsdc: 19.7, solanaSol: 0.02 });
     expect(plan?.bridgeUsdc).toBe(2);
   });
 
   it("rounds the bridged amount up to the cent", () => {
-    const plan = planSolanaFunding({ ...base, spendUsdc: 100 });
+    const plan = planSolanaFunding({ ...base, spendUsdc: 100, solanaSol: 0.02 });
     expect(plan?.bridgeUsdc).toBe(102.2);
   });
 
-  it("asks only for the bridge when the wallet is empty", () => {
-    // No gas leg: there is nothing to fuel on a sponsored chain.
+  it("treats a wallet at the gas minimum as already fuelled", () => {
+    // A $1 hop delivered 0.009 SOL against an old 0.01 target, so every later
+    // plan asked to buy gas again forever. 0.009 covers four token accounts.
+    expect(planSolanaFunding({ ...base, solanaUsdc: 50, solanaSol: 0.009 })).toBeNull();
+    expect(planSolanaFunding({ ...base, solanaUsdc: 50, solanaSol: SOL_GAS_MIN })).toBeNull();
+    expect(planSolanaFunding({ ...base, solanaUsdc: 50, solanaSol: 0.001 })?.topUpGas).toBe(true);
+  });
+
+  it("adds a gas top-up when SOL is short, even with enough USDC", () => {
+    const plan = planSolanaFunding({ ...base, solanaUsdc: 50, solanaSol: 0 });
+    expect(plan?.bridgeUsdc).toBe(0);
+    expect(plan?.topUpGas).toBe(true);
+    expect(plan?.totalBaseUsdc).toBe(GAS_TOPUP_USDC);
+  });
+
+  it("covers both when the wallet is empty", () => {
     const plan = planSolanaFunding(base);
-    expect(plan?.bridgeUsdc).toBeCloseTo(20 * 1.02 + 0.2, 6);
+    expect(plan?.totalBaseUsdc).toBeCloseTo(20 * 1.02 + 0.2 + GAS_TOPUP_USDC, 6);
   });
 });
 
@@ -80,18 +93,25 @@ describe("resizeBridgeSend", () => {
 });
 
 describe("planAffordable", () => {
-  it("compares the plan against the Base balance", () => {
+  it("compares the whole plan against the Base balance", () => {
     const plan = planSolanaFunding(base);
-    expect(plan && planAffordable(plan, 21)).toBe(true);
-    expect(plan && planAffordable(plan, 20)).toBe(false);
+    expect(plan && planAffordable(plan, 22)).toBe(true);
+    expect(plan && planAffordable(plan, 21)).toBe(false);
+  });
+});
+
+describe("fundingLegs", () => {
+  it("runs the fast gas hop before the purchase funds", () => {
+    const plan = planSolanaFunding(base);
+    const legs = plan ? fundingLegs(plan) : [];
+    expect(legs.map((l) => l.kind)).toEqual(["gas", "usdc"]);
+    expect(legs[0].toToken).toBe(LIFI_NATIVE_SOL);
+    expect(legs[1].usdc).toBeGreaterThan(20);
   });
 
-  it("clears a small buy the old gas top-up priced out", () => {
-    // The reported case: a $0.10 buy against $2.95 on Base. The gas leg and
-    // its $1 top-up used to push the plan to $3.00 and strand the buy.
-    const plan = planSolanaFunding({ spendUsdc: 0.1, solanaUsdc: 0, baseUsdc: 2.9536 });
-    expect(plan?.bridgeUsdc).toBe(2);
-    expect(plan && planAffordable(plan, 2.9536)).toBe(true);
+  it("emits only the leg that is needed", () => {
+    const plan = planSolanaFunding({ ...base, solanaSol: 0.02 });
+    expect(plan && fundingLegs(plan).map((l) => l.kind)).toEqual(["usdc"]);
   });
 });
 
@@ -102,6 +122,14 @@ describe("planSignature", () => {
     const c = planSolanaFunding({ ...base, spendUsdc: 50 });
     expect(a && b && planSignature(a) === planSignature(b)).toBe(true);
     expect(a && c && planSignature(a) === planSignature(c)).toBe(false);
+  });
+
+  it("separates a gas top-up from an otherwise identical plan", () => {
+    const withGas = planSolanaFunding({ ...base, solanaSol: 0 });
+    const withoutGas = planSolanaFunding({ ...base, solanaSol: 0.02 });
+    expect(withGas && withoutGas && planSignature(withGas) === planSignature(withoutGas)).toBe(
+      false
+    );
   });
 });
 
@@ -115,6 +143,7 @@ describe("spending exactly the landed balance", () => {
       planSolanaFunding({
         spendUsdc: landed,
         solanaUsdc: landed,
+        solanaSol: 0.009,
         baseUsdc: 1.8,
       })
     ).toBeNull();
@@ -124,9 +153,11 @@ describe("spending exactly the landed balance", () => {
     const plan = planSolanaFunding({
       spendUsdc: 3,
       solanaUsdc: 2.876564,
+      solanaSol: 0.009,
       baseUsdc: 10,
     });
     expect(plan?.bridgeUsdc).toBe(2);
+    expect(plan?.topUpGas).toBe(false);
   });
 });
 
@@ -140,6 +171,7 @@ describe("a full-balance buy is never short of itself", () => {
       planSolanaFunding({
         spendUsdc: landed,
         solanaUsdc: landed,
+        solanaSol: 0.009,
         baseUsdc: 1.818339,
       })
     ).toBeNull();
@@ -152,6 +184,7 @@ describe("a full-balance buy is never short of itself", () => {
     const plan = planSolanaFunding({
       spendUsdc: landed * 1.001,
       solanaUsdc: landed,
+      solanaSol: 0.009,
       baseUsdc: 1.818339,
     });
     expect(plan?.bridgeUsdc).toBe(2);
@@ -160,7 +193,7 @@ describe("a full-balance buy is never short of itself", () => {
 });
 
 describe("planBaseFunding — USDC on Solana, buying on Base", () => {
-  const solanaHeavy = { spendUsdc: 3, baseUsdc: 0, solanaUsdc: 10 };
+  const solanaHeavy = { spendUsdc: 3, baseUsdc: 0, solanaUsdc: 10, solanaSol: 0.009 };
 
   it("plans nothing when Base already covers the spend", () => {
     expect(planBaseFunding({ ...solanaHeavy, baseUsdc: 5 })).toBeNull();
@@ -175,6 +208,7 @@ describe("planBaseFunding — USDC on Solana, buying on Base", () => {
     const plan = planBaseFunding(solanaHeavy);
     expect(plan?.requiredArrivalUsdc).toBe(3);
     expect(plan?.bridgeUsdc).toBeGreaterThan(3);
+    expect(plan?.needsSolForGas).toBe(false);
   });
 
   it("never asks to send more Solana USDC than the wallet holds", () => {
@@ -187,11 +221,11 @@ describe("planBaseFunding — USDC on Solana, buying on Base", () => {
     expect(plan?.requiredArrivalUsdc).toBe(1);
   });
 
-  it("plans the hop even when the wallet holds no SOL", () => {
-    // The outbound Solana send is fee-sponsored, so a USDC-only wallet can
-    // still move its funds.
-    const plan = planBaseFunding(solanaHeavy);
-    expect(plan?.bridgeUsdc).toBeGreaterThan(3);
+  it("flags a wallet that holds USDC on Solana but no SOL to send it", () => {
+    // Sending from Solana costs SOL, and there is no way to buy SOL from
+    // Solana without already having some — so this has to be said, not retried.
+    const plan = planBaseFunding({ ...solanaHeavy, solanaSol: 0 });
+    expect(plan?.needsSolForGas).toBe(true);
   });
 
   it("ignores float residue on a full-balance spend", () => {
@@ -201,32 +235,36 @@ describe("planBaseFunding — USDC on Solana, buying on Base", () => {
         spendUsdc: landed,
         baseUsdc: landed,
         solanaUsdc: 5,
+        solanaSol: 0.009,
       })
     ).toBeNull();
   });
 });
 
 describe("cross-chain fallback is symmetric", () => {
+  const gas = { solanaSol: 0.009 };
+
   it("funds a Solana buy from Base USDC", () => {
-    const plan = planSolanaFunding({ spendUsdc: 3, solanaUsdc: 0, baseUsdc: 10 });
+    const plan = planSolanaFunding({ ...gas, spendUsdc: 3, solanaUsdc: 0, baseUsdc: 10 });
     expect(plan?.bridgeUsdc).toBeGreaterThan(3);
     expect(plan && planAffordable(plan, 10)).toBe(true);
   });
 
   it("funds a Base buy from Solana USDC", () => {
-    const plan = planBaseFunding({ spendUsdc: 3, baseUsdc: 0, solanaUsdc: 10 });
+    const plan = planBaseFunding({ ...gas, spendUsdc: 3, baseUsdc: 0, solanaUsdc: 10 });
     expect(plan?.bridgeUsdc).toBeGreaterThan(3);
+    expect(plan?.needsSolForGas).toBe(false);
   });
 
   it("has nothing to offer when both chains are empty", () => {
     // Neither planner can help; the panel falls back to the deposit flow and a
     // buy button that says why it is disabled.
     expect(
-      planSolanaFunding({ spendUsdc: 3, solanaUsdc: 0, baseUsdc: 0 })?.bridgeUsdc
+      planSolanaFunding({ ...gas, spendUsdc: 3, solanaUsdc: 0, baseUsdc: 0 })?.bridgeUsdc
     ).toBeGreaterThan(0);
     expect(
-      planAffordable(planSolanaFunding({ spendUsdc: 3, solanaUsdc: 0, baseUsdc: 0 })!, 0)
+      planAffordable(planSolanaFunding({ ...gas, spendUsdc: 3, solanaUsdc: 0, baseUsdc: 0 })!, 0)
     ).toBe(false);
-    expect(planBaseFunding({ spendUsdc: 3, baseUsdc: 0, solanaUsdc: 0 })).toBeNull();
+    expect(planBaseFunding({ ...gas, spendUsdc: 3, baseUsdc: 0, solanaUsdc: 0 })).toBeNull();
   });
 });

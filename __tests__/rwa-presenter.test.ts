@@ -197,15 +197,13 @@ describe("hasNativeGas", () => {
     expect(hasNativeGas([token({ symbol: "BNB", balance: 1 })], "bsc")).toBeNull();
   });
 
-  it("never requires native gas on sponsored chains", () => {
+  it("never requires native gas on sponsored EVM chains", () => {
     expect(requiresNativeGas("base")).toBe(false);
     expect(requiresNativeGas("ethereum")).toBe(false);
     expect(requiresNativeGas("arbitrum")).toBe(false);
     expect(requiresNativeGas("polygon")).toBe(false);
     expect(requiresNativeGas("bsc")).toBe(false);
-    // Solana trades are sponsored too: fee paid and rent prefunded, so a
-    // zero-SOL wallet must not be told to top up.
-    expect(requiresNativeGas("solana")).toBe(false);
+    expect(requiresNativeGas("solana")).toBe(true);
   });
 });
 

@@ -461,7 +461,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
         </section>
 
         <aside
-          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:h-[calc(100vh-104px)]"
+          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:h-[calc(100dvh-140px)]"
           style={{ background: CHESS_SIDEBAR_BG }}
         >
           <div className="border-b border-white/6 px-4 pt-4 pb-4 sm:px-5">

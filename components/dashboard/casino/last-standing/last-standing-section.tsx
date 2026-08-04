@@ -664,26 +664,7 @@ export function LastStandingSection() {
                 {t("prizePool")}
               </div>
               <div className="flex items-center gap-2">
-                <MiniTimerLauncher
-                  serverSeconds={status?.timeRemaining ?? 0}
-                  active={gameActive}
-                  idleSeconds={status?.timerDuration ?? 0}
-                  statusLiveLabel={t("statusLiveRound")}
-                  statusEndingLabel={t("statusEnding")}
-                  statusIdleLabel={status?.isGameStarted ? t("statusRoundEnded") : t("statusIdle")}
-                  potLabel={t("prizePool")}
-                  pot={money.format(potUsd)}
-                  balanceLabel={t("yourBalance")}
-                  balance={mask(money.format(balanceUsd))}
-                  stakeLabel={
-                    canPlay ? t("ctaPlay", { amount: money.format(entryFeeUsd) }) : t("ctaAddMoney")
-                  }
-                  canStake={!!status && !!address && canPlay}
-                  staking={wagering}
-                  onStake={() => void onPlay()}
-                  openLabel={t("miniOpen")}
-                  closeLabel={t("miniClose")}
-                />
+                <MiniTimerLauncher />
                 <MusicToggle />
               </div>
             </div>

@@ -139,7 +139,15 @@ async function openDocumentPip(): Promise<void> {
   win.document.body.style.background = "#101013";
   win.document.body.style.margin = "0";
   // The browser fires pagehide when the user closes the floating window.
-  win.addEventListener("pagehide", () => setState({ pipWindow: null }), { once: true });
+  win.addEventListener(
+    "pagehide",
+    () => {
+      stopKeepAliveAudio();
+      setState({ pipWindow: null });
+    },
+    { once: true }
+  );
+  startKeepAliveAudio();
   setState({ pipWindow: win });
 }
 
@@ -212,11 +220,46 @@ async function openVideoPip(): Promise<void> {
     "leavepictureinpicture",
     () => {
       teardownVideoSurface();
+      stopKeepAliveAudio();
       setState({ videoActive: false });
     },
     { once: true }
   );
+  startKeepAliveAudio();
   setState({ videoActive: true });
+}
+
+// An inaudible audio bed held open while the pop-out is up. Browsers with
+// aggressive tab suspension (Arc, Edge's sleeping tabs, Chrome's freezing)
+// only spare pages they consider to be playing media — and a muted canvas
+// stream does not count. Without this the hidden page is frozen after a few
+// minutes, the stream stops, and the floating window dies with it. The gain
+// is far below audibility; it exists to keep the page classified as playing.
+let keepAlive: { context: AudioContext; oscillator: OscillatorNode } | null = null;
+
+function startKeepAliveAudio(): void {
+  if (keepAlive) return;
+  try {
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    gain.gain.value = 0.0001;
+    oscillator.frequency.value = 40;
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    keepAlive = { context, oscillator };
+  } catch {
+    // No audio, no exemption — the pop-out still works in the foreground.
+    keepAlive = null;
+  }
+}
+
+function stopKeepAliveAudio(): void {
+  if (!keepAlive) return;
+  keepAlive.oscillator.stop();
+  void keepAlive.context.close();
+  keepAlive = null;
 }
 
 function closeMiniWindow(): void {
@@ -227,6 +270,7 @@ function closeMiniWindow(): void {
   } else {
     teardownVideoSurface();
   }
+  stopKeepAliveAudio();
   setState({ pipWindow: null, videoActive: false });
 }
 

@@ -30,7 +30,6 @@ const CARD_SHADOW_HOVER =
   "inset 0 .1rem 0 0 rgba(255, 255, 255, 0.14), 0 .1rem .2rem 0 rgba(0, 0, 0, 0.14), 0 .2rem .4rem 0 rgba(0, 0, 0, 0.10)";
 const LANDING_THEME = BOARD_THEMES.find((theme) => theme.id === "green") ?? DEFAULT_THEME;
 const LANDING_BOARD = initialBoard();
-const LOBBY_BOARD_MAX_WIDTH = "min(100%, 780px, calc(100vh - 255px))";
 
 function timeControlLabel(t: ReturnType<typeof useTranslations>, tc: string): string {
   return tc === "3+2" || tc === "5+3" ? t("blitz", { tc }) : t("rapid", { tc });
@@ -288,7 +287,12 @@ export function LobbySection() {
             className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:sticky xl:top-[84px] xl:self-start"
             style={{ background: SURFACE_BG }}
           >
-            <div className="mx-auto w-full" style={{ maxWidth: LOBBY_BOARD_MAX_WIDTH }}>
+            {/* The board caps its own width to what fits the viewport height.
+                Around it sit two player bars plus paddings (224px) and the
+                topbar, back link and page gaps (156px); the base 255px reserve
+                is not enough on xl where the whole column must fit without
+                page scroll, so the reserve grows to 380px there. */}
+            <div className="mx-auto w-full max-w-[var(--board-max)] [--board-max:min(100%,780px,calc(100vh-255px))] xl:[--board-max:min(100%,780px,calc(100vh-380px))]">
               <PlayerBar label={t("colOpponent")} />
               <div className="mt-4 overflow-hidden rounded-[2px]">
                 <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />

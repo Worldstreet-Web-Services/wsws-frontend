@@ -191,7 +191,9 @@ export function useSendUsdc() {
         }
 
         const transaction = await buildSolanaTokenTransfer(from, to, amount, usdc, decimals);
-        const sponsored = await sponsorSolanaTransaction(transaction);
+        // Rent too: on this path the user pays the destination-ATA rent, and a
+        // gasless wallet holds no SOL to pay it with.
+        const sponsored = await sponsorSolanaTransaction(transaction, { prefundRent: true });
         const { signature } = await signAndSendTransaction({ transaction: sponsored, wallet });
         return getBase58Decoder().decode(signature);
       } finally {
@@ -306,7 +308,9 @@ export function useSendToken() {
           tokenAddress === null
             ? await buildSolanaSolTransfer(from, to, amount)
             : await buildSolanaTokenTransfer(from, to, amount, tokenAddress, decimals);
-        const sponsored = await sponsorSolanaTransaction(transaction);
+        // Token sends may create the destination ATA, whose rent falls on the
+        // user here; prefunding covers it for a wallet holding no SOL.
+        const sponsored = await sponsorSolanaTransaction(transaction, { prefundRent: true });
         const { signature } = await signAndSendTransaction({ transaction: sponsored, wallet });
         return getBase58Decoder().decode(signature);
       } finally {

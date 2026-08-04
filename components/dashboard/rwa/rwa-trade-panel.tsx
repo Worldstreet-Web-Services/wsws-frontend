@@ -169,9 +169,10 @@ export function RwaTradePanel({
   // What the typed amount is worth in dollars on the buy side.
   const payUsd = payValue * (payOption?.priceUsd ?? 1);
 
-  // A Solana buy needs USDC (and a little SOL for the fee) on Solana. When the
-  // wallet is short but holds Base USDC, the shortfall is bridgeable rather
-  // than a dead end — both legs execute on Base, so they cost the user no gas.
+  // A Solana buy needs USDC on Solana; fees and rent are sponsored, so USDC is
+  // all it needs. When the wallet is short but holds Base USDC, the shortfall
+  // is bridgeable rather than a dead end — the transfer executes on Base, so
+  // it costs the user no gas either.
   const funding = useSolanaFunding();
   // Whether the buy is being paid for in the chain's own USDC — the only case
   // bridging USDC can top up. Paying with a token already held needs no
@@ -190,7 +191,6 @@ export function RwaTradePanel({
       // its own balance and the funding card could never clear.
       spendUsdc: payingWithUsdc ? payValue : 0,
       solanaUsdc: balanceOf("solana-mainnet", "USDC"),
-      solanaSol: balanceOf("solana-mainnet", "SOL"),
       baseUsdc: balanceOf("base-mainnet", "USDC"),
     });
   }, [asset.chain, isBuy, payingWithUsdc, payValue, portfolio.tokens]);
@@ -208,8 +208,7 @@ export function RwaTradePanel({
     phase === "done" && !isBuy && asset.chain === "solana" && solanaUsdcBalance > 0.5;
 
   // The mirror case: a Base asset paid for in USDC that is sitting on Solana.
-  // Base trades are sponsored, so there is no gas leg to buy — only the outbound
-  // Solana signature, which the wallet must already be able to afford.
+  // Both sides are sponsored, so the hop needs nothing beyond the USDC itself.
   const basePlan = useMemo(() => {
     if (asset.chain !== "base" || !isBuy || !payingWithUsdc) return null;
     const balanceOf = (network: string, symbol: string) =>
@@ -219,15 +218,12 @@ export function RwaTradePanel({
       spendUsdc: payValue,
       baseUsdc: balanceOf("base-mainnet", "USDC"),
       solanaUsdc: balanceOf("solana-mainnet", "USDC"),
-      solanaSol: balanceOf("solana-mainnet", "SOL"),
     });
   }, [asset.chain, isBuy, payingWithUsdc, payValue, portfolio.tokens]);
 
   const needsFunding = (solanaPlan != null || basePlan != null) && payValue > 0;
   const canFund =
-    solanaPlan != null
-      ? planAffordable(solanaPlan, baseUsdcBalance)
-      : basePlan != null && !basePlan.needsSolForGas;
+    solanaPlan != null ? planAffordable(solanaPlan, baseUsdcBalance) : basePlan != null;
   const payInput = payOption?.input ?? null;
 
   // The exact base units to send home, never more than the wallet holds.
@@ -287,11 +283,8 @@ export function RwaTradePanel({
             ? t("stepSettling")
             : undefined;
     const legs: ProgressStep[] = fundingSteps.map((s, i) => ({
-      id: `${s.kind}-${i}`,
-      label:
-        s.kind === "gas"
-          ? t("stepGas", { amount: formatUsd(s.usdc) })
-          : t("stepBridge", { amount: formatUsd(s.usdc) }),
+      id: `bridge-${i}`,
+      label: t("stepBridge", { amount: formatUsd(s.usdc) }),
       detail: s.status === "active" ? detailFor(s.phase) : undefined,
       status: s.status,
     }));
@@ -831,38 +824,27 @@ export function RwaTradePanel({
             /* USDC on Solana, buying on Base: one hop home, signed on Solana. */
             <div className="mt-3.5 rounded-[12px] border border-white/12 bg-white/5 p-3">
               <div className="text-[12.5px] leading-[1.5] font-medium text-white/80">
-                {basePlan.needsSolForGas
-                  ? t("bringToBaseNoGas")
-                  : t("bringToBaseTitle", { amount: formatUsd(basePlan.bridgeUsdc) })}
+                {t("bringToBaseTitle", { amount: formatUsd(basePlan.bridgeUsdc) })}
               </div>
               <p className="mt-1 text-[11.5px] leading-[1.5] font-normal text-white/50">
-                {basePlan.needsSolForGas ? t("bringToBaseNoGasBody") : t("bringToBaseBody")}
+                {t("bringToBaseBody")}
               </p>
               {proceeds.error ? (
                 <p className="text-down mt-2 text-[11.5px] leading-[1.5] font-normal">
                   {proceeds.error}
                 </p>
               ) : null}
-              {basePlan.needsSolForGas && onAddFunds ? (
-                <button
-                  onClick={onAddFunds}
-                  className="text-ink mt-2.5 w-full cursor-pointer rounded-[12px] bg-white p-2.5 font-sans text-[13.5px] font-semibold hover:opacity-90"
-                >
-                  {t("addFunds")}
-                </button>
-              ) : (
-                <button
-                  onClick={() => void proceeds.bringHome(bridgeHomeRaw)}
-                  disabled={basePlan.needsSolForGas || proceeds.busy}
-                  className={`mt-2.5 w-full rounded-[12px] p-2.5 font-sans text-[13.5px] font-semibold ${
-                    !basePlan.needsSolForGas && !proceeds.busy
-                      ? "text-ink cursor-pointer bg-white hover:opacity-90"
-                      : "cursor-not-allowed bg-white/10 text-white/40"
-                  }`}
-                >
-                  {proceeds.busy ? t("bringToBaseWorking") : t("bringToBaseCta")}
-                </button>
-              )}
+              <button
+                onClick={() => void proceeds.bringHome(bridgeHomeRaw)}
+                disabled={proceeds.busy}
+                className={`mt-2.5 w-full rounded-[12px] p-2.5 font-sans text-[13.5px] font-semibold ${
+                  !proceeds.busy
+                    ? "text-ink cursor-pointer bg-white hover:opacity-90"
+                    : "cursor-not-allowed bg-white/10 text-white/40"
+                }`}
+              >
+                {proceeds.busy ? t("bringToBaseWorking") : t("bringToBaseCta")}
+              </button>
             </div>
           ) : needsFunding && solanaPlan ? (
             <div className="mt-3.5 rounded-[12px] border border-white/12 bg-white/5 p-3">
@@ -870,7 +852,7 @@ export function RwaTradePanel({
                 {progressSteps.length > 0
                   ? t("fundSolanaProgress")
                   : canFund
-                    ? t("fundSolanaTitle", { amount: formatUsd(solanaPlan.totalBaseUsdc) })
+                    ? t("fundSolanaTitle", { amount: formatUsd(solanaPlan.bridgeUsdc) })
                     : t("fundSolanaShort")}
               </div>
               {progressSteps.length > 0 ? (
@@ -880,10 +862,8 @@ export function RwaTradePanel({
               ) : (
                 <p className="mt-1 text-[11.5px] leading-[1.5] font-normal text-white/50">
                   {!canFund
-                    ? t("fundSolanaShortBody", { amount: formatUsd(solanaPlan.totalBaseUsdc) })
-                    : solanaPlan.topUpGas
-                      ? t("fundSolanaWithGas")
-                      : t("fundSolanaBody")}
+                    ? t("fundSolanaShortBody", { amount: formatUsd(solanaPlan.bridgeUsdc) })
+                    : t("fundSolanaBody")}
                 </p>
               )}
               {funding.error ? (

@@ -438,12 +438,19 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
             />
             <span className="shrink-0 font-sans text-[15px] font-medium text-white/70">USDC</span>
           </div>
-          <div className="mt-2 border-t border-white/8 pt-2 text-[13px] font-normal text-white/55">
-            {amount > balance
-              ? t("overBalance")
-              : payoutNgn != null && amount >= OFFRAMP_MIN_USDC
-                ? t("youReceive", { amount: `₦${formatNgn(payoutNgn)}` })
-                : t("enterMin", { amount: OFFRAMP_MIN_USDC })}
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/8 pt-2 text-[13px] font-normal text-white/55">
+            <span>
+              {amount > balance
+                ? t("overBalance")
+                : payoutNgn != null && amount >= OFFRAMP_MIN_USDC
+                  ? t("youReceive", { amount: `₦${formatNgn(payoutNgn)}` })
+                  : t("enterMin", { amount: OFFRAMP_MIN_USDC })}
+            </span>
+            {ngnRate > 0 ? (
+              <span className="tnum shrink-0 text-white/45">
+                {t("rateLine", { rate: `₦${formatNgn(ngnRate)}` })}
+              </span>
+            ) : null}
           </div>
         </div>
       ) : null}

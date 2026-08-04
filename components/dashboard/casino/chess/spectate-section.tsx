@@ -31,7 +31,7 @@ import { capturedFromBoard, isInCheck, kingPos, parseFen } from "@/lib/casino/ch
 import { useChessCashierStatus } from "@/hooks/use-chess-cashier";
 import { exceedsUsdcBalance, normalizeUsdcAmount, parseUsdcAmount } from "@/lib/casino/api/cashier";
 import { estimatePariMutuelReturn, impliedProbability } from "@/lib/casino/betting-math";
-import { friendlyError } from "@/lib/errors";
+import { friendlyError, isConflictError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import type { BetSelection, ChessColor } from "@/lib/casino/api/types";
 
@@ -226,55 +226,6 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
   const visibleChatMessages = useMemo(() => social.chatMessages, [social.chatMessages]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-
-    const query = window.matchMedia("(min-width: 1280px)");
-    const root = document.documentElement;
-    const body = document.body;
-    const previous = {
-      rootOverflow: root.style.overflow,
-      bodyOverflow: body.style.overflow,
-      rootOverscroll: root.style.overscrollBehaviorY,
-      bodyOverscroll: body.style.overscrollBehaviorY,
-    };
-    const sync = () => {
-      if (query.matches) {
-        root.style.overflow = "hidden";
-        body.style.overflow = "hidden";
-        root.style.overscrollBehaviorY = "none";
-        body.style.overscrollBehaviorY = "none";
-        return;
-      }
-      root.style.overflow = previous.rootOverflow;
-      body.style.overflow = previous.bodyOverflow;
-      root.style.overscrollBehaviorY = previous.rootOverscroll;
-      body.style.overscrollBehaviorY = previous.bodyOverscroll;
-    };
-
-    sync();
-    const handleChange = () => sync();
-    if (typeof query.addEventListener === "function") {
-      query.addEventListener("change", handleChange);
-      return () => {
-        query.removeEventListener("change", handleChange);
-        root.style.overflow = previous.rootOverflow;
-        body.style.overflow = previous.bodyOverflow;
-        root.style.overscrollBehaviorY = previous.rootOverscroll;
-        body.style.overscrollBehaviorY = previous.bodyOverscroll;
-      };
-    }
-
-    query.addListener(handleChange);
-    return () => {
-      query.removeListener(handleChange);
-      root.style.overflow = previous.rootOverflow;
-      body.style.overflow = previous.bodyOverflow;
-      root.style.overscrollBehaviorY = previous.rootOverscroll;
-      body.style.overscrollBehaviorY = previous.bodyOverscroll;
-    };
-  }, []);
-
-  useEffect(() => {
     const viewport = chatFeedRef.current;
     const track = chatTrackRef.current;
     if (!viewport || !track) return;
@@ -440,7 +391,9 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
       await social.postChat({ room: "spectator", text });
       setChatDraft("");
     } catch (e) {
-      toast.error(friendlyError(e, tPlay("toastChatFailed")));
+      toast.error(
+        isConflictError(e) ? tPlay("toastChatConflict") : friendlyError(e, tPlay("toastChatFailed"))
+      );
     }
   };
 
@@ -511,7 +464,7 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
         </section>
 
         <aside
-          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:sticky xl:top-[88px] xl:h-[calc(100vh-104px)] xl:self-start"
+          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:h-[calc(100vh-104px)]"
           style={{ background: CHESS_SIDEBAR_BG }}
         >
           <div className="border-b border-white/6 px-4 pt-4 sm:px-5">

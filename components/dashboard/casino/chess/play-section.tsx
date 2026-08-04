@@ -13,6 +13,7 @@ import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import { BoardThemePicker } from "@/components/dashboard/casino/chess/board-theme-picker";
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
+import { QrCode } from "@/components/dashboard/funds/qr-code";
 import { formatChatTime, matchActorLabel, playerDisplayName } from "@/lib/casino/chess/social";
 import { identifyOpening } from "@/lib/casino/chess/openings";
 import { formatEngineScore, pvToSan, uciToSan } from "@/lib/casino/chess/engine-analysis";
@@ -46,7 +47,7 @@ import {
   toUci,
   type Square,
 } from "@/lib/casino/chess/engine";
-import { friendlyError } from "@/lib/errors";
+import { friendlyError, isConflictError } from "@/lib/errors";
 import { copyText } from "@/lib/clipboard";
 import { toast } from "@/lib/toast";
 import type {
@@ -272,6 +273,7 @@ export function PlaySection({
   const [railTab, setRailTab] = useState<"moves" | "chat" | "info">("moves");
   const [chatRoom, setChatRoom] = useState<ChessChatRoom>("spectator");
   const [chatDraft, setChatDraft] = useState("");
+  const [showInviteQr, setShowInviteQr] = useState(false);
   const engine = useChessEngine(match?.fen ?? null);
   const rematchReadyId = match?.rematch?.nextMatchId ?? null;
   const currentPly = match ? match.moves.length : null;
@@ -597,7 +599,9 @@ export function PlaySection({
       await postChat({ room: activeChatRoom, text });
       setChatDraft("");
     } catch (e) {
-      toast.error(friendlyError(e, t("toastChatFailed")));
+      toast.error(
+        isConflictError(e) ? t("toastChatConflict") : friendlyError(e, t("toastChatFailed"))
+      );
     }
   };
 
@@ -729,7 +733,7 @@ export function PlaySection({
       : t("commentPositionMove", { ply: currentPly ?? 0 });
 
   return (
-    <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8">
+    <div className="relative mx-auto w-full max-w-[1560px] px-4 pb-8 sm:px-6 lg:px-8 xl:pb-0">
       {/* On narrow screens the side rail stacks below the board, so the balance
           would sit down by the footer. Surface it as the first thing here, and
           hide it once the rail becomes a column that already shows it up top. */}
@@ -871,7 +875,7 @@ export function PlaySection({
         </section>
 
         <aside
-          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-white/6 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:h-[calc(100vh-104px)]"
           style={{ background: CHESS_SIDEBAR_BG }}
         >
           <div className="grid grid-cols-4 border-b border-white/6 bg-black/10">
@@ -956,7 +960,21 @@ export function PlaySection({
                         >
                           {tCreate("copy")}
                         </button>
+                        <button
+                          onClick={() => setShowInviteQr((open) => !open)}
+                          className="cursor-pointer rounded-[12px] border border-white/12 bg-white/6 px-4 py-3 text-[12px] font-medium text-white/85 transition-colors hover:bg-white/12"
+                        >
+                          {showInviteQr ? t("hideQr") : t("showQr")}
+                        </button>
                       </div>
+                      {inviteUrl && showInviteQr ? (
+                        <div className="mt-4 flex flex-col items-center gap-3 rounded-[14px] border border-white/6 bg-black/10 px-4 py-4 text-center">
+                          <QrCode value={inviteUrl} size={176} />
+                          <div className="text-[12px] leading-5 text-white/55">
+                            {t("scanToJoin")}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="mt-3 text-[11.5px] text-white/44">{t("shareManually")}</div>
                     </div>
                   ) : null}

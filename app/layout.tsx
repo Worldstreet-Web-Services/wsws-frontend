@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist } from "next/font/google";
-import localFont from "next/font/local";
+import { Geist, Mona_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import Providers from "./providers";
@@ -14,19 +13,20 @@ const geist = Geist({
   subsets: ["latin"],
 });
 
-// Headers. Clash Display (Fontshare/ITF, self-hosted variable font, license
-// alongside the file), used at bold by the ws-display utility.
-const clashDisplay = localFont({
-  src: "./fonts/ClashDisplay-Variable.woff2",
-  weight: "200 700",
+// Headers. Mona Sans, used at bold by the ws-display utility.
+const monaSans = Mona_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
 });
 
+// No `icons` here: app/icon.svg is picked up by file convention and emits the
+// link tag itself. Declaring both would point the tab at the wide wordmark,
+// which is what made the old icon unreadable.
 export const metadata: Metadata = {
   title: "Ark",
   description:
     "The onchain superapp for global markets. Own stocks, gold, crypto and real-world assets from one self-custody account, funded in Naira.",
-  icons: { icon: "/ark-logo.svg" },
 };
 
 export default async function RootLayout({
@@ -40,8 +40,16 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  // Public Vivid widget config (a publishable key), read on the server with the
+  // deployed values as a fallback. Injected as a plain inline script so it runs
+  // before widget.js and sets the global the widget reads.
+  const vividConfig = {
+    key: process.env.VIVID_API_KEY ?? "pk_live_xARDqkZFFwSnUPE4rN_cNU5d",
+    api: process.env.VIVID_API_URL ?? "https://platformvivid.worldstreetgold.com",
+  };
+
   return (
-    <html lang={locale} className={`${geist.variable} ${clashDisplay.variable} h-full antialiased`}>
+    <html lang={locale} className={`${geist.variable} ${monaSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
@@ -50,10 +58,22 @@ export default async function RootLayout({
           The Vivid widget reads its key from document.currentScript, which is
           null for scripts next/script injects dynamically. Configure it via the
           window global it also supports so the key survives that injection.
+
+          Both scripts use afterInteractive so next/script injects them
+          imperatively (document.createElement in an effect) rather than rendering
+          a real <script> element. A rendered inline <script> is what React 19
+          warns about ("scripts inside React components are never executed on the
+          client"), which beforeInteractive would produce. The config script sits
+          first, so its effect runs and sets the global before widget.js, which
+          still has to download, executes.
         */}
-        <Script id="vivid-config" strategy="beforeInteractive">
-          {`window.__VIVID_CONFIG = { key: "pk_live_xARDqkZFFwSnUPE4rN_cNU5d", api: "https://platformvivid.worldstreetgold.com" };`}
-        </Script>
+        <Script
+          id="vivid-config"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.__VIVID_CONFIG = ${JSON.stringify(vividConfig)};`,
+          }}
+        />
         <Script
           src="https://platformvivid.worldstreetgold.com/widget.js"
           strategy="afterInteractive"

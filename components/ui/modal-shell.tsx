@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CloseIcon } from "@/components/ui/icons";
+import { cn } from "@/lib/utils";
 
 interface ModalShellProps {
   open: boolean;
@@ -11,9 +12,27 @@ interface ModalShellProps {
   // (e.g. the detail modal opening the buy sheet), the new content slides in
   // instead of swapping instantly.
   contentKey?: string | number;
+  // Desktop width. Defaults to the standard sheet; "lg" gives form-heavy modals
+  // (e.g. the funding flow) more room.
+  size?: "md" | "lg";
+  panelClassName?: string;
+  closeButtonClassName?: string;
 }
 
-export function ModalShell({ open, onClose, children, contentKey }: ModalShellProps) {
+const SIZE_WIDTH: Record<"md" | "lg", string> = {
+  md: "md:w-[min(440px,100%)]",
+  lg: "md:w-[min(600px,100%)]",
+};
+
+export function ModalShell({
+  open,
+  onClose,
+  children,
+  contentKey,
+  size = "md",
+  panelClassName,
+  closeButtonClassName,
+}: ModalShellProps) {
   const reduce = useReducedMotion();
 
   return (
@@ -37,7 +56,11 @@ export function ModalShell({ open, onClose, children, contentKey }: ModalShellPr
                 : { type: "spring", stiffness: 380, damping: 38, mass: 0.9 }
             }
             onClick={(e) => e.stopPropagation()}
-            className="bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:w-[min(440px,100%)] md:rounded-[24px] md:pt-[26px]"
+            className={cn(
+              "bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px] md:pt-[26px]",
+              SIZE_WIDTH[size],
+              panelClassName
+            )}
           >
             <span
               aria-hidden
@@ -46,7 +69,10 @@ export function ModalShell({ open, onClose, children, contentKey }: ModalShellPr
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute top-[18px] right-[18px] z-[1] grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-full border border-white/12 bg-white/6 text-white/70"
+              className={cn(
+                "absolute top-[18px] right-[18px] z-[1] grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-full border border-white/12 bg-white/6 text-white/70",
+                closeButtonClassName
+              )}
             >
               <CloseIcon />
             </button>

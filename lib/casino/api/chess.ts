@@ -1,18 +1,34 @@
 "use client";
 
-import { chessGet, chessPost } from "@/lib/casino/api/chess-client";
+import { chessDelete, chessGet, chessPost, chessPut } from "@/lib/casino/api/chess-client";
 import {
+  applyChatLineFrame,
+  applyCommentDeletedFrame,
+  applyCommentUpsertedFrame,
   isMatchId,
   parseTimeControl,
+  toChessChatMessage,
+  toChessMatchComment,
+  toChessMatchNote,
   toChessChallenge,
   toChessMatch,
+  type ChessChatMessageWire,
+  type ChessChatMessagesWire,
+  type ChessCommentDeletedFrame,
   type ChessMatchWire,
+  type ChessMatchCommentWire,
+  type ChessMatchCommentsWire,
+  type ChessMatchNoteWire,
   type ChessMoveWire,
 } from "@/lib/casino/api/chess-wire";
 import { apiError } from "@/lib/casino/api/envelope";
 import type {
+  ChessChatMessage,
+  ChessChatRoom,
   ChessChallenge,
   ChessMatch,
+  ChessMatchComment,
+  ChessMatchNote,
   CreateChessChallengeInput,
   MatchmakingTicket,
 } from "@/lib/casino/api/types";
@@ -39,6 +55,16 @@ interface MoveResultWire {
   move: ChessMoveWire;
 }
 
+interface MatchChatQuery {
+  room?: ChessChatRoom;
+  limit?: number;
+}
+
+type UpsertMatchCommentInput = {
+  ply: number;
+  text: string;
+};
+
 export interface LobbyChallenges {
   challenges: ChessChallenge[];
   myOpenGames: ChessChallenge[];
@@ -48,10 +74,30 @@ export interface LobbyChallenges {
 // lobby and quick-match path hide seats that are old enough to read as
 // abandoned. Direct invite links still resolve by match id.
 const STALE_WAITING_MATCH_MAX_AGE_MS = 60 * 60 * 1000;
+// A match marked `active` cannot legitimately outlive its total available
+// clock budget: both starting banks plus every increment that could have been
+// awarded across the moves already played. If it does, the backend left it
+// "live" after it should have timed out, so the lobby hides it.
+const STALE_ACTIVE_MATCH_GRACE_MS = 30 * 1000;
 
 function isFreshWaitingMatch(wire: Pick<ChessMatchWire, "createdAt">): boolean {
   const created = Date.parse(wire.createdAt);
   return !Number.isFinite(created) || Date.now() - created <= STALE_WAITING_MATCH_MAX_AGE_MS;
+}
+
+function isPlausiblyActiveMatch(
+  wire: Pick<ChessMatchWire, "createdAt" | "startedAt" | "timeControl" | "ply">
+): boolean {
+  const started = Date.parse(wire.startedAt ?? wire.createdAt);
+  if (!Number.isFinite(started)) return true;
+
+  const initial = wire.timeControl.initialSeconds;
+  const increment = wire.timeControl.incrementSeconds;
+  const ply = Math.max(0, wire.ply);
+  if (!Number.isFinite(initial) || !Number.isFinite(increment)) return true;
+
+  const maxLiveAgeMs = (initial * 2 + increment * ply) * 1000 + STALE_ACTIVE_MATCH_GRACE_MS;
+  return Date.now() - started <= maxLiveAgeMs;
 }
 
 function requireMatchId(matchId: string): string {
@@ -93,7 +139,7 @@ export async function fetchMatch(
       // When no new move landed, the last move timestamp we already have is
       // still the honest clock reference. A no-move poll must not restart the
       // displayed countdown.
-      clockUpdatedAt: previous.moves.length > 0 ? previous.clockUpdatedAt : undefined,
+      clockUpdatedAt: previous.clockUpdatedAt,
     });
   }
   if (wire.ply === 0) return toChessMatch(wire);
@@ -110,7 +156,7 @@ export async function fetchOpenChallenges(): Promise<ChessChallenge[]> {
 
 export async function fetchLiveMatches(): Promise<ChessMatch[]> {
   const data = await chessGet<MatchListWire>("/matches", { status: "active", limit: "50" });
-  return data.items.map((wire) => toChessMatch(wire));
+  return data.items.filter(isPlausiblyActiveMatch).map((wire) => toChessMatch(wire));
 }
 
 // Every game sitting open, as the service reports it.
@@ -220,7 +266,12 @@ export async function fetchMatchmakingTicket(ticketId: string): Promise<Matchmak
     matchId: wire.id,
     acceptSecondsRemaining: null,
     opponent: opponentWallet
-      ? { id: opponentWallet, username: opponentWallet, rating: 0, walletAddress: opponentWallet }
+      ? {
+          id: opponentWallet,
+          username: opponentWallet,
+          rating: null,
+          walletAddress: opponentWallet,
+        }
       : null,
   };
 }
@@ -299,10 +350,24 @@ export async function abortMatch(matchId: string, player: string): Promise<Chess
   return playerAction(matchId, "abort", player);
 }
 
-// Starts a fresh game between the same players with the colours swapped, and
-// returns that new game.
+// Lila-style rematch "yes": the first click offers, the second accepts and the
+// response carries the original match plus `rematch.nextMatchId`.
 export async function requestRematch(matchId: string, player: string): Promise<ChessMatch> {
   return playerAction(matchId, "rematch", player);
+}
+
+export async function declineRematch(matchId: string, player: string): Promise<ChessMatch> {
+  return playerAction(matchId, "rematch-decline", player);
+}
+
+// Lila-style takeback "yes": the first click offers, the second accepts and
+// rewinds the current game.
+export async function requestTakeback(matchId: string, player: string): Promise<ChessMatch> {
+  return playerAction(matchId, "takeback", player);
+}
+
+export async function declineTakeback(matchId: string, player: string): Promise<ChessMatch> {
+  return playerAction(matchId, "takeback-decline", player);
 }
 
 export async function fetchPgn(matchId: string): Promise<string> {
@@ -317,3 +382,106 @@ export async function fetchPlayerMatches(wallet: string, status?: string): Promi
   });
   return data.items.map((wire) => toChessMatch(wire));
 }
+
+// The social surfaces (chat, note, comments) are gated by the service behind
+// "are you a player in this match", the same seat check as moves. On a managed
+// Swiss-tournament board a seat is the player's display name, not their wallet,
+// so every one of these carries an optional `seat`: when set it names the
+// tournament seat as the caller (the proxy passes a non-wallet identity through
+// untouched), and when null the caller is the wallet the proxy stamps. Ordinary
+// wallet-seated games pass null and their requests are unchanged.
+export async function fetchMatchChat(
+  matchId: string,
+  query: MatchChatQuery = {},
+  seat: string | null = null
+): Promise<ChessChatMessage[]> {
+  const room = query.room ?? "spectator";
+  const data = await chessGet<ChessChatMessagesWire>(
+    `/matches/${requireMatchId(matchId)}/chat`,
+    {
+      room,
+      ...(query.limit ? { limit: String(query.limit) } : {}),
+      ...(room === "player" && seat ? { player: seat } : {}),
+    },
+    { requireAuth: room === "player" }
+  );
+  return data.items.map((wire) => toChessChatMessage(wire));
+}
+
+export async function postMatchChatMessage(
+  matchId: string,
+  room: ChessChatRoom,
+  text: string,
+  seat: string | null = null
+): Promise<ChessChatMessage> {
+  const wire = await chessPost<ChessChatMessageWire>(`/matches/${requireMatchId(matchId)}/chat`, {
+    room,
+    text,
+    ...(seat ? { author: seat } : {}),
+  });
+  return toChessChatMessage(wire);
+}
+
+export async function fetchMatchNote(
+  matchId: string,
+  seat: string | null = null
+): Promise<ChessMatchNote> {
+  const wire = await chessGet<ChessMatchNoteWire>(
+    `/matches/${requireMatchId(matchId)}/note`,
+    seat ? { player: seat } : undefined,
+    { requireAuth: true }
+  );
+  return toChessMatchNote(wire);
+}
+
+export async function saveMatchNote(
+  matchId: string,
+  text: string,
+  seat: string | null = null
+): Promise<ChessMatchNote> {
+  const wire = await chessPut<ChessMatchNoteWire>(`/matches/${requireMatchId(matchId)}/note`, {
+    text,
+    ...(seat ? { player: seat } : {}),
+  });
+  return toChessMatchNote(wire);
+}
+
+export async function fetchMatchComments(
+  matchId: string,
+  ply?: number
+): Promise<ChessMatchComment[]> {
+  const data = await chessGet<ChessMatchCommentsWire>(
+    `/matches/${requireMatchId(matchId)}/comments`,
+    {
+      ...(typeof ply === "number" ? { ply: String(ply) } : {}),
+    }
+  );
+  return data.items.map((wire) => toChessMatchComment(wire));
+}
+
+export async function upsertMatchComment(
+  matchId: string,
+  input: UpsertMatchCommentInput,
+  seat: string | null = null
+): Promise<ChessMatchComment> {
+  const wire = await chessPost<ChessMatchCommentWire>(
+    `/matches/${requireMatchId(matchId)}/comments`,
+    { ...input, ...(seat ? { player: seat } : {}) }
+  );
+  return toChessMatchComment(wire);
+}
+
+export async function deleteMatchComment(
+  matchId: string,
+  commentId: string,
+  seat: string | null = null
+): Promise<ChessMatchComment> {
+  const wire = await chessDelete<ChessMatchCommentWire>(
+    `/matches/${requireMatchId(matchId)}/comments/${encodeURIComponent(commentId)}`,
+    seat ? { player: seat } : {}
+  );
+  return toChessMatchComment(wire);
+}
+
+export { applyChatLineFrame, applyCommentDeletedFrame, applyCommentUpsertedFrame };
+export type { ChessCommentDeletedFrame };

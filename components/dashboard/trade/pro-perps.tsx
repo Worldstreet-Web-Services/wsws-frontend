@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Pager } from "@/components/ui/pager";
+import { usePaged } from "@/hooks/use-paged";
 import { SearchIcon } from "@/components/ui/icons";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { FlashPrice } from "@/components/dashboard/trade/flash-price";
@@ -19,6 +21,7 @@ import type { OpenTradeRequest } from "@/lib/perp/types";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
 import {
   CATEGORY_ORDER,
+  formatCompactUsdc,
   isPositiveWireDecimal,
   orderFieldValidity,
   pairSymbol,
@@ -53,6 +56,9 @@ const ORDER_TYPE_KEY: Record<PerpOrderType, string> = {
 };
 
 const ORDER_TYPES: readonly PerpOrderType[] = ["market", "limit", "stop_limit"];
+
+// Fits the browser column without pushing it taller than the panel beside it.
+const MARKETS_PER_PAGE = 12;
 
 // Translation keys per market category; the ids come from lib/perp/logic.
 const CATEGORY_KEY: Record<PerpCategory, string> = {
@@ -111,6 +117,12 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
       .filter((p) => !q || pairSymbol(p).toLowerCase().includes(q))
       .sort((a, b) => pairSymbol(a).localeCompare(pairSymbol(b)));
   }, [pairs, category, search]);
+
+  // Crypto alone runs to 64 markets, so the browser paged rather than asking
+  // for a scroll through the whole category. usePaged clamps, which matters
+  // here because switching category or typing a search shortens the list under
+  // a viewer already parked on a later page.
+  const paged = usePaged(filtered, MARKETS_PER_PAGE);
 
   const { quote, loading: quoteLoading } = usePerpQuote({
     pair: live && pair ? selected : null,
@@ -289,7 +301,7 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
                 {live ? t("noMarketsMatch") : t("marketsLoadWhenConnected")}
               </div>
             ) : (
-              filtered.map((p) => {
+              paged.pageItems.map((p) => {
                 const s = pairSymbol(p);
                 const on = s === selected;
                 const price = priceOf(s);
@@ -316,6 +328,20 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
               })
             )}
           </div>
+          {paged.pageCount > 1 ? (
+            <div className="px-4 pb-1">
+              <Pager
+                from={paged.from}
+                to={paged.to}
+                total={paged.total}
+                canPrev={paged.canPrev}
+                canNext={paged.canNext}
+                onPrev={paged.goPrev}
+                onNext={paged.goNext}
+                label={t("pagerMarkets")}
+              />
+            </div>
+          ) : null}
         </div>
 
         {/* Selected market: stats + chart. */}
@@ -345,10 +371,10 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
               <div className="mt-3.5">
                 <div className="mb-1 flex justify-between text-[11.5px] font-normal text-white/45">
                   <span className="tnum">
-                    {t("long")} {formatAmount(oi.long)} USDC
+                    {t("long")} {formatCompactUsdc(oi.long)} USDC
                   </span>
                   <span className="tnum">
-                    {t("short")} {formatAmount(oi.short)} USDC
+                    {t("short")} {formatCompactUsdc(oi.short)} USDC
                   </span>
                 </div>
                 <div className="flex h-1.5 overflow-hidden rounded-full bg-white/8">
@@ -366,14 +392,16 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
 
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               {[
-                { k: t("skew"), v: market?.skew != null ? formatAmount(market.skew) : "—" },
+                { k: t("skew"), v: formatCompactUsdc(market?.skew) },
                 {
                   k: t("spread"),
                   v: market?.spread != null ? `${(market.spread * 100).toFixed(3)}%` : "—",
                 },
                 {
                   k: t("depth"),
-                  v: market?.depth ? formatAmount(market.depth.above + market.depth.below) : "—",
+                  v: market?.depth
+                    ? formatCompactUsdc(market.depth.above + market.depth.below)
+                    : "—",
                 },
               ].map((s) => (
                 <div key={s.k} className="ws-inset px-2 py-2">

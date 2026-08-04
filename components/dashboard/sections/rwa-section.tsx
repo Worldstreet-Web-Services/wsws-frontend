@@ -9,7 +9,8 @@ import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
 import { RwaDetailSheet } from "@/components/dashboard/rwa/rwa-detail-sheet";
 import { useRwaAssets } from "@/hooks/use-rwa-assets";
 import { useTradePrefill } from "@/hooks/use-trade-prefill";
-import { isBaseAsset, isTradable } from "@/lib/rwa/presenter";
+import { dedupeByChain, isLiveChain, isTradable, isUsableAsset } from "@/lib/rwa/presenter";
+import { useRwaEnrichedAssets } from "@/hooks/use-rwa-prices";
 import type { RwaApiAsset } from "@/lib/rwa-api";
 import type { TradePrefill } from "@/lib/voice/intent";
 import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
@@ -20,9 +21,10 @@ import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal
 export interface RwaSectionProps {
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenConfirm: (confirm: ConfirmPayload) => void;
+  onAddFunds?: () => void;
 }
 
-export const RwaSection: FC<RwaSectionProps> = () => {
+export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds }) => {
   const t = useTranslations("rwa");
   const { assets, loading, error } = useRwaAssets();
 
@@ -31,14 +33,23 @@ export const RwaSection: FC<RwaSectionProps> = () => {
   // rather than a static side panel.
   const [detailAsset, setDetailAsset] = useState<RwaApiAsset | null>(null);
   const [tradeAsset, setTradeAsset] = useState<RwaApiAsset | null>(null);
+  // Which side the trade panel opens on: the detail sheet offers Sell for an
+  // asset already held.
+  const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
 
-  // Only buyable assets on Base: non-tradable (issuer-only) ones and assets on
-  // other chains are filtered out, so every row is actionable. The list owns
-  // search/sort/paging.
-  const buyable = useMemo(() => assets.filter((a) => isTradable(a) && isBaseAsset(a)), [assets]);
+  // Buyable assets on the live chains (Base + Solana): issuer-only assets and
+  // other catalog chains are filtered out, so every row is actionable. An asset
+  // the catalog lists on both chains is kept once, on Base. Prices the backend
+  // omits are filled from the CoinGecko fallback.
+  const tradable = useMemo(
+    () => dedupeByChain(assets.filter((a) => isUsableAsset(a) && isTradable(a) && isLiveChain(a))),
+    [assets]
+  );
+  const buyable = useRwaEnrichedAssets(tradable);
 
-  const openTrade = (asset: RwaApiAsset) => {
+  const openTrade = (asset: RwaApiAsset, mode: "buy" | "sell" = "buy") => {
     setDetailAsset(null);
+    setTradeMode(mode);
     setTradeAsset(asset);
   };
 
@@ -114,8 +125,9 @@ export const RwaSection: FC<RwaSectionProps> = () => {
             key={tradeAsset.id}
             asset={tradeAsset}
             bare
-            initialMode={prefill?.mode ?? "buy"}
+            initialMode={prefill?.mode ?? tradeMode}
             initialAmount={prefill?.amount ?? ""}
+            onAddFunds={onAddFunds}
           />
         ) : modalMode === "detail" && detailAsset ? (
           <RwaDetailSheet asset={detailAsset} onTrade={openTrade} />

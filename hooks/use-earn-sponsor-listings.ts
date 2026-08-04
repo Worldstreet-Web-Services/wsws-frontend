@@ -171,6 +171,8 @@ export function useReleaseEscrow() {
   });
 }
 
+// Both review actions take the listing slug so the feed they changed can be
+// refetched. The service's response carries no listing, so the caller names it.
 // Announcing changes what every entrant sees, so the public listing and the
 // submission feed are both stale afterwards.
 export function useAnnounceWinners(slug: string) {
@@ -185,8 +187,6 @@ export function useAnnounceWinners(slug: string) {
   });
 }
 
-// Both review actions take the listing slug so the feed they changed can be
-// refetched. The service's response carries no listing, so the caller names it.
 export function useRejectSubmissions(slug: string) {
   const queryClient = useQueryClient();
   return useMutation({

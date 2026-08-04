@@ -36,6 +36,7 @@ import {
   type SettleChain,
   type WalletChainType,
 } from "@/lib/deposit";
+import { sponsorSolanaTransaction } from "@/lib/trade/solana-sponsor";
 
 // Public Solana mainnet RPC, the same endpoint Dextopus lists for the chain.
 const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
@@ -163,7 +164,8 @@ export function useSendUsdc() {
           settle?.usdc ?? solana.asset,
           settle?.decimals ?? solana.decimals
         );
-        const { signature } = await signAndSendTransaction({ transaction, wallet });
+        const sponsored = await sponsorSolanaTransaction(transaction);
+        const { signature } = await signAndSendTransaction({ transaction: sponsored, wallet });
         return getBase58Decoder().decode(signature);
       } finally {
         setSending(false);
@@ -254,7 +256,8 @@ export function useSendToken() {
           tokenAddress === null
             ? await buildSolanaSolTransfer(from, to, amount)
             : await buildSolanaTokenTransfer(from, to, amount, tokenAddress, decimals);
-        const { signature } = await signAndSendTransaction({ transaction, wallet });
+        const sponsored = await sponsorSolanaTransaction(transaction);
+        const { signature } = await signAndSendTransaction({ transaction: sponsored, wallet });
         return getBase58Decoder().decode(signature);
       } finally {
         setSending(false);

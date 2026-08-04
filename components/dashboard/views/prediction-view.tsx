@@ -5,33 +5,32 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/components/dashboard/prediction/prediction-card";
 import { PredictionSlider } from "@/components/dashboard/prediction/prediction-slider";
 import { BetModal } from "@/components/dashboard/prediction/bet-modal";
 import { BetSlipSheet } from "@/components/dashboard/prediction/bet-slip-sheet";
 import { PositionsPanel } from "@/components/dashboard/prediction/positions-panel";
+import { LocalPredictionView } from "@/components/dashboard/views/local-prediction-view";
 import { usePredictions } from "@/hooks/use-predictions";
 import { usePolymarketAccess } from "@/hooks/use-polymarket-access";
 import { usePolymarketPositions, type PolymarketPosition } from "@/hooks/use-polymarket-positions";
-import { usePolymarketCashout } from "@/hooks/use-polymarket-cashout";
 import { usePolymarketRedeem } from "@/hooks/use-polymarket-redeem";
 import { useSettleToBase } from "@/hooks/use-settle";
 import { PREDICTIONS } from "@/lib/data/dashboard";
 import { toast } from "@/lib/toast";
-import type { RawPosition } from "@/lib/prediction";
 import type { Prediction } from "@/lib/types";
 
 export function PredictionView() {
   const t = useTranslations("prediction");
-  const money = useMoney();
   const [desktop, setDesktop] = useState(false);
+  // Which prediction system is shown: the live Polymarket markets or our own
+  // on-chain CPMM markets ("Local"). Both coexist; the user picks.
+  const [source, setSource] = useState<"polymarket" | "local">("polymarket");
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
   const [slip, setSlip] = useState<PolymarketPosition | null>(null);
   const access = usePolymarketAccess();
   const positions = usePolymarketPositions();
   const redeem = usePolymarketRedeem();
-  const cashout = usePolymarketCashout();
   const settle = useSettleToBase();
   const { data: live } = usePredictions();
 
@@ -56,26 +55,6 @@ export function PredictionView() {
     }
     setSlip(null);
     positions.refresh();
-  };
-
-  // Sells an open position back into the market before resolution. Proceeds
-  // land as pUSD in the prediction balance, where the existing cash-out flow
-  // can move them to Base.
-  const onSellPosition = async (position: RawPosition) => {
-    const tokenId = position.tokenId ?? null;
-    const shares = Number(position.size ?? 0);
-    if (!tokenId || !(shares > 0)) return;
-    const toastId = toast.loading(t("toastSellingPosition"));
-    try {
-      const { proceedsUsd } = await cashout.cashOut({ tokenId, shares });
-      toast.success(t("toastSoldPosition", { amount: money.format(proceedsUsd) }), {
-        id: toastId,
-      });
-      setSlip(null);
-      positions.refresh();
-    } catch {
-      toast.error(cashout.error ?? t("toastSellFailed"), { id: toastId });
-    }
   };
 
   const onCashOut = async () => {
@@ -109,7 +88,26 @@ export function PredictionView() {
       <Eyebrow>{t("eyebrow")}</Eyebrow>
       <h2 className="ws-display mt-2.5 text-[30px] tracking-[-0.02em]">{t("heading")}</h2>
 
-      {!access.allowed ? (
+      {/* Source switch: live Polymarket markets vs our on-chain CPMM markets. */}
+      <div className="mt-4 inline-flex gap-1 rounded-xl bg-white/5 p-1">
+        {(["polymarket", "local"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSource(s)}
+            className={`cursor-pointer rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+              source === s ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
+            }`}
+          >
+            {t(`sourceTab_${s}`)}
+          </button>
+        ))}
+      </div>
+
+      {source === "local" ? (
+        <div className="mt-[18px]">
+          <LocalPredictionView />
+        </div>
+      ) : !access.allowed ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-2 px-6 py-12 text-center">
           <div className="ws-display text-[22px]">{t("regionBlockedTitle")}</div>
           <p className="max-w-[360px] text-[13.5px] font-normal text-white/55">
@@ -165,8 +163,6 @@ export function PredictionView() {
             position={slip}
             onClaim={onRedeem}
             claiming={redeem.redeeming != null || settle.phase !== "idle"}
-            onSell={onSellPosition}
-            selling={cashout.phase !== "idle"}
           />
         ) : null}
       </ModalShell>

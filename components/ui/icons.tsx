@@ -227,6 +227,20 @@ export function ArrowDownIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function CalendarIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke={stroke} strokeWidth="1.8" />
+      <path
+        d="M3.5 9.5h17M8 3.5v3M16 3.5v3"
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function CopyIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -379,6 +393,20 @@ export function GlobeIcon({ size = 22, className }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <circle cx="12" cy="12" r="9" stroke={stroke} strokeWidth="1.6" />
       <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke={stroke} strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+export function BellIcon({ size = 26, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M18 8a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6Z"
+        stroke={stroke}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M10.3 18a2 2 0 0 0 3.4 0" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

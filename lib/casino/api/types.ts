@@ -24,17 +24,19 @@ export type GameId = "chess" | "draw" | "last-standing";
 // game created elsewhere with an unusual control still has to display.
 export type ChessTimeControl = string;
 
-// The controls offered on the create screen.
-// Per-move time budgets: the value is how long you get for each move (mapped to
-// an equal base + Fischer increment on the service), not a whole-game clock.
-export const TIME_CONTROL_PRESETS: readonly ChessTimeControl[] = ["15s", "30s", "1m", "2m"];
+// The controls offered on the create screens.
+// These are whole-game clocks, not per-move resets.
+export const TIME_CONTROL_PRESETS: readonly ChessTimeControl[] = ["1+0", "5+0", "10+0", "15+0"];
 
 export type ChessColor = "w" | "b";
 
 export interface ChessPlayer {
   id: string;
   username: string;
-  rating: number;
+  // Null until the service exposes ratings. The chess backend models a game and
+  // nothing else, so there is no honest number to show yet; the UI hides the
+  // rating rather than printing a fabricated zero.
+  rating: number | null;
   walletAddress: string;
 }
 
@@ -45,6 +47,47 @@ export type ChessResult =
   | { kind: "resignation"; winner: ChessColor }
   | { kind: "timeout"; winner: ChessColor }
   | { kind: "draw"; reason: "stalemate" | "agreement" | "repetition" | "insufficient" };
+
+export interface ChessTakebackState {
+  white: boolean;
+  black: boolean;
+  takebackable: boolean;
+}
+
+export interface ChessRematchState {
+  offeredBy: string | null;
+  nextMatchId: string | null;
+}
+
+export type ChessChatRoom = "player" | "spectator";
+
+export interface ChessChatMessage {
+  id: number;
+  matchId: string;
+  room: ChessChatRoom;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface ChessMatchNote {
+  matchId: string;
+  player: string;
+  text: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface ChessMatchComment {
+  id: string;
+  matchId: string;
+  ply: number;
+  fen: string;
+  author: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // A match is free unless it carries a stake: staked games settle server-side
 // through the chess cashier, so the client renders amounts but never moves
@@ -69,6 +112,10 @@ export interface ChessMatch {
   result: ChessResult | null;
   // The colour with an outstanding draw offer, if any.
   drawOffered: ChessColor | null;
+  // Pending takeback offer state, if the match type allows takebacks at all.
+  takeback: ChessTakebackState;
+  // Lila-style rematch state carried on the finished match.
+  rematch: ChessRematchState;
   // Per-player USDC stake for a wager-backed match, null when played for free.
   // Stakes settle server-side through the chess cashier.
   stakeUsdc: string | null;

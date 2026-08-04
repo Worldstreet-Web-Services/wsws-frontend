@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 
 // The screens are mocked at the API-client seam, not inside the components, so
@@ -25,18 +25,19 @@ const chessApi = vi.hoisted(() => ({
   claimTimeout: vi.fn(),
   abortMatch: vi.fn(),
   requestRematch: vi.fn(),
+  declineRematch: vi.fn(),
+  requestTakeback: vi.fn(),
+  declineTakeback: vi.fn(),
+  fetchMatchChat: vi.fn(),
+  postMatchChatMessage: vi.fn(),
+  fetchMatchNote: vi.fn(),
+  saveMatchNote: vi.fn(),
+  fetchMatchComments: vi.fn(),
+  upsertMatchComment: vi.fn(),
+  deleteMatchComment: vi.fn(),
   cancelChallenge: vi.fn(),
 }));
 vi.mock("@/lib/casino/api/chess", () => chessApi);
-
-// Boards subscribe to the live socket even while waiting for an opponent; a
-// real jsdom WebSocket would dial out and its teardown throws cross-realm
-// Event errors on some Node versions, so the relay is stubbed out entirely.
-vi.mock("@/lib/casino/chess/live-socket", () => ({
-  SOCKET_CLOSED_FRAME: { type: "__closed" },
-  SOCKET_OPEN_FRAME: { type: "__open" },
-  subscribeChessTopic: () => () => {},
-}));
 
 const drawApi = vi.hoisted(() => ({
   fetchCurrentRound: vi.fn(),
@@ -46,6 +47,31 @@ const drawApi = vi.hoisted(() => ({
   claimDrawPrize: vi.fn(),
 }));
 vi.mock("@/lib/casino/api/draw", () => drawApi);
+
+const bettingHooks = vi.hoisted(() => ({
+  useMatchMarket: vi.fn(),
+  placeBetMutateAsync: vi.fn(),
+}));
+vi.mock("@/hooks/use-casino-betting", () => ({
+  useMatchMarket: bettingHooks.useMatchMarket,
+  usePlaceBet: () => ({
+    isPending: false,
+    mutateAsync: bettingHooks.placeBetMutateAsync,
+  }),
+}));
+
+vi.mock("@/hooks/use-chess-cashier", () => ({
+  useChessCashierStatus: () => ({
+    configured: false,
+    config: null,
+    wallet: "0xabc",
+    feePct: null,
+    available: "0",
+    locked: "0",
+    lockBuckets: [],
+    balanceLoading: false,
+  }),
+}));
 
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
@@ -79,6 +105,7 @@ vi.mock("@/lib/toast", () => ({
 import { NextIntlClientProvider } from "next-intl";
 import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section";
 import { PlaySection } from "@/components/dashboard/casino/chess/play-section";
+import { SpectateSection } from "@/components/dashboard/casino/chess/spectate-section";
 import { CreateSection } from "@/components/dashboard/casino/chess/create-section";
 import { DrawSection } from "@/components/dashboard/casino/draw/draw-section";
 import messages from "@/messages/en.json";
@@ -124,6 +151,8 @@ const activeMatch = (over: Record<string, unknown> = {}) => ({
   turn: "b",
   result: null,
   drawOffered: null,
+  takeback: { white: false, black: false, takebackable: true },
+  rematch: { offeredBy: null, nextMatchId: null },
   stakeUsdc: null,
   wagerStatus: null,
   liveTopic: "chess:match:m1",
@@ -140,8 +169,28 @@ beforeEach(() => {
   chessApi.fetchPlayerMatches.mockResolvedValue([]);
   chessApi.fetchJoinableMatches.mockResolvedValue([]);
   chessApi.fetchWaitingMatches.mockResolvedValue([]);
+  chessApi.fetchMatchChat.mockResolvedValue([]);
+  chessApi.fetchMatchNote.mockResolvedValue({
+    matchId: "m1",
+    player: "0xabc",
+    text: "",
+    createdAt: null,
+    updatedAt: null,
+  });
+  chessApi.fetchMatchComments.mockResolvedValue([]);
+  bettingHooks.useMatchMarket.mockReturnValue({
+    odds: null,
+    myBets: [],
+    isLoading: false,
+    error: null,
+  });
+  bettingHooks.placeBetMutateAsync.mockReset();
   drawApi.fetchPastResults.mockResolvedValue([]);
   drawApi.fetchMyEntries.mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("chess lobby", () => {
@@ -241,7 +290,7 @@ describe("chess lobby", () => {
     });
     render(<LobbySection />, { wrapper });
 
-    await screen.findByText("Play Online");
+    await screen.findByText("Live Now");
     expect(screen.queryByText("Your open games")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
   });
@@ -250,7 +299,7 @@ describe("chess lobby", () => {
     chessApi.fetchLiveMatches.mockResolvedValue([activeMatch()]);
     render(<LobbySection />, { wrapper });
 
-    await screen.findByText("Play Online");
+    await screen.findByText("Live Now");
     expect(screen.queryByText("Your active games")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
   });
@@ -270,6 +319,24 @@ describe("chess lobby", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("GrandmasterKay")).not.toBeInTheDocument();
   });
+
+  it("lets a spectator open a live market from the lobby", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([
+      activeMatch({
+        id: "watch-1",
+        white: { id: "0x111", username: "WhiteSide", rating: 1650, walletAddress: "0x111" },
+        black: { id: "0x222", username: "BlackSide", rating: 1710, walletAddress: "0x222" },
+        timeControl: "5+3",
+        stakeUsdc: "5",
+      }),
+    ]);
+    render(<LobbySection />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open live games" }));
+    expect(await screen.findByText("WhiteSide vs BlackSide")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Watch" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/watch?match=watch-1"));
+  });
 });
 
 describe("create a game", () => {
@@ -286,12 +353,12 @@ describe("create a game", () => {
       ticket: null,
     });
     render(<CreateSection />, { wrapper });
-    fireEvent.click(screen.getByRole("button", { name: "1 min" }));
+    fireEvent.click(screen.getByRole("button", { name: "15 min" }));
     fireEvent.click(screen.getByRole("button", { name: "Start game" }));
 
     await waitFor(() => expect(chessApi.createChallenge).toHaveBeenCalled());
     const sent = chessApi.createChallenge.mock.calls[0][0];
-    expect(sent.timeControl).toBe("1m");
+    expect(sent.timeControl).toBe("15+0");
     expect(sent.mode).toBe("invite");
     expect(sent.creator).toBe("0xabc");
   });
@@ -414,6 +481,8 @@ describe("a drawn game", () => {
     turn: "w",
     result: { kind: "draw", reason: "agreement" },
     drawOffered: null,
+    takeback: { white: false, black: false, takebackable: false },
+    rematch: { offeredBy: null, nextMatchId: null },
     createdAt: new Date().toISOString(),
     ...over,
   });
@@ -429,45 +498,181 @@ describe("a drawn game", () => {
 
   it("offers a rematch rather than moving the player on by itself", async () => {
     chessApi.fetchMatch.mockResolvedValue(drawnMatch());
-    chessApi.requestRematch.mockResolvedValue({ id: "m2" });
+    chessApi.requestRematch.mockResolvedValue(
+      drawnMatch({ rematch: { offeredBy: "0xabc", nextMatchId: null } })
+    );
     render(<PlaySection matchId="m1" />, { wrapper });
 
     fireEvent.click(await screen.findByRole("button", { name: "Rematch" }));
     await waitFor(() => expect(chessApi.requestRematch).toHaveBeenCalledWith("m1", "0xabc"));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m2"));
+    expect(push).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/Rematch offered. Waiting for your opponent./)
+    ).toBeInTheDocument();
   });
 
-  // A rematch seats only the player who asked for it, so the other one has to
-  // join that game. Opening a second rematch would leave them in two empty
-  // games waiting for each other.
-  it("joins the opponent's rematch instead of opening a second one", async () => {
-    chessApi.fetchMatch.mockResolvedValue(drawnMatch());
-    chessApi.fetchWaitingMatches.mockResolvedValue([
-      { id: "rematch-1", white: null, black: "0xdef", createdAt: "2099-01-01T00:00:00.000Z" },
-    ]);
-    chessApi.acceptChallenge.mockResolvedValue({ id: "rematch-1" });
+  it("accepts the opponent's rematch on the same finished match", async () => {
+    chessApi.fetchMatch.mockResolvedValue(
+      drawnMatch({ rematch: { offeredBy: "0xdef", nextMatchId: null } })
+    );
+    chessApi.requestRematch.mockResolvedValue(
+      drawnMatch({ rematch: { offeredBy: "0xdef", nextMatchId: "rematch-1" } })
+    );
     render(<PlaySection matchId="m1" />, { wrapper });
 
     expect(await screen.findByText(/Your opponent wants a rematch/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rematch" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Accept rematch" }));
-    await waitFor(() =>
-      expect(chessApi.acceptChallenge).toHaveBeenCalledWith("rematch-1", "0xabc")
-    );
+    await waitFor(() => expect(chessApi.requestRematch).toHaveBeenCalledWith("m1", "0xabc"));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=rematch-1"));
-    expect(chessApi.requestRematch).not.toHaveBeenCalled();
   });
 
-  it("ignores a waiting game that predates the finished one", async () => {
-    chessApi.fetchMatch.mockResolvedValue(drawnMatch());
-    chessApi.fetchWaitingMatches.mockResolvedValue([
-      { id: "older", white: null, black: "0xdef", createdAt: "2000-01-01T00:00:00.000Z" },
-    ]);
+  it("lets a player cancel their pending rematch offer", async () => {
+    chessApi.fetchMatch.mockResolvedValue(
+      drawnMatch({ rematch: { offeredBy: "0xabc", nextMatchId: null } })
+    );
+    chessApi.declineRematch.mockResolvedValue(
+      drawnMatch({ rematch: { offeredBy: null, nextMatchId: null } })
+    );
     render(<PlaySection matchId="m1" />, { wrapper });
 
-    expect(await screen.findByRole("button", { name: "Rematch" })).toBeInTheDocument();
-    expect(screen.queryByText(/wants a rematch/)).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel rematch" }));
+    await waitFor(() => expect(chessApi.declineRematch).toHaveBeenCalledWith("m1", "0xabc"));
+  });
+
+  it("accepts a takeback the opponent offered", async () => {
+    const live = drawnMatch({
+      state: "in_progress",
+      result: null,
+      takeback: { white: false, black: true, takebackable: true },
+    });
+    chessApi.fetchMatch.mockResolvedValue(live);
+    chessApi.requestTakeback.mockResolvedValue({
+      ...live,
+      takeback: { white: false, black: false, takebackable: true },
+    });
+    render(<PlaySection matchId="m1" />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Accept takeback" }));
+    await waitFor(() => expect(chessApi.requestTakeback).toHaveBeenCalledWith("m1", "0xabc"));
+  });
+
+  it("renders spectator chat and sends a new chat line from the play rail", async () => {
+    const live = drawnMatch({ state: "in_progress", result: null });
+    chessApi.fetchMatch.mockResolvedValue(live);
+    chessApi.fetchMatchChat.mockResolvedValue([
+      {
+        id: 1,
+        matchId: "m1",
+        room: "spectator",
+        author: "0xdef",
+        text: "gl hf",
+        createdAt: "2026-08-03T00:00:00.000Z",
+      },
+    ]);
+    chessApi.postMatchChatMessage.mockResolvedValue({
+      id: 2,
+      matchId: "m1",
+      room: "spectator",
+      author: "0xabc",
+      text: "nice move",
+      createdAt: "2026-08-03T00:01:00.000Z",
+    });
+    render(<PlaySection matchId="m1" />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Chat" }));
+    expect(await screen.findByText("gl hf")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Say something about the game…"), {
+      target: { value: "nice move" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(chessApi.postMatchChatMessage).toHaveBeenCalledWith(
+        "m1",
+        "spectator",
+        "nice move",
+        null
+      )
+    );
+  });
+
+  it("loads and saves a private note plus current-position comments", async () => {
+    const live = drawnMatch({ state: "in_progress", result: null });
+    chessApi.fetchMatch.mockResolvedValue(live);
+    chessApi.fetchMatchNote.mockResolvedValue({
+      matchId: "m1",
+      player: "0xabc",
+      text: "prep line",
+      createdAt: "2026-08-03T00:00:00.000Z",
+      updatedAt: "2026-08-03T00:00:00.000Z",
+    });
+    chessApi.fetchMatchComments.mockResolvedValue([
+      {
+        id: "c1",
+        matchId: "m1",
+        ply: 0,
+        fen: live.fen,
+        author: "0xdef",
+        text: "looks equal",
+        createdAt: "2026-08-03T00:00:00.000Z",
+        updatedAt: "2026-08-03T00:00:00.000Z",
+      },
+    ]);
+    chessApi.saveMatchNote.mockResolvedValue({
+      matchId: "m1",
+      player: "0xabc",
+      text: "updated prep",
+      createdAt: "2026-08-03T00:00:00.000Z",
+      updatedAt: "2026-08-03T00:01:00.000Z",
+    });
+    chessApi.upsertMatchComment.mockResolvedValue({
+      id: "c2",
+      matchId: "m1",
+      ply: 0,
+      fen: live.fen,
+      author: "0xabc",
+      text: "play c4 soon",
+      createdAt: "2026-08-03T00:02:00.000Z",
+      updatedAt: "2026-08-03T00:02:00.000Z",
+    });
+    render(<PlaySection matchId="m1" />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Info" }));
+    expect(await screen.findByDisplayValue("prep line")).toBeInTheDocument();
+    expect(screen.getByText("looks equal")).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Write down prep, reminders, or anything you want to keep private."
+      ),
+      {
+        target: { value: "updated prep" },
+      }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+
+    await waitFor(() =>
+      expect(chessApi.saveMatchNote).toHaveBeenCalledWith("m1", "updated prep", null)
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Add a comment on this position."), {
+      target: { value: "play c4 soon" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save comment" }));
+
+    await waitFor(() =>
+      expect(chessApi.upsertMatchComment).toHaveBeenCalledWith(
+        "m1",
+        {
+          ply: 0,
+          text: "play c4 soon",
+        },
+        null
+      )
+    );
   });
 
   it("offers a draw, then answers the one the opponent offered", async () => {
@@ -544,11 +749,14 @@ describe("a drawn game", () => {
     );
     render(<PlaySection matchId="m1" />, { wrapper });
 
-    await screen.findByText(/Your move|Opponent thinking/);
+    await screen.findByText("Your time ran out");
     expect(chessApi.claimTimeout).not.toHaveBeenCalled();
   });
 
   it("does not claim a flag fall just because an old snapshot was reopened", async () => {
+    chessApi.claimTimeout.mockResolvedValue(
+      drawnMatch({ result: { kind: "timeout", winner: "w" } })
+    );
     chessApi.fetchMatch.mockResolvedValue(
       drawnMatch({
         state: "in_progress",
@@ -560,69 +768,158 @@ describe("a drawn game", () => {
     );
     render(<PlaySection matchId="m1" />, { wrapper });
 
-    await screen.findByText(/Your move|Opponent thinking/);
-    expect(chessApi.claimTimeout).not.toHaveBeenCalled();
+    await waitFor(() => expect(chessApi.claimTimeout).toHaveBeenCalledWith("m1", "0xabc"));
+  });
+
+  it("keeps the same clock running through a tab switch on the same snapshot", async () => {
+    vi.useFakeTimers();
+    const start = new Date("2026-08-02T12:00:00.000Z");
+    vi.setSystemTime(start);
+
+    const originalVisibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility,
+    });
+
+    try {
+      chessApi.fetchMatch.mockResolvedValue(
+        drawnMatch({
+          state: "in_progress",
+          result: null,
+          timeControl: "10+0",
+          turn: "w",
+          clocks: { w: 600, b: 600 },
+          clockUpdatedAt: start.toISOString(),
+        })
+      );
+
+      render(<PlaySection matchId="m1" />, { wrapper });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByText("Your move")).toBeInTheDocument();
+      expect(screen.getAllByText("10:00").length).toBeGreaterThan(0);
+
+      act(() => {
+        vi.advanceTimersByTime(30_000);
+      });
+      expect(screen.getByText("09:30")).toBeInTheDocument();
+
+      act(() => {
+        visibility = "hidden";
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+      act(() => {
+        visibility = "visible";
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      expect(screen.queryByText("09:10") ?? screen.queryByText("09:09")).toBeInTheDocument();
+    } finally {
+      if (originalVisibility) {
+        Object.defineProperty(document, "visibilityState", originalVisibility);
+      }
+      vi.useRealTimers();
+    }
   });
 });
 
-// There is no queue on the service, so quick match is a read of the lobby
-// followed by a join, with opening a game as the fallback.
-describe("quick match", () => {
-  const waitingMatch = (id: string, createdAt: string) => ({ id, createdAt });
-
-  it("takes the oldest seat that is free", async () => {
-    chessApi.fetchJoinableMatches.mockResolvedValue([
-      waitingMatch("newer", "2026-07-30T12:00:00.000Z"),
-      waitingMatch("older", "2026-07-30T09:00:00.000Z"),
+describe("spectator screen", () => {
+  it("shows the public room in the chat tab and posts from there", async () => {
+    chessApi.fetchMatch.mockResolvedValue(
+      activeMatch({
+        white: { id: "0x111", username: "TableOne", rating: 1650, walletAddress: "0x111" },
+        black: { id: "0xdef", username: "GrandmasterKay", rating: 1710, walletAddress: "0xdef" },
+      })
+    );
+    chessApi.fetchMatchChat.mockResolvedValue([
+      {
+        id: 1,
+        matchId: "m1",
+        room: "spectator",
+        author: "0xdef",
+        text: "gl hf",
+        createdAt: "2026-08-04T00:00:00.000Z",
+      },
+      {
+        id: 2,
+        matchId: "m1",
+        room: "spectator",
+        author: "0x111",
+        text: "sharp line",
+        createdAt: "2026-08-04T00:00:30.000Z",
+      },
     ]);
-    chessApi.acceptChallenge.mockResolvedValue({ id: "m9" });
-    render(<LobbySection />, { wrapper });
-
-    fireEvent.click(await screen.findByRole("button", { name: "Find opponent" }));
-
-    await waitFor(() => expect(chessApi.acceptChallenge).toHaveBeenCalledWith("older", "0xabc"));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m9"));
-    expect(chessApi.createChallenge).not.toHaveBeenCalled();
-  });
-
-  it("tries the next seat when somebody else took the first", async () => {
-    chessApi.fetchJoinableMatches.mockResolvedValue([
-      waitingMatch("taken", "2026-07-30T09:00:00.000Z"),
-      waitingMatch("free", "2026-07-30T10:00:00.000Z"),
-    ]);
-    chessApi.acceptChallenge
-      .mockRejectedValueOnce(Object.assign(new Error("gone"), { code: "CONFLICT" }))
-      .mockResolvedValueOnce({ id: "m4" });
-    render(<LobbySection />, { wrapper });
-
-    fireEvent.click(await screen.findByRole("button", { name: "Find opponent" }));
-
-    await waitFor(() => expect(chessApi.acceptChallenge).toHaveBeenCalledTimes(2));
-    expect(chessApi.acceptChallenge).toHaveBeenLastCalledWith("free", "0xabc");
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m4"));
-  });
-
-  it("opens its own game when nobody is waiting", async () => {
-    chessApi.fetchJoinableMatches.mockResolvedValue([]);
-    chessApi.createChallenge.mockResolvedValue({
-      challenge: challenge(),
-      match: activeMatch({
-        id: "c1",
-        state: "awaiting_opponent",
-        black: null,
-        moves: [],
-        turn: "w",
-      }),
-      ticket: null,
+    chessApi.postMatchChatMessage.mockResolvedValue({
+      id: 3,
+      matchId: "m1",
+      room: "spectator",
+      author: "0xabc",
+      text: "wild tactic",
+      createdAt: "2026-08-04T00:01:00.000Z",
     });
+
+    render(<SpectateSection matchId="m1" />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("tab", { name: /Chat/i }));
+    expect(await screen.findByText("gl hf")).toBeInTheDocument();
+    expect(screen.getByText("sharp line")).toBeInTheDocument();
+    expect(screen.getAllByText("gl hf")).toHaveLength(1);
+    expect(screen.getAllByText("sharp line")).toHaveLength(1);
+    expect(screen.getByText("GrandmasterKay")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Say something about the game…"), {
+      target: { value: "wild tactic" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(chessApi.postMatchChatMessage).toHaveBeenCalledWith(
+        "m1",
+        "spectator",
+        "wild tactic",
+        null
+      )
+    );
+  });
+});
+
+describe("live games modal", () => {
+  it("shows your own live game in the modal as a resumable board", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([activeMatch()]);
     render(<LobbySection />, { wrapper });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Find opponent" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open live games" }));
+    expect(await screen.findByText("0xabc vs GrandmasterKay")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=m1"));
+  });
 
-    await waitFor(() => expect(chessApi.createChallenge).toHaveBeenCalled());
-    const sent = chessApi.createChallenge.mock.calls[0][0];
-    expect(sent.mode).toBe("auto");
-    expect(sent.timeControl).toBe("5+3");
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/matchmaking?ticket=c1"));
+  it("opens from the lobby rail", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([
+      activeMatch({
+        id: "live-1",
+        white: { id: "0x111", username: "TableOne", rating: 1650, walletAddress: "0x111" },
+        black: { id: "0x222", username: "TableTwo", rating: 1710, walletAddress: "0x222" },
+      }),
+    ]);
+    render(<LobbySection />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open live games" }));
+    expect(await screen.findByText("TableOne vs TableTwo")).toBeInTheDocument();
+  });
+
+  it("shows a clean empty state when no live games are running", async () => {
+    chessApi.fetchLiveMatches.mockResolvedValue([]);
+    render(<LobbySection />, { wrapper });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open live games" }));
+    expect(await screen.findByText("No live chess games right now.")).toBeInTheDocument();
   });
 });

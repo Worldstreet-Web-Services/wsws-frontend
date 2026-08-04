@@ -17,10 +17,10 @@ import { loadInterest } from "@/lib/preferences";
 // Names for the routes that are somewhere to go back to. Anything else falls
 // back to its own last path segment.
 const SECTION_LABEL: Record<string, string> = {
-  "/casino": "Casino",
+  "/casino": "Arkade",
   "/casino/chess": "Chess",
   "/casino/draw": "Draw",
-  "/casino/last-standing": "Last standing",
+  "/casino/last-standing": "The Last Man",
 };
 
 function titleCase(segment: string): string {
@@ -32,7 +32,7 @@ function titleCase(segment: string): string {
 // the chess lobby it was started from instead of jumping past it.
 export function parentRoute(pathname: string): { href: string; label: string } {
   const parts = pathname.split("/").filter(Boolean);
-  if (parts.length <= 1) return { href: "/casino", label: "Casino" };
+  if (parts.length <= 1) return { href: "/casino", label: "Arkade" };
   const href = `/${parts.slice(0, -1).join("/")}`;
   return { href, label: SECTION_LABEL[href] ?? titleCase(parts[parts.length - 2]) };
 }
@@ -62,7 +62,17 @@ function BackLink({ pathname }: { pathname: string }) {
 // Chrome wrapper shared by every casino route: auth guard plus the app shell
 // with the Casino tab active. Any screen below the hub also gets a back link,
 // since the sidebar only points at the hub itself.
-export function CasinoPage({ children }: { children: React.ReactNode }) {
+export function CasinoPage({
+  children,
+  hideFooter,
+  hideBackLink,
+}: {
+  children: React.ReactNode;
+  hideFooter?: boolean;
+  // The chess lobby pins its layout to the viewport and the sidebar already
+  // points at Arkade, so the back link there is dead height.
+  hideBackLink?: boolean;
+}) {
   const tSections = useTranslations("sections");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
   const pathname = usePathname();
@@ -70,9 +80,9 @@ export function CasinoPage({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <DashboardShell nav={nav} activeSection="casino">
+      <DashboardShell nav={nav} activeSection="casino" hideFooter={hideFooter}>
         <CasinoNavGuardProvider>
-          {isHub || !pathname ? null : <BackLink pathname={pathname} />}
+          {isHub || hideBackLink || !pathname ? null : <BackLink pathname={pathname} />}
           {children}
         </CasinoNavGuardProvider>
       </DashboardShell>

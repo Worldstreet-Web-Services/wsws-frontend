@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { ArkMark } from "@/components/ui/ark-mark";
+import { MarketLogo } from "@/components/ui/market-logo";
 import { ArrowUpRightIcon } from "@/components/ui/icons";
 import { CopyLayer, RevealItem } from "@/components/landing/layers/reveal-item";
 
@@ -13,7 +13,7 @@ export function EnterLayer() {
   return (
     <CopyLayer index={0} anchorId="top" className="items-center px-6 py-24">
       <RevealItem className="flex flex-col items-center">
-        <ArkMark height={50} style={{ width: "min(380px, 70vw)", height: "auto" }} />
+        <MarketLogo style={{ width: "min(380px, 70vw)", height: "auto" }} />
         <div className="mt-5 text-[12.5px] font-normal tracking-[0.22em] text-[#8a8a8f] uppercase min-[880px]:mt-6 min-[880px]:text-[15px]">
           {t("poweredBy", { name: "Tsion" })}
         </div>

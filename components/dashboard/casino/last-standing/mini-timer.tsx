@@ -144,9 +144,26 @@ async function openDocumentPip(): Promise<void> {
   setState({ pipWindow: win });
 }
 
+// Fully releases the video tier's stream. Reusing a canvas MediaStream
+// across open/close cycles is what broke reopening: the old track goes stale
+// after picture-in-picture exits, and the next request runs against a video
+// that will never produce a fresh frame. Every open builds a new stream.
+function teardownVideoSurface(): void {
+  const video = surfaces?.video;
+  if (!video) return;
+  video.pause();
+  const stream = video.srcObject as MediaStream | null;
+  if (stream) for (const track of stream.getTracks()) track.stop();
+  video.srcObject = null;
+}
+
 async function openVideoPip(): Promise<void> {
   if (!surfaces) return;
   const { canvas, video } = surfaces;
+  // A previous session may still be winding down; finish leaving before
+  // asking again, or the request races the exit and loses.
+  if (document.pictureInPictureElement) await document.exitPictureInPicture();
+  teardownVideoSurface();
   // Paint a first frame before capturing: a stream that has never produced a
   // frame yields no video metadata, and the picture-in-picture request
   // rejects on a video without metadata — silently, from the user's seat.
@@ -157,7 +174,7 @@ async function openVideoPip(): Promise<void> {
   }
   // A fixed capture rate keeps frames flowing even between repaints, which
   // some browsers need before they consider the video "playing".
-  if (!video.srcObject) video.srcObject = canvas.captureStream(10);
+  video.srcObject = canvas.captureStream(10);
   await video.play();
   if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
     await new Promise<void>((resolve) =>
@@ -165,15 +182,27 @@ async function openVideoPip(): Promise<void> {
     );
   }
   await video.requestPictureInPicture();
-  video.addEventListener("leavepictureinpicture", () => setState({ videoActive: false }), {
-    once: true,
-  });
+  // Fires both for our own close and for the window's own X button; either
+  // way the session is over and the stream must not be reused.
+  video.addEventListener(
+    "leavepictureinpicture",
+    () => {
+      teardownVideoSurface();
+      setState({ videoActive: false });
+    },
+    { once: true }
+  );
   setState({ videoActive: true });
 }
 
 function closeMiniWindow(): void {
   state.pipWindow?.close();
-  if (document.pictureInPictureElement) void document.exitPictureInPicture();
+  if (document.pictureInPictureElement) {
+    // The leavepictureinpicture handler tears the stream down.
+    void document.exitPictureInPicture();
+  } else {
+    teardownVideoSurface();
+  }
   setState({ pipWindow: null, videoActive: false });
 }
 

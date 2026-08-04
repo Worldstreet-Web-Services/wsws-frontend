@@ -120,7 +120,6 @@ export interface SubmissionCheckWire {
 }
 
 const LISTING_TYPES: ListingType[] = ["bounty", "project", "hackathon", "grant"];
-const LISTING_STATUSES: ListingStatus[] = ["open", "review", "completed", "closed"];
 const COMPENSATION_TYPES: CompensationType[] = ["fixed", "range", "variable"];
 const AGENT_ACCESS: AgentAccess[] = ["HUMAN_ONLY", "AGENT_ALLOWED", "AGENT_ONLY"];
 

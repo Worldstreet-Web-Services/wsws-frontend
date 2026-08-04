@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { apiFetch } from "@/lib/api";
 
 // Browser notifications for earn announcements.
@@ -31,16 +31,35 @@ function supported(): boolean {
   );
 }
 
-export function usePushNotifications() {
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
-    "unsupported"
-  );
-  const [isEnabling, setEnabling] = useState(false);
+type Permission = NotificationPermission | "unsupported";
 
-  useEffect(() => {
-    if (!supported()) return;
-    setPermission(Notification.permission);
-  }, []);
+// Permission lives in the browser, not in React, and only ever changes because
+// this hook asked for it. Reading it through an external store rather than
+// copying it into state on mount avoids a cascading render, and lets the server
+// answer "unsupported" honestly instead of guessing at a value it cannot see.
+let listeners: Array<() => void> = [];
+
+function subscribe(onChange: () => void) {
+  listeners.push(onChange);
+  return () => {
+    listeners = listeners.filter((listener) => listener !== onChange);
+  };
+}
+
+function readPermission(): Permission {
+  return supported() ? Notification.permission : "unsupported";
+}
+
+// Snapshots are compared by identity, so this must stay one constant.
+const SERVER_PERMISSION: Permission = "unsupported";
+
+function readServerPermission(): Permission {
+  return SERVER_PERMISSION;
+}
+
+export function usePushNotifications() {
+  const permission = useSyncExternalStore(subscribe, readPermission, readServerPermission);
+  const [isEnabling, setEnabling] = useState(false);
 
   const enable = useCallback(async () => {
     if (!supported()) return;
@@ -49,7 +68,7 @@ export function usePushNotifications() {
       // Asked only on a click, never on load: an unprompted permission dialog
       // is the one people dismiss forever.
       const granted = await Notification.requestPermission();
-      setPermission(granted);
+      for (const listener of listeners) listener();
       if (granted !== "granted") return;
 
       const keyResponse = await apiFetch("/api/earn/notifications/vapid-key");

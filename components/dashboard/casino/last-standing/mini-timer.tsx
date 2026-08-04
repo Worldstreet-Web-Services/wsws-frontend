@@ -53,17 +53,12 @@ function detectTier(): PipTier | null {
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
     "captureStream" in HTMLCanvasElement.prototype;
-  // Brave and Arc ship the document picture-in-picture API but do not give
-  // the window system-level always-on-top, so it sinks behind other apps —
-  // the one job the pop-out has. Their video picture-in-picture does float,
-  // so both take the video tier despite the API being present. Brave admits
-  // to itself on navigator; Arc is recognised by the theme variables it
-  // injects into every page.
-  const isBrave = "brave" in navigator;
-  const isArc =
-    typeof getComputedStyle !== "undefined" &&
-    getComputedStyle(document.documentElement).getPropertyValue("--arc-palette-background") !== "";
-  if ((isBrave || isArc) && videoCapable) return "video";
+  // The document tier is preferred wherever the API exists: it is the only
+  // one whose floating window can hold a working play button. Known limit,
+  // shared by BOTH tiers in every Chromium browser on macOS: the floating
+  // window stays above normal windows but does not appear over other apps'
+  // fullscreen Spaces (only Safari's private-API PiP can) — so switching
+  // tiers cannot buy that, and the richer window wins.
   if ("documentPictureInPicture" in window) return "document";
   return videoCapable ? "video" : null;
 }

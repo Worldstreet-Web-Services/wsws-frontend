@@ -62,7 +62,13 @@ function BackLink({ pathname }: { pathname: string }) {
 // Chrome wrapper shared by every casino route: auth guard plus the app shell
 // with the Casino tab active. Any screen below the hub also gets a back link,
 // since the sidebar only points at the hub itself.
-export function CasinoPage({ children }: { children: React.ReactNode }) {
+export function CasinoPage({
+  children,
+  hideFooter,
+}: {
+  children: React.ReactNode;
+  hideFooter?: boolean;
+}) {
   const tSections = useTranslations("sections");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
   const pathname = usePathname();
@@ -70,7 +76,7 @@ export function CasinoPage({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <DashboardShell nav={nav} activeSection="casino">
+      <DashboardShell nav={nav} activeSection="casino" hideFooter={hideFooter}>
         <CasinoNavGuardProvider>
           {isHub || !pathname ? null : <BackLink pathname={pathname} />}
           {children}

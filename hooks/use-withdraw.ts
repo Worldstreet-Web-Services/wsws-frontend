@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   useSignAndSendTransaction,
+  useSignTransaction,
   useWallets as useSolanaWallets,
 } from "@privy-io/react-auth/solana";
 import {
@@ -36,7 +37,11 @@ import {
   type SettleChain,
   type WalletChainType,
 } from "@/lib/deposit";
-import { sponsorSolanaTransaction } from "@/lib/trade/solana-sponsor";
+import {
+  getSolanaSponsorFeePayer,
+  sponsorSolanaTransaction,
+  submitSponsoredSolanaTransaction,
+} from "@/lib/trade/solana-sponsor";
 
 // Public Solana mainnet RPC, the same endpoint Dextopus lists for the chain.
 const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
@@ -75,13 +80,17 @@ async function buildSolanaTokenTransfer(
   to: string,
   amount: bigint,
   mintAddress: string,
-  decimals: number
+  decimals: number,
+  // Fee payer for the gas-sponsor service: the tx must be BUILT with the
+  // sponsor wallet in the fee-payer slot, since the service never rewrites it.
+  sponsorFeePayer?: string
 ): Promise<Uint8Array> {
   const rpc = createSolanaRpc(SOLANA_RPC);
   const mint = address(mintAddress);
   const owner = address(from);
   const destinationOwner = address(to);
   const signer = createNoopSigner(owner);
+  const feePayer = sponsorFeePayer ? createNoopSigner(address(sponsorFeePayer)) : signer;
 
   const tokenProgram = await getMintTokenProgram(rpc, mint);
   const [source] = await findAssociatedTokenPda({
@@ -95,8 +104,10 @@ async function buildSolanaTokenTransfer(
     tokenProgram,
   });
 
+  // The fee payer also fronts destination-ATA rent: a gasless user holds no
+  // SOL, so when the sponsor pays fees it pays rent too.
   const createDestination = getCreateAssociatedTokenIdempotentInstruction({
-    payer: signer,
+    payer: feePayer,
     ata: destination,
     owner: destinationOwner,
     mint,
@@ -117,7 +128,7 @@ async function buildSolanaTokenTransfer(
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
   const message = pipe(
     createTransactionMessage({ version: 0 }),
-    (m) => setTransactionMessageFeePayerSigner(signer, m),
+    (m) => setTransactionMessageFeePayerSigner(feePayer, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
     (m) => appendTransactionMessageInstructions([createDestination, transfer], m)
   );
@@ -132,6 +143,7 @@ export function useSendUsdc() {
   const { user } = usePrivy();
   const evmSend = useEvmSend();
   const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const { wallets: solanaWallets } = useSolanaWallets();
   const [sending, setSending] = useState(false);
 
@@ -157,13 +169,28 @@ export function useSendUsdc() {
         const wallet = solanaWallets.find((w) => w.address === from);
         if (!wallet) throw new Error("Solana wallet is not ready");
         const solana = settlementFor("solana");
-        const transaction = await buildSolanaTokenTransfer(
-          from,
-          to,
-          amount,
-          settle?.usdc ?? solana.asset,
-          settle?.decimals ?? solana.decimals
-        );
+        const usdc = settle?.usdc ?? solana.asset;
+        const decimals = settle?.decimals ?? solana.decimals;
+
+        // Prefer the platform gas-sponsor service: build with the sponsor
+        // wallet as fee payer, sign locally, and let the service add its
+        // signature and submit. Falls back to the Alchemy fee-payer rewrite
+        // when the service isn't configured.
+        const sponsorFeePayer = await getSolanaSponsorFeePayer();
+        if (sponsorFeePayer) {
+          const transaction = await buildSolanaTokenTransfer(
+            from,
+            to,
+            amount,
+            usdc,
+            decimals,
+            sponsorFeePayer
+          );
+          const { signedTransaction } = await signTransaction({ transaction, wallet });
+          return await submitSponsoredSolanaTransaction(signedTransaction);
+        }
+
+        const transaction = await buildSolanaTokenTransfer(from, to, amount, usdc, decimals);
         const sponsored = await sponsorSolanaTransaction(transaction);
         const { signature } = await signAndSendTransaction({ transaction: sponsored, wallet });
         return getBase58Decoder().decode(signature);
@@ -171,7 +198,7 @@ export function useSendUsdc() {
         setSending(false);
       }
     },
-    [user, evmSend, signAndSendTransaction, solanaWallets]
+    [user, evmSend, signAndSendTransaction, signTransaction, solanaWallets]
   );
 
   return { sendUsdc, sending };
@@ -192,15 +219,17 @@ const EVM_CHAIN_ID: Record<string, number> = {
 async function buildSolanaSolTransfer(
   from: string,
   to: string,
-  amount: bigint
+  amount: bigint,
+  sponsorFeePayer?: string
 ): Promise<Uint8Array> {
   const rpc = createSolanaRpc(SOLANA_RPC);
   const source = createNoopSigner(address(from));
+  const feePayer = sponsorFeePayer ? createNoopSigner(address(sponsorFeePayer)) : source;
   const transfer = getTransferSolInstruction({ source, destination: address(to), amount });
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
   const message = pipe(
     createTransactionMessage({ version: 0 }),
-    (m) => setTransactionMessageFeePayerSigner(source, m),
+    (m) => setTransactionMessageFeePayerSigner(feePayer, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
     (m) => appendTransactionMessageInstructions([transfer], m)
   );
@@ -223,6 +252,7 @@ export function useSendToken() {
   const { user } = usePrivy();
   const evmSend = useEvmSend();
   const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const { wallets: solanaWallets } = useSolanaWallets();
   const [sending, setSending] = useState(false);
 
@@ -252,6 +282,26 @@ export function useSendToken() {
 
         const wallet = solanaWallets.find((w) => w.address === from);
         if (!wallet) throw new Error("Solana wallet is not ready");
+
+        // Same arrangement as useSendUsdc: gas-sponsor service first, Alchemy
+        // fee-payer rewrite as the fallback.
+        const sponsorFeePayer = await getSolanaSponsorFeePayer();
+        if (sponsorFeePayer) {
+          const transaction =
+            tokenAddress === null
+              ? await buildSolanaSolTransfer(from, to, amount, sponsorFeePayer)
+              : await buildSolanaTokenTransfer(
+                  from,
+                  to,
+                  amount,
+                  tokenAddress,
+                  decimals,
+                  sponsorFeePayer
+                );
+          const { signedTransaction } = await signTransaction({ transaction, wallet });
+          return await submitSponsoredSolanaTransaction(signedTransaction);
+        }
+
         const transaction =
           tokenAddress === null
             ? await buildSolanaSolTransfer(from, to, amount)
@@ -263,7 +313,7 @@ export function useSendToken() {
         setSending(false);
       }
     },
-    [user, evmSend, signAndSendTransaction, solanaWallets]
+    [user, evmSend, signAndSendTransaction, signTransaction, solanaWallets]
   );
 
   return { sendToken, sending };

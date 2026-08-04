@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch } from "@/lib/api";
+import { unwrap } from "@/lib/api/envelope";
 
 export interface SponsoredSolanaTransactionResult {
   serializedTransaction: string;

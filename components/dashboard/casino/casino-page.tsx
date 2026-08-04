@@ -65,9 +65,13 @@ function BackLink({ pathname }: { pathname: string }) {
 export function CasinoPage({
   children,
   hideFooter,
+  hideBackLink,
 }: {
   children: React.ReactNode;
   hideFooter?: boolean;
+  // The chess lobby pins its layout to the viewport and the sidebar already
+  // points at Arkade, so the back link there is dead height.
+  hideBackLink?: boolean;
 }) {
   const tSections = useTranslations("sections");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
@@ -78,7 +82,7 @@ export function CasinoPage({
     <AuthGuard>
       <DashboardShell nav={nav} activeSection="casino" hideFooter={hideFooter}>
         <CasinoNavGuardProvider>
-          {isHub || !pathname ? null : <BackLink pathname={pathname} />}
+          {isHub || hideBackLink || !pathname ? null : <BackLink pathname={pathname} />}
           {children}
         </CasinoNavGuardProvider>
       </DashboardShell>

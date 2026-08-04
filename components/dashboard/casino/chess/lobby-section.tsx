@@ -277,7 +277,7 @@ export function LobbySection() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1520px] px-4 pt-5 pb-8 sm:px-6 lg:px-8">
         {/* On xl the board column is pinned below the sticky topbar and the
             menu column scrolls on its own, chess.com style, so the board never
             leaves the screen while browsing the menu. The 84px offset clears
@@ -289,10 +289,10 @@ export function LobbySection() {
           >
             {/* The board caps its own width to what fits the viewport height.
                 Around it sit two player bars plus paddings (224px) and the
-                topbar, back link and page gaps (156px); the base 255px reserve
+                topbar, page gaps (126px); the base 255px reserve
                 is not enough on xl where the whole column must fit without
-                page scroll, so the reserve grows to 380px there. */}
-            <div className="mx-auto w-full max-w-[var(--board-max)] [--board-max:min(100%,780px,calc(100vh_-_255px))] xl:[--board-max:min(100%,780px,calc(100vh_-_380px))]">
+                page scroll, so the reserve grows to 350px there. */}
+            <div className="mx-auto w-full max-w-[var(--board-max)] [--board-max:min(100%,780px,calc(100vh_-_255px))] xl:[--board-max:min(100%,780px,calc(100vh_-_350px))]">
               <PlayerBar label={t("colOpponent")} />
               <div className="mt-4 overflow-hidden rounded-[2px]">
                 <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />

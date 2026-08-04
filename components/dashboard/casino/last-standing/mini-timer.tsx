@@ -53,12 +53,16 @@ function detectTier(): PipTier | null {
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
     "captureStream" in HTMLCanvasElement.prototype;
-  // The document tier is preferred wherever the API exists: it is the only
-  // one whose floating window can hold a working play button. Known limit,
-  // shared by BOTH tiers in every Chromium browser on macOS: the floating
-  // window stays above normal windows but does not appear over other apps'
-  // fullscreen Spaces (only Safari's private-API PiP can) — so switching
-  // tiers cannot buy that, and the richer window wins.
+  // The document tier's floating window is the only one that can hold a
+  // working play button — but on macOS it is an ordinary always-on-top
+  // window pinned to the desktop it opened on: swipe to another Space or
+  // screen and it is gone. The video tier's window is a system floating
+  // panel that follows across desktops, so on macOS staying visible wins
+  // over interactivity. (Neither tier can appear over another app's
+  // FULLSCREEN Space in any Chromium browser; only Safari's private-API
+  // PiP can.)
+  const isMac = navigator.platform.startsWith("Mac");
+  if (isMac && videoCapable) return "video";
   if ("documentPictureInPicture" in window) return "document";
   return videoCapable ? "video" : null;
 }

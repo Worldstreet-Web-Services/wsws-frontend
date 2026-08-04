@@ -56,7 +56,7 @@ export function EventCard({ group }: EventCardProps) {
         <div className="flex flex-col px-5 pt-5 pb-3.5 sm:px-[22px] sm:pt-[22px]">
           <div className="mb-3 flex items-center justify-between">
             {group.imageUrl ? (
-              <span className="rounded-full border border-accent/25 bg-accent/10 px-[11px] py-1 text-xs font-normal text-accent">
+              <span className="border-accent/25 bg-accent/10 text-accent rounded-full border px-[11px] py-1 text-xs font-normal">
                 {t("outcomeCount", { count: group.outcomeCount })}
               </span>
             ) : (

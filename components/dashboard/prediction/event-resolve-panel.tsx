@@ -40,9 +40,7 @@ export function EventResolvePanel({ group }: EventResolvePanelProps) {
 
   // Nothing to show unless the wallet owns at least one outcome AND at least one
   // is still resolvable (Open/Closed, not already Resolved/Invalid).
-  const anyResolvable = ownedOutcomes.some(
-    (o) => o.status === "Open" || o.status === "Closed"
-  );
+  const anyResolvable = ownedOutcomes.some((o) => o.status === "Open" || o.status === "Closed");
   if (ownedOutcomes.length === 0 || !anyResolvable) return null;
 
   const resolve = async (marketId: bigint, outcome: "Yes" | "No") => {

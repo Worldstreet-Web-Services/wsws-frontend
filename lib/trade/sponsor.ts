@@ -33,10 +33,7 @@ export type SignAuthorization = (input: {
 // it; `params` is passed through untouched to the JSON-RPC layer.
 type ReadRequest = (args: { method: string; params: unknown }) => Promise<unknown>;
 
-async function isAlreadyDelegated(
-  request: ReadRequest,
-  address: `0x${string}`
-): Promise<boolean> {
+async function isAlreadyDelegated(request: ReadRequest, address: `0x${string}`): Promise<boolean> {
   const code = (await request({
     method: "eth_getCode",
     params: [address, "latest"],

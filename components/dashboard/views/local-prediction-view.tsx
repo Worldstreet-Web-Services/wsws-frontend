@@ -22,9 +22,7 @@ const STATUS_TABS: MarketStatus[] = ["Open", "Closed", "Resolved"];
 // A browse-grid entry: either a multi-outcome event (group) or a standalone
 // single market. Events are rendered as one grouped card; single markets as the
 // usual YES/NO tile.
-type BrowseItem =
-  | { kind: "event"; group: MarketGroup }
-  | { kind: "market"; market: Market };
+type BrowseItem = { kind: "event"; group: MarketGroup } | { kind: "market"; market: Market };
 
 export function LocalPredictionView() {
   const t = useTranslations("prediction");

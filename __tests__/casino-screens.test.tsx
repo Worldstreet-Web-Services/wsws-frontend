@@ -582,7 +582,10 @@ describe("a drawn game", () => {
     render(<PlaySection matchId="m1" />, { wrapper });
 
     fireEvent.click(await screen.findByRole("button", { name: "Chat" }));
-    expect(await screen.findByText("gl hf")).toBeInTheDocument();
+    // The line renders twice: once in the laptop live-feed rail beside the
+    // board and once in the in-tab feed shown below xl; CSS keeps exactly one
+    // visible per breakpoint.
+    expect((await screen.findAllByText("gl hf")).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText("Say something about the game…"), {
       target: { value: "nice move" },
@@ -831,7 +834,7 @@ describe("a drawn game", () => {
 });
 
 describe("spectator screen", () => {
-  it("shows the public room in the chat tab and posts from there", async () => {
+  it("shows the public room in the live feed and posts from there", async () => {
     chessApi.fetchMatch.mockResolvedValue(
       activeMatch({
         white: { id: "0x111", username: "TableOne", rating: 1650, walletAddress: "0x111" },
@@ -867,7 +870,7 @@ describe("spectator screen", () => {
 
     render(<SpectateSection matchId="m1" />, { wrapper });
 
-    fireEvent.click(await screen.findByRole("tab", { name: /Chat/i }));
+    // No tab to click any more: the spectator feed floats beside the board.
     expect(await screen.findByText("gl hf")).toBeInTheDocument();
     expect(screen.getByText("sharp line")).toBeInTheDocument();
     expect(screen.getAllByText("gl hf")).toHaveLength(1);

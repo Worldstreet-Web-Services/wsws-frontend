@@ -1006,7 +1006,9 @@
     "redeemCta": "Redeem winnings",
     "tab_positions": "Positions",
     "positionConnect": "Connect a wallet to see your position.",
-    "noEarlyExitNote": "Pas de sortie anticipée. Vous pourrez récupérer une fois le marché résolu."
+    "noEarlyExitNote": "Pas de sortie anticipée. Vous pourrez récupérer une fois le marché résolu.",
+    "viewOutcomes": "Voir les issues",
+    "moreOutcomes": "+{count} de plus"
   },
   "perps": {
     "eyebrow": "Perpétuels",

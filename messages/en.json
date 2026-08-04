@@ -1423,7 +1423,9 @@
       "calcBody": "Deciding who takes the pot. Hold tight.",
       "calcOnTheLine": "{amount} on the line",
       "soundPlay": "Sound",
-      "soundMute": "Mute"
+      "soundMute": "Mute",
+      "miniOpen": "Pop-out timer",
+      "miniClose": "Close pop-out"
     },
     "fund": {
       "title": "Add money",

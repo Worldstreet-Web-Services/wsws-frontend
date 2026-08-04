@@ -1423,7 +1423,9 @@
       "calcBody": "Es wird entschieden, wer den Pot nimmt. Einen Moment.",
       "calcOnTheLine": "{amount} stehen auf dem Spiel",
       "soundPlay": "Ton",
-      "soundMute": "Stumm"
+      "soundMute": "Stumm",
+      "miniOpen": "Timer auskoppeln",
+      "miniClose": "Pop-out schließen"
     },
     "fund": {
       "title": "Geld hinzufügen",

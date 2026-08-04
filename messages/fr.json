@@ -1423,7 +1423,9 @@
       "calcBody": "On détermine qui remporte le pot. Tenez bon.",
       "calcOnTheLine": "{amount} en jeu",
       "soundPlay": "Son",
-      "soundMute": "Muet"
+      "soundMute": "Muet",
+      "miniOpen": "Minuteur flottant",
+      "miniClose": "Fermer le flottant"
     },
     "fund": {
       "title": "Ajouter de l'argent",

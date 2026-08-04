@@ -1423,7 +1423,9 @@
       "calcBody": "Decidiendo quién se lleva el pozo. Espera un momento.",
       "calcOnTheLine": "{amount} en juego",
       "soundPlay": "Sonido",
-      "soundMute": "Silenciar"
+      "soundMute": "Silenciar",
+      "miniOpen": "Temporizador flotante",
+      "miniClose": "Cerrar flotante"
     },
     "fund": {
       "title": "Añadir dinero",

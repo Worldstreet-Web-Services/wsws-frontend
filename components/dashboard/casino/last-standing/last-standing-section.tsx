@@ -670,7 +670,36 @@ export function LastStandingSection() {
               <div className="text-accent/80 text-[11px] font-semibold tracking-[0.18em] uppercase">
                 {t("prizePool")}
               </div>
-              <MusicToggle />
+              <div className="flex items-center gap-2">
+                <MiniTimerLauncher
+                  clock={
+                    gameActive
+                      ? formatCountdown(countdown)
+                      : formatCountdown(status?.timerDuration ?? 0)
+                  }
+                  urgent={urgent}
+                  statusLabel={
+                    gameActive
+                      ? urgent
+                        ? t("statusEnding")
+                        : t("statusLiveRound")
+                      : status?.isGameStarted
+                        ? t("statusRoundEnded")
+                        : t("statusIdle")
+                  }
+                  potLabel={t("prizePool")}
+                  pot={money.format(potUsd)}
+                  stakeLabel={
+                    canPlay ? t("ctaPlay", { amount: money.format(entryFeeUsd) }) : t("ctaAddMoney")
+                  }
+                  canStake={!!status && !!address && canPlay}
+                  staking={wagering}
+                  onStake={() => void onPlay()}
+                  openLabel={t("miniOpen")}
+                  closeLabel={t("miniClose")}
+                />
+                <MusicToggle />
+              </div>
             </div>
             <motion.div
               ref={potRef}

@@ -1423,7 +1423,9 @@
       "calcBody": "Decidindo quem leva o pote. Aguente firme.",
       "calcOnTheLine": "{amount} em jogo",
       "soundPlay": "Som",
-      "soundMute": "Mudo"
+      "soundMute": "Mudo",
+      "miniOpen": "Temporizador flutuante",
+      "miniClose": "Fechar flutuante"
     },
     "fund": {
       "title": "Adicionar dinheiro",

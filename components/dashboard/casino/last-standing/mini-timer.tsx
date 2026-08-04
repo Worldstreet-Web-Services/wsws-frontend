@@ -12,15 +12,21 @@ import { createPortal } from "react-dom";
 //   1. Document picture-in-picture (Chromium): a real always-on-top window
 //      with live HTML — the countdown, the pot, and a working play button, so
 //      a wager can be placed without returning to the tab.
-//   2. Video picture-in-picture (Safari/Firefox): the clock and pot drawn to
-//      a canvas and streamed into a floating video. Not clickable — clicking
-//      it focuses the tab to play — but the countdown stays visible.
-// Browsers with neither (mobile) get no button at all: there is no floating
-// surface to offer, and pretending otherwise is worse than absence.
+//   2. Video picture-in-picture (Safari, Firefox, Android Chrome): the clock
+//      and pot drawn to a canvas and streamed into a floating video. Not
+//      clickable — clicking it focuses the tab to play — but the countdown
+//      stays visible, and on Android it keeps floating over the home screen
+//      after leaving the browser.
+// Browsers with neither get no button at all: there is no floating surface to
+// offer, and pretending otherwise is worse than absence.
 //
-// The clock is NOT ticked here. The section owns the server-synced countdown
-// and passes the formatted string down; both tiers just render what arrives,
-// so the pop-out can never drift from the game.
+// Timekeeping is deadline-based, not tick-based. A minimised or backgrounded
+// tab has its timers throttled (down to once a minute), so a clock that
+// decrements per tick freezes exactly when the pop-out matters most. Instead
+// the latest server-reported seconds are turned into an absolute deadline, and
+// every repaint derives the remaining time from the wall clock — a late tick
+// still shows the right number. The document tier goes further and runs its
+// ticker on the pop-out window itself, which is visible and never throttled.
 
 interface DocumentPictureInPictureApi {
   requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
@@ -39,6 +45,13 @@ function detectTier(): PipTier | null {
     return "video";
   }
   return null;
+}
+
+export function formatCountdown(totalSeconds: number): string {
+  const clamped = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 // The pop-out document starts empty; cloning the page's stylesheets makes the
@@ -65,13 +78,21 @@ function copyStylesInto(target: Window): void {
 }
 
 export interface MiniTimerProps {
-  // Formatted mm:ss from the section's server-synced countdown.
-  clock: string;
-  urgent: boolean;
-  // Status line under the clock (live / ended / idle), already localized.
-  statusLabel: string;
+  // The latest server-reported seconds remaining. Turned into a deadline
+  // here; never ticked down by the caller.
+  serverSeconds: number;
+  active: boolean;
+  // What the clock shows between rounds (the full round duration).
+  idleSeconds: number;
+  statusLiveLabel: string;
+  statusEndingLabel: string;
+  // Status line when no round is live (ended / idle), composed by the caller.
+  statusIdleLabel: string;
   potLabel: string;
   pot: string;
+  balanceLabel: string;
+  // The player's spendable balance, already formatted and privacy-masked.
+  balance: string;
   stakeLabel: string;
   canStake: boolean;
   staking: boolean;
@@ -80,6 +101,7 @@ export interface MiniTimerProps {
   closeLabel: string;
 }
 
+const URGENT_SECONDS = 10;
 const noSubscription = () => () => {};
 
 export function MiniTimerLauncher(props: MiniTimerProps) {
@@ -93,6 +115,39 @@ export function MiniTimerLauncher(props: MiniTimerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const open = pipWindow !== null || videoPipActive;
+
+  // The pop-out's own clock while a round is live. Each server reading
+  // becomes an absolute deadline inside the effect, and the interval derives
+  // the remaining seconds from the wall clock — so a tick that lands late
+  // still shows the right number. On the document tier the interval belongs
+  // to the pop-out window: it stays visible when the tab is minimised, so
+  // the browser never throttles it. The video tier has only the page's
+  // window, but an active picture-in-picture video keeps the page exempt
+  // from intensive throttling, and the deadline math absorbs whatever delay
+  // remains.
+  const [ticked, setTicked] = useState(props.serverSeconds);
+  useEffect(() => {
+    if (!open || !props.active) return;
+    const deadline = Date.now() + props.serverSeconds * 1000;
+    const host = pipWindow ?? window;
+    const id = host.setInterval(
+      () => setTicked(Math.max(0, Math.round((deadline - Date.now()) / 1000))),
+      500
+    );
+    return () => host.clearInterval(id);
+  }, [open, props.active, props.serverSeconds, pipWindow]);
+
+  // Between interval ticks the freshest server reading wins; once ticking
+  // starts, the smaller of the two is always the truth (time only runs down
+  // between server updates).
+  const remaining = props.active ? Math.min(ticked, props.serverSeconds) : props.idleSeconds;
+  const urgent = props.active && remaining > 0 && remaining <= URGENT_SECONDS;
+  const clock = formatCountdown(remaining);
+  const statusLabel = props.active
+    ? urgent
+      ? props.statusEndingLabel
+      : props.statusLiveLabel
+    : props.statusIdleLabel;
 
   const closeDocumentPip = useCallback(() => {
     pipWindow?.close();
@@ -157,8 +212,8 @@ export function MiniTimerLauncher(props: MiniTimerProps) {
     };
   }, [pipWindow]);
 
-  // The canvas frame for the video tier, redrawn whenever the clock or pot
-  // changes. No local ticking: the props are the single source of time.
+  // The canvas frame for the video tier, repainted by the ticker above (and
+  // whenever the pot or labels change).
   useEffect(() => {
     if (tier !== "video" || !videoPipActive) return;
     const canvas = canvasRef.current;
@@ -170,21 +225,13 @@ export function MiniTimerLauncher(props: MiniTimerProps) {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "600 13px sans-serif";
     ctx.fillText(`${props.potLabel}  ${props.pot}`, canvas.width / 2, 34);
-    ctx.fillStyle = props.urgent ? "#F6A5A5" : "#ffffff";
+    ctx.fillStyle = urgent ? "#F6A5A5" : "#ffffff";
     ctx.font = "700 64px ui-monospace, monospace";
-    ctx.fillText(props.clock, canvas.width / 2, 108);
+    ctx.fillText(clock, canvas.width / 2, 108);
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.font = "500 12px sans-serif";
-    ctx.fillText(props.statusLabel, canvas.width / 2, 140);
-  }, [
-    tier,
-    videoPipActive,
-    props.clock,
-    props.pot,
-    props.potLabel,
-    props.urgent,
-    props.statusLabel,
-  ]);
+    ctx.fillText(statusLabel, canvas.width / 2, 140);
+  });
 
   if (tier === null) return null;
 
@@ -220,12 +267,12 @@ export function MiniTimerLauncher(props: MiniTimerProps) {
               <div className="text-[19px] font-semibold text-white">{props.pot}</div>
               <div
                 className={`tnum text-[52px] leading-none font-bold ${
-                  props.urgent ? "animate-pulse text-[#F6A5A5]" : "text-white"
+                  urgent ? "animate-pulse text-[#F6A5A5]" : "text-white"
                 }`}
               >
-                {props.clock}
+                {clock}
               </div>
-              <div className="text-[12px] text-white/45">{props.statusLabel}</div>
+              <div className="text-[12px] text-white/45">{statusLabel}</div>
               <button
                 type="button"
                 onClick={props.onStake}
@@ -234,6 +281,9 @@ export function MiniTimerLauncher(props: MiniTimerProps) {
               >
                 {props.stakeLabel}
               </button>
+              <div className="text-[11px] text-white/40">
+                {props.balanceLabel} {props.balance}
+              </div>
             </div>,
             pipWindow.document.body
           )

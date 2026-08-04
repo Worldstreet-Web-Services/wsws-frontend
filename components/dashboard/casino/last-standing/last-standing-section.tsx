@@ -120,13 +120,6 @@ const COIN_FLIGHTS = [
 ];
 const COIN_FLIGHT_SECONDS = 0.75;
 
-function formatCountdown(totalSeconds: number): string {
-  const clamped = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(clamped / 60);
-  const seconds = clamped % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 // Ticks a server-reported "seconds remaining" down locally between updates,
 // resetting whenever a fresh value arrives from the socket or REST poll.
 function useCountdown(serverSeconds: number, active: boolean): number {
@@ -672,23 +665,16 @@ export function LastStandingSection() {
               </div>
               <div className="flex items-center gap-2">
                 <MiniTimerLauncher
-                  clock={
-                    gameActive
-                      ? formatCountdown(countdown)
-                      : formatCountdown(status?.timerDuration ?? 0)
-                  }
-                  urgent={urgent}
-                  statusLabel={
-                    gameActive
-                      ? urgent
-                        ? t("statusEnding")
-                        : t("statusLiveRound")
-                      : status?.isGameStarted
-                        ? t("statusRoundEnded")
-                        : t("statusIdle")
-                  }
+                  serverSeconds={status?.timeRemaining ?? 0}
+                  active={gameActive}
+                  idleSeconds={status?.timerDuration ?? 0}
+                  statusLiveLabel={t("statusLiveRound")}
+                  statusEndingLabel={t("statusEnding")}
+                  statusIdleLabel={status?.isGameStarted ? t("statusRoundEnded") : t("statusIdle")}
                   potLabel={t("prizePool")}
                   pot={money.format(potUsd)}
+                  balanceLabel={t("yourBalance")}
+                  balance={mask(money.format(balanceUsd))}
                   stakeLabel={
                     canPlay ? t("ctaPlay", { amount: money.format(entryFeeUsd) }) : t("ctaAddMoney")
                   }

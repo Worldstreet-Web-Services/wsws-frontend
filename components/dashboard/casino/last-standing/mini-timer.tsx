@@ -148,8 +148,23 @@ async function openDocumentPip(): Promise<void> {
 async function openVideoPip(): Promise<void> {
   if (!surfaces) return;
   const { canvas, video } = surfaces;
-  if (!video.srcObject) video.srcObject = canvas.captureStream();
+  // Paint a first frame before capturing: a stream that has never produced a
+  // frame yields no video metadata, and the picture-in-picture request
+  // rejects on a video without metadata — silently, from the user's seat.
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#101013";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  // A fixed capture rate keeps frames flowing even between repaints, which
+  // some browsers need before they consider the video "playing".
+  if (!video.srcObject) video.srcObject = canvas.captureStream(10);
   await video.play();
+  if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+    await new Promise<void>((resolve) =>
+      video.addEventListener("loadedmetadata", () => resolve(), { once: true })
+    );
+  }
   await video.requestPictureInPicture();
   video.addEventListener("leavepictureinpicture", () => setState({ videoActive: false }), {
     once: true,
@@ -177,11 +192,17 @@ export function MiniTimerLauncher() {
     if (open) {
       closeMiniWindow();
     } else if (tier === "document") {
-      void openDocumentPip().catch(() => setState({ pipWindow: null }));
+      void openDocumentPip().catch(() => {
+        setState({ pipWindow: null });
+        toast.error(t("miniFailed"));
+      });
     } else if (tier === "video") {
-      void openVideoPip().catch(() => setState({ videoActive: false }));
+      void openVideoPip().catch(() => {
+        setState({ videoActive: false });
+        toast.error(t("miniFailed"));
+      });
     }
-  }, [open, tier]);
+  }, [open, tier, t]);
 
   if (tier === null) return null;
 

@@ -1425,7 +1425,8 @@
       "soundPlay": "Ton",
       "soundMute": "Stumm",
       "miniOpen": "Timer auskoppeln",
-      "miniClose": "Pop-out schließen"
+      "miniClose": "Pop-out schließen",
+      "miniFailed": "Der schwebende Timer ließ sich in diesem Browser nicht öffnen."
     },
     "fund": {
       "title": "Geld hinzufügen",

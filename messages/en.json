@@ -1425,7 +1425,8 @@
       "soundPlay": "Sound",
       "soundMute": "Mute",
       "miniOpen": "Pop-out timer",
-      "miniClose": "Close pop-out"
+      "miniClose": "Close pop-out",
+      "miniFailed": "Couldn't open the floating timer in this browser."
     },
     "fund": {
       "title": "Add money",

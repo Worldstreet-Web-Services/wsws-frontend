@@ -1425,7 +1425,8 @@
       "soundPlay": "Sonido",
       "soundMute": "Silenciar",
       "miniOpen": "Temporizador flotante",
-      "miniClose": "Cerrar flotante"
+      "miniClose": "Cerrar flotante",
+      "miniFailed": "No se pudo abrir el temporizador flotante en este navegador."
     },
     "fund": {
       "title": "Añadir dinero",

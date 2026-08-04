@@ -1425,7 +1425,8 @@
       "soundPlay": "Son",
       "soundMute": "Muet",
       "miniOpen": "Minuteur flottant",
-      "miniClose": "Fermer le flottant"
+      "miniClose": "Fermer le flottant",
+      "miniFailed": "Impossible d'ouvrir le minuteur flottant dans ce navigateur."
     },
     "fund": {
       "title": "Ajouter de l'argent",

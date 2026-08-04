@@ -1425,7 +1425,8 @@
       "soundPlay": "Som",
       "soundMute": "Mudo",
       "miniOpen": "Temporizador flutuante",
-      "miniClose": "Fechar flutuante"
+      "miniClose": "Fechar flutuante",
+      "miniFailed": "Não foi possível abrir o temporizador flutuante neste navegador."
     },
     "fund": {
       "title": "Adicionar dinheiro",

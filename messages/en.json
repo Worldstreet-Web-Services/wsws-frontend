@@ -1691,6 +1691,7 @@
         "toastPlaced": "Bet placed at {odds}, {payout} to win.",
         "toastPlaceFailed": "Couldn't place that bet.",
         "timeControl": "Time control",
+        "panelTabs": "Spectator panels",
         "liveMarket": "Live market",
         "loadingOdds": "Loading odds",
         "whiteWinProbability": "White win probability",

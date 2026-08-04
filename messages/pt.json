@@ -1691,6 +1691,7 @@
         "toastPlaced": "Aposta feita a {odds}, {payout} a ganhar.",
         "toastPlaceFailed": "Não foi possível fazer essa aposta.",
         "timeControl": "Ritmo de jogo",
+        "panelTabs": "Painéis do espectador",
         "liveMarket": "Mercado ao vivo",
         "loadingOdds": "Carregando as odds",
         "whiteWinProbability": "Probabilidade de vitória das brancas",

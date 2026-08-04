@@ -540,7 +540,27 @@ export function useChessMatchSocial(
 
   const chat = useQuery({
     queryKey: CHESS_KEYS.chat(matchId ?? "none", activeRoom),
-    queryFn: () => fetchMatchChat(matchId as string, { room: activeRoom, limit: 100 }, seatName),
+    queryFn: () =>
+      fetchMatchChat(matchId as string, { room: activeRoom, limit: 100 }, seatName).catch(
+        (error: unknown) => {
+          const gateway = error as { status?: unknown; code?: unknown };
+          const status = typeof gateway.status === "number" ? gateway.status : null;
+          const code = typeof gateway.code === "string" ? gateway.code : null;
+          // Some matches do not expose a public room even though the spectator
+          // board itself is watchable. Treat that as "no chat yet", not a dead rail.
+          if (
+            activeRoom === "spectator" &&
+            (status === 404 ||
+              status === 409 ||
+              code === "NOT_FOUND" ||
+              code === "CONFLICT" ||
+              code === "BAD_RESPONSE")
+          ) {
+            return [];
+          }
+          throw error;
+        }
+      ),
     enabled: !!matchId && (activeRoom === "spectator" || !!wallet.address),
     refetchInterval: SOCIAL_POLL_MS,
     refetchIntervalInBackground: true,

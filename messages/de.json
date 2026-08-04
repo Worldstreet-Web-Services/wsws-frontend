@@ -1691,6 +1691,7 @@
         "toastPlaced": "Wette platziert zu {odds}, {payout} möglicher Gewinn.",
         "toastPlaceFailed": "Diese Wette konnte nicht platziert werden.",
         "timeControl": "Bedenkzeit",
+        "panelTabs": "Zuschauerbereiche",
         "liveMarket": "Live-Markt",
         "loadingOdds": "Quoten werden geladen",
         "whiteWinProbability": "Gewinnwahrscheinlichkeit von Weiß",

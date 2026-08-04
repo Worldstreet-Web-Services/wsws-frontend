@@ -279,9 +279,13 @@ export function LobbySection() {
   return (
     <>
       <div className="mx-auto w-full max-w-[1520px] px-4 pb-8 sm:px-6 lg:px-8">
+        {/* On xl the board column is pinned below the sticky topbar and the
+            menu column scrolls on its own, chess.com style, so the board never
+            leaves the screen while browsing the menu. The 84px offset clears
+            the sticky topbar and back link; 116px adds the bottom gap. */}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,840px)_392px]">
           <section
-            className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+            className="rounded-[8px] p-4 shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:sticky xl:top-[84px] xl:self-start"
             style={{ background: SURFACE_BG }}
           >
             <div className="mx-auto w-full" style={{ maxWidth: LOBBY_BOARD_MAX_WIDTH }}>
@@ -299,7 +303,7 @@ export function LobbySection() {
           </section>
 
           <aside
-            className="overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+            className="overflow-hidden rounded-[8px] shadow-[0_1px_1px_rgba(0,0,0,0.20)] xl:sticky xl:top-[84px] xl:max-h-[calc(100vh-116px)] xl:self-start xl:overflow-y-auto"
             style={{ background: SHELL_BG }}
           >
             <MenuHeader />

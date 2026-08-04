@@ -292,7 +292,7 @@ export function LobbySection() {
                 topbar, back link and page gaps (156px); the base 255px reserve
                 is not enough on xl where the whole column must fit without
                 page scroll, so the reserve grows to 380px there. */}
-            <div className="mx-auto w-full max-w-[var(--board-max)] [--board-max:min(100%,780px,calc(100vh-255px))] xl:[--board-max:min(100%,780px,calc(100vh-380px))]">
+            <div className="mx-auto w-full max-w-[var(--board-max)] [--board-max:min(100%,780px,calc(100vh_-_255px))] xl:[--board-max:min(100%,780px,calc(100vh_-_380px))]">
               <PlayerBar label={t("colOpponent")} />
               <div className="mt-4 overflow-hidden rounded-[2px]">
                 <ChessBoard board={LANDING_BOARD} theme={LANDING_THEME} />

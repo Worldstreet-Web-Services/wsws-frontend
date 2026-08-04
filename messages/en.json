@@ -1426,7 +1426,9 @@
       "soundMute": "Mute",
       "miniOpen": "Pop-out timer",
       "miniClose": "Close pop-out",
-      "miniFailed": "Couldn't open the floating timer in this browser."
+      "miniFailed": "Couldn't open the floating timer in this browser.",
+      "miniNotifyTitle": "⏳ {clock} left in Last Man Standing",
+      "miniNotifyBody": "Pot {pot}. Someone can still snatch it — tap to get back in."
     },
     "fund": {
       "title": "Add money",

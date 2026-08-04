@@ -1426,7 +1426,9 @@
       "soundMute": "Muet",
       "miniOpen": "Minuteur flottant",
       "miniClose": "Fermer le flottant",
-      "miniFailed": "Impossible d'ouvrir le minuteur flottant dans ce navigateur."
+      "miniFailed": "Impossible d'ouvrir le minuteur flottant dans ce navigateur.",
+      "miniNotifyTitle": "⏳ Il reste {clock} à Last Man Standing",
+      "miniNotifyBody": "Cagnotte {pot}. Quelqu'un peut encore la prendre — touchez pour revenir."
     },
     "fund": {
       "title": "Ajouter de l'argent",

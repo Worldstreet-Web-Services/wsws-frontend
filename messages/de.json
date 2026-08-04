@@ -1426,7 +1426,9 @@
       "soundMute": "Stumm",
       "miniOpen": "Timer auskoppeln",
       "miniClose": "Pop-out schließen",
-      "miniFailed": "Der schwebende Timer ließ sich in diesem Browser nicht öffnen."
+      "miniFailed": "Der schwebende Timer ließ sich in diesem Browser nicht öffnen.",
+      "miniNotifyTitle": "⏳ Noch {clock} bei Last Man Standing",
+      "miniNotifyBody": "Pot {pot}. Jemand kann ihn noch schnappen — tippe, um zurückzukehren."
     },
     "fund": {
       "title": "Geld hinzufügen",

@@ -53,16 +53,13 @@ function detectTier(): PipTier | null {
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
     "captureStream" in HTMLCanvasElement.prototype;
-  // The document tier's floating window is the only one that can hold a
-  // working play button — but on macOS it is an ordinary always-on-top
-  // window pinned to the desktop it opened on: swipe to another Space or
-  // screen and it is gone. The video tier's window is a system floating
-  // panel that follows across desktops, so on macOS staying visible wins
-  // over interactivity. (Neither tier can appear over another app's
-  // FULLSCREEN Space in any Chromium browser; only Safari's private-API
-  // PiP can.)
-  const isMac = navigator.platform.startsWith("Mac");
-  if (isMac && videoCapable) return "video";
+  // The document tier is preferred wherever it exists: its window is the
+  // only one that can hold the play button and balance. Known macOS limit,
+  // confirmed upstream and shared by BOTH tiers in every Chromium browser:
+  // the floating window cannot appear over another app's fullscreen Space
+  // (only Safari's private-API PiP can) — so trading the interactive window
+  // away buys nothing there. The critical-clock notification below is what
+  // covers the fullscreen case.
   if ("documentPictureInPicture" in window) return "document";
   return videoCapable ? "video" : null;
 }
@@ -219,7 +216,15 @@ export function MiniTimerLauncher() {
   const toggle = useCallback(() => {
     if (open) {
       closeMiniWindow();
-    } else if (tier === "document") {
+      return;
+    }
+    // Ask inside the click that opens the pop-out: no Chromium window can
+    // float over another app's fullscreen Space on macOS, and the
+    // critical-clock notification is what reaches the player there.
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+    if (tier === "document") {
       void openDocumentPip().catch(() => {
         setState({ pipWindow: null });
         toast.error(t("miniFailed"));
@@ -388,7 +393,41 @@ function MiniTimerLive({
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.font = "500 12px sans-serif";
     ctx.fillText(statusLabel, canvas.width / 2, 140);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "500 11px sans-serif";
+    ctx.fillText(`${t("yourBalance")}  ${balance}`, canvas.width / 2, 162);
   });
+
+  // The one surface that reaches a player on another app's fullscreen Space
+  // (where no Chromium floating window can follow on macOS): a system
+  // notification when the clock turns critical while the page is hidden.
+  // Fired once per critical phase; a wager resets the clock above the
+  // threshold and re-arms it. Clicking brings the game back.
+  const notifiedRef = useRef(false);
+  useEffect(() => {
+    if (!gameActive || remaining > URGENT_SECONDS * 2) {
+      notifiedRef.current = false;
+      return;
+    }
+    if (
+      notifiedRef.current ||
+      remaining <= 0 ||
+      typeof Notification === "undefined" ||
+      Notification.permission !== "granted" ||
+      document.visibilityState === "visible"
+    ) {
+      return;
+    }
+    notifiedRef.current = true;
+    const notification = new Notification(t("miniNotifyTitle", { clock }), {
+      body: t("miniNotifyBody", { pot }),
+      tag: "last-standing-clock",
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  }, [gameActive, remaining, clock, pot, t]);
 
   if (!pipWindow) return null;
 

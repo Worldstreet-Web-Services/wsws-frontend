@@ -1426,7 +1426,9 @@
       "soundMute": "Silenciar",
       "miniOpen": "Temporizador flotante",
       "miniClose": "Cerrar flotante",
-      "miniFailed": "No se pudo abrir el temporizador flotante en este navegador."
+      "miniFailed": "No se pudo abrir el temporizador flotante en este navegador.",
+      "miniNotifyTitle": "⏳ Quedan {clock} en Last Man Standing",
+      "miniNotifyBody": "Bote {pot}. Alguien aún puede llevárselo — toca para volver."
     },
     "fund": {
       "title": "Añadir dinero",

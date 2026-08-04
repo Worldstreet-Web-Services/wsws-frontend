@@ -1426,7 +1426,9 @@
       "soundMute": "Mudo",
       "miniOpen": "Temporizador flutuante",
       "miniClose": "Fechar flutuante",
-      "miniFailed": "Não foi possível abrir o temporizador flutuante neste navegador."
+      "miniFailed": "Não foi possível abrir o temporizador flutuante neste navegador.",
+      "miniNotifyTitle": "⏳ Faltam {clock} no Last Man Standing",
+      "miniNotifyBody": "Pote {pot}. Alguém ainda pode levá-lo — toque para voltar."
     },
     "fund": {
       "title": "Adicionar dinheiro",

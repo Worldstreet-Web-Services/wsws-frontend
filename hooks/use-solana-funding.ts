@@ -3,19 +3,26 @@
 import { useCallback, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { encodeFunctionData, erc20Abi } from "viem";
-import { useEvmSendBatch } from "@/hooks/use-evm-send";
+import { useEvmSend } from "@/hooks/use-evm-send";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { fetchLifiQuote, fetchLifiStatus, type LifiQuote } from "@/lib/trade/lifi";
+import { apiFetch } from "@/lib/api";
+import { fetchBuyQuote, type BuyQuote } from "@/lib/buy-quote";
 import {
   BASE_USDC,
   LIFI_BASE_CHAIN,
-  LIFI_SOLANA_CHAIN,
+  LIFI_NATIVE_SOL,
   fundingLegs,
   planSignature,
   resizeBridgeSend,
   type FundingLeg,
   type FundingPlan,
 } from "@/lib/rwa/funding";
+import {
+  depositProgress,
+  SOLANA_CHAIN_ID,
+  TERMINAL_STAGES,
+  type DepositStatusResult,
+} from "@/lib/deposit";
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { getWalletAddress } from "@/lib/user";
 
@@ -31,21 +38,24 @@ export interface FundingStep {
   usdc: number;
 }
 
-const SLIPPAGE = 0.005;
+const SLIPPAGE_BPS = 50;
 const POLL_MS = 3_000;
-// Bridges quote ~1s for the gas hop and ~30s for USDC, so this is generous
-// headroom. It is a wall-clock deadline rather than a poll count because a
-// slow status endpoint would otherwise stretch the wait far past it.
-const SETTLE_DEADLINE_MS = 150_000;
+// Dextopus quotes 2-5 minutes for a deposit to settle, so the deadline gives
+// that range headroom. It is a wall-clock deadline rather than a poll count
+// because a slow status endpoint would otherwise stretch the wait far past it.
+const SETTLE_DEADLINE_MS = 420_000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Moves Base USDC to the user's Solana wallet so a Solana RWA buy can run:
-// a fast native-SOL hop for the network fee, then the purchase funds. Every
-// leg's transaction is on Base, so the user's sponsored send pays no gas.
+// a native-SOL hop for the network fee, then the purchase funds. Both legs are
+// Dextopus deposits, the same rail as the deposit and sell flows: quote a
+// deposit address, make one sponsored USDC transfer to it on Base, and poll
+// until Dextopus settles on Solana. The user signs once per leg and pays no
+// gas.
 export function useSolanaFunding() {
   const { user } = usePrivy();
-  const evmSendBatch = useEvmSendBatch();
+  const evmSend = useEvmSend();
   const portfolio = usePortfolio();
   const [phase, setPhase] = useState<FundingPhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -121,45 +131,28 @@ export function useSolanaFunding() {
 
           setPhase("signing");
           mark(index, "active", "signing");
-          // The bridge pulls the USDC with transferFrom, so it needs an
-          // allowance first or it reverts. Both calls go out as one atomic
-          // sponsored operation: the allowance is granted and spent in the same
-          // transaction, so it is never left standing and the user signs once.
-          const hash = await evmSendBatch(
-            [
-              {
-                to: BASE_USDC as `0x${string}`,
-                data: encodeFunctionData({
-                  abi: erc20Abi,
-                  functionName: "approve",
-                  args: [quote.approvalAddress as `0x${string}`, amountIn],
-                }),
-              },
-              {
-                to: quote.transactionRequest.to as `0x${string}`,
-                data: quote.transactionRequest.data as `0x${string}`,
-                value: BigInt(quote.transactionRequest.value || "0"),
-              },
-            ],
-            quote.transactionRequest.chainId
-          );
+          // One sponsored transfer of exactly the quoted amount to the
+          // deposit address. Dextopus watches the address and settles on
+          // Solana by itself, so unlike a router call there is no allowance
+          // to grant and nothing else to sign.
+          await evmSend({
+            to: BASE_USDC as `0x${string}`,
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: "transfer",
+              args: [quote.depositAddress as `0x${string}`, amountIn],
+            }),
+            chainId: LIFI_BASE_CHAIN,
+          });
           // Recorded the moment it is broadcast, not when it settles: the
           // money has left either way.
           sentRef.current.kinds.add(leg.kind);
 
-          // The Base transaction is confirmed; the funds still have to land on
+          // The Base transfer is confirmed; the funds still have to land on
           // Solana before the buy can spend them.
           setPhase("settling");
           mark(index, "active", "settling");
-          let settled = false;
-          const deadline = Date.now() + SETTLE_DEADLINE_MS;
-          while (!settled && Date.now() < deadline) {
-            await delay(POLL_MS);
-            const status = await fetchLifiStatus(hash).catch(() => "PENDING" as const);
-            if (status === "DONE") settled = true;
-            else if (status === "FAILED") throw new Error("The transfer did not complete.");
-          }
-          if (!settled) throw new Error("The transfer is still on its way. Check back shortly.");
+          await awaitSettled(quote.requestId);
           mark(index, "done", "done");
         }
 
@@ -176,7 +169,7 @@ export function useSolanaFunding() {
         void portfolio.refetchUntilChanged();
       }
     },
-    [user, evmSendBatch, portfolio]
+    [user, evmSend, portfolio]
   );
 
   return {
@@ -189,10 +182,35 @@ export function useSolanaFunding() {
   };
 }
 
+// Polls the deposit until Dextopus reports a terminal stage. Settled resolves;
+// failed or refunded throws so the leg is marked and the run stops.
+async function awaitSettled(requestId: string): Promise<void> {
+  const deadline = Date.now() + SETTLE_DEADLINE_MS;
+  while (Date.now() < deadline) {
+    await delay(POLL_MS);
+    const status = await fetchDepositStatus(requestId).catch(() => null);
+    if (!status) continue;
+    const { stage } = depositProgress(status.status, status.executionStatus);
+    if (stage === "settled") return;
+    if (TERMINAL_STAGES.has(stage)) {
+      throw new Error("The transfer did not complete. Any funds sent are refunded to Base.");
+    }
+  }
+  throw new Error("The transfer is still on its way. Check back shortly.");
+}
+
+async function fetchDepositStatus(requestId: string): Promise<DepositStatusResult> {
+  const res = await apiFetch(
+    `/api/dextopus/deposit/status?depositRequestId=${encodeURIComponent(requestId)}`
+  );
+  if (!res.ok) throw new Error("Couldn't check the transfer status.");
+  return (await res.json()) as DepositStatusResult;
+}
+
 // A quote whose delivery actually covers what the leg has to land. The first
 // quote is only an estimate of the bridge's cost; if it comes back short, the
 // send is re-sized from what it really delivers and quoted once more. Without
-// this the purchase leg lands under the price and the buy stays unaffordable —
+// this the purchase leg lands under the price and the buy stays unaffordable,
 // with too little left on Base to try again.
 async function sizedQuote(
   leg: FundingLeg,
@@ -200,18 +218,25 @@ async function sizedQuote(
   from: string,
   to: string,
   availableBase: number
-): Promise<{ quote: LifiQuote; amountIn: bigint }> {
+): Promise<{ quote: BuyQuote; amountIn: bigint }> {
+  // The gas leg delivers native SOL (9 decimals); the purchase leg delivers
+  // USDC (6). Decimals only shape how the quote's output amounts are parsed.
+  const decimals = leg.kind === "gas" ? 9 : 6;
   const ask = async (usdc: number) => {
     const amountIn = toBaseUnits(usdc.toFixed(6), 6);
-    const quote = await fetchLifiQuote({
-      fromChain: LIFI_BASE_CHAIN,
-      toChain: LIFI_SOLANA_CHAIN,
-      fromToken: BASE_USDC,
-      toToken: leg.toToken,
-      fromAmount: amountIn,
-      fromAddress: from,
-      toAddress: to,
-      slippage: SLIPPAGE,
+    const quote = await fetchBuyQuote({
+      route: {
+        destinationChainId: SOLANA_CHAIN_ID,
+        chainName: "solana",
+        asset: leg.kind === "gas" ? LIFI_NATIVE_SOL : leg.toToken,
+        symbol: leg.kind === "gas" ? "SOL" : "USDC",
+        decimals,
+        logoUrl: null,
+      },
+      amount: amountIn,
+      recipient: to,
+      refundTo: from,
+      slippageBps: SLIPPAGE_BPS,
     });
     return { quote, amountIn };
   };
@@ -220,7 +245,7 @@ async function sizedQuote(
   // The gas leg buys SOL, so there is no USDC arrival to check against.
   if (leg.kind !== "usdc" || plan.requiredArrivalUsdc <= 0) return first;
 
-  const delivered = Number(fromBaseUnits(first.quote.toAmountMin, 6));
+  const delivered = Number(fromBaseUnits(first.quote.minOutput, 6));
   const resized = resizeBridgeSend(leg.usdc, delivered, plan.requiredArrivalUsdc, availableBase);
   return resized == null ? first : await ask(resized);
 }

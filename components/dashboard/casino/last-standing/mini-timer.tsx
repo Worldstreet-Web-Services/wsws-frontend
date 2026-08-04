@@ -53,15 +53,17 @@ function detectTier(): PipTier | null {
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
     "captureStream" in HTMLCanvasElement.prototype;
-  // The document tier is preferred wherever it exists: its window is the
-  // only one that can hold the play button and balance. Known macOS limit,
-  // confirmed upstream and shared by BOTH tiers in every Chromium browser:
-  // the floating window cannot appear over another app's fullscreen Space
-  // (only Safari's private-API PiP can) — so trading the interactive window
-  // away buys nothing there. The critical-clock notification below is what
-  // covers the fullscreen case.
+  // The video tier is preferred wherever it works: its window is the system
+  // floating panel, the only surface every browser reliably keeps above
+  // other applications and desktops. The document tier's window can hold a
+  // working play button, but in several Chromium forks it sinks behind
+  // other apps — losing sight of the clock is losing the game, so it is
+  // only the fallback for browsers without canvas capture. (Neither tier
+  // can appear over another app's FULLSCREEN Space on macOS; the
+  // critical-clock notification covers that.)
+  if (videoCapable) return "video";
   if ("documentPictureInPicture" in window) return "document";
-  return videoCapable ? "video" : null;
+  return null;
 }
 
 export function formatCountdown(totalSeconds: number): string {

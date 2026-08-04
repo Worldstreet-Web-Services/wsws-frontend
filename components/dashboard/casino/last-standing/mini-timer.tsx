@@ -156,6 +156,10 @@ function teardownVideoSurface(): void {
   video.srcObject = null;
 }
 
+// How long to wait for the stream to produce its first frame before calling
+// the open failed. Generous: a healthy open needs a few hundred milliseconds.
+const VIDEO_OPEN_TIMEOUT_MS = 3_000;
+
 async function openVideoPip(): Promise<void> {
   if (!surfaces) return;
   const { canvas, video } = surfaces;
@@ -163,24 +167,45 @@ async function openVideoPip(): Promise<void> {
   // asking again, or the request races the exit and loses.
   if (document.pictureInPictureElement) await document.exitPictureInPicture();
   teardownVideoSurface();
-  // Paint a first frame before capturing: a stream that has never produced a
-  // frame yields no video metadata, and the picture-in-picture request
-  // rejects on a video without metadata — silently, from the user's seat.
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
+  const stream = canvas.captureStream();
+  video.srcObject = stream;
+  // Canvas frames are captured only when the canvas CHANGES, and the video
+  // yields metadata only once a real frame has flowed — but the game's
+  // repaint loop starts after the window opens. Without a heartbeat that is
+  // a deadlock: no change, no frame, no metadata, no window, no error. So
+  // paint continuously while opening, forcing a frame out each beat.
+  const track = stream.getVideoTracks()[0];
+  const heartbeat = window.setInterval(() => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     ctx.fillStyle = "#101013";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (track && "requestFrame" in track) {
+      (track as CanvasCaptureMediaStreamTrack).requestFrame();
+    }
+  }, 100);
+  try {
+    await video.play();
+    if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+      await new Promise<void>((resolve, reject) => {
+        const timer = window.setTimeout(
+          () => reject(new Error("the stream produced no frame")),
+          VIDEO_OPEN_TIMEOUT_MS
+        );
+        video.addEventListener(
+          "loadedmetadata",
+          () => {
+            window.clearTimeout(timer);
+            resolve();
+          },
+          { once: true }
+        );
+      });
+    }
+    await video.requestPictureInPicture();
+  } finally {
+    window.clearInterval(heartbeat);
   }
-  // A fixed capture rate keeps frames flowing even between repaints, which
-  // some browsers need before they consider the video "playing".
-  video.srcObject = canvas.captureStream(10);
-  await video.play();
-  if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
-    await new Promise<void>((resolve) =>
-      video.addEventListener("loadedmetadata", () => resolve(), { once: true })
-    );
-  }
-  await video.requestPictureInPicture();
   // Fires both for our own close and for the window's own X button; either
   // way the session is over and the stream must not be reused.
   video.addEventListener(
@@ -398,6 +423,14 @@ function MiniTimerLive({
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.font = "500 11px sans-serif";
     ctx.fillText(`${t("yourBalance")}  ${balance}`, canvas.width / 2, 162);
+    // Push the repaint into the stream explicitly rather than trusting
+    // change detection; a floating window showing a stale clock reads as
+    // frozen even when the page is healthy.
+    const stream = surfaces?.video.srcObject as MediaStream | null;
+    const track = stream?.getVideoTracks()[0];
+    if (track && "requestFrame" in track) {
+      (track as CanvasCaptureMediaStreamTrack).requestFrame();
+    }
   });
 
   // The one surface that reaches a player on another app's fullscreen Space

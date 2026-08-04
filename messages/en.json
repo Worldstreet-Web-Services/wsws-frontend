@@ -788,6 +788,7 @@
     "viewSlip": "View slip",
     "claim": "Claim",
     "claiming": "Claiming…",
+    "claimed": "Claimed",
     "claimAmount": "Claim {amount}",
     "resolvedNoWin": "Resolved · no win",
     "resolvedYouWon": "Resolved · you won",

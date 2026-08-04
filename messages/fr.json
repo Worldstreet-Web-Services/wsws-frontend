@@ -788,6 +788,7 @@
     "viewSlip": "Voir le ticket",
     "claim": "Réclamer",
     "claiming": "Réclamation…",
+    "claimed": "Réclamé",
     "claimAmount": "Réclamer {amount}",
     "resolvedNoWin": "Résolu · pas de gain",
     "resolvedYouWon": "Résolu · vous avez gagné",

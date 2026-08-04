@@ -788,6 +788,7 @@
     "viewSlip": "Schein ansehen",
     "claim": "Abholen",
     "claiming": "Wird abgeholt…",
+    "claimed": "Abgeholt",
     "claimAmount": "{amount} abholen",
     "resolvedNoWin": "Entschieden · kein Gewinn",
     "resolvedYouWon": "Entschieden · Sie haben gewonnen",

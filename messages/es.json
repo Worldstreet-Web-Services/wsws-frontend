@@ -788,6 +788,7 @@
     "viewSlip": "Ver boleto",
     "claim": "Reclamar",
     "claiming": "Reclamando…",
+    "claimed": "Reclamado",
     "claimAmount": "Reclamar {amount}",
     "resolvedNoWin": "Resuelto · sin premio",
     "resolvedYouWon": "Resuelto · ganaste",

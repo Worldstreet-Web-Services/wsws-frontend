@@ -1761,6 +1761,7 @@
         "panelTabs": "Panneaux spectateur",
         "liveMarket": "Marché en direct",
         "loadingOdds": "Chargement des cotes",
+        "marketUnavailable": "Les paris ne sont pas disponibles pour cette partie pour le moment. Nous continuons de vérifier.",
         "whiteWinProbability": "Probabilité de victoire des Blancs",
         "placeABet": "Placer un pari",
         "balance": "Solde {amount}",

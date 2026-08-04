@@ -1761,6 +1761,7 @@
         "panelTabs": "Painéis do espectador",
         "liveMarket": "Mercado ao vivo",
         "loadingOdds": "Carregando as odds",
+        "marketUnavailable": "As apostas não estão disponíveis para esta partida neste momento. Vamos continuar a verificar.",
         "whiteWinProbability": "Probabilidade de vitória das brancas",
         "placeABet": "Faça uma aposta",
         "balance": "Saldo {amount}",

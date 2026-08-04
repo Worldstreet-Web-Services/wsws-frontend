@@ -1761,6 +1761,7 @@
         "panelTabs": "Zuschauerbereiche",
         "liveMarket": "Live-Markt",
         "loadingOdds": "Quoten werden geladen",
+        "marketUnavailable": "Wetten sind für diese Partie gerade nicht verfügbar. Wir prüfen weiter.",
         "whiteWinProbability": "Gewinnwahrscheinlichkeit von Weiß",
         "placeABet": "Wette platzieren",
         "balance": "Guthaben {amount}",

@@ -1761,6 +1761,7 @@
         "panelTabs": "Spectator panels",
         "liveMarket": "Live market",
         "loadingOdds": "Loading odds",
+        "marketUnavailable": "Betting isn't available for this match right now. We'll keep checking.",
         "whiteWinProbability": "White win probability",
         "placeABet": "Place a bet",
         "balance": "Balance {amount}",

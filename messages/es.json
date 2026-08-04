@@ -714,6 +714,7 @@
     "fundSolanaTitle": "Primero mueve {amount} a Solana",
     "fundSolanaBody": "Tus USDC están en Base. Los moveremos a Solana: unos 30 segundos, gratis.",
     "fundSolanaWithGas": "Moveremos tus USDC a Solana y prepararemos el monedero: unos 30 segundos, gratis.",
+    "fundSolanaGasTitle": "Configuración única de tu monedero de Solana",
     "fundSolanaCta": "Mover fondos a Solana",
     "fundSolanaWorking": "Moviendo fondos…",
     "fundSolanaShort": "USDC insuficientes en Base",

@@ -714,6 +714,7 @@
     "fundSolanaTitle": "Transférez d'abord {amount} vers Solana",
     "fundSolanaBody": "Vos USDC sont sur Base. Nous les transférerons vers Solana — environ 30 secondes, gratuit.",
     "fundSolanaWithGas": "Nous transférerons vos USDC vers Solana et préparerons le portefeuille — environ 30 secondes, gratuit.",
+    "fundSolanaGasTitle": "Configuration unique de votre portefeuille Solana",
     "fundSolanaCta": "Transférer vers Solana",
     "fundSolanaWorking": "Transfert en cours…",
     "fundSolanaShort": "USDC insuffisants sur Base",

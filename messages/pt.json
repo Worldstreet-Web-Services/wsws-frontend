@@ -714,6 +714,7 @@
     "fundSolanaTitle": "Primeiro mova {amount} para a Solana",
     "fundSolanaBody": "Os seus USDC estão na Base. Vamos movê-los para a Solana — cerca de 30 segundos, grátis.",
     "fundSolanaWithGas": "Vamos mover os seus USDC para a Solana e preparar a carteira — cerca de 30 segundos, grátis.",
+    "fundSolanaGasTitle": "Configuração única da sua carteira Solana",
     "fundSolanaCta": "Mover fundos para a Solana",
     "fundSolanaWorking": "Movendo fundos…",
     "fundSolanaShort": "USDC insuficientes na Base",

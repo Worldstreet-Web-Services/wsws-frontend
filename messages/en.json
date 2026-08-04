@@ -714,6 +714,7 @@
     "fundSolanaTitle": "Move {amount} to Solana first",
     "fundSolanaBody": "Your USDC is on Base. We'll move it to Solana — about 30 seconds, free.",
     "fundSolanaWithGas": "We'll move your USDC to Solana and set the wallet up to trade there — about 30 seconds, free.",
+    "fundSolanaGasTitle": "Quick one-time setup for your Solana wallet",
     "fundSolanaCta": "Move funds to Solana",
     "fundSolanaWorking": "Moving funds…",
     "fundSolanaShort": "Not enough USDC on Base",

@@ -268,3 +268,83 @@ describe("cross-chain fallback is symmetric", () => {
     expect(planBaseFunding({ ...gas, spendUsdc: 3, baseUsdc: 0, solanaUsdc: 0 })).toBeNull();
   });
 });
+
+describe("gas top-up source", () => {
+  it("pays from Base when Base can afford the whole plan", () => {
+    const plan = planSolanaFunding({ spendUsdc: 20, solanaUsdc: 0, solanaSol: 0, baseUsdc: 100 });
+    expect(plan?.gasSource).toBe("base");
+    expect(plan?.totalBaseUsdc).toBeGreaterThan(GAS_TOPUP_USDC);
+  });
+
+  it("falls back to spare Solana USDC when Base cannot cover the top-up", () => {
+    // The reported case: $1 buy against 1.8177 USDC on Solana and ~$0.95 on
+    // Base. The gas dollar has to come from the Solana spare, or the buy is
+    // stranded asking for a Base top-up the wallet cannot pay.
+    const plan = planSolanaFunding({
+      spendUsdc: 1,
+      solanaUsdc: 1.8177,
+      solanaSol: 0,
+      baseUsdc: 0.95,
+    });
+    expect(plan?.topUpGas).toBe(true);
+    expect(plan?.gasSource).toBe("solana");
+    // Sized down to the spare, since the spare is under the full dollar.
+    expect(plan?.gasUsdc).toBe(0.81);
+    // Nothing moves from Base, so the plan is affordable as it stands.
+    expect(plan?.totalBaseUsdc).toBe(0);
+    expect(plan && planAffordable(plan, 0.95)).toBe(true);
+  });
+
+  it("stays on Base when the Solana spare cannot spare the dollar", () => {
+    // Spending nearly the whole Solana balance leaves no room to buy gas from
+    // it; the only honest answer is to ask for Base funds.
+    const plan = planSolanaFunding({
+      spendUsdc: 1.5,
+      solanaUsdc: 1.8177,
+      solanaSol: 0,
+      baseUsdc: 0.5,
+    });
+    expect(plan?.gasSource).toBe("base");
+    expect(plan && planAffordable(plan, 0.5)).toBe(false);
+  });
+
+  it("marks the legs with the chain that pays for them", () => {
+    const plan = planSolanaFunding({
+      spendUsdc: 1,
+      solanaUsdc: 5,
+      solanaSol: 0,
+      baseUsdc: 0,
+    });
+    const legs = plan ? fundingLegs(plan) : [];
+    expect(legs.map((l) => [l.kind, l.source])).toEqual([["gas", "solana"]]);
+    const basePlan = planSolanaFunding({
+      spendUsdc: 20,
+      solanaUsdc: 0,
+      solanaSol: 0,
+      baseUsdc: 100,
+    });
+    const baseLegs = basePlan ? fundingLegs(basePlan) : [];
+    expect(baseLegs.map((l) => [l.kind, l.source])).toEqual([
+      ["gas", "base"],
+      ["usdc", "base"],
+    ]);
+  });
+
+  it("tells apart otherwise identical plans by gas source", () => {
+    const fromSolana = planSolanaFunding({
+      spendUsdc: 1,
+      solanaUsdc: 5,
+      solanaSol: 0,
+      baseUsdc: 0,
+    });
+    const fromBase = planSolanaFunding({
+      spendUsdc: 1,
+      solanaUsdc: 5,
+      solanaSol: 0,
+      baseUsdc: 100,
+    });
+    expect(fromSolana && fromBase && planSignature(fromSolana) === planSignature(fromBase)).toBe(
+      false
+    );
+  });
+});

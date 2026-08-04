@@ -133,8 +133,10 @@ export function isUsableAsset(a: RwaApiAsset): boolean {
 // 0.00204 SOL for it — a real cost, on top of the amount entered, that a
 // balance of dust cannot cover. Treating any balance above zero as "has gas"
 // let the trade through and took the difference out of the wallet's SOL.
+// The Solana value mirrors SOL_GAS_MIN in lib/rwa/funding: one token account
+// plus fees, with margin.
 const CHAIN_GAS: Record<RwaChain, { network: string; symbol: string; min: number }> = {
-  solana: { network: "solana-mainnet", symbol: "SOL", min: 0.005 },
+  solana: { network: "solana-mainnet", symbol: "SOL", min: 0.003 },
   ethereum: { network: "eth-mainnet", symbol: "ETH", min: 0.0004 },
   base: { network: "base-mainnet", symbol: "ETH", min: 0 },
   arbitrum: { network: "arb-mainnet", symbol: "ETH", min: 0.0001 },

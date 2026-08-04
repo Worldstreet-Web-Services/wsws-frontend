@@ -49,15 +49,23 @@ type PipTier = "document" | "video";
 
 function detectTier(): PipTier | null {
   if (typeof window === "undefined") return null;
-  if ("documentPictureInPicture" in window) return "document";
-  if (
+  const videoCapable =
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
-    "captureStream" in HTMLCanvasElement.prototype
-  ) {
-    return "video";
-  }
-  return null;
+    "captureStream" in HTMLCanvasElement.prototype;
+  // Brave and Arc ship the document picture-in-picture API but do not give
+  // the window system-level always-on-top, so it sinks behind other apps —
+  // the one job the pop-out has. Their video picture-in-picture does float,
+  // so both take the video tier despite the API being present. Brave admits
+  // to itself on navigator; Arc is recognised by the theme variables it
+  // injects into every page.
+  const isBrave = "brave" in navigator;
+  const isArc =
+    typeof getComputedStyle !== "undefined" &&
+    getComputedStyle(document.documentElement).getPropertyValue("--arc-palette-background") !== "";
+  if ((isBrave || isArc) && videoCapable) return "video";
+  if ("documentPictureInPicture" in window) return "document";
+  return videoCapable ? "video" : null;
 }
 
 export function formatCountdown(totalSeconds: number): string {

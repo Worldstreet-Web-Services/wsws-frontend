@@ -241,8 +241,10 @@ export function SpectateSection({ matchId }: { matchId: string | null }) {
       social
         .postChat({
           room: "spectator",
+          // The canonical decimal string, not toFixed(2): a sub-cent stake
+          // must announce as $0.001, never as $0.00.
           text: t("chatBetPlaced", {
-            stake: usd(Number(stakeUsdc)),
+            stake: `$${stakeUsdc}`,
             selection: tCommon(selection),
           }),
         })

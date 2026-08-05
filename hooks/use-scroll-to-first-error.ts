@@ -15,7 +15,12 @@ export function useScrollToFirstError(
   useEffect(() => {
     if (!Object.values(errors).some(Boolean)) return;
     const field = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
-    field?.scrollIntoView({ behavior: "smooth", block: "center" });
-    field?.focus({ preventScroll: true });
+    if (!field) return;
+    // jsdom (and, per spec, any environment without a layout engine) has no
+    // scrollIntoView; skip the scroll there rather than throw, focus still works.
+    if (typeof field.scrollIntoView === "function") {
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    field.focus({ preventScroll: true });
   }, [errors, formRef]);
 }

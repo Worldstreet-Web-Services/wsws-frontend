@@ -24,7 +24,14 @@ const WIDTH: Record<"sm" | "lg", string> = {
 // that belongs beside the page rather than interrupting it in a centered
 // modal — notifications, filters, anything read alongside what's already on
 // screen.
-export function SidePanel({ open, onClose, children, title, width = "sm", panelClassName }: SidePanelProps) {
+export function SidePanel({
+  open,
+  onClose,
+  children,
+  title,
+  width = "sm",
+  panelClassName,
+}: SidePanelProps) {
   const reduce = useReducedMotion();
 
   return (

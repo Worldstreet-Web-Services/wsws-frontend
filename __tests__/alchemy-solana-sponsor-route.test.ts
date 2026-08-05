@@ -93,8 +93,8 @@ describe("solana sponsor routes", () => {
     const res = await POST(makeReq({ serializedTransaction: "AQIDBA==" }));
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledOnce();
-    const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0];
+    const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
     expect(url).toBe("https://api.worldstreetwebservices.com/v1/gas-sponsor/solana/sponsor");
   });
 
@@ -109,8 +109,8 @@ describe("solana sponsor routes", () => {
 
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledOnce();
-    const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0];
+    const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
     expect(url).toBe("http://127.0.0.1:8092/solana/sponsor");
   });
 

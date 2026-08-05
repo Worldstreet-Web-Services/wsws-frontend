@@ -482,6 +482,21 @@ function MiniTimerLive({
   // notification when the clock turns critical while the page is hidden.
   // Fired once per critical phase; a wager resets the clock above the
   // threshold and re-arms it. Clicking brings the game back.
+  // The layer no browser can take away: while the pop-out is open, the tab's
+  // title carries the live clock and pot. Arc manages floating media through
+  // its own Mini Player and reaps third-party picture-in-picture windows, but
+  // it renders tab titles in its sidebar like everyone else — so even where
+  // the floating window dies, the countdown stays one glance away. Updates
+  // ride the socket's server readings, which reach a throttled background
+  // tab when its timers do not.
+  useEffect(() => {
+    const original = document.title;
+    document.title = `⏳ ${clock} · ${pot}`;
+    return () => {
+      document.title = original;
+    };
+  }, [clock, pot]);
+
   const notifiedRef = useRef(false);
   useEffect(() => {
     if (!gameActive || remaining > URGENT_SECONDS * 2) {

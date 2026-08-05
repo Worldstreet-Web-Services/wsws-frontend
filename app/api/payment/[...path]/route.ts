@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
+import { wsapiService } from "@/lib/wsapi-base";
 
 // Server-side gateway to the payment service's off-ramp API. The service is
 // public and keyless, but every call still routes through here so the browser
 // talks to one origin, the surface stays allowlisted, and money endpoints are
 // only reachable signed in.
-const BASE =
-  (process.env.WSAPI_BASE_URL ?? "https://api.worldstreetwebservices.com") + "/v1/payment";
+const BASE = wsapiService("payment");
 
 // The exact off-ramp surface the flow uses; anything else 404s here rather
 // than fanning the whole service out to the client.

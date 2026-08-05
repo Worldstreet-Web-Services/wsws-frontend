@@ -37,20 +37,15 @@ export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds }) => {
   // asset already held.
   const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
 
-  // Buyable assets on the live chains (Base + Solana): issuer-only assets and
-  // other catalog chains are filtered out, so every row is actionable. An asset
-  // the catalog lists on both chains is kept once, on Base. Prices the backend
-  // omits are filled from the CoinGecko fallback.
+  // Buyable assets on the live chains: issuer-only assets and other
+  // catalog chains are filtered out, so every row is actionable. An asset the
+  // catalog lists on several live chains is kept once, on the preferred chain
+  // order from `dedupeByChain` (Base first, then the other sponsored/live
+  // paths). Prices the backend omits are filled from the CoinGecko fallback.
   const tradable = useMemo(
-    // Base only: its trades are instant and fully gasless. Everything else
-    // stays wired underneath — Arbitrum and Polygon are sponsored and ready,
-    // Solana works end to end but rides a bridge whose latency reads as
-    // broken — so widening this one chain check is all it takes to list more.
     () =>
       dedupeByChain(
-        assets.filter(
-          (a) => isUsableAsset(a) && isTradable(a) && isLiveChain(a) && a.chain === "base"
-        )
+        assets.filter((a) => isUsableAsset(a) && isTradable(a) && isLiveChain(a))
       ),
     [assets]
   );

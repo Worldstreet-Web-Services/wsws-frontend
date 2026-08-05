@@ -60,7 +60,7 @@ export async function forwardSolanaSponsorRequest(req: NextRequest) {
   // With our own sponsor key configured, sponsorship happens right here:
   // rewrite the fee payer, add the sponsor signature, hand the transaction
   // back for the user to sign. No backend service in the path.
-  if (localSponsorConfigured()) {
+  if (localSponsorConfigured() && !body.prefundRent) {
     try {
       const result = await cosignWithLocalSponsor(body.serializedTransaction);
       return NextResponse.json({

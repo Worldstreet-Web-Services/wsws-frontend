@@ -446,9 +446,17 @@ export function RwaTradePanel({
         : t("sellingSymbol", { symbol: asset.symbol })
     );
     try {
-      // Real execution needs an executable action. Asking the backend for a
-      // simulated build here can produce a non-submittable Solana transaction.
-      const action = await withTransientRetry(() => buildAsync({ ...req, taker }));
+      // Real execution needs an executable action. Solana steps are sponsored
+      // after build time, so upstream's unsponsored simulation gate can reject a
+      // valid trade on a low-SOL wallet; ask it for the executable steps
+      // directly and let the final sponsored send preflight the real payload.
+      const action = await withTransientRetry(() =>
+        buildAsync({
+          ...req,
+          taker,
+          ...(asset.chain === "solana" ? { simulate: false } : {}),
+        })
+      );
       await execute(action, asset.chain, (index, step) => {
         setSignStep({ index, total: action.steps.length, label: step.description });
       });

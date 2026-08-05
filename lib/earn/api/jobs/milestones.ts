@@ -17,11 +17,13 @@ import {
   toMilestone,
   toMilestoneEscrowQuote,
   toMilestoneEscrowStatus,
+  toMilestoneRefundQuote,
   toMilestoneReleaseResult,
   toMilestones,
   type FundMilestoneInput,
   type MilestoneEscrowQuoteWire,
   type MilestoneEscrowStatusWire,
+  type MilestoneRefundQuoteWire,
   type MilestoneReleaseResultWire,
   type MilestoneWire,
 } from "@/lib/earn/api/jobs/wire";
@@ -30,6 +32,7 @@ import type {
   Milestone,
   MilestoneEscrowQuote,
   MilestoneEscrowStatus,
+  MilestoneRefundQuote,
   MilestoneReleaseResult,
   SubmitMilestoneInput,
 } from "@/lib/earn/api/jobs/types";
@@ -42,11 +45,12 @@ export async function createMilestone(input: CreateMilestoneInput): Promise<Mile
   return milestone;
 }
 
-// Either party to the contract may read its milestones.
-export async function fetchMilestones(contractId: string): Promise<Milestone[]> {
+// Either party to the contract may read its milestones. `take` is the only
+// paging lever the service offers (no skip or cursor).
+export async function fetchMilestones(contractId: string, take?: number): Promise<Milestone[]> {
   const data = await earnAuthedGet<MilestoneWire[] | { milestones?: MilestoneWire[] } | null>(
     "/milestones",
-    { contractId }
+    { contractId, ...(take != null ? { take } : {}) }
   );
   return toMilestones(Array.isArray(data) ? data : (data?.milestones ?? []));
 }
@@ -114,4 +118,27 @@ export async function releaseMilestone(id: string): Promise<MilestoneReleaseResu
     `/milestones/${encodeURIComponent(id)}/release`
   );
   return toMilestoneReleaseResult(data);
+}
+
+// Read this before prompting a wallet signature: refund() reverts on chain if
+// called before `refundableAfter`, and nothing can make it eligible sooner —
+// not even a dispute resolved for the client.
+export async function fetchMilestoneRefundQuote(id: string): Promise<MilestoneRefundQuote> {
+  const data = await earnAuthedGet<MilestoneRefundQuoteWire>(
+    `/milestones/${encodeURIComponent(id)}/refund-quote`
+  );
+  const quote = toMilestoneRefundQuote(data);
+  if (!quote) throw new Error("Couldn't work out whether this can be refunded yet.");
+  return quote;
+}
+
+// Records a refund the sponsor's own wallet already executed against the
+// contract. Deliberately not blocked while the contract is under dispute: by
+// the time this is called the money has already moved on chain, and refusing
+// to record it would only make our own data wrong.
+export async function refundMilestone(id: string, txId: string): Promise<Milestone | null> {
+  const data = await earnPost<MilestoneWire>(`/milestones/${encodeURIComponent(id)}/refund`, {
+    txId,
+  });
+  return toMilestone(data);
 }

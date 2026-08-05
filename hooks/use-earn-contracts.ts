@@ -15,12 +15,14 @@ import {
   createTimeEntry,
   fetchContract,
   fetchMilestoneEscrowStatus,
+  fetchMilestoneRefundQuote,
   fetchMilestones,
   fetchMyContracts,
   fetchRatingsForUser,
   fetchTimeEntries,
   fundMilestone,
   raiseDispute,
+  refundMilestone,
   rejectTimeEntry,
   releaseMilestone,
   resolveDispute,
@@ -42,6 +44,7 @@ export const CONTRACT_KEYS = {
   milestones: (contractId: string) => ["earn", "contracts", "milestones", contractId] as const,
   escrowStatus: (milestoneId: string) =>
     ["earn", "contracts", "escrow-status", milestoneId] as const,
+  refundQuote: (milestoneId: string) => ["earn", "contracts", "refund-quote", milestoneId] as const,
   timeEntries: (contractId: string) => ["earn", "contracts", "time-entries", contractId] as const,
   ratingsForUser: (userId: string) => ["earn", "ratings", "for-user", userId] as const,
 };
@@ -166,6 +169,35 @@ export function useReleaseMilestone(contractId: string) {
     onSuccess: (_result, id) => {
       void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.milestones(contractId) });
       void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.escrowStatus(id) });
+    },
+  });
+}
+
+// Whether the contract will let the sponsor reclaim this milestone yet, and
+// what their wallet needs to call if so. Read before offering a refund at
+// all: the on-chain call reverts before `refundableAfter`, and nothing —
+// including a dispute resolved for the client — opens that window early.
+export function useMilestoneRefundQuote(milestoneId: string | null, enabled = true) {
+  const query = useQuery({
+    queryKey: CONTRACT_KEYS.refundQuote(milestoneId ?? "none"),
+    queryFn: () => fetchMilestoneRefundQuote(milestoneId as string),
+    enabled: !!milestoneId && enabled,
+  });
+
+  return { quote: query.data ?? null, isLoading: query.isLoading, error: query.error };
+}
+
+// Records a refund the sponsor's own wallet already executed. The money has
+// already moved by the time this runs, so it is not gated on the contract
+// being out of dispute — refusing to record it would only desync our data.
+export function useRefundMilestone(contractId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, txId }: { id: string; txId: string }) => refundMilestone(id, txId),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.milestones(contractId) });
+      void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.escrowStatus(id) });
+      void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.refundQuote(id) });
     },
   });
 }

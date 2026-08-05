@@ -5,9 +5,9 @@
 // same job, closes the job post, and mints the Contract.
 
 import { earnAuthedGet, earnPost } from "@/lib/earn/api/client";
-import { toContract } from "@/lib/earn/api/jobs/wire";
 import {
   createProposalPayload,
+  toContractDetail,
   toMyProposal,
   toMyProposals,
   toProposalWithFreelancer,
@@ -16,13 +16,14 @@ import {
   type ProposalWire,
 } from "@/lib/earn/api/jobs/wire";
 import type {
-  Contract,
+  ContractDetail,
   CreateProposalInput,
   MyProposal,
   ProposalWithFreelancer,
 } from "@/lib/earn/api/jobs/types";
 
-// One proposal per freelancer per job post; the job must be OPEN.
+// One *active* proposal per freelancer per job post: once a previous one is
+// withdrawn or rejected, a new one is accepted. The job must be OPEN.
 export async function createProposal(input: CreateProposalInput): Promise<MyProposal> {
   const data = await earnPost<ProposalWire>("/proposals", createProposalPayload(input));
   const proposal = toMyProposal(data);
@@ -43,10 +44,15 @@ export async function fetchMyProposals(): Promise<MyProposal[]> {
   return toMyProposals(Array.isArray(data) ? data : (data?.proposals ?? []));
 }
 
-// A sponsor reviewing bids on their own job post.
-export async function fetchProposalsForJob(jobPostId: string): Promise<ProposalWithFreelancer[]> {
+// A sponsor reviewing bids on their own job post. `take` is the only paging
+// lever the service offers (no skip or cursor).
+export async function fetchProposalsForJob(
+  jobPostId: string,
+  take?: number
+): Promise<ProposalWithFreelancer[]> {
   const data = await earnAuthedGet<ProposalWire[] | { proposals?: ProposalWire[] } | null>(
-    `/proposals/for-job/${encodeURIComponent(jobPostId)}`
+    `/proposals/for-job/${encodeURIComponent(jobPostId)}`,
+    take != null ? { take } : undefined
   );
   return toProposalsWithFreelancer(Array.isArray(data) ? data : (data?.proposals ?? []));
 }
@@ -59,10 +65,11 @@ export async function shortlistProposal(id: string): Promise<ProposalWithFreelan
 
 // The pivot action: accepts this proposal, auto-rejects every other open one
 // on the job, closes the job to new proposals, and creates the Contract.
-// Returns a bare Contract (no jobPost/freelancer enrichment).
-export async function hireProposal(id: string): Promise<Contract> {
+// Comes back enriched with the job title and the freelancer's wallet, so the
+// contract screen renders without a refetch straight after hiring.
+export async function hireProposal(id: string): Promise<ContractDetail> {
   const data = await earnPost<ContractWire>(`/proposals/${encodeURIComponent(id)}/hire`);
-  const contract = toContract(data);
+  const contract = toContractDetail(data);
   if (!contract) throw new Error("That hire could not be read back.");
   return contract;
 }

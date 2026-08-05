@@ -28,10 +28,17 @@ export function JobDetailSection({ slug }: { slug: string | null }) {
   const { proposals } = useMyProposals();
   const [proposeOpen, setProposeOpen] = useState(false);
 
-  const mine = useMemo(
-    () => (jobPost ? proposals.find((proposal) => proposal.jobPostId === jobPost.id) : undefined),
-    [proposals, jobPost]
-  );
+  // Only an active proposal blocks a new one — the service accepts a fresh
+  // proposal once the previous was withdrawn or rejected, so a dead one must
+  // not sit here holding the apply button shut. The most recent is shown
+  // either way, since "you were turned down" is still worth saying.
+  const mine = useMemo(() => {
+    if (!jobPost) return undefined;
+    const forJob = proposals.filter((proposal) => proposal.jobPostId === jobPost.id);
+    return forJob.find((p) => p.status !== "WITHDRAWN" && p.status !== "REJECTED") ?? forJob[0];
+  }, [proposals, jobPost]);
+
+  const blocked = !!mine && mine.status !== "WITHDRAWN" && mine.status !== "REJECTED";
 
   if (error) {
     return (
@@ -52,7 +59,7 @@ export function JobDetailSection({ slug }: { slug: string | null }) {
   const deadline = deadlineLabel(jobPost.deadline);
   // Only an OPEN job takes proposals: once somebody is hired the service closes
   // it, and a draft was never public in the first place.
-  const canApply = !mine && !deadline.closed && jobPost.status === "OPEN";
+  const canApply = !blocked && !deadline.closed && jobPost.status === "OPEN";
 
   return (
     <div className={PAGE}>
@@ -111,20 +118,29 @@ export function JobDetailSection({ slug }: { slug: string | null }) {
               </div>
             </div>
 
-            {mine ? (
+            {blocked && mine ? (
               <div className="ws-inset rounded-[14px] px-4 py-3">
                 <div className="font-sans text-[12.5px] font-normal text-white/70">
                   {APPLIED_LABEL[mine.status] ?? "You've applied."}
                 </div>
               </div>
             ) : canApply ? (
-              <button
-                type="button"
-                onClick={() => setProposeOpen(true)}
-                className="bg-accent text-ink cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity hover:opacity-90"
-              >
-                Send a proposal
-              </button>
+              <div className="flex flex-col gap-2">
+                {/* A previous proposal that went nowhere is still worth saying,
+                    since applying again is now allowed and the reason matters. */}
+                {mine ? (
+                  <div className="font-sans text-[12px] font-normal text-white/45">
+                    {APPLIED_LABEL[mine.status]} You can send another.
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setProposeOpen(true)}
+                  className="bg-accent text-ink cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity hover:opacity-90"
+                >
+                  {mine ? "Send a new proposal" : "Send a proposal"}
+                </button>
+              </div>
             ) : (
               <div className="ws-inset rounded-[14px] px-4 py-3 text-center">
                 <div className="font-sans text-[12.5px] font-normal text-white/55">

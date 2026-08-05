@@ -16,12 +16,17 @@ import type { DraftJobPostInput, JobPost, JobPostStatus } from "@/lib/earn/api/j
 export interface JobPostBrowseQuery {
   region?: string;
   status?: JobPostStatus;
+  // The service pages with `take` alone — no skip or cursor — so a caller
+  // past the first page has no way to ask for the next one yet. Raising this
+  // is the only lever until it grows one.
+  take?: number;
 }
 
 export async function fetchJobPosts(query: JobPostBrowseQuery = {}): Promise<JobPost[]> {
   const data = await earnGet<JobPostWire[] | { jobPosts?: JobPostWire[] } | null>("/job-posts", {
     ...(query.region ? { region: query.region } : {}),
     ...(query.status ? { status: query.status } : {}),
+    ...(query.take != null ? { take: query.take } : {}),
   });
   return toJobPosts(Array.isArray(data) ? data : (data?.jobPosts ?? []));
 }
@@ -54,6 +59,33 @@ export async function saveJobPostDraft(input: DraftJobPostInput): Promise<JobPos
 // Requires a budget already set (min/max for FIXED, hourlyRate for HOURLY).
 export async function publishJobPost(id: string): Promise<JobPost | null> {
   const data = await earnPost<JobPostWire>(`/job-posts/${encodeURIComponent(id)}/publish`);
+  return toJobPost(data);
+}
+
+// Edits a job post that is already OPEN. Only send what changed — every field
+// is optional. budgetType is deliberately absent: it is locked once published,
+// so switching a job between fixed-price and hourly means closing and
+// reposting it.
+export interface UpdateJobPostInput {
+  title?: string;
+  description?: string;
+  skills?: { skills: string; subskills: string[] }[];
+  region?: string;
+  minBudget?: number;
+  maxBudget?: number;
+  hourlyRate?: number;
+  token?: string;
+  deadline?: string;
+}
+
+export async function updateJobPost(
+  id: string,
+  input: UpdateJobPostInput
+): Promise<JobPost | null> {
+  const data = await earnPost<JobPostWire>(
+    `/job-posts/${encodeURIComponent(id)}/update`,
+    input as Record<string, unknown>
+  );
   return toJobPost(data);
 }
 

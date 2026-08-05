@@ -17,10 +17,12 @@ import {
   publishJobPost,
   saveJobPostDraft,
   shortlistProposal,
+  updateJobPost,
   withdrawProposal,
   type CreateProposalInput,
   type DraftJobPostInput,
   type JobPostBrowseQuery,
+  type UpdateJobPostInput,
 } from "@/lib/earn/api/jobs";
 
 export const JOB_KEYS = {
@@ -99,6 +101,23 @@ export function usePublishJobPost() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => publishJobPost(id),
+    onSuccess: (jobPost) => {
+      void queryClient.invalidateQueries({ queryKey: JOB_KEYS.root });
+      if (jobPost) {
+        void queryClient.invalidateQueries({ queryKey: JOB_KEYS.detail(jobPost.slug) });
+      }
+    },
+  });
+}
+
+// Edits a job post that is already OPEN. budgetType cannot change here: it is
+// locked at publish, so switching between fixed-price and hourly means
+// closing the job and posting a new one.
+export function useUpdateJobPost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateJobPostInput }) =>
+      updateJobPost(id, input),
     onSuccess: (jobPost) => {
       void queryClient.invalidateQueries({ queryKey: JOB_KEYS.root });
       if (jobPost) {

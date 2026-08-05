@@ -28,6 +28,7 @@ export type {
   MilestoneEscrowQuote,
   MilestoneEscrowState,
   MilestoneEscrowStatus,
+  MilestoneRefundQuote,
   MilestoneReleaseReason,
   MilestoneReleaseResult,
   MilestoneStatus,
@@ -56,7 +57,9 @@ export {
   fetchMyJobPosts,
   publishJobPost,
   saveJobPostDraft,
+  updateJobPost,
   type JobPostBrowseQuery,
+  type UpdateJobPostInput,
 } from "@/lib/earn/api/jobs/job-posts";
 
 export {
@@ -75,8 +78,10 @@ export {
   createMilestone,
   fetchMilestoneEscrowQuote,
   fetchMilestoneEscrowStatus,
+  fetchMilestoneRefundQuote,
   fetchMilestones,
   fundMilestone,
+  refundMilestone,
   releaseMilestone,
   submitMilestone,
 } from "@/lib/earn/api/jobs/milestones";

@@ -223,6 +223,23 @@ export type MilestoneEscrowStatus =
       refundableAfter: string | null;
     };
 
+// What the sponsor's own wallet needs in order to reclaim a funded milestone.
+//
+// A refund is signed by the sponsor (msg.sender), not the arbiter — the
+// opposite of release, and the same trust model as the deposit. The contract
+// enforces `refundableAfter` itself with no override of any kind, so
+// `eligible: false` is a "come back later" state, not an error: a dispute
+// resolved for the client does not open the window early.
+export interface MilestoneRefundQuote {
+  escrowAddress: string;
+  listingIdBytes32: string;
+  sponsorAddress: string;
+  // Unix seconds. The contract reverts on a refund attempted before this.
+  refundableAfter: number;
+  eligible: boolean;
+  reason: string | null;
+}
+
 export type MilestoneReleaseReason =
   "not-configured" | "already-released" | "not-approved" | "not-funded" | "failed" | "released";
 

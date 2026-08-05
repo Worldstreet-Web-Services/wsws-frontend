@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JobFormFields } from "@/components/dashboard/earn/sponsor/job-form-fields";
-import { usePublishJobPost, useSaveJobPostDraft } from "@/hooks/use-earn-jobs";
+import { usePublishJobPost, useSaveJobPostDraft, useUpdateJobPost } from "@/hooks/use-earn-jobs";
 import { useScrollToFirstError } from "@/hooks/use-scroll-to-first-error";
 import {
   buildJobPayload,
@@ -43,12 +43,50 @@ export function JobEditorSection({ existing, initialState }: JobEditorProps) {
 
   const saveDraft = useSaveJobPostDraft();
   const publish = usePublishJobPost();
+  const update = useUpdateJobPost();
 
-  const busy = saveDraft.isPending || publish.isPending;
+  const busy = saveDraft.isPending || publish.isPending || update.isPending;
 
   // An existing post that was never published. It is edited like any other,
   // but it also still needs the publish step a new one gets.
   const isDraft = !!existing && !existing.isPublished;
+  // A live post goes through /update instead: the draft endpoint only accepts
+  // a post still in DRAFT, so saving a published one through it would fail.
+  const isLive = !!existing && !isDraft;
+
+  async function onUpdate() {
+    if (!existing) return;
+    const found = validateJobForm(state, { forPublish: true });
+    setErrors(found);
+    if (Object.keys(found).length) {
+      toast.error("Fix the highlighted fields first.");
+      return;
+    }
+
+    const id = toast.loading("Saving your changes…");
+    try {
+      // budgetType is deliberately not sent: it is locked once published, and
+      // the service rejects an attempt to change it.
+      const payload = buildJobPayload(state);
+      await update.mutateAsync({
+        id: existing.id,
+        input: {
+          title: payload.title,
+          description: payload.description,
+          skills: payload.skills,
+          region: payload.region,
+          token: payload.token,
+          ...(payload.minBudget != null ? { minBudget: payload.minBudget } : {}),
+          ...(payload.maxBudget != null ? { maxBudget: payload.maxBudget } : {}),
+          ...(payload.hourlyRate != null ? { hourlyRate: payload.hourlyRate } : {}),
+          ...(payload.deadline ? { deadline: payload.deadline } : {}),
+        },
+      });
+      toast.success("Job updated.", { id });
+    } catch (error) {
+      toast.error(friendlyError(error, "Couldn't save those changes."), { id });
+    }
+  }
 
   async function onSaveDraft() {
     const found = validateJobForm(state, { forPublish: false });
@@ -114,25 +152,46 @@ export function JobEditorSection({ existing, initialState }: JobEditorProps) {
         className="mt-7"
         aria-busy={busy}
       >
-        <JobFormFields state={state} errors={errors} onChange={setState} slugLocked={!!existing} />
+        <JobFormFields
+          state={state}
+          errors={errors}
+          onChange={setState}
+          slugLocked={!!existing}
+          budgetTypeLocked={isLive}
+        />
 
+        {/* A live job is already public: there is no draft to save and nothing
+            to publish, so it gets one action that edits it in place. */}
         <div className="mt-7 flex flex-wrap gap-2.5">
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={busy}
-            className="ws-inset flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold text-white/75 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {saveDraft.isPending ? "Saving…" : "Save draft"}
-          </button>
-          <button
-            type="button"
-            onClick={onPublish}
-            disabled={busy}
-            className="bg-accent text-ink flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {publish.isPending ? "Publishing…" : "Publish"}
-          </button>
+          {isLive ? (
+            <button
+              type="button"
+              onClick={onUpdate}
+              disabled={busy}
+              className="bg-accent text-ink flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {update.isPending ? "Saving…" : "Save changes"}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onSaveDraft}
+                disabled={busy}
+                className="ws-inset flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold text-white/75 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saveDraft.isPending ? "Saving…" : "Save draft"}
+              </button>
+              <button
+                type="button"
+                onClick={onPublish}
+                disabled={busy}
+                className="bg-accent text-ink flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {publish.isPending ? "Publishing…" : "Publish"}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>

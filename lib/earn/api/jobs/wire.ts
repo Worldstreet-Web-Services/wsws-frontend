@@ -29,6 +29,7 @@ import type {
   MilestoneEscrowQuote,
   MilestoneEscrowState,
   MilestoneEscrowStatus,
+  MilestoneRefundQuote,
   MilestoneReleaseReason,
   MilestoneReleaseResult,
   MilestoneStatus,
@@ -216,6 +217,10 @@ export interface ProposalWire {
   freelancerId?: string;
   coverLetter?: string;
   proposedAmount?: string | number | null;
+  // Snapshotted from the job post when this row was created, so an amount
+  // renders straight off the row it came with. Null when the job post had no
+  // token set at the time.
+  token?: string | null;
   proposedDuration?: string | null;
   status?: string;
   attachments?: unknown;
@@ -228,12 +233,16 @@ export interface ProposalWire {
 
 function toProposalBase(wire: ProposalWire, token: string): Proposal | null {
   if (!wire.id || !wire.jobPostId) return null;
+  // The row's own snapshotted token wins; the caller's is only a fallback for
+  // a row created before the job post had one.
+  const rowToken = text(wire.token, token);
   return {
     id: wire.id,
     jobPostId: wire.jobPostId,
     freelancerId: text(wire.freelancerId),
     coverLetter: text(wire.coverLetter),
-    proposedAmount: wire.proposedAmount != null ? rewardFromApi(wire.proposedAmount, token) : null,
+    proposedAmount:
+      wire.proposedAmount != null ? rewardFromApi(wire.proposedAmount, rowToken) : null,
     proposedDuration: optionalText(wire.proposedDuration),
     status: oneOf<ProposalStatus>(PROPOSAL_STATUSES, wire.status, "SUBMITTED"),
     attachments: stringArray(wire.attachments),
@@ -327,6 +336,8 @@ export interface ContractWire {
   freelancerId?: string;
   budgetType?: string;
   agreedAmount?: string | number | null;
+  // Snapshotted from the job post at creation (see ProposalWire.token).
+  token?: string | null;
   status?: string;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -339,6 +350,7 @@ export interface ContractWire {
 
 function toContractBase(wire: ContractWire, token: string): Contract | null {
   if (!wire.id || !wire.jobPostId) return null;
+  const rowToken = text(wire.token, token);
   return {
     id: wire.id,
     jobPostId: wire.jobPostId,
@@ -346,7 +358,7 @@ function toContractBase(wire: ContractWire, token: string): Contract | null {
     sponsorId: text(wire.sponsorId),
     freelancerId: text(wire.freelancerId),
     budgetType: oneOf<JobBudgetType>(["FIXED", "HOURLY"], wire.budgetType, "FIXED"),
-    agreedAmount: wire.agreedAmount != null ? rewardFromApi(wire.agreedAmount, token) : null,
+    agreedAmount: wire.agreedAmount != null ? rewardFromApi(wire.agreedAmount, rowToken) : null,
     status: oneOf<ContractStatus>(CONTRACT_STATUSES, wire.status, "ACTIVE"),
     startedAt: optionalText(wire.startedAt),
     completedAt: optionalText(wire.completedAt),
@@ -414,6 +426,8 @@ export interface MilestoneWire {
   title?: string;
   description?: string | null;
   amount?: string | number | null;
+  // Snapshotted from the contract at creation (see ProposalWire.token).
+  token?: string | null;
   order?: number;
   status?: string;
   dueDate?: string | null;
@@ -441,12 +455,13 @@ export function toMilestone(
   token = "USDC"
 ): Milestone | null {
   if (!wire?.id || !wire.contractId) return null;
+  const rowToken = text(wire.token, token);
   return {
     id: wire.id,
     contractId: wire.contractId,
     title: text(wire.title, "Untitled milestone"),
     description: optionalText(wire.description),
-    amount: wire.amount != null ? rewardFromApi(wire.amount, token) : null,
+    amount: wire.amount != null ? rewardFromApi(wire.amount, rowToken) : null,
     order: typeof wire.order === "number" ? wire.order : 0,
     status: oneOf<MilestoneStatus>(MILESTONE_STATUSES, wire.status, "PENDING"),
     dueDate: optionalText(wire.dueDate),
@@ -461,7 +476,7 @@ export function toMilestone(
     ),
     escrowAddress: optionalText(wire.escrowAddress),
     escrowTxId: optionalText(wire.escrowTxId),
-    escrowAmount: wire.escrowAmount != null ? rewardFromApi(wire.escrowAmount, token) : null,
+    escrowAmount: wire.escrowAmount != null ? rewardFromApi(wire.escrowAmount, rowToken) : null,
     fundedAt: optionalText(wire.fundedAt),
     refundableAfter: optionalText(wire.refundableAfter),
     refundedAt: optionalText(wire.refundedAt),
@@ -555,6 +570,31 @@ export function toMilestoneEscrowStatus(
     owesFreelancer: wire.owesFreelancer === true,
     freelancerHasNoWallet: wire.freelancerHasNoWallet === true,
     refundableAfter: optionalText(wire.refundableAfter),
+  };
+}
+
+export interface MilestoneRefundQuoteWire {
+  escrowAddress?: string;
+  listingIdBytes32?: string;
+  sponsorAddress?: string;
+  refundableAfter?: number;
+  eligible?: boolean;
+  reason?: string | null;
+}
+
+export function toMilestoneRefundQuote(
+  wire: MilestoneRefundQuoteWire | null | undefined
+): MilestoneRefundQuote | null {
+  if (!wire?.escrowAddress || !wire.listingIdBytes32 || !wire.sponsorAddress) return null;
+  return {
+    escrowAddress: wire.escrowAddress,
+    listingIdBytes32: wire.listingIdBytes32,
+    sponsorAddress: wire.sponsorAddress,
+    refundableAfter: typeof wire.refundableAfter === "number" ? wire.refundableAfter : 0,
+    // Defaults to not eligible: prompting a wallet signature for a refund the
+    // contract would revert is worse than making the sponsor wait a beat.
+    eligible: wire.eligible === true,
+    reason: optionalText(wire.reason),
   };
 }
 

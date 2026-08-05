@@ -23,9 +23,18 @@ interface JobFormFieldsProps {
   onChange: (next: JobFormState) => void;
   // The slug is fixed once a job post exists, since it is the URL people have.
   slugLocked?: boolean;
+  // Fixed once published: the service refuses to switch a live job between
+  // fixed-price and hourly, so changing it means closing and reposting.
+  budgetTypeLocked?: boolean;
 }
 
-export function JobFormFields({ state, errors, onChange, slugLocked = false }: JobFormFieldsProps) {
+export function JobFormFields({
+  state,
+  errors,
+  onChange,
+  slugLocked = false,
+  budgetTypeLocked = false,
+}: JobFormFieldsProps) {
   function set<K extends keyof JobFormState>(key: K, value: JobFormState[K]) {
     onChange({ ...state, [key]: value });
   }
@@ -76,12 +85,21 @@ export function JobFormFields({ state, errors, onChange, slugLocked = false }: J
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField
-          label="Budget type"
-          value={state.budgetType}
-          options={BUDGET_TYPES}
-          onChange={(value) => set("budgetType", value)}
-        />
+        {budgetTypeLocked ? (
+          <TextField
+            label="Budget type"
+            value={state.budgetType === "HOURLY" ? "Hourly" : "Fixed price"}
+            hint="Fixed once published. Close and repost to change it."
+            onChange={() => undefined}
+          />
+        ) : (
+          <SelectField
+            label="Budget type"
+            value={state.budgetType}
+            options={BUDGET_TYPES}
+            onChange={(value) => set("budgetType", value)}
+          />
+        )}
         <TextField label="Region" value={state.region} onChange={(value) => set("region", value)} />
       </div>
 

@@ -4,8 +4,26 @@ import { isDepositChain, isNavTarget, type Intent } from "@/lib/voice/intent";
 // fields this client reads are typed; unknown extras are ignored. The backend
 // contract lives in apps/ai/src/services/intent-router.ts.
 export type VividFrame =
-  | { type: "session"; data: { sessionId: string; authenticated: boolean } }
+  // `streaming` (added for the continuous-STT path) tells the client which wire
+  // protocol the backend chose for this session — false = batch (send a clip +
+  // endpoint), true = streaming (send raw PCM continuously; VAD auto-commits).
+  | {
+      type: "session";
+      data: {
+        sessionId: string;
+        authenticated: boolean;
+        protocolVersion?: number;
+        streaming?: boolean;
+      };
+    }
   | { type: "transcript"; text: string; isFinal: boolean }
+  // Streaming-only progress frames. `transcript_partial` is the in-progress line
+  // as the user speaks (show it live, greyed); `transcript_committed` is a
+  // VAD-finalized segment that ends the turn; `barge_in` means the backend
+  // confirmed the user interrupted while Vivid was speaking — stop TTS playback.
+  | { type: "transcript_partial"; data: { text: string } }
+  | { type: "transcript_committed"; data: { text: string } }
+  | { type: "barge_in"; data: Record<string, never> }
   | { type: "navigate"; data: { speech?: string; page: string } }
   | { type: "deposit"; data: { speech?: string; chain: string; token?: string } }
   | {
@@ -25,6 +43,14 @@ export type VividFrame =
   | { type: "clarify"; data: { speech?: string } }
   | { type: "reject"; data: { speech?: string } }
   | { type: "error"; data: { speech?: string } }
+  // Generic UI driver (ui_action tool): Vivid clicks/fills an element by its
+  // visible label to operate ANY screen. `confirmed` gates money/irreversible
+  // controls — the executor refuses them unless true. NOT terminal: the client
+  // applies it, reports the outcome, and the agent loop keeps going.
+  | {
+      type: "ui_action";
+      data: { op: "click" | "fill" | "select"; target: string; value?: string; confirmed?: boolean };
+    }
   // Command lifecycle frames (agent-loop confirm path). Emitted after a confirm
   // token is consumed: the command was submitted, or the token was invalid/stale.
   | { type: "command_submitted"; data: { action: string; idempotencyKey: string } }

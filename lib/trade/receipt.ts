@@ -6,10 +6,12 @@ import { SPONSORED_EVM_CHAINS } from "@/lib/trade/sponsored-evm";
 // provider: Privy can leave that provider pointed at a different chain, so a
 // receipt would be polled on the wrong chain and never found, timing the flow
 // out even though the transaction landed.
-const READ_CHAINS: Record<number, Chain> = Object.fromEntries(
+//
+// The network slug rides along so the client can be pointed at our own proxy.
+const READ_CHAINS: Record<number, { chain: Chain; network: string }> = Object.fromEntries(
   SPONSORED_EVM_CHAINS.filter((config) => config.supportsReceiptPolling).map((config) => [
     config.chainId,
-    config.chain,
+    { chain: config.chain, network: config.network },
   ])
 );
 
@@ -24,10 +26,19 @@ export function isReceiptChain(chainId: number): boolean {
   return chainId in READ_CHAINS;
 }
 
+// Reads go through our own proxy on the paid Alchemy key, NOT the chain's
+// default public endpoint. `http()` with no URL falls back to that default
+// (mainnet.base.org and friends), which is shared and rate-limited, and it
+// carries every on-chain read in the app. Same-origin, so the privy-token
+// cookie authenticates the call with no header plumbing. Browser-only by
+// construction: every caller runs in a hook or an event handler.
 export function publicClientForChain(chainId: number) {
-  const chain = READ_CHAINS[chainId];
-  if (!chain) throw new Error(`This chain isn't supported yet (${chainId}).`);
-  return createPublicClient({ chain, transport: http() });
+  const entry = READ_CHAINS[chainId];
+  if (!entry) throw new Error(`This chain isn't supported yet (${chainId}).`);
+  return createPublicClient({
+    chain: entry.chain,
+    transport: http(`/api/evm-rpc/${entry.network}`),
+  });
 }
 
 // Inferred so it tracks the app's viem version (a second copy is bundled by

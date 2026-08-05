@@ -26,10 +26,15 @@ const NETWORK_TO_CHAIN: Record<string, number> = {
   "solana-mainnet": 792703809,
 };
 
-// A native balance has no contract address; Dextopus takes the native sentinel
-// on EVM and the wrapped-SOL mint on Solana as the origin asset.
+// A native balance has no contract address, so each chain has a sentinel that
+// stands for its native coin.
 const EVM_NATIVE = "0x0000000000000000000000000000000000000000";
-const SOL_NATIVE = "So11111111111111111111111111111111111111112";
+// The Solana system program, which is how the quote endpoint addresses native
+// SOL. NOT the wrapped-SOL mint: quoting that returns "asset is not supported
+// on chain". The deposit and buy paths hit the same wall and resolve it the
+// same way, see depositOriginAsset in lib/deposit and SETTLEMENT_ADDRESS in
+// lib/buy.
+const SOL_NATIVE = "11111111111111111111111111111111";
 const NATIVE_ORIGIN: Record<string, string> = {
   "base-mainnet": EVM_NATIVE,
   "eth-mainnet": EVM_NATIVE,
@@ -44,16 +49,27 @@ export function canSell(network: string): boolean {
   return network in NETWORK_TO_CHAIN;
 }
 
-// Chains whose native token is ETH. Dextopus accepts native ETH as an origin,
-// but not native POL or native SOL, so those are not sellable.
-const NATIVE_ETH_CHAINS = new Set(["base-mainnet", "eth-mainnet", "arb-mainnet", "opt-mainnet"]);
+// Chains whose native coin we can quote an origin for: ETH on the EVM side,
+// SOL on Solana. Native POL is the one Dextopus will not take as an origin, so
+// a Polygon gas balance stays unsellable.
+//
+// Solana belongs here: SOL was only excluded because the sell was quoting the
+// wrapped-SOL mint, which the endpoint rejects. With the system-program
+// sentinel above it quotes like any other origin.
+const SELLABLE_NATIVE_CHAINS = new Set([
+  "base-mainnet",
+  "eth-mainnet",
+  "arb-mainnet",
+  "opt-mainnet",
+  "solana-mainnet",
+]);
 
 // Whether a specific held asset can be sold. A token (has an address) is assumed
 // sellable and the quote is the final authority; a native balance is only
-// sellable where the native token is ETH.
+// sellable where we have an origin sentinel the quote endpoint accepts.
 export function canSellAsset(network: string, address: string | null): boolean {
   if (!canSell(network)) return false;
-  if (address === null) return NATIVE_ETH_CHAINS.has(network);
+  if (address === null) return SELLABLE_NATIVE_CHAINS.has(network);
   return true;
 }
 

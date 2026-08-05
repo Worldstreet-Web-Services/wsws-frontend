@@ -456,16 +456,24 @@ export function RwaTradePanel({
     setFundedFor(null);
   };
 
+  // What a percent button is a percent OF. Normally the balance on this asset's
+  // own chain. When that is empty but the same USDC sits one hop away, it is
+  // that balance instead: the buy funds itself by bridging, so it is spendable,
+  // and disabling the buttons made a purchase the panel supports look blocked.
+  const percentBasis = spendBalance > 0 ? spendBalance : fallbackBalance;
+
   const setPct = (pct: number) => {
-    if (spendBalance <= 0) return;
+    if (percentBasis <= 0) return;
     // Size from the exact base-unit balance so a Max sell stages exactly what
     // the wallet holds. The fallback clamps to a fixed-decimal string; a raw
     // float String() can emit exponent notation the input regex rejects.
+    // Only the on-chain balance has base units to work from; a bridged basis
+    // falls through to the fixed-decimal path.
     const exact =
-      spendRaw != null && spendDecimals != null
+      spendBalance > 0 && spendRaw != null && spendDecimals != null
         ? pctOfRawBalance(spendRaw, spendDecimals, Math.round(pct * 100))
         : null;
-    onInput(exact ?? (spendBalance * pct).toFixed(6));
+    onInput(exact ?? (percentBasis * pct).toFixed(6));
   };
 
   const selectPay = (key: string) => {
@@ -763,7 +771,7 @@ export function RwaTradePanel({
                 <button
                   key={pct}
                   onClick={() => setPct(pct)}
-                  disabled={spendBalance <= 0}
+                  disabled={percentBasis <= 0}
                   className="flex-1 cursor-pointer rounded-lg border border-white/10 bg-white/4 py-1.5 font-sans text-[12px] font-medium text-white/70 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {pct === 1 ? t("max") : `${pct * 100}%`}

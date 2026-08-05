@@ -14,16 +14,13 @@ export const LIFI_BASE_CHAIN = 8453;
 // LI.FI names native SOL by the system program address.
 export const LIFI_NATIVE_SOL = "11111111111111111111111111111111";
 
-// Enough SOL to cover what a buy actually spends: one rent-exempt
-// associated-token account at ~0.00204 for the received asset, plus signature
-// fees of ~0.000005, with margin. A wallet at or above this needs no gas leg.
-export const SOL_GAS_MIN = 0.003;
+// Enough SOL to cover what a buy actually spends: two rent-exempt
+// associated-token accounts at ~0.00204 each, plus signature fees of ~0.000005.
+// A wallet at or above this needs no gas leg.
+export const SOL_GAS_MIN = 0.005;
 // One dollar is the smallest amount bridges reliably route, and buys several
 // times the minimum at any realistic SOL price.
 export const GAS_TOPUP_USDC = 1;
-// The least the Solana-paid gas leg may send. Below this the delivered SOL
-// risks landing under SOL_GAS_MIN once the bridge takes its cut.
-const GAS_FROM_SOLANA_MIN_USDC = 0.6;
 
 // A bridge charges a fixed relayer fee plus a proportional cut, and at these
 // sizes the fixed part dominates: a measured $3.06 hop delivered $2.88, six
@@ -65,16 +62,7 @@ export interface FundingPlan {
   requiredArrivalUsdc: number;
   // Whether to buy a little SOL for the network fee.
   topUpGas: boolean;
-  // Where the gas top-up's USDC comes from. Base is the default; Solana is
-  // used when Base cannot afford the top-up but the Solana wallet holds spare
-  // USDC beyond the purchase — its sends are sponsored, so spending from it
-  // needs no SOL.
-  gasSource: "base" | "solana";
-  // What the gas leg sends. The full dollar from Base; from Solana it is
-  // capped at the spare, which the source gate keeps above the minimum.
-  gasUsdc: number;
-  // Base USDC the whole plan consumes. A Solana-sourced gas leg spends from
-  // the Solana balance instead, so it does not count here.
+  // Base USDC the whole plan consumes.
   totalBaseUsdc: number;
 }
 
@@ -100,23 +88,11 @@ export function planSolanaFunding(input: FundingInputs): FundingPlan | null {
   const topUpGas = input.solanaSol < SOL_GAS_MIN;
   if (shortfall <= 0 && !topUpGas) return null;
   const bridgeUsdc = sizeBridgeSend(shortfall);
-  // Prefer Base for the gas top-up; fall back to spare Solana USDC when Base
-  // cannot cover it. Without the fallback, a wallet holding enough USDC on
-  // Solana to buy is stranded behind a $1 Base balance it does not have. The
-  // Solana leg is sized down to the spare when the spare is under a dollar,
-  // as long as it stays above the minimum that still delivers enough SOL.
-  const baseAffordsGas = input.baseUsdc + 1e-9 >= bridgeUsdc + GAS_TOPUP_USDC;
-  const solanaSpare = Math.floor((input.solanaUsdc - input.spendUsdc) * 100) / 100;
-  const gasSource: "base" | "solana" =
-    topUpGas && !baseAffordsGas && solanaSpare >= GAS_FROM_SOLANA_MIN_USDC ? "solana" : "base";
-  const gasUsdc = gasSource === "base" ? GAS_TOPUP_USDC : Math.min(GAS_TOPUP_USDC, solanaSpare);
   return {
     bridgeUsdc,
     requiredArrivalUsdc: shortfall,
     topUpGas,
-    gasSource,
-    gasUsdc,
-    totalBaseUsdc: bridgeUsdc + (topUpGas && gasSource === "base" ? GAS_TOPUP_USDC : 0),
+    totalBaseUsdc: bridgeUsdc + (topUpGas ? GAS_TOPUP_USDC : 0),
   };
 }
 
@@ -184,26 +160,18 @@ export interface FundingLeg {
   kind: "gas" | "usdc";
   usdc: number;
   toToken: string;
-  // Which chain's USDC pays for this leg.
-  source: "base" | "solana";
 }
 
 export function fundingLegs(plan: FundingPlan): FundingLeg[] {
   const legs: FundingLeg[] = [];
   if (plan.topUpGas) {
-    legs.push({
-      kind: "gas",
-      usdc: plan.gasUsdc,
-      toToken: LIFI_NATIVE_SOL,
-      source: plan.gasSource,
-    });
+    legs.push({ kind: "gas", usdc: GAS_TOPUP_USDC, toToken: LIFI_NATIVE_SOL });
   }
   if (plan.bridgeUsdc > 0) {
     legs.push({
       kind: "usdc",
       usdc: plan.bridgeUsdc,
       toToken: USDC_BY_CHAIN.solana.address,
-      source: "base",
     });
   }
   return legs;
@@ -214,5 +182,5 @@ export const BASE_USDC = SETTLE_CHAINS.base.usdc;
 // Identifies a plan, so an in-flight funding run can tell "the same plan,
 // retried" from "a different amount, re-planned".
 export function planSignature(plan: FundingPlan): string {
-  return `${plan.bridgeUsdc.toFixed(2)}:${plan.topUpGas ? `gas-${plan.gasSource}` : "nogas"}`;
+  return `${plan.bridgeUsdc.toFixed(2)}:${plan.topUpGas ? "gas" : "nogas"}`;
 }

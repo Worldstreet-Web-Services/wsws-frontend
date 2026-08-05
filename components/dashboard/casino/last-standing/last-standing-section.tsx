@@ -13,6 +13,10 @@ import { MoneyTicker } from "@/components/ui/money-ticker";
 import { useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { FundSheet } from "@/components/dashboard/casino/last-standing/fund-sheet";
+import {
+  MiniTimerLauncher,
+  formatCountdown,
+} from "@/components/dashboard/casino/last-standing/mini-timer";
 import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
 import {
   RoundOverlay,

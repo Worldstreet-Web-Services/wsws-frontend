@@ -75,11 +75,7 @@ export function useSolanaProceeds() {
         });
 
         setPhase("signing");
-        // Rent too: bridge transactions open temporary token accounts whose
-        // rent falls on the user, and a gasless wallet holds no SOL.
-        const transaction = await sponsorSolanaTransaction(quote.transaction, {
-          prefundRent: true,
-        });
+        const transaction = await sponsorSolanaTransaction(quote.transaction);
         const { signature } = await signAndSendTransaction({
           transaction,
           wallet,

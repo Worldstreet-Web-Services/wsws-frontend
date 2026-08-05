@@ -51,6 +51,20 @@ const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
   REFUNDED: "Refunded",
 };
 
+// What a milestone means from the freelancer's side. They cannot read
+// escrow-status — it is sponsor-auth — so the milestone's own state is the
+// only thing that can tell them whether the money is really committed and
+// what has to happen before it reaches them.
+const FREELANCER_STATE: Record<MilestoneStatus, string> = {
+  PENDING: "Not funded yet. Wait for the company to put the money in escrow before you start.",
+  FUNDED: "The money for this is in escrow. Safe to start — submit when it's done.",
+  SUBMITTED: "With the company for review. They approve it, then release the payment.",
+  APPROVED: "Approved. The company releases it from escrow and it lands in your wallet.",
+  RELEASED: "Paid out to your wallet.",
+  DISPUTED: "Under dispute. Payment is frozen until an admin resolves it.",
+  REFUNDED: "Returned to the company. Nothing is owed on this one.",
+};
+
 // The workspace both sides of a contract share. Which actions appear depends on
 // `role`: the sponsor funds, approves and releases; the freelancer submits.
 // The service enforces this independently — this only decides what to offer.
@@ -514,9 +528,9 @@ function MilestoneRow({
             </button>
           ) : null}
 
-          {!sponsor && milestone.status === "PENDING" ? (
+          {!sponsor ? (
             <span className="font-sans text-[12px] font-normal text-white/40">
-              Waiting for the company to fund this before you start.
+              {FREELANCER_STATE[milestone.status]}
             </span>
           ) : null}
         </div>

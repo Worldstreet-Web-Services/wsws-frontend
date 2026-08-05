@@ -544,7 +544,14 @@ export function useVoiceSession(): UseVoiceSession {
     // each 20ms chunk straight to the backend's realtime STT.
     try {
       await pcm.start((chunk) => {
-        if (activeRef.current) session.streamPcm(chunk);
+        // Do NOT stream mic audio to the backend while Vivid is speaking —
+        // otherwise its own TTS leaks back into the mic (browser echo
+        // cancellation is imperfect against loud playback), gets transcribed,
+        // and is treated as a new turn: Vivid answers itself in a continuous
+        // self-talk loop and never actually listens to the user. Gating on
+        // speakingRef closes the mic→STT path for the duration of playback; the
+        // PCM worklet keeps running (no restart cost), we just drop its chunks.
+        if (activeRef.current && !speakingRef.current) session.streamPcm(chunk);
       });
     } catch (err) {
       vwarn("loop", "PCM capture failed to start — falling back is not automatic", err);
@@ -552,8 +559,19 @@ export function useVoiceSession(): UseVoiceSession {
       return;
     }
     setTurnPhase("listening");
+    // Push the current screen up front so the FIRST turn's read_screen has data
+    // — otherwise asking "what's on my screen?" cold returns "I don't have a
+    // screen reading right now". On the streaming path the backend commits a
+    // turn on VAD silence, so the snapshot must already be up there before the
+    // user stops talking; pushing here (and again each iteration below) keeps a
+    // fresh snapshot on the backend ahead of every commit.
+    pushCurrentScreen();
 
     while (activeRef.current) {
+      // Refresh the screen snapshot at the top of each listen cycle so whatever
+      // the user asks next is answered against the CURRENT page (they may have
+      // navigated since the last turn).
+      pushCurrentScreen();
       // Wait for the next terminal frame (the backend auto-processed a committed
       // transcript and pushed a result). The latch is resolved by completeTurn in
       // onFrame. No timeout race here: with continuous audio the user may simply
@@ -595,7 +613,7 @@ export function useVoiceSession(): UseVoiceSession {
     pcm.stop();
     vlog("loop", "streaming loop exited");
     if (activeRef.current) stop();
-  }, [pcm, speak, setTurnPhase, stop, addMessage]);
+  }, [pcm, speak, setTurnPhase, stop, addMessage, pushCurrentScreen]);
 
   const start = useCallback(async () => {
     if (activeRef.current) return;
@@ -625,6 +643,10 @@ export function useVoiceSession(): UseVoiceSession {
     // The backend told us which protocol it chose (via the `session` frame). Use
     // the continuous PCM streaming loop when it's streaming, otherwise the classic
     // batch capture loop. Both are fully implemented; the batch path is unchanged.
+    vlog("session", "protocol decision", {
+      backendStreaming: session.streaming,
+      pcmSupported: pcm.supported,
+    });
     if (session.streaming && pcm.supported) {
       vlog("session", "backend chose STREAMING → continuous PCM loop");
       void runStreamingLoop();

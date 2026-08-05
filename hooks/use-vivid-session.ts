@@ -175,18 +175,34 @@ export function useVividSession(): UseVividSession {
             close: teardown,
           };
 
+          // Resolve `open()` only once the backend's `session` frame has landed
+          // (below), NOT merely on socket-open — the frame is what carries the
+          // chosen protocol (`streaming`). Resolving on socket-open created a
+          // race: start() read session.streaming (still the default `false`)
+          // ~6ms BEFORE the frame arrived, so a streaming backend was driven
+          // with the batch loop → endpoint → protocol_mismatch → dead turn.
+          // Fallback: if no session frame arrives shortly (old/edge backend),
+          // resolve anyway on the open socket so we never hang; streaming stays
+          // false (safe batch default) in that case.
+          let readyFallback: ReturnType<typeof setTimeout> | null = null;
+
           const onReady = () => {
             if (opened) return;
             opened = true;
+            if (readyFallback !== null) {
+              clearTimeout(readyFallback);
+              readyFallback = null;
+            }
             startKeepalive();
             resolve(session);
           };
 
-          if (ws.readyState === WebSocket.OPEN) {
-            onReady();
-          } else {
-            ws.onopen = onReady;
-          }
+          readyFallback = setTimeout(() => {
+            if (!opened && ws.readyState === WebSocket.OPEN) {
+              vwarn("socket", "no session frame within grace — resolving on open (batch default)");
+              onReady();
+            }
+          }, 2000);
 
           ws.onmessage = (ev) => {
             let frame: VividFrame;
@@ -200,6 +216,8 @@ export function useVividSession(): UseVividSession {
             if (frame.type === "session") {
               session.streaming = frame.data.streaming === true;
               vlog("socket", "session ready", { streaming: session.streaming });
+              // The protocol is now known → safe to hand the session to start().
+              onReady();
             }
             // Keepalive replies never reach the caller.
             if (frame.type === "pong") return;

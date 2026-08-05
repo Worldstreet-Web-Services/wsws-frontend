@@ -225,11 +225,6 @@ function SponsorListings({ sponsorName }: { sponsorName: string }) {
 function SponsorJobs() {
   const { jobPosts, isLoading, error } = useMyJobPosts();
 
-  // Nothing posted yet is the normal state before the first job, and the
-  // header already carries the way to create one — so an empty list stays
-  // silent rather than repeating the CTA.
-  if (!isLoading && !error && jobPosts.length === 0) return null;
-
   return (
     <section className="mt-10">
       <h2 className="ws-display text-[16px] text-white">Jobs</h2>
@@ -242,6 +237,20 @@ function SponsorJobs() {
           <AsyncError error={error} subject="your jobs" unconfiguredDetail={UNCONFIGURED_DETAIL} />
         ) : isLoading ? (
           <AsyncLoading label="Loading your jobs" rows={2} />
+        ) : jobPosts.length === 0 ? (
+          // Says so rather than rendering nothing: a sponsor who has never
+          // posted a job would otherwise have no way to tell the feature is
+          // there at all.
+          <AsyncEmpty>
+            No jobs yet.{" "}
+            <Link
+              href="/earn/sponsor/job/new"
+              className="text-white/70 underline-offset-2 hover:underline"
+            >
+              Post one
+            </Link>{" "}
+            to start taking proposals.
+          </AsyncEmpty>
         ) : (
           <ul className="flex flex-col gap-2.5">
             {jobPosts.map((jobPost) => (

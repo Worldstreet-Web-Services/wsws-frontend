@@ -259,7 +259,15 @@ function SponsorJobs() {
                   href={`/earn/sponsor/job/${jobPost.slug}`}
                   className="ws-card flex items-center justify-between gap-4 rounded-[16px] px-4 py-3.5 transition-colors hover:border-white/25"
                 >
-                  <div className="min-w-0">
+                  {jobPost.coverImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={jobPost.coverImage}
+                      alt=""
+                      className="h-11 w-16 shrink-0 rounded-[10px] border border-white/10 object-cover"
+                    />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
                     <div className="ws-display truncate text-[14.5px] text-white">
                       {jobPost.title}
                     </div>

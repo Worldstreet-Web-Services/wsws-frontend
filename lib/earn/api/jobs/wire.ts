@@ -148,6 +148,7 @@ export interface JobPostWire {
   maxBudget?: string | number | null;
   hourlyRate?: string | number | null;
   token?: string;
+  coverImage?: string | null;
   status?: string;
   isPublished?: boolean;
   publishedAt?: string | null;
@@ -176,6 +177,7 @@ export function toJobPost(wire: JobPostWire | null | undefined): JobPost | null 
     maxBudget: wire.maxBudget != null ? rewardFromApi(wire.maxBudget, token) : null,
     hourlyRate: wire.hourlyRate != null ? rewardFromApi(wire.hourlyRate, token) : null,
     token,
+    coverImage: optionalText(wire.coverImage),
     status: oneOf<JobPostStatus>(JOB_POST_STATUSES, wire.status, "DRAFT"),
     isPublished: wire.isPublished === true,
     publishedAt: optionalText(wire.publishedAt),
@@ -205,6 +207,7 @@ export function draftJobPostPayload(input: DraftJobPostInput): Record<string, un
     ...(input.maxBudget != null ? { maxBudget: input.maxBudget } : {}),
     ...(input.hourlyRate != null ? { hourlyRate: input.hourlyRate } : {}),
     ...(input.token ? { token: input.token } : {}),
+    ...(input.coverImage ? { coverImage: input.coverImage } : {}),
     ...(input.deadline ? { deadline: input.deadline } : {}),
   };
 }

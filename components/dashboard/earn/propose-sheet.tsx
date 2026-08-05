@@ -5,6 +5,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { TextAreaField, TextField } from "@/components/dashboard/earn/form-field";
 import { TalentProfileForm } from "@/components/dashboard/earn/talent-profile-form";
 import { AsyncLoading } from "@/components/dashboard/async-state";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { useCreateProposal } from "@/hooks/use-earn-jobs";
 import { useTalentProfile } from "@/hooks/use-earn-talent";
 import { useScrollToFirstError } from "@/hooks/use-scroll-to-first-error";
@@ -14,6 +15,8 @@ import { toast } from "@/lib/toast";
 import type { JobPost } from "@/lib/earn/api/jobs";
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
+
+const MAX_ATTACHMENTS = 10;
 
 // Quoting for a job. Like the bounty submit sheet, the talent profile is a
 // prerequisite rather than a step: the service refuses work from an account
@@ -33,6 +36,7 @@ export function ProposeSheet({
   const [coverLetter, setCoverLetter] = useState("");
   const [amount, setAmount] = useState("");
   const [duration, setDuration] = useState("");
+  const [attachments, setAttachments] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
   useScrollToFirstError(formRef, errors);
@@ -43,6 +47,7 @@ export function ProposeSheet({
     setCoverLetter("");
     setAmount("");
     setDuration("");
+    setAttachments([]);
     setErrors({});
   }
 
@@ -65,6 +70,9 @@ export function ProposeSheet({
         coverLetter: coverLetter.trim(),
         proposedAmount: quoted,
         ...(duration.trim() ? { proposedDuration: duration.trim() } : {}),
+        // Only sent when there is something to send: the service validates
+        // these, and an empty array is noise on a proposal that is just text.
+        ...(attachments.length ? { attachments } : {}),
       });
       toast.success("Your proposal is in. Good luck.", { id });
       reset();
@@ -144,6 +152,8 @@ export function ProposeSheet({
             }}
           />
 
+          <AttachmentsField value={attachments} onChange={setAttachments} />
+
           <TextField
             label="How long you'd need"
             value={duration}
@@ -172,6 +182,54 @@ export function ProposeSheet({
         </div>
       </form>
     </ModalShell>
+  );
+}
+
+// Work worth showing rather than describing: a mockup, a screenshot of
+// something close you have already built. Uploaded through the same signed
+// path as every other image on the platform, so nothing arbitrary is stored.
+function AttachmentsField({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {value.map((url, index) => (
+        <div key={url} className="flex items-center gap-3">
+          {/* An arbitrary remote URL, so a plain img rather than the Next loader. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt=""
+            className="size-12 shrink-0 rounded-[10px] border border-white/10 object-cover"
+          />
+          <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-normal text-white/45">
+            Attachment {index + 1}
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(value.filter((_, i) => i !== index))}
+            aria-label={`Remove attachment ${index + 1}`}
+            className="shrink-0 cursor-pointer rounded-lg border border-white/12 px-2.5 py-2 font-sans text-[12px] text-white/50 hover:text-white"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+
+      {value.length < MAX_ATTACHMENTS ? (
+        <ImageUploadField
+          label="Work samples"
+          source="description"
+          value=""
+          hint="Optional. PNG, JPEG or WebP, up to 5MB."
+          onChange={(url) => onChange([...value, url])}
+        />
+      ) : null}
+    </div>
   );
 }
 

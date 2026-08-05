@@ -29,6 +29,7 @@ export interface JobFormState {
   hourlyRate: string;
   // A datetime-local value ("2026-12-31T23:59"), not an ISO string.
   deadline: string;
+  coverImage: string;
   skills: { skills: string; subskills: string[] }[];
 }
 
@@ -46,6 +47,7 @@ export function emptyJobForm(): JobFormState {
     maxBudget: "",
     hourlyRate: "",
     deadline: "",
+    coverImage: "",
     skills: [],
   };
 }
@@ -69,6 +71,7 @@ export function jobPostToForm(jobPost: JobPost): JobFormState {
       ? unitsOf(jobPost.hourlyRate.minor, jobPost.hourlyRate.decimals)
       : "",
     deadline: toLocalInput(jobPost.deadline),
+    coverImage: jobPost.coverImage ?? "",
     skills: jobPost.skills,
   };
 }
@@ -158,6 +161,7 @@ export function buildJobPayload(state: JobFormState, id?: string): DraftJobPostI
     region: state.region.trim() || "Global",
     token: state.token,
     skills: state.skills,
+    ...(state.coverImage ? { coverImage: state.coverImage } : {}),
     ...(hourly
       ? { hourlyRate: toNumber(state.hourlyRate) }
       : { minBudget: toNumber(state.minBudget), maxBudget: toNumber(state.maxBudget) }),

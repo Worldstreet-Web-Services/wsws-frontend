@@ -56,6 +56,9 @@ export interface JobPost {
   // Only set on an HOURLY post — the rate proposals are expected to quote against.
   hourlyRate: RewardAmount | null;
   token: string;
+  // Optional banner for the listing card and header. Separate from the
+  // sponsor org's own logo.
+  coverImage: string | null;
   status: JobPostStatus;
   isPublished: boolean;
   publishedAt: string | null;
@@ -81,6 +84,9 @@ export interface DraftJobPostInput {
   // Required when budgetType is HOURLY.
   hourlyRate?: number;
   token?: string;
+  // The public gateway-backed URL from /image/complete's recommendedUrl —
+  // never the presigned S3 URL, whose bucket is private and unviewable.
+  coverImage?: string;
   // ISO datetime.
   deadline?: string;
 }

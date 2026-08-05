@@ -25,6 +25,7 @@ export type ImageSource =
   | "sponsor"
   | "description"
   | "grant-event-pictures"
+  | "job-post"
   | "grant-event-receipts"
   | "grant-agentic-receipts";
 

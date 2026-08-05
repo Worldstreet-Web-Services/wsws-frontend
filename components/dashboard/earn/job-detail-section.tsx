@@ -65,6 +65,15 @@ export function JobDetailSection({ slug }: { slug: string | null }) {
     <div className={PAGE}>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <article>
+          {jobPost.coverImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={jobPost.coverImage}
+              alt=""
+              className="mb-6 h-[180px] w-full rounded-[20px] border border-white/10 object-cover sm:h-[260px]"
+            />
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-white/10 px-2.5 py-1 font-sans text-[11.5px] font-medium text-white/55">
               {jobPost.budgetType === "HOURLY" ? "Hourly" : "Fixed price"}

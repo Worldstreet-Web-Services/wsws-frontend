@@ -1,6 +1,7 @@
 "use client";
 
 import { SelectField, TextAreaField, TextField } from "@/components/dashboard/earn/form-field";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { slugify } from "@/lib/earn/listing-form";
 import type { JobFormErrors, JobFormState } from "@/lib/earn/job-form";
 import { SKILL_CATEGORIES, type SkillCategory } from "@/lib/earn/api/types";
@@ -72,6 +73,17 @@ export function JobFormFields({
         onChange={(value) => {
           if (!slugLocked) set("slug", value);
         }}
+      />
+
+      {/* Uploading a replacement is the only way to change this: the service
+          has no way to clear coverImage once set, so there is deliberately no
+          Remove button that would not actually remove anything. */}
+      <ImageUploadField
+        label="Cover image"
+        source="job-post"
+        value={state.coverImage}
+        onChange={(url) => set("coverImage", url)}
+        hint="Optional banner, 1200x630 works best. PNG, JPEG or WebP, up to 5MB."
       />
 
       <TextAreaField

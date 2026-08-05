@@ -72,6 +72,17 @@ export function SponsorJobSection({ slug }: { slug: string }) {
 
   return (
     <div className={PAGE}>
+      {jobPost.coverImage ? (
+        // What applicants see at the top of the public page, so the sponsor
+        // can tell at a glance whether the banner they uploaded works.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={jobPost.coverImage}
+          alt=""
+          className="mb-6 h-[140px] w-full rounded-[20px] border border-white/10 object-cover sm:h-[200px]"
+        />
+      ) : null}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">

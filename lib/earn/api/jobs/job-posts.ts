@@ -75,6 +75,7 @@ export interface UpdateJobPostInput {
   maxBudget?: number;
   hourlyRate?: number;
   token?: string;
+  coverImage?: string;
   deadline?: string;
 }
 

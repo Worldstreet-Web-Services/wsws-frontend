@@ -51,6 +51,16 @@ export function JobCard({ jobPost, featured = false }: { jobPost: JobPost; featu
         className="pointer-events-none absolute -top-16 -left-10 h-40 w-40 bg-[radial-gradient(circle,rgba(212,212,216,0.10),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
       />
 
+      {jobPost.coverImage ? (
+        // Bleeds to the card's edges: it is a banner, not an avatar.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={jobPost.coverImage}
+          alt=""
+          className="-mx-5 -mt-5 mb-4 h-28 w-[calc(100%+2.5rem)] object-cover"
+        />
+      ) : null}
+
       <div className="flex items-start justify-between gap-3">
         {/* The budget type leads: it is the first thing that decides whether a
             job is worth reading, and it separates the two feeds at a glance. */}

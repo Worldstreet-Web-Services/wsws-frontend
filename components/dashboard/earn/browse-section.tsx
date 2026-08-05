@@ -137,13 +137,18 @@ export function BrowseSection() {
         </div>
       </header>
 
-      <div className="mt-7 flex flex-wrap gap-2">
+      {/* Tabs, not toggle buttons: these switch which feed is on screen, and
+          the bounty type filter below has its own "Bounties" control. Two
+          same-named buttons would leave a screen reader with no way to tell
+          "browse bounties" from "filter to bounties". */}
+      <div role="tablist" aria-label="Work type" className="mt-7 flex flex-wrap gap-2">
         {(["bounties", "jobs"] as Feed[]).map((option) => (
           <button
             key={option}
             type="button"
+            role="tab"
+            aria-selected={feed === option}
             onClick={() => setFeed(option)}
-            aria-pressed={feed === option}
             className={`cursor-pointer rounded-full border px-4 py-2 font-sans text-[12.5px] transition-colors ${
               feed === option
                 ? "border-accent bg-accent text-ink font-semibold"

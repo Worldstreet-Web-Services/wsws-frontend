@@ -46,7 +46,11 @@ export function SponsorOnboardingSection({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<"company" | "profile">(startAt);
+  // Both halves live here rather than in their steps: switching step unmounts
+  // one and mounts the other, so anything held inside a step would be lost the
+  // moment somebody went back to fix a typo.
   const [company, setCompany] = useState<CompanyState | null>(null);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
 
   return (
     <div className={PAGE}>
@@ -69,7 +73,17 @@ export function SponsorOnboardingSection({
             }}
           />
         ) : (
-          <ProfileStep company={company} onDone={() => router.push("/earn/sponsor")} />
+          <ProfileStep
+            company={company}
+            initial={profile}
+            // Going back hands this step's own state up first, so returning
+            // here finds it filled in rather than blank.
+            onBack={(next) => {
+              setProfile(next);
+              setStep("company");
+            }}
+            onDone={() => router.push("/earn/sponsor")}
+          />
         )}
       </div>
     </div>
@@ -225,15 +239,27 @@ function CompanyStep({
   );
 }
 
-function ProfileStep({ company, onDone }: { company: CompanyState; onDone: () => void }) {
+function ProfileStep({
+  company,
+  initial,
+  onBack,
+  onDone,
+}: {
+  company: CompanyState;
+  initial: ProfileState | null;
+  onBack: (state: ProfileState) => void;
+  onDone: () => void;
+}) {
   const create = useCreateSponsor();
-  const [state, setState] = useState<ProfileState>({
-    firstName: "",
-    lastName: "",
-    username: "",
-    photo: "",
-    telegram: "",
-  });
+  const [state, setState] = useState<ProfileState>(
+    initial ?? {
+      firstName: "",
+      lastName: "",
+      username: "",
+      photo: "",
+      telegram: "",
+    }
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileState, string>>>({});
   const formRef = useRef<HTMLFormElement>(null);
   useScrollToFirstError(formRef, errors);
@@ -325,13 +351,26 @@ function ProfileStep({ company, onDone }: { company: CompanyState; onDone: () =>
         onChange={(value) => set("telegram", value)}
       />
 
-      <button
-        type="submit"
-        disabled={create.isPending}
-        className="bg-accent text-ink mt-2 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {create.isPending ? "Setting up…" : "Finish"}
-      </button>
+      <div className="mt-2 flex gap-2.5">
+        {/* Nothing has been sent yet at this point — the service takes the
+            company and the owner together — so going back is free. Disabled
+            mid-submit so a stray click can't unmount the form under the call. */}
+        <button
+          type="button"
+          onClick={() => onBack(state)}
+          disabled={create.isPending}
+          className="ws-inset flex-1 cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold text-white/75 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          disabled={create.isPending}
+          className="bg-accent text-ink flex-[2] cursor-pointer rounded-full px-5 py-3 font-sans text-[13px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {create.isPending ? "Setting up…" : "Finish"}
+        </button>
+      </div>
     </form>
   );
 }

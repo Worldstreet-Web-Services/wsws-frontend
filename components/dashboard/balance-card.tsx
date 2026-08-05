@@ -10,9 +10,12 @@ import { usePendingOnramp } from "@/hooks/use-pouch-onramp";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { readyToSpendUsd } from "@/lib/portfolio-breakdown";
 
-// Refresh the portfolio each new Base block, so a deposit, withdrawal or add-money
-// shows in the balance within ~2s instead of on the slow poll.
+// Refresh the portfolio on Base blocks, so a deposit, withdrawal or add-money
+// shows in the balance quickly instead of on the slow poll. Rate-limited:
+// every refetch is a real Alchemy round trip, and an unthrottled per-block
+// (~2s) cadence ran the shared key into 429s.
 const PORTFOLIO_KEY = [["portfolio"]] as const;
+const PORTFOLIO_REFRESH_MIN_MS = 10_000;
 
 interface BalanceCardProps {
   onOpenFunds: () => void;
@@ -24,7 +27,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
   const money = useMoney();
   const { hidden, toggle, mask } = useBalanceVisibility();
   const t = useTranslations("balance");
-  useInvalidateOnBlock(PORTFOLIO_KEY);
+  useInvalidateOnBlock(PORTFOLIO_KEY, true, PORTFOLIO_REFRESH_MIN_MS);
   // A confirmed bank deposit that has not settled yet holds the withdraw
   // button, so an unchanged balance next to a live button doesn't read as
   // "withdraw your new money now" and invite repeated attempts.
@@ -72,11 +75,11 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
               <div className="ws-display tnum text-[clamp(40px,5vw,58px)] leading-none tracking-[-0.02em]">
                 {mask(money.format(totalUsd))}
               </div>
-              {readyToSpend > 0 ? (
-                <div className="tnum mt-2.5 text-[15.5px] font-normal text-white/60">
-                  {t("readyToSpend", { amount: mask(money.format(readyToSpend)) })}
-                </div>
-              ) : null}
+              {/* Shown even at zero, in the selected currency, so an empty
+                  spendable balance is stated rather than silently missing. */}
+              <div className="tnum mt-2.5 text-[15.5px] font-normal text-white/60">
+                {t("readyToSpend", { amount: mask(money.format(readyToSpend)) })}
+              </div>
             </div>
           )}
         </div>

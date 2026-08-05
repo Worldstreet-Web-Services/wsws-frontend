@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
 import { RewardBadge } from "@/components/dashboard/earn/reward-badge";
 import { useMySubmissions } from "@/hooks/use-earn-submission";
 import { useClaimInfo, useClaimReward } from "@/hooks/use-earn-claim";
+import { useMyProposals, useWithdrawProposal } from "@/hooks/use-earn-jobs";
+import { useMyContracts } from "@/hooks/use-earn-contracts";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import { deadlineLabel } from "@/lib/earn/deadline";
 import { ordinal } from "@/lib/earn/ordinal";
 import type { MySubmission } from "@/lib/earn/api/types";
+import type { MyProposal, ProposalStatus } from "@/lib/earn/api/jobs";
 
 const PAGE = "mx-auto w-full max-w-[1520px] px-4 pt-6 pb-20 sm:px-6";
 
@@ -137,6 +141,177 @@ export function ApplicationsSection() {
           </ul>
         )}
       </div>
+
+      <MyProposals />
+    </div>
+  );
+}
+
+const PROPOSAL_TONE: Record<ProposalStatus, string> = {
+  ACCEPTED: "border-up/40 text-up",
+  SHORTLISTED: "border-accent/40 text-accent",
+  SUBMITTED: "border-white/10 text-white/55",
+  REJECTED: "border-white/10 text-white/35",
+  WITHDRAWN: "border-white/10 text-white/35",
+};
+
+const PROPOSAL_LABEL: Record<ProposalStatus, string> = {
+  ACCEPTED: "Hired",
+  SHORTLISTED: "Shortlisted",
+  SUBMITTED: "In review",
+  REJECTED: "Not chosen",
+  WITHDRAWN: "Withdrawn",
+};
+
+const PROPOSAL_DETAIL: Record<ProposalStatus, string> = {
+  ACCEPTED: "You got this one. Your contract is open.",
+  SHORTLISTED: "The company is considering you.",
+  SUBMITTED: "The company is reviewing proposals.",
+  REJECTED: "This one went to somebody else.",
+  WITHDRAWN: "You took this proposal back.",
+};
+
+// Proposals sit beside bounty entries rather than in their own screen: from
+// the freelancer's side both answer "what have I put myself forward for", even
+// though a proposal ends in a contract and an entry ends in an announced winner.
+function MyProposals() {
+  const { proposals, isLoading, error } = useMyProposals();
+
+  // Nothing to say before the first proposal — the empty state above already
+  // covers "you haven't applied to anything".
+  if (!isLoading && !error && proposals.length === 0) return null;
+
+  return (
+    <section className="mt-10">
+      <h2 className="ws-display text-[16px] text-white">Job proposals</h2>
+      <p className="mt-1 font-sans text-[13px] font-normal text-white/50">
+        Ongoing work you&apos;ve quoted for.
+      </p>
+
+      <div className="mt-4">
+        {error ? (
+          <AsyncError
+            error={error}
+            subject="your proposals"
+            unconfiguredDetail={UNCONFIGURED_DETAIL}
+          />
+        ) : isLoading ? (
+          <AsyncLoading label="Loading your proposals" rows={2} />
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {proposals.map((proposal) => (
+              <li key={proposal.id}>
+                <ProposalRow proposal={proposal} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ProposalRow({ proposal }: { proposal: MyProposal }) {
+  const withdraw = useWithdrawProposal();
+  const [confirming, setConfirming] = useState(false);
+  // A proposal carries no contract id, so a hired one is matched back to its
+  // contract through the caller's own list.
+  const { asFreelancer } = useMyContracts();
+  const contractId = asFreelancer.find((c) => c.jobPostId === proposal.jobPostId)?.id ?? null;
+
+  // Only an undecided proposal can be taken back; the rest are history.
+  const canWithdraw = proposal.status === "SUBMITTED" || proposal.status === "SHORTLISTED";
+
+  async function onWithdraw() {
+    const id = toast.loading("Withdrawing…");
+    try {
+      await withdraw.mutateAsync(proposal.id);
+      toast.success("Proposal withdrawn.", { id });
+      setConfirming(false);
+    } catch (error) {
+      toast.error(friendlyError(error, "Couldn't withdraw that proposal."), { id });
+    }
+  }
+
+  return (
+    <div className="ws-card rounded-[16px] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          {/* A proposal whose job could not be read is still shown: the person
+              did send it, and hiding it would be worse than showing it bare. */}
+          {/* A hired proposal points at the contract, which is where the work
+              actually happens; anything else points back at the job. */}
+          {proposal.status === "ACCEPTED" && contractId ? (
+            <Link
+              href={`/earn/contract/${contractId}`}
+              className="ws-display truncate text-[14.5px] text-white underline-offset-2 hover:underline"
+            >
+              {proposal.jobPost?.title ?? "Your contract"}
+            </Link>
+          ) : proposal.jobPost ? (
+            <Link
+              href={`/earn/job/${proposal.jobPost.slug}`}
+              className="ws-display truncate text-[14.5px] text-white underline-offset-2 hover:underline"
+            >
+              {proposal.jobPost.title}
+            </Link>
+          ) : (
+            <div className="ws-display truncate text-[14.5px] text-white">
+              A job that could not be loaded
+            </div>
+          )}
+          <div className="mt-1.5 font-sans text-[12px] font-normal text-white/40">
+            {PROPOSAL_DETAIL[proposal.status]}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <RewardBadge reward={proposal.proposedAmount} />
+          <span
+            className={`rounded-full border px-2.5 py-1 font-sans text-[11px] font-medium ${PROPOSAL_TONE[proposal.status]}`}
+          >
+            {PROPOSAL_LABEL[proposal.status]}
+          </span>
+        </div>
+      </div>
+
+      {canWithdraw ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {confirming ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void onWithdraw()}
+                disabled={withdraw.isPending}
+                className="ws-inset cursor-pointer rounded-full px-4 py-2 font-sans text-[12.5px] font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {withdraw.isPending ? "Withdrawing…" : "Confirm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                disabled={withdraw.isPending}
+                className="cursor-pointer rounded-full px-3 py-2 font-sans text-[12.5px] font-medium text-white/55 transition-colors hover:text-white disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              {/* The service does not let a withdrawn proposal be sent again,
+                  so this is worth saying before rather than after. */}
+              <p className="w-full font-sans text-[11.5px] font-normal text-white/45">
+                You won&apos;t be able to apply to this job again.
+              </p>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="cursor-pointer rounded-full px-3 py-1.5 font-sans text-[12px] font-medium text-white/50 transition-colors hover:text-white"
+            >
+              Withdraw
+            </button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

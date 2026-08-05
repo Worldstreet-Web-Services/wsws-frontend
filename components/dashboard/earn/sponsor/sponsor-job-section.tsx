@@ -5,7 +5,9 @@ import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
 import { RewardBadge } from "@/components/dashboard/earn/reward-badge";
 import { JobEditorSection } from "@/components/dashboard/earn/sponsor/job-editor-section";
 import { JobProposalList } from "@/components/dashboard/earn/sponsor/job-proposal-list";
+import Link from "next/link";
 import { useCloseJobPost, useMyJobPost } from "@/hooks/use-earn-jobs";
+import { useMyContracts } from "@/hooks/use-earn-contracts";
 import { formatDeadline } from "@/lib/earn/deadline";
 import { jobPostToForm } from "@/lib/earn/job-form";
 import { friendlyError } from "@/lib/errors";
@@ -90,6 +92,7 @@ export function SponsorJobSection({ slug }: { slug: string }) {
 
         <div className="flex items-center gap-2.5">
           <BudgetBadge jobPost={jobPost} />
+          <OpenContract jobPostId={jobPost.id} />
           <CloseJob jobPost={jobPost} />
         </div>
       </header>
@@ -126,6 +129,24 @@ export function SponsorJobSection({ slug }: { slug: string }) {
         </>
       )}
     </div>
+  );
+}
+
+// Once a job is hired the work moves to its contract, so the job page needs a
+// way through to it. A job post has exactly one contract, matched here through
+// the sponsor's own list since the job carries no contract id.
+function OpenContract({ jobPostId }: { jobPostId: string }) {
+  const { asSponsor } = useMyContracts();
+  const contract = asSponsor.find((c) => c.jobPostId === jobPostId);
+  if (!contract) return null;
+
+  return (
+    <Link
+      href={`/earn/sponsor/contract/${contract.id}`}
+      className="bg-accent text-ink cursor-pointer rounded-full px-4 py-2 font-sans text-[12.5px] font-semibold"
+    >
+      Open contract
+    </Link>
   );
 }
 

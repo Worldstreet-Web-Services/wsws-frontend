@@ -1,5 +1,3 @@
-import { subscriptZeros } from "@/lib/format";
-
 export interface Currency {
   code: string;
   name: string;
@@ -26,6 +24,8 @@ export const CURRENCIES: Currency[] = [
   { code: "MUR", name: "Mauritian Rupee", symbol: "₨", region: "Africa" },
   { code: "EUR", name: "Euro", symbol: "€", region: "Global" },
   { code: "GBP", name: "British Pound", symbol: "£", region: "Global" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥", region: "Global" },
+  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM", region: "Global" },
 ];
 
 export const DEFAULT_CURRENCY = "USD";
@@ -49,6 +49,8 @@ export const CURRENCY_COUNTRY: Record<string, string> = {
   MUR: "mu",
   EUR: "eu",
   GBP: "gb",
+  CNY: "cn",
+  MYR: "my",
   AUD: "au",
   NZD: "nz",
 };
@@ -71,13 +73,12 @@ const NO_DECIMALS = new Set(["NGN", "UGX", "TZS", "XOF", "XAF", "RWF"]);
 export function formatMoney(amountUsd: number, currency: Currency, rate: number): string {
   const value = amountUsd * rate;
   const noDecimals = NO_DECIMALS.has(currency.code);
-  // A tiny non-zero price (memecoins trade far below a cent) must not flatten
-  // to zero — show its significant digits instead, counting a long run of
-  // leading zeros the way the memecoin cards do rather than spelling it out.
+  // Every caller shows an amount of money, never a unit price, so a non-zero
+  // dust balance rounds up to the smallest displayed unit with a "<" marker
+  // instead of spilling into sub-cent digits. Unit prices that need those
+  // digits use subscriptZeros directly.
   if (value > 0 && value < (noDecimals ? 1 : 0.01)) {
-    const compact = subscriptZeros(value);
-    if (compact) return `${currency.symbol}${compact}`;
-    return `${currency.symbol}${value.toLocaleString(undefined, { maximumSignificantDigits: 4 })}`;
+    return `<${currency.symbol}${noDecimals ? "1" : "0.01"}`;
   }
   const fractionDigits = noDecimals ? 0 : 2;
   const formatted = value.toLocaleString(undefined, {

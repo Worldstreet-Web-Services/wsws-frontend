@@ -29,12 +29,14 @@ describe("canSellAsset", () => {
     expect(canSellAsset("solana-mainnet", "somemint")).toBe(true);
   });
 
-  it("allows native ETH and native SOL, but not native POL", () => {
+  it("allows native ETH and native SOL but not native POL", () => {
     expect(canSellAsset("base-mainnet", null)).toBe(true);
     expect(canSellAsset("eth-mainnet", null)).toBe(true);
     expect(canSellAsset("arb-mainnet", null)).toBe(true);
-    expect(canSellAsset("solana-mainnet", null)).toBe(true);
     expect(canSellAsset("polygon-mainnet", null)).toBe(false);
+    // Native SOL sells via a single sponsored LI.FI leg straight to USDC on
+    // Base — LI.FI takes SOL as an origin where Dextopus does not.
+    expect(canSellAsset("solana-mainnet", null)).toBe(true);
   });
 
   it("rejects everything on an unsupported network", () => {
@@ -77,10 +79,7 @@ describe("buildSellQuoteBody", () => {
     expect(body.originChainId).toBe(8453);
   });
 
-  // The system-program id, not the wrapped-SOL mint: quoting the mint is
-  // rejected with "asset is not supported on chain", which is what made a
-  // native SOL balance unsellable.
-  it("uses the system-program sentinel for native SOL", () => {
+  it("uses the wrapped-SOL mint for native SOL", () => {
     const body = buildSellQuoteBody({
       network: "solana-mainnet",
       asset: null,
@@ -89,7 +88,7 @@ describe("buildSellQuoteBody", () => {
       refundTo: "solwallet",
       slippageBps: 100,
     });
-    expect(body.originAsset).toBe("11111111111111111111111111111111");
+    expect(body.originAsset).toBe("So11111111111111111111111111111111111111112");
     expect(body.originChainId).toBe(792703809);
   });
 

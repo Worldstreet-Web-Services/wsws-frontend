@@ -45,7 +45,7 @@ interface DocumentPictureInPictureApi {
   requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
 }
 
-type PipTier = "document" | "video";
+type PipTier = "document" | "video" | "overlay";
 
 function detectTier(): PipTier | null {
   if (typeof window === "undefined") return null;
@@ -53,17 +53,24 @@ function detectTier(): PipTier | null {
     typeof document !== "undefined" &&
     document.pictureInPictureEnabled &&
     "captureStream" in HTMLCanvasElement.prototype;
-  // The video tier is preferred wherever it works: its window is the system
-  // floating panel, the only surface every browser reliably keeps above
-  // other applications and desktops. The document tier's window can hold a
-  // working play button, but in several Chromium forks it sinks behind
-  // other apps — losing sight of the clock is losing the game, so it is
-  // only the fallback for browsers without canvas capture. (Neither tier
-  // can appear over another app's FULLSCREEN Space on macOS; the
-  // critical-clock notification covers that.)
-  if (videoCapable) return "video";
+  // Phones and tablets: the floating video is the only surface that keeps
+  // the clock visible when the browser itself is minimized (Android), so it
+  // wins wherever it works; a failed open falls back to the in-app overlay
+  // in the click handler. iOS has no usable picture-in-picture for canvas
+  // streams, so it goes straight to the overlay — a fixed in-app card that
+  // survives navigation and keeps the play button tappable, but cannot
+  // float over OTHER apps; the critical-clock notification covers that gap.
+  if (window.matchMedia("(pointer: coarse)").matches) {
+    return videoCapable ? "video" : "overlay";
+  }
+  // The document tier is preferred wherever it exists: its window carries a
+  // WORKING play button, and a wager without returning to the tab is the
+  // whole point of the pop-out. The canvas video is the fallback for
+  // desktop browsers without it (Safari, Firefox) — always floating, never
+  // clickable. Anything else falls back to the in-app overlay.
   if ("documentPictureInPicture" in window) return "document";
-  return null;
+  if (videoCapable) return "video";
+  return "overlay";
 }
 
 export function formatCountdown(totalSeconds: number): string {
@@ -81,9 +88,10 @@ export function formatCountdown(totalSeconds: number): string {
 interface MiniWindowState {
   pipWindow: Window | null;
   videoActive: boolean;
+  overlayActive: boolean;
 }
 
-let state: MiniWindowState = { pipWindow: null, videoActive: false };
+let state: MiniWindowState = { pipWindow: null, videoActive: false, overlayActive: false };
 const listeners = new Set<() => void>();
 // Hidden surfaces for the video tier, registered by the host. Held outside
 // React so the section's click handler can reach them synchronously — the
@@ -134,7 +142,7 @@ async function openDocumentPip(): Promise<void> {
   const api = (window as Window & { documentPictureInPicture?: DocumentPictureInPictureApi })
     .documentPictureInPicture;
   if (!api) return;
-  const win = await api.requestWindow({ width: 300, height: 260 });
+  const win = await api.requestWindow({ width: 300, height: 310 });
   copyStylesInto(win);
   win.document.body.style.background = "#101013";
   win.document.body.style.margin = "0";
@@ -271,7 +279,7 @@ function closeMiniWindow(): void {
     teardownVideoSurface();
   }
   stopKeepAliveAudio();
-  setState({ pipWindow: null, videoActive: false });
+  setState({ pipWindow: null, videoActive: false, overlayActive: false });
 }
 
 // ---------------------------------------------------------------------------
@@ -285,8 +293,8 @@ const hintSeen = () =>
 export function MiniTimerLauncher() {
   const t = useTranslations("casino.lastStanding");
   const tier = useSyncExternalStore(subscribe, detectTier, () => null);
-  const { pipWindow, videoActive } = useMiniWindow();
-  const open = pipWindow !== null || videoActive;
+  const { pipWindow, videoActive, overlayActive } = useMiniWindow();
+  const open = pipWindow !== null || videoActive || overlayActive;
 
   // One-time hint: nobody discovers picture-in-picture from a pill label
   // alone, and without expectation-setting the fullscreen behaviour reads as
@@ -318,9 +326,14 @@ export function MiniTimerLauncher() {
       });
     } else if (tier === "video") {
       void openVideoPip().catch(() => {
-        setState({ videoActive: false });
-        toast.error(t("miniFailed"));
+        // The floating video can be refused (power saving, browser policy).
+        // The in-app overlay always works, so fall back to it instead of a
+        // dead error toast.
+        setState({ videoActive: false, overlayActive: true });
       });
+    } else {
+      // In-app overlay: nothing to request, nothing that can fail.
+      setState({ overlayActive: true });
     }
   }, [open, tier, t]);
 
@@ -369,7 +382,7 @@ export function MiniTimerLauncher() {
 
 export function MiniTimerHost() {
   const tier = useSyncExternalStore(subscribe, detectTier, () => null);
-  const { pipWindow, videoActive } = useMiniWindow();
+  const { pipWindow, videoActive, overlayActive } = useMiniWindow();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -384,7 +397,7 @@ export function MiniTimerHost() {
     };
   }, [tier]);
 
-  const open = pipWindow !== null || videoActive;
+  const open = pipWindow !== null || videoActive || overlayActive;
 
   return (
     <>
@@ -398,7 +411,9 @@ export function MiniTimerHost() {
       ) : null}
       {/* Game data (queries, socket) is only subscribed to while the pop-out
           is actually open; the rest of the time the host is inert. */}
-      {open ? <MiniTimerLive pipWindow={pipWindow} canvasRef={canvasRef} /> : null}
+      {open ? (
+        <MiniTimerLive pipWindow={pipWindow} overlay={overlayActive} canvasRef={canvasRef} />
+      ) : null}
     </>
   );
 }
@@ -410,9 +425,11 @@ const URGENT_SECONDS = 10;
 // contract call the arena uses.
 function MiniTimerLive({
   pipWindow,
+  overlay,
   canvasRef,
 }: {
   pipWindow: Window | null;
+  overlay: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
 }) {
   const t = useTranslations("casino.lastStanding");
@@ -486,7 +503,7 @@ function MiniTimerLive({
   // The canvas frame for the video tier, repainted whenever the derived
   // values change (the ticker above drives the every-500ms updates).
   useEffect(() => {
-    if (pipWindow) return;
+    if (pipWindow || overlay) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -561,16 +578,26 @@ function MiniTimerLive({
     };
   }, [gameActive, remaining, clock, pot, t]);
 
-  if (!pipWindow) return null;
-
-  return createPortal(
-    <div className="flex h-[100vh] flex-col items-center justify-center gap-1.5 p-4 text-center font-sans">
+  const card = (compact: boolean) => (
+    <div
+      className={
+        compact
+          ? "flex flex-col items-center gap-1 p-3 text-center font-sans"
+          : "flex h-[100vh] flex-col items-center justify-center gap-1.5 p-4 text-center font-sans"
+      }
+    >
       <div className="text-[11px] font-semibold tracking-[0.18em] text-white/50 uppercase">
         {t("prizePool")}
       </div>
-      <div className="text-[19px] font-semibold text-white">{pot}</div>
       <div
-        className={`tnum text-[52px] leading-none font-bold ${
+        className={
+          compact ? "text-[15px] font-semibold text-white" : "text-[19px] font-semibold text-white"
+        }
+      >
+        {pot}
+      </div>
+      <div
+        className={`tnum leading-none font-bold ${compact ? "text-[34px]" : "text-[52px]"} ${
           urgent ? "animate-pulse text-[#F6A5A5]" : "text-white"
         }`}
       >
@@ -588,7 +615,29 @@ function MiniTimerLive({
       <div className="text-[11px] text-white/40">
         {t("yourBalance")} {balance}
       </div>
-    </div>,
-    pipWindow.document.body
+    </div>
   );
+
+  // In-app overlay for phones: a fixed card above everything, surviving
+  // navigation because the host owns it. Dismissed with its own close button
+  // or the launcher toggle.
+  if (overlay) {
+    return (
+      <div className="fixed right-3 bottom-20 z-[200] w-[210px] rounded-[16px] border border-white/14 bg-[#101013]/95 shadow-[0_18px_50px_rgba(0,0,0,0.6)] backdrop-blur-md">
+        <button
+          type="button"
+          onClick={closeMiniWindow}
+          aria-label={t("miniClose")}
+          className="absolute top-1.5 right-1.5 grid h-6 w-6 cursor-pointer place-items-center rounded-full text-white/50 hover:bg-white/10 hover:text-white"
+        >
+          ✕
+        </button>
+        {card(true)}
+      </div>
+    );
+  }
+
+  if (!pipWindow) return null;
+
+  return createPortal(card(false), pipWindow.document.body);
 }

@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Chain } from "viem";
+import { createPublicClient, fallback, http, type Chain } from "viem";
 import { SPONSORED_EVM_CHAINS } from "@/lib/trade/sponsored-evm";
 
 // Read client per chain for confirming transactions. Reads must go through a
@@ -26,18 +26,34 @@ export function isReceiptChain(chainId: number): boolean {
   return chainId in READ_CHAINS;
 }
 
-// Reads go through our own proxy on the paid Alchemy key, NOT the chain's
-// default public endpoint. `http()` with no URL falls back to that default
-// (mainnet.base.org and friends), which is shared and rate-limited, and it
-// carries every on-chain read in the app. Same-origin, so the privy-token
-// cookie authenticates the call with no header plumbing. Browser-only by
-// construction: every caller runs in a hook or an event handler.
+// A public node per chain, used only as a backup. The chain's default RPC is
+// flaky for some networks and ISPs, SSL resets included, and a receipt that
+// cannot be read stalls the whole flow even though the transaction landed.
+const FALLBACK_RPCS: Record<number, string> = {
+  8453: "https://base-rpc.publicnode.com",
+  42161: "https://arbitrum-one-rpc.publicnode.com",
+  137: "https://polygon-bor-rpc.publicnode.com",
+  10: "https://optimism-rpc.publicnode.com",
+};
+
+// Reads go through our own proxy on the paid Alchemy key first, with the public
+// node above as the fallback. `http()` with no URL would use the chain's default
+// public endpoint, which is shared and rate-limited, and this carries every
+// on-chain read in the app. viem's fallback transport moves to the backup the
+// moment the primary errors, so a proxy outage degrades to a slower public node
+// instead of stalling the flow.
+//
+// The proxy is same-origin, so the privy-token cookie authenticates it with no
+// header plumbing. Browser-only by construction: every caller runs in a hook or
+// an event handler.
 export function publicClientForChain(chainId: number) {
   const entry = READ_CHAINS[chainId];
   if (!entry) throw new Error(`This chain isn't supported yet (${chainId}).`);
+  const primary = http(`/api/evm-rpc/${entry.network}`);
+  const backup = FALLBACK_RPCS[chainId];
   return createPublicClient({
     chain: entry.chain,
-    transport: http(`/api/evm-rpc/${entry.network}`),
+    transport: backup ? fallback([primary, http(backup)]) : primary,
   });
 }
 

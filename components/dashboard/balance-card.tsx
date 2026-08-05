@@ -9,10 +9,14 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePendingOnramp } from "@/hooks/use-pouch-onramp";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { readyToSpendUsd } from "@/lib/portfolio-breakdown";
+import { OFFRAMP_MIN_USDC } from "@/lib/pouch/offramp";
 
-// Refresh the portfolio each new Base block, so a deposit, withdrawal or add-money
-// shows in the balance within ~2s instead of on the slow poll.
+// Refresh the portfolio on Base blocks, so a deposit, withdrawal or add-money
+// shows in the balance quickly instead of on the slow poll. Rate-limited:
+// every refetch is a real Alchemy round trip, and an unthrottled per-block
+// (~2s) cadence ran the shared key into 429s.
 const PORTFOLIO_KEY = [["portfolio"]] as const;
+const PORTFOLIO_REFRESH_MIN_MS = 10_000;
 
 interface BalanceCardProps {
   onOpenFunds: () => void;
@@ -24,7 +28,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
   const money = useMoney();
   const { hidden, toggle, mask } = useBalanceVisibility();
   const t = useTranslations("balance");
-  useInvalidateOnBlock(PORTFOLIO_KEY);
+  useInvalidateOnBlock(PORTFOLIO_KEY, true, PORTFOLIO_REFRESH_MIN_MS);
   // A confirmed bank deposit that has not settled yet holds the withdraw
   // button, so an unchanged balance next to a live button doesn't read as
   // "withdraw your new money now" and invite repeated attempts.
@@ -33,6 +37,12 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
   // What a purchase can actually draw on. A portfolio can be worth a lot and
   // still have nothing spendable, which the total alone never shows.
   const readyToSpend = readyToSpendUsd(tokens);
+
+  // The settling-deposit hold only applies while there is nothing withdrawable.
+  // It exists to stop hammering the button for money that has not landed yet;
+  // a user whose spendable cash already clears the withdrawal minimum can
+  // legitimately withdraw and keeps the button.
+  const withdrawHeld = depositPending && readyToSpend < OFFRAMP_MIN_USDC;
 
   return (
     <div className="ws-card p-5 sm:p-[26px]">
@@ -72,11 +82,11 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
               <div className="ws-display tnum text-[clamp(40px,5vw,58px)] leading-none tracking-[-0.02em]">
                 {mask(money.format(totalUsd))}
               </div>
-              {readyToSpend > 0 ? (
-                <div className="tnum mt-2.5 text-[15.5px] font-normal text-white/60">
-                  {t("readyToSpend", { amount: mask(money.format(readyToSpend)) })}
-                </div>
-              ) : null}
+              {/* Shown even at zero, in the selected currency, so an empty
+                  spendable balance is stated rather than silently missing. */}
+              <div className="tnum mt-2.5 text-[15.5px] font-normal text-white/60">
+                {t("readyToSpend", { amount: mask(money.format(readyToSpend)) })}
+              </div>
             </div>
           )}
         </div>
@@ -89,7 +99,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
           </button>
           <button
             onClick={onOpenWithdraw}
-            disabled={depositPending}
+            disabled={withdrawHeld}
             className="flex-1 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium whitespace-nowrap text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/6 min-[560px]:flex-none"
           >
             {t("withdraw")}

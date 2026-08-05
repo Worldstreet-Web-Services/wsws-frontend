@@ -158,7 +158,7 @@ export function ContractSection({ id, role }: { id: string; role: "sponsor" | "f
           <div>
             <h2 className="ws-display text-[16px] text-white">Milestones</h2>
             <p className="mt-1 font-sans text-[13px] font-normal text-white/50">
-              Each one is funded, delivered and paid on its own.
+              The only way money moves. Each one is funded, delivered and paid on its own.
             </p>
           </div>
           {role === "sponsor" && contract.status === "ACTIVE" ? (
@@ -354,8 +354,8 @@ function MilestoneList({
       <div className="mt-4">
         <AsyncEmpty>
           {role === "sponsor"
-            ? "No milestones yet. Add one to fund the first piece of work."
-            : "No milestones yet. The company sets these up before work starts."}
+            ? "No milestones yet. A milestone is the only thing that can hold money — until you add and fund one, nothing leaves your wallet and nothing can be paid out."
+            : "No milestones yet. Nothing is funded until the company adds one, so there is nothing to be paid from yet."}
         </AsyncEmpty>
       </div>
     );

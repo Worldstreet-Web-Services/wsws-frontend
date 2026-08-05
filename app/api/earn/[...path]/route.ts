@@ -30,6 +30,17 @@ const PUBLIC_READ_PREFIXES = [
   // The VAPID public key is exactly that, and the browser needs it before it
   // can subscribe. Nothing about it identifies a caller.
   "notifications/vapid-key",
+  // Jobs domain (parallel to Bounties, same service). The public job browse
+  // feed and a job's own detail page. This prefix also loosely covers
+  // job-posts/mine (sponsor-only) — harmless in practice, since our client
+  // never calls that path without a token to begin with, and the upstream
+  // service enforces the real "sponsor" auth check independently regardless
+  // of what this proxy allows through (see llms-new.txt: "a mobile client
+  // can't rely on any proxy-side allowlist").
+  "job-posts",
+  // optionalUser: works with no token, personalizes when one is present —
+  // exactly what marking a path public already does below.
+  "ratings/for-user",
 ] as const;
 
 function notConfigured() {

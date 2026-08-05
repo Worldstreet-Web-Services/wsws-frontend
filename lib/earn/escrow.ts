@@ -87,3 +87,33 @@ export function buildDepositCalls(quote: EscrowQuote): EvmBatchCall[] {
     deposit,
   ];
 }
+
+const WITHDRAW_ABI = [
+  {
+    type: "function",
+    name: "withdraw",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [],
+  },
+] as const;
+
+/**
+ * Pulling a released balance out of escrow.
+ *
+ * Sent by the earner's own wallet — the backend holds no key that could do it
+ * for them, the same non-custodial rule the deposit follows. The contract
+ * tracks the balance per (wallet, token) rather than per milestone, so this
+ * takes only the token: one withdraw sweeps everything released to that wallet
+ * in that token, not one milestone's share.
+ */
+export function buildWithdrawCall(escrowAddress: string, tokenAddress: string): EvmBatchCall {
+  return {
+    to: escrowAddress as `0x${string}`,
+    data: encodeFunctionData({
+      abi: WITHDRAW_ABI,
+      functionName: "withdraw",
+      args: [tokenAddress as `0x${string}`],
+    }),
+  };
+}

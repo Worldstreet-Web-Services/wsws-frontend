@@ -29,6 +29,7 @@ import type {
   MilestoneEscrowQuote,
   MilestoneEscrowState,
   MilestoneEscrowStatus,
+  MilestoneClaim,
   MilestoneRefundQuote,
   MilestoneReleaseReason,
   MilestoneReleaseResult,
@@ -573,6 +574,35 @@ export function toMilestoneEscrowStatus(
     owesFreelancer: wire.owesFreelancer === true,
     freelancerHasNoWallet: wire.freelancerHasNoWallet === true,
     refundableAfter: optionalText(wire.refundableAfter),
+  };
+}
+
+export interface MilestoneClaimWire {
+  claimable?: boolean;
+  escrowAddress?: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  decimals?: number;
+  amountMinor?: string | number;
+  alreadyClaimed?: boolean;
+}
+
+// Self-contained like the escrow quote: it carries its own token metadata, so
+// the amount is built straight off amountMinor rather than re-parsed.
+export function toMilestoneClaim(
+  wire: MilestoneClaimWire | null | undefined
+): MilestoneClaim | null {
+  if (!wire?.escrowAddress || !wire.tokenAddress) return null;
+  const token = text(wire.tokenSymbol, "USDC");
+  const decimals = typeof wire.decimals === "number" ? wire.decimals : 6;
+  return {
+    // Defaults closed: offering a withdraw the contract would revert is worse
+    // than making somebody refresh.
+    claimable: wire.claimable === true,
+    escrowAddress: wire.escrowAddress,
+    tokenAddress: wire.tokenAddress,
+    amount: { minor: text(wire.amountMinor, "0"), token, decimals },
+    alreadyClaimed: wire.alreadyClaimed === true,
   };
 }
 

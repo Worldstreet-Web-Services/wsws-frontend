@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { base } from "viem/chains";
 import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
 import { RewardBadge } from "@/components/dashboard/earn/reward-badge";
 import { FundMilestoneSheet } from "@/components/dashboard/earn/fund-milestone-sheet";
@@ -11,9 +12,13 @@ import {
   useContract,
   useCreateMilestone,
   useMilestones,
+  useMilestoneClaim,
   useReleaseMilestone,
   useSubmitMilestone,
 } from "@/hooks/use-earn-contracts";
+import { useEvmSendBatch } from "@/hooks/use-evm-send";
+import { buildWithdrawCall } from "@/lib/earn/escrow";
+import { formatReward } from "@/lib/earn/reward";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import type { ContractStatus, Milestone, MilestoneStatus } from "@/lib/earn/api/jobs";
@@ -46,7 +51,7 @@ const MILESTONE_LABEL: Record<MilestoneStatus, string> = {
   FUNDED: "Funded",
   SUBMITTED: "Submitted",
   APPROVED: "Approved",
-  RELEASED: "Paid",
+  RELEASED: "Released",
   DISPUTED: "Disputed",
   REFUNDED: "Refunded",
 };
@@ -60,7 +65,7 @@ const FREELANCER_STATE: Record<MilestoneStatus, string> = {
   FUNDED: "The money for this is in escrow. Safe to start — submit when it's done.",
   SUBMITTED: "With the company for review. They approve it, then release the payment.",
   APPROVED: "Approved. The company releases it from escrow and it lands in your wallet.",
-  RELEASED: "Paid out to your wallet.",
+  RELEASED: "Released to you. Claim it to move it into your wallet.",
   DISPUTED: "Under dispute. Payment is frozen until an admin resolves it.",
   REFUNDED: "Returned to the company. Nothing is owed on this one.",
 };
@@ -422,7 +427,9 @@ function MilestoneRow({
       // The call is idempotent and resolves even when it moved nothing, so
       // `released` is what decides the message — not the absence of a throw.
       if (result.released) {
-        toast.success("Paid. The money is on its way to them.", { id });
+        // Released is not received: it moves to their balance inside the
+        // contract, and only their own wallet can withdraw it from there.
+        toast.success("Released. It is theirs to claim into their wallet now.", { id });
       } else {
         toast.error(releaseFailureText(result.reason), { id });
       }
@@ -528,7 +535,9 @@ function MilestoneRow({
             </button>
           ) : null}
 
-          {!sponsor ? (
+          {!sponsor && milestone.status === "RELEASED" ? (
+            <ClaimMilestone milestoneId={milestone.id} />
+          ) : !sponsor ? (
             <span className="font-sans text-[12px] font-normal text-white/40">
               {FREELANCER_STATE[milestone.status]}
             </span>
@@ -545,6 +554,76 @@ function MilestoneRow({
           milestoneTitle={milestone.title}
         />
       ) : null}
+    </div>
+  );
+}
+
+// Pulling a released balance out of escrow.
+//
+// Released does not mean received: release moves the money to this wallet's
+// balance inside the contract, and it sits there until the wallet itself
+// calls withdraw. The backend holds no key that could do it, so this is the
+// one step only the earner can take — and without it the money looks paid
+// but never arrives.
+function ClaimMilestone({ milestoneId }: { milestoneId: string }) {
+  const { claim, isLoading } = useMilestoneClaim(milestoneId);
+  const sendBatch = useEvmSendBatch();
+  const [claiming, setClaiming] = useState(false);
+
+  if (isLoading) {
+    return (
+      <span className="font-sans text-[12px] font-normal text-white/40">
+        Checking what there is to claim…
+      </span>
+    );
+  }
+
+  if (!claim || claim.alreadyClaimed) {
+    return (
+      <span className="font-sans text-[12px] font-normal text-white/40">
+        {FREELANCER_STATE.RELEASED}
+      </span>
+    );
+  }
+
+  if (!claim.claimable || claim.amount.minor === "0") {
+    return (
+      <span className="font-sans text-[12px] font-normal text-white/40">
+        Released. Nothing to withdraw right now.
+      </span>
+    );
+  }
+
+  async function onClaim() {
+    if (!claim) return;
+    setClaiming(true);
+    const id = toast.loading("Confirm in your wallet…");
+    try {
+      await sendBatch([buildWithdrawCall(claim.escrowAddress, claim.tokenAddress)], base.id);
+      toast.success("Withdrawn. The money is in your wallet.", { id });
+    } catch (error) {
+      toast.error(friendlyError(error, "That withdrawal didn't go through."), { id });
+    } finally {
+      setClaiming(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={() => void onClaim()}
+        disabled={claiming}
+        className="bg-accent text-ink w-fit cursor-pointer rounded-full px-4 py-2 font-sans text-[12.5px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {claiming ? "Withdrawing…" : `Claim ${formatReward(claim.amount)}`}
+      </button>
+      {/* The contract holds the balance per wallet and token, not per
+          milestone, so one withdraw sweeps everything released in that token. */}
+      <span className="font-sans text-[11.5px] font-normal text-white/35">
+        Sent from your own wallet on Base. Withdraws everything released to you in{" "}
+        {claim.amount.token}.
+      </span>
     </div>
   );
 }

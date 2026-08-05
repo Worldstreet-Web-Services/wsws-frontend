@@ -14,6 +14,7 @@ import {
   createRating,
   createTimeEntry,
   fetchContract,
+  fetchMilestoneClaim,
   fetchMilestoneEscrowStatus,
   fetchMilestoneRefundQuote,
   fetchMilestones,
@@ -44,6 +45,7 @@ export const CONTRACT_KEYS = {
   milestones: (contractId: string) => ["earn", "contracts", "milestones", contractId] as const,
   escrowStatus: (milestoneId: string) =>
     ["earn", "contracts", "escrow-status", milestoneId] as const,
+  claim: (milestoneId: string) => ["earn", "contracts", "claim", milestoneId] as const,
   refundQuote: (milestoneId: string) => ["earn", "contracts", "refund-quote", milestoneId] as const,
   timeEntries: (contractId: string) => ["earn", "contracts", "time-entries", contractId] as const,
   ratingsForUser: (userId: string) => ["earn", "ratings", "for-user", userId] as const,
@@ -200,6 +202,19 @@ export function useRefundMilestone(contractId: string) {
       void queryClient.invalidateQueries({ queryKey: CONTRACT_KEYS.refundQuote(id) });
     },
   });
+}
+
+// What the earner can withdraw from escrow for this milestone. The only
+// read a freelancer has into the money — escrow-status is sponsor-auth — so
+// it is what decides whether to offer a claim at all.
+export function useMilestoneClaim(milestoneId: string | null, enabled = true) {
+  const query = useQuery({
+    queryKey: CONTRACT_KEYS.claim(milestoneId ?? "none"),
+    queryFn: () => fetchMilestoneClaim(milestoneId as string),
+    enabled: !!milestoneId && enabled,
+  });
+
+  return { claim: query.data ?? null, isLoading: query.isLoading, error: query.error };
 }
 
 // ----- Time entries (hourly) -----

@@ -246,6 +246,20 @@ export interface MilestoneRefundQuote {
   reason: string | null;
 }
 
+// What the earner's own wallet can pull out of escrow.
+//
+// Read-only: the actual movement is withdraw(token) signed by their wallet,
+// since the backend has no key. `amountMinor` is the whole balance the
+// contract holds for that wallet in that token — a single withdraw sweeps it,
+// so it is not necessarily this one milestone's share.
+export interface MilestoneClaim {
+  claimable: boolean;
+  escrowAddress: string;
+  tokenAddress: string;
+  amount: RewardAmount;
+  alreadyClaimed: boolean;
+}
+
 export type MilestoneReleaseReason =
   "not-configured" | "already-released" | "not-approved" | "not-funded" | "failed" | "released";
 

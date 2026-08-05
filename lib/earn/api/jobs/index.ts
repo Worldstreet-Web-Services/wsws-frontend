@@ -27,6 +27,7 @@ export type {
   Milestone,
   MilestoneEscrowQuote,
   MilestoneEscrowState,
+  MilestoneClaim,
   MilestoneEscrowStatus,
   MilestoneRefundQuote,
   MilestoneReleaseReason,
@@ -76,6 +77,7 @@ export { completeContract, fetchContract, fetchMyContracts } from "@/lib/earn/ap
 export {
   approveMilestone,
   createMilestone,
+  fetchMilestoneClaim,
   fetchMilestoneEscrowQuote,
   fetchMilestoneEscrowStatus,
   fetchMilestoneRefundQuote,

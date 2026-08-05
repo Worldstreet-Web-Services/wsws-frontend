@@ -17,12 +17,14 @@ import {
   toMilestone,
   toMilestoneEscrowQuote,
   toMilestoneEscrowStatus,
+  toMilestoneClaim,
   toMilestoneRefundQuote,
   toMilestoneReleaseResult,
   toMilestones,
   type FundMilestoneInput,
   type MilestoneEscrowQuoteWire,
   type MilestoneEscrowStatusWire,
+  type MilestoneClaimWire,
   type MilestoneRefundQuoteWire,
   type MilestoneReleaseResultWire,
   type MilestoneWire,
@@ -32,6 +34,7 @@ import type {
   Milestone,
   MilestoneEscrowQuote,
   MilestoneEscrowStatus,
+  MilestoneClaim,
   MilestoneRefundQuote,
   MilestoneReleaseResult,
   SubmitMilestoneInput,
@@ -141,4 +144,16 @@ export async function refundMilestone(id: string, txId: string): Promise<Milesto
     txId,
   });
   return toMilestone(data);
+}
+
+// What the earner can pull out of escrow, and where from. Read-only: the
+// withdraw itself is signed by their own wallet, since the backend holds no
+// key that could move it for them.
+export async function fetchMilestoneClaim(id: string): Promise<MilestoneClaim> {
+  const data = await earnAuthedGet<MilestoneClaimWire>(
+    `/milestones/${encodeURIComponent(id)}/claim`
+  );
+  const claim = toMilestoneClaim(data);
+  if (!claim) throw new Error("Couldn't work out what there is to claim.");
+  return claim;
 }

@@ -67,6 +67,19 @@ export function useMyJobPosts() {
   return { jobPosts: query.data ?? [], isLoading: query.isLoading, error: query.error };
 }
 
+// One of the sponsor's own job posts, found by slug in their own list rather
+// than through the public detail route. The public route serves published
+// posts only, so reading a draft through it returns nothing — which is exactly
+// the post a sponsor is most likely to be opening.
+export function useMyJobPost(slug: string | null) {
+  const { jobPosts, isLoading, error } = useMyJobPosts();
+  return {
+    jobPost: slug ? (jobPosts.find((post) => post.slug === slug) ?? null) : null,
+    isLoading,
+    error,
+  };
+}
+
 // Creates on the first call and updates after, like the bounty draft flow: the
 // service answers with the job post, which is where the id for publish comes
 // from, so the caller must keep what this returns.

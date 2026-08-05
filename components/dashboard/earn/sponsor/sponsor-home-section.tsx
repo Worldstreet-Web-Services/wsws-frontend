@@ -6,8 +6,10 @@ import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/dashboard/asy
 import { RewardBadge } from "@/components/dashboard/earn/reward-badge";
 import { useCurrentSponsor } from "@/hooks/use-earn-sponsor";
 import { useIsCreateAllowed, useSponsorListings } from "@/hooks/use-earn-sponsor-listings";
+import { useMyJobPosts } from "@/hooks/use-earn-jobs";
 import { deadlineLabel } from "@/lib/earn/deadline";
 import type { ListingStatus } from "@/lib/earn/api/types";
+import type { JobPost } from "@/lib/earn/api/jobs";
 
 const PAGE = "mx-auto w-full max-w-[1520px] px-4 pt-6 pb-20 sm:px-6";
 
@@ -118,6 +120,13 @@ function SponsorListings({ sponsorName }: { sponsorName: string }) {
             Drafts{draftCount > 0 ? ` (${draftCount})` : ""}
           </Link>
 
+          <Link
+            href="/earn/sponsor/job/new"
+            className="ws-inset cursor-pointer rounded-full px-4 py-2.5 font-sans text-[12.5px] font-semibold text-white/75 transition-colors hover:text-white"
+          >
+            New job
+          </Link>
+
           {allowed ? (
             <Link
               href="/earn/sponsor/listing/new"
@@ -203,6 +212,74 @@ function SponsorListings({ sponsorName }: { sponsorName: string }) {
           </ul>
         )}
       </div>
+
+      <SponsorJobs />
     </div>
   );
+}
+
+// Jobs are a parallel system to bounty listings, not a filter of them: a job
+// takes proposals and ends in a contract, where a listing takes submissions
+// and ends in an announced winner. They share this screen because they are
+// both "work this company has posted", and nothing else.
+function SponsorJobs() {
+  const { jobPosts, isLoading, error } = useMyJobPosts();
+
+  // Nothing posted yet is the normal state before the first job, and the
+  // header already carries the way to create one — so an empty list stays
+  // silent rather than repeating the CTA.
+  if (!isLoading && !error && jobPosts.length === 0) return null;
+
+  return (
+    <section className="mt-10">
+      <h2 className="ws-display text-[16px] text-white">Jobs</h2>
+      <p className="mt-1 font-sans text-[13px] font-normal text-white/50">
+        Ongoing work, hired through proposals.
+      </p>
+
+      <div className="mt-4">
+        {error ? (
+          <AsyncError error={error} subject="your jobs" unconfiguredDetail={UNCONFIGURED_DETAIL} />
+        ) : isLoading ? (
+          <AsyncLoading label="Loading your jobs" rows={2} />
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {jobPosts.map((jobPost) => (
+              <li key={jobPost.id}>
+                <Link
+                  href={`/earn/sponsor/job/${jobPost.slug}`}
+                  className="ws-card flex items-center justify-between gap-4 rounded-[16px] px-4 py-3.5 transition-colors hover:border-white/25"
+                >
+                  <div className="min-w-0">
+                    <div className="ws-display truncate text-[14.5px] text-white">
+                      {jobPost.title}
+                    </div>
+                    <div className="mt-0.5 font-sans text-[12px] font-normal text-white/45">
+                      {jobStatusLabel(jobPost)} · {deadlineLabel(jobPost.deadline).text}
+                    </div>
+                  </div>
+                  <RewardBadge reward={jobBudget(jobPost)} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function jobStatusLabel(jobPost: JobPost): string {
+  if (jobPost.status === "DRAFT") return "Draft";
+  if (jobPost.status === "HIRED") return "Hired";
+  if (jobPost.status === "OPEN") return "Taking proposals";
+  return jobPost.status === "CANCELLED" ? "Cancelled" : "Closed";
+}
+
+// One figure for a row: the rate on an hourly job, the low end of the range on
+// a fixed-price one. The detail page shows the full range.
+function jobBudget(jobPost: JobPost) {
+  return jobPost.budgetType === "HOURLY"
+    ? jobPost.hourlyRate
+    : (jobPost.minBudget ?? jobPost.maxBudget);
 }

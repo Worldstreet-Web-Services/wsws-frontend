@@ -30,18 +30,21 @@ const PUBLIC_READ_PREFIXES = [
   // The VAPID public key is exactly that, and the browser needs it before it
   // can subscribe. Nothing about it identifies a caller.
   "notifications/vapid-key",
-  // Jobs domain (parallel to Bounties, same service). The public job browse
-  // feed and a job's own detail page. This prefix also loosely covers
-  // job-posts/mine (sponsor-only) — harmless in practice, since our client
-  // never calls that path without a token to begin with, and the upstream
-  // service enforces the real "sponsor" auth check independently regardless
-  // of what this proxy allows through (see llms-new.txt: "a mobile client
-  // can't rely on any proxy-side allowlist").
+  // Jobs domain (parallel to Bounties, same service): the public job browse
+  // feed and a job's own detail page. Sponsor-only paths that sit under the
+  // same prefix are carved back out by PRIVATE_READ_PATHS below.
   "job-posts",
   // optionalUser: works with no token, personalizes when one is present —
   // exactly what marking a path public already does below.
   "ratings/for-user",
 ] as const;
+
+// Paths that sit under a public prefix but are not public. Checked first, so a
+// sponsor-only read still gets our own session check rather than being handed
+// to the service token-less and coming back as its raw 401. `job-posts/mine`
+// is the whole reason this exists: it shares the browse feed's prefix but
+// answers with one company's drafts.
+const PRIVATE_READ_PATHS = ["job-posts/mine"] as const;
 
 function notConfigured() {
   return NextResponse.json(
@@ -124,7 +127,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   if (!BASE) return notConfigured();
   const joined = path.join("/");
 
-  const isPublic = PUBLIC_READ_PREFIXES.some((p) => joined.startsWith(p));
+  const isPublic =
+    !PRIVATE_READ_PATHS.some((p) => joined === p || joined.startsWith(`${p}/`)) &&
+    PUBLIC_READ_PREFIXES.some((p) => joined.startsWith(p));
   const token = accessToken(req);
 
   if (!isPublic) {

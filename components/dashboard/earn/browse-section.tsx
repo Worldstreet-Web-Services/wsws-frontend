@@ -81,7 +81,9 @@ function EmptyFeed({
 type Feed = "bounties" | "jobs";
 
 export function BrowseSection() {
-  const [feed, setFeed] = useState<Feed>("bounties");
+  // Jobs lead: ongoing work is the bigger commitment on both sides, and it is
+  // what the feed is being grown around. Bounties stay one tap away.
+  const [feed, setFeed] = useState<Feed>("jobs");
   const [query, setQuery] = useState<BrowseQuery>(DEFAULT_BROWSE_QUERY);
   const [page, setPage] = useState(1);
   const { listings, count, isLoading, error } = useListingFeed(query);
@@ -142,7 +144,7 @@ export function BrowseSection() {
           same-named buttons would leave a screen reader with no way to tell
           "browse bounties" from "filter to bounties". */}
       <div role="tablist" aria-label="Work type" className="mt-7 flex flex-wrap gap-2">
-        {(["bounties", "jobs"] as Feed[]).map((option) => (
+        {(["jobs", "bounties"] as Feed[]).map((option) => (
           <button
             key={option}
             type="button"

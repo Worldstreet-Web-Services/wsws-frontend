@@ -192,11 +192,19 @@ beforeEach(() => {
   dashboardApi.toggleWinners.mockResolvedValue(undefined);
 });
 
+// The feed opens on Jobs, so a bounty-feed test selects that tab first. The
+// tab is a real control on the page, not test-only setup: a reader landing on
+// /earn does the same thing to get here.
+function renderBounties() {
+  render(<BrowseSection />, { wrapper });
+  fireEvent.click(screen.getByRole("tab", { name: "Bounties" }));
+}
+
 describe("browse feed", () => {
   // An empty feed at its widest has nothing to filter down to, so it offers the
   // only thing that would fill it rather than blaming the filters.
   it("invites a first listing when nothing is open at all", async () => {
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
 
     expect(await screen.findByText(/no work is open right now/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /post the first one/i })).toHaveAttribute(
@@ -206,7 +214,7 @@ describe("browse feed", () => {
   });
 
   it("blames the filters, and clears them, when the feed is narrowed", async () => {
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
     await screen.findByText(/no work is open right now/i);
 
     fireEvent.click(screen.getByRole("button", { name: "Bounties" }));
@@ -227,7 +235,7 @@ describe("browse feed", () => {
     listingsApi.fetchListings.mockResolvedValue([summary()]);
     listingsApi.fetchListingCount.mockResolvedValue(1);
 
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
 
     expect(await screen.findByText("Build a trading dashboard")).toBeInTheDocument();
     expect(screen.getByText("1,000 USDC")).toBeInTheDocument();
@@ -237,7 +245,7 @@ describe("browse feed", () => {
   it("shows the failure rather than an empty page when the feed errors", async () => {
     listingsApi.fetchListings.mockRejectedValue(apiFailure());
 
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
 
     expect(await screen.findByText(/couldn't load listings/i)).toBeInTheDocument();
     expect(screen.queryByText(/no work is open right now/i)).not.toBeInTheDocument();
@@ -248,7 +256,7 @@ describe("browse feed", () => {
       Object.assign(new Error("nope"), { code: "NOT_CONFIGURED", status: 503 })
     );
 
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
 
     expect(await screen.findByText(/listings isn't available yet/i)).toBeInTheDocument();
     // A service that is off is not something the user can retry away.
@@ -256,7 +264,7 @@ describe("browse feed", () => {
   });
 
   it("refetches against the chosen filter", async () => {
-    render(<BrowseSection />, { wrapper });
+    renderBounties();
     await screen.findByText(/no work is open right now/i);
 
     fireEvent.click(screen.getByRole("button", { name: "Bounties" }));

@@ -114,6 +114,27 @@ describe("solana sponsor routes", () => {
     expect(url).toBe("http://127.0.0.1:8092/solana/sponsor");
   });
 
+  it("routes prefund requests to the backend even when a local sponsor key is present", async () => {
+    verifyRequest.mockResolvedValue({ sub: "user" });
+    vi.resetModules();
+    process.env.WSAPI_BASE_URL = "https://api.worldstreetwebservices.com";
+    process.env.GAS_SPONSOR_API_URL = "http://127.0.0.1:8092";
+    process.env.SOLANA_PRIVATE_KEY = "[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]";
+    const { POST } = await import("@/app/api/gas-sponsor/solana/route");
+
+    const res = await POST(makeReq({ serializedTransaction: "AQIDBA==", prefundRent: true }));
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledOnce();
+    const [url, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0];
+    expect(url).toBe("http://127.0.0.1:8092/solana/sponsor");
+    expect(JSON.parse(String(init.body))).toEqual({
+      serializedTransaction: "AQIDBA==",
+      prefundRent: true,
+    });
+    delete process.env.SOLANA_PRIVATE_KEY;
+  });
+
   it("normalizes upstream object errors into a readable message", async () => {
     verifyRequest.mockResolvedValue({ sub: "user" });
     global.fetch = vi.fn(async () => ({

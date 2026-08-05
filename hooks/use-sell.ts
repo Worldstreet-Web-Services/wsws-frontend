@@ -77,7 +77,7 @@ export function useSell() {
           toAddress: recipient,
           slippage: slippageBps / 10_000,
         });
-        const transaction = await sponsorSolanaTransaction(quote.transaction);
+        const transaction = await sponsorSolanaTransaction(quote.transaction, { prefundRent: true });
         const { signature } = await signAndSendTransaction({
           transaction,
           wallet,

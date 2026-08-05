@@ -5,7 +5,7 @@ describe("gasBufferFor", () => {
   it("reserves the wrap rent when selling native SOL", () => {
     // Fees are sponsored; the temporary wrapped-SOL account's rent deposit is
     // the seller's, so a Max sell must hold it back.
-    expect(gasBufferFor("solana-mainnet", null)).toBeGreaterThan(0.002);
+    expect(gasBufferFor("solana-mainnet", null)).toBe(0.005);
   });
 
   it("reserves nothing on sponsored EVM chains", () => {

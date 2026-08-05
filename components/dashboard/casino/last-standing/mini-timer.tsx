@@ -278,13 +278,29 @@ function closeMiniWindow(): void {
 // The button, rendered inside the arena. Pure trigger: the floating window it
 // opens lives in MiniTimerHost and survives this button unmounting.
 
+const HINT_STORAGE_KEY = "ws-last-standing-mini-hint";
+const hintSeen = () =>
+  typeof window === "undefined" || localStorage.getItem(HINT_STORAGE_KEY) === "1";
+
 export function MiniTimerLauncher() {
   const t = useTranslations("casino.lastStanding");
   const tier = useSyncExternalStore(subscribe, detectTier, () => null);
   const { pipWindow, videoActive } = useMiniWindow();
   const open = pipWindow !== null || videoActive;
 
+  // One-time hint: nobody discovers picture-in-picture from a pill label
+  // alone, and without expectation-setting the fullscreen behaviour reads as
+  // a bug. Shown until the button is used once or the hint is dismissed.
+  const seen = useSyncExternalStore(subscribe, hintSeen, () => true);
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const dismissHint = () => {
+    localStorage.setItem(HINT_STORAGE_KEY, "1");
+    setHintDismissed(true);
+  };
+
   const toggle = useCallback(() => {
+    localStorage.setItem(HINT_STORAGE_KEY, "1");
+    setHintDismissed(true);
     if (open) {
       closeMiniWindow();
       return;
@@ -310,18 +326,37 @@ export function MiniTimerLauncher() {
 
   if (tier === null) return null;
 
+  const showHint = !seen && !hintDismissed && !open;
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-pressed={open}
-      className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 text-[11.5px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-    >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2V5H5v14h6v2H5a2 2 0 0 1-2-2V5Zm10 8a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6Z" />
-      </svg>
-      {open ? t("miniClose") : t("miniOpen")}
-    </button>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={open}
+        className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 text-[11.5px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2V5H5v14h6v2H5a2 2 0 0 1-2-2V5Zm10 8a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6Z" />
+        </svg>
+        {open ? t("miniClose") : t("miniOpen")}
+      </button>
+      {showHint ? (
+        <div className="absolute top-full right-0 z-30 mt-2 w-[248px] rounded-[12px] border border-white/12 bg-[#1a1a1f] p-3 shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
+          <div className="text-[12px] leading-[1.5] font-medium text-white/85">
+            {t("miniHintTitle")}
+          </div>
+          <p className="mt-1 text-[11.5px] leading-[1.5] text-white/55">{t("miniHintBody")}</p>
+          <button
+            type="button"
+            onClick={dismissHint}
+            className="mt-2 cursor-pointer text-[11.5px] font-semibold text-white/70 hover:text-white"
+          >
+            {t("miniHintDismiss")}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

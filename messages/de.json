@@ -1428,7 +1428,10 @@
       "miniClose": "Pop-out schließen",
       "miniFailed": "Der schwebende Timer ließ sich in diesem Browser nicht öffnen.",
       "miniNotifyTitle": "⏳ Noch {clock} bei Last Man Standing",
-      "miniNotifyBody": "Pot {pot}. Jemand kann ihn noch schnappen — tippe, um zurückzukehren."
+      "miniNotifyBody": "Pot {pot}. Jemand kann ihn noch schnappen — tippe, um zurückzukehren.",
+      "miniHintTitle": "Behalte die Uhr im Blick",
+      "miniHintBody": "Schwebt über deinen anderen Fenstern, während du arbeitest. In Vollbild-Apps melden wir uns, wenn die Uhr abläuft.",
+      "miniHintDismiss": "Verstanden"
     },
     "fund": {
       "title": "Geld hinzufügen",

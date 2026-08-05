@@ -1428,7 +1428,10 @@
       "miniClose": "Cerrar flotante",
       "miniFailed": "No se pudo abrir el temporizador flotante en este navegador.",
       "miniNotifyTitle": "⏳ Quedan {clock} en Last Man Standing",
-      "miniNotifyBody": "Bote {pot}. Alguien aún puede llevárselo — toca para volver."
+      "miniNotifyBody": "Bote {pot}. Alguien aún puede llevárselo — toca para volver.",
+      "miniHintTitle": "Lleva el reloj contigo",
+      "miniHintBody": "Flota sobre tus otras ventanas mientras navegas o trabajas. En apps a pantalla completa te avisamos cuando quede poco tiempo.",
+      "miniHintDismiss": "Entendido"
     },
     "fund": {
       "title": "Añadir dinero",

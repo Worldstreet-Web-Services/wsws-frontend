@@ -1428,7 +1428,10 @@
       "miniClose": "Fechar flutuante",
       "miniFailed": "Não foi possível abrir o temporizador flutuante neste navegador.",
       "miniNotifyTitle": "⏳ Faltam {clock} no Last Man Standing",
-      "miniNotifyBody": "Pote {pot}. Alguém ainda pode levá-lo — toque para voltar."
+      "miniNotifyBody": "Pote {pot}. Alguém ainda pode levá-lo — toque para voltar.",
+      "miniHintTitle": "Leve o relógio consigo",
+      "miniHintBody": "Flutua sobre as suas outras janelas enquanto navega ou trabalha. Em apps em ecrã inteiro, avisamos quando o tempo estiver a acabar.",
+      "miniHintDismiss": "Entendi"
     },
     "fund": {
       "title": "Adicionar dinheiro",

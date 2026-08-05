@@ -1428,7 +1428,10 @@
       "miniClose": "Fermer le flottant",
       "miniFailed": "Impossible d'ouvrir le minuteur flottant dans ce navigateur.",
       "miniNotifyTitle": "⏳ Il reste {clock} à Last Man Standing",
-      "miniNotifyBody": "Cagnotte {pot}. Quelqu'un peut encore la prendre — touchez pour revenir."
+      "miniNotifyBody": "Cagnotte {pot}. Quelqu'un peut encore la prendre — touchez pour revenir.",
+      "miniHintTitle": "Gardez l'horloge avec vous",
+      "miniHintBody": "Flotte au-dessus de vos autres fenêtres pendant que vous travaillez. En plein écran, nous vous alertons quand le temps file.",
+      "miniHintDismiss": "Compris"
     },
     "fund": {
       "title": "Ajouter de l'argent",

@@ -1428,7 +1428,10 @@
       "miniClose": "Close pop-out",
       "miniFailed": "Couldn't open the floating timer in this browser.",
       "miniNotifyTitle": "⏳ {clock} left in Last Man Standing",
-      "miniNotifyBody": "Pot {pot}. Someone can still snatch it — tap to get back in."
+      "miniNotifyBody": "Pot {pot}. Someone can still snatch it — tap to get back in.",
+      "miniHintTitle": "Keep the clock with you",
+      "miniHintBody": "Floats over your other windows while you browse or work. In fullscreen apps we ping you when the clock runs low.",
+      "miniHintDismiss": "Got it"
     },
     "fund": {
       "title": "Add money",

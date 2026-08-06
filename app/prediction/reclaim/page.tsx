@@ -80,9 +80,8 @@ export default function ReclaimPage() {
       <div>
         <h1 className="text-2xl font-semibold">Reclaim your winnings</h1>
         <p className="mt-2 text-sm text-white/60">
-          Some earlier markets moved to a new contract. If you won one of them, your
-          payout is waiting here — log in with the same email you used and claim it.
-          Gas is on us.
+          Some earlier markets moved to a new contract. If you won one of them, your payout is
+          waiting here — log in with the same email you used and claim it. Gas is on us.
         </p>
       </div>
 
@@ -98,11 +97,9 @@ export default function ReclaimPage() {
       ) : phase === "loading" ? (
         <p className="text-white/50">Checking your winnings…</p>
       ) : phase === "done" ? (
-        <div className="rounded-xl border border-up/40 bg-up/10 p-5">
-          <p className="font-semibold text-up">Paid! 🎉</p>
-          <p className="mt-1 text-sm text-white/70">
-            Your winnings were sent to your wallet.
-          </p>
+        <div className="border-up/40 bg-up/10 rounded-xl border p-5">
+          <p className="text-up font-semibold">Paid! 🎉</p>
+          <p className="mt-1 text-sm text-white/70">Your winnings were sent to your wallet.</p>
           {txHash ? (
             <a
               href={`https://basescan.org/tx/${txHash}`}
@@ -119,7 +116,7 @@ export default function ReclaimPage() {
           <p className="text-sm text-white/70">
             No unclaimed winnings found for this account on the old contract.
           </p>
-          <p className="mt-1 text-xs text-white/45 break-all">Wallet: {wallet}</p>
+          <p className="mt-1 text-xs break-all text-white/45">Wallet: {wallet}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -152,7 +149,7 @@ export default function ReclaimPage() {
         </div>
       )}
 
-      {error ? <p className="text-sm text-down">{error}</p> : null}
+      {error ? <p className="text-down text-sm">{error}</p> : null}
     </main>
   );
 }

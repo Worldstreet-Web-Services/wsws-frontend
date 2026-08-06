@@ -8,6 +8,7 @@ import { copyText } from "@/lib/clipboard";
 import { getWalletAddress } from "@/lib/user";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
 import { useVoiceRecord } from "@/hooks/use-voice-record";
+import { usePcmCapture } from "@/hooks/use-pcm-capture";
 import { useVividSession, type VividSession } from "@/hooks/use-vivid-session";
 import { useSpeech } from "@/hooks/use-speech";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -19,6 +20,7 @@ import { SECTION_LABEL } from "@/lib/sections";
 import { depositToQuery, perpToQuery } from "@/lib/voice/prefill";
 import { isTerminalFrame, vividToIntent, type VividFrame } from "@/lib/voice/vivid-intent";
 import { matchWakeWord } from "@/lib/voice/wake-word";
+import { executeUiAction, captureScreen } from "@/lib/voice/ui-driver";
 import { vlog, vwarn } from "@/lib/voice/log";
 import type { ChainType, Intent } from "@/lib/voice/intent";
 
@@ -102,6 +104,7 @@ export function useVoiceSession(): UseVoiceSession {
   const router = useRouter();
   const navigate = useAppNavigate();
   const { supported, capture } = useVoiceRecord();
+  const pcm = usePcmCapture();
   const { configured, open } = useVividSession();
   const { speak } = useSpeech();
   const { totalUsd, refetch } = usePortfolio();
@@ -141,9 +144,34 @@ export function useVoiceSession(): UseVoiceSession {
   // behind the fast re-loop).
   const resolveTurnRef = useRef<((speech: string | null) => void) | null>(null);
 
+  // ── Streaming-path refs (used only when the backend chose the streaming
+  //    protocol; the batch path above is untouched) ──────────────────────────
+  // True while Vivid is speaking a streamed answer, so a `barge_in` frame knows
+  // there is playback to interrupt. Set around speak() in the streaming loop.
+  const speakingRef = useRef(false);
+  // Set true when the backend confirms a barge-in; the streaming loop checks it
+  // to abort the current TTS playback and jump to the interrupting turn.
+  const bargeInRef = useRef(false);
+
   // Set the phase in both React state (UI) and keep `listening` derived from it.
   const setTurnPhase = useCallback((next: TurnPhase) => {
     setPhase(next);
+  }, []);
+
+  // Capture the current DOM and push it as a page_state so read_screen sees the
+  // fresh screen for the agent's next ui_action step. Delayed a beat so a nav /
+  // modal open has actually rendered before we snapshot it.
+  const pushCurrentScreen = useCallback(() => {
+    setTimeout(() => {
+      const session = sessionRef.current;
+      if (!session) return;
+      try {
+        session.pushPageState(captureScreen());
+      } catch {
+        // best-effort — a snapshot failure just means the next turn has no fresh
+        // read_screen, which the agent handles gracefully ("no screen reading yet").
+      }
+    }, 350);
   }, []);
 
   // Resolve the CURRENT turn's latch exactly once. Frames tagged with a stale
@@ -245,6 +273,45 @@ export function useVoiceSession(): UseVoiceSession {
       vlog("frame", `◀ ${frame.type}`, "data" in frame ? frame.data : frame);
       if (frame.type === "session") return;
 
+      // ── Streaming-path frames ──────────────────────────────────────────────
+      // A partial is the in-progress line — surface nothing yet (kept quiet to
+      // avoid transcript flicker); the committed frame is the turn boundary.
+      if (frame.type === "transcript_partial") return;
+
+      if (frame.type === "barge_in") {
+        // The backend confirmed the user interrupted while Vivid was speaking.
+        // Flag it so the streaming loop aborts playback; the interrupting speech
+        // will arrive as its own transcript_committed next.
+        if (speakingRef.current) {
+          vlog("loop", "barge-in confirmed → will stop speaking");
+          bargeInRef.current = true;
+        }
+        return;
+      }
+
+      if (frame.type === "transcript_committed") {
+        // The streaming turn boundary. Unlike batch, the BACKEND already ran the
+        // agent loop on this committed text (no send from us) — so here we only:
+        // show it, honour end phrases, and arm the turn latch so the terminal
+        // frame that follows resolves into speech. Mark addressed so those frames
+        // aren't dropped.
+        const text = frame.data.text ?? "";
+        const { matched, command } = matchWakeWord(text);
+        turnAddressedRef.current = true;
+        addMessage("user", matched && command ? command : text);
+        const endPhrase =
+          /\b(stop (listening|talking|the conversation)|stop,? vivid|i'?m done|we'?re done|that'?s all|that is all|never ?mind|goodbye|go away|end (the )?(session|conversation))\b/i;
+        if (endPhrase.test(command || text)) {
+          vlog("loop", "end phrase heard (streaming) → ending session");
+          stop();
+          return;
+        }
+        // The backend auto-runs the agent loop on this committed transcript and
+        // pushes a terminal frame next — the streaming loop picks that up on its
+        // latch. Nothing more to do here.
+        return;
+      }
+
       if (frame.type === "transcript") {
         if (!frame.isFinal) return;
         // The session is already open (you tapped to start), so EVERY turn is for
@@ -271,6 +338,24 @@ export function useVoiceSession(): UseVoiceSession {
           completeTurn(null);
           stop();
         }
+        return;
+      }
+
+      // Generic UI driver: Vivid asked to click/fill an element by its visible
+      // label. Execute it against the live DOM (the executor enforces the money-
+      // button confirmation gate) and report the outcome back so the agent loop
+      // sees what happened and can plan the next step. NOT terminal — a fresh page
+      // snapshot + result frame follow.
+      if (frame.type === "ui_action") {
+        const result = executeUiAction(frame.data);
+        sessionRef.current?.reportAction(
+          `ui_action:${frame.data.op}:${frame.data.target}`,
+          result.reason,
+          result.detail
+        );
+        // After a successful action the page changed — push a fresh snapshot so
+        // Vivid's next step reads the new screen.
+        if (result.ok) pushCurrentScreen();
         return;
       }
 
@@ -328,7 +413,7 @@ export function useVoiceSession(): UseVoiceSession {
       const speech = dispatch(intent);
       completeTurn(speech);
     },
-    [dispatch, completeTurn, stop, hidden, rate, money, totalUsd, addMessage]
+    [dispatch, completeTurn, stop, hidden, rate, money, totalUsd, addMessage, pushCurrentScreen]
   );
 
   // The turn state machine — the heart of the ChatGPT/Claude-style loop. Each
@@ -444,6 +529,92 @@ export function useVoiceSession(): UseVoiceSession {
     if (activeRef.current) stop();
   }, [capture, speak, setTurnPhase, stop, addMessage]);
 
+  // The STREAMING loop (used when the backend chose the streaming protocol). It is
+  // event-driven, not iteration-driven: PCM flows continuously to the backend,
+  // which runs its own VAD endpointing AND agent loop, then pushes terminal frames
+  // (result/clarify/…). So unlike the batch loop we do NOT capture per-turn or
+  // send — we just: keep PCM flowing, await each terminal frame (resolved via the
+  // same latch through completeTurn), speak it, and stop playback on a confirmed
+  // barge-in. The mic never closes between turns (continuous conversation).
+  const runStreamingLoop = useCallback(async () => {
+    const session = sessionRef.current;
+    if (!session) return;
+
+    // Start continuous PCM capture — one worklet for the whole session, relaying
+    // each 20ms chunk straight to the backend's realtime STT.
+    try {
+      await pcm.start((chunk) => {
+        // Do NOT stream mic audio to the backend while Vivid is speaking —
+        // otherwise its own TTS leaks back into the mic (browser echo
+        // cancellation is imperfect against loud playback), gets transcribed,
+        // and is treated as a new turn: Vivid answers itself in a continuous
+        // self-talk loop and never actually listens to the user. Gating on
+        // speakingRef closes the mic→STT path for the duration of playback; the
+        // PCM worklet keeps running (no restart cost), we just drop its chunks.
+        if (activeRef.current && !speakingRef.current) session.streamPcm(chunk);
+      });
+    } catch (err) {
+      vwarn("loop", "PCM capture failed to start — falling back is not automatic", err);
+      stop();
+      return;
+    }
+    setTurnPhase("listening");
+    // Push the current screen up front so the FIRST turn's read_screen has data
+    // — otherwise asking "what's on my screen?" cold returns "I don't have a
+    // screen reading right now". On the streaming path the backend commits a
+    // turn on VAD silence, so the snapshot must already be up there before the
+    // user stops talking; pushing here (and again each iteration below) keeps a
+    // fresh snapshot on the backend ahead of every commit.
+    pushCurrentScreen();
+
+    while (activeRef.current) {
+      // Refresh the screen snapshot at the top of each listen cycle so whatever
+      // the user asks next is answered against the CURRENT page (they may have
+      // navigated since the last turn).
+      pushCurrentScreen();
+      // Wait for the next terminal frame (the backend auto-processed a committed
+      // transcript and pushed a result). The latch is resolved by completeTurn in
+      // onFrame. No timeout race here: with continuous audio the user may simply
+      // be silent for a long time, which is fine — we just keep listening.
+      turnAddressedRef.current = false;
+      const speech = await new Promise<string | null>((resolve) => {
+        resolveTurnRef.current = resolve;
+      });
+      resolveTurnRef.current = null;
+      if (!activeRef.current) break;
+
+      if (speech) {
+        vlog("loop", "streaming: SPEAKING", { text: speech.slice(0, 60) });
+        addMessage("assistant", speech);
+        setTurnPhase("speaking");
+        speakingRef.current = true;
+        bargeInRef.current = false;
+        // Speak, but abort early if a barge-in is confirmed mid-playback. speak()
+        // is awaited; we poll the barge-in flag alongside it so an interruption
+        // cuts the answer instead of talking over the user.
+        await Promise.race([
+          speak(speech),
+          (async () => {
+            while (speakingRef.current && !bargeInRef.current && activeRef.current) {
+              await delay(80);
+            }
+          })(),
+        ]);
+        speakingRef.current = false;
+        setTurnPhase("listening");
+      } else {
+        // Unaddressed / no speech — just keep listening (streaming has no empty-
+        // capture spin risk; the backend only pushes frames on real committed
+        // speech).
+        setTurnPhase("listening");
+      }
+    }
+
+    pcm.stop();
+    vlog("loop", "streaming loop exited");
+    if (activeRef.current) stop();
+  }, [pcm, speak, setTurnPhase, stop, addMessage, pushCurrentScreen]);
+
   const start = useCallback(async () => {
     if (activeRef.current) return;
     if (!configured) {
@@ -465,13 +636,27 @@ export function useVoiceSession(): UseVoiceSession {
     activeRef.current = true;
     setActive(true);
     setMessages([]); // fresh transcript for a new conversation
-    // Speak the greeting to COMPLETION before the loop opens the mic — otherwise
-    // the first capture would record Vivid's own greeting (the overlap bug).
-    setTurnPhase("speaking");
-    await speak("Hi, my name is Vivid. How can I help you today?");
-    if (!activeRef.current) return; // stopped during the greeting
-    void runLoop();
-  }, [configured, open, onFrame, runLoop, speak, setTurnPhase]);
+    // No greeting: Vivid opens straight into listening and only speaks in
+    // response to what the user says. Going directly to the capture loop also
+    // avoids the old overlap bug where the first capture recorded Vivid's own
+    // greeting.
+    // The backend told us which protocol it chose (via the `session` frame). Use
+    // the continuous PCM streaming loop when it's streaming, otherwise the classic
+    // batch capture loop. Both are fully implemented; the batch path is unchanged.
+    vlog("session", "protocol decision", {
+      backendStreaming: session.streaming,
+      pcmSupported: pcm.supported,
+    });
+    if (session.streaming && pcm.supported) {
+      vlog("session", "backend chose STREAMING → continuous PCM loop");
+      void runStreamingLoop();
+    } else {
+      if (session.streaming && !pcm.supported) {
+        vwarn("session", "backend streaming but AudioWorklet unsupported → batch fallback");
+      }
+      void runLoop();
+    }
+  }, [configured, open, onFrame, runLoop, runStreamingLoop, pcm.supported]);
 
   // `listening` stays true only while the mic is actually capturing, so existing
   // UI keyed on it (the pulsing avatar) behaves as before; `phase` gives finer

@@ -23,14 +23,50 @@ const PING_INTERVAL_MS = 20_000;
 export type FrameHandler = (frame: VividFrame) => void;
 
 export interface VividSession {
-  // Stream one recorded utterance to the open session. The turn's frames arrive
-  // on the `onFrame` handler passed to `open()`. Rejects only if the socket
-  // isn't open (the caller reopens); backend turn errors arrive AS frames.
+  // BATCH path: stream one recorded utterance (a clip) to the open session, then
+  // an `endpoint` frame; the turn's frames arrive on the `onFrame` handler passed
+  // to `open()`. Rejects only if the socket isn't open (the caller reopens);
+  // backend turn errors arrive AS frames.
   sendUtterance: (audio: Blob) => Promise<void>;
+  // STREAMING path: relay one raw PCM chunk (16kHz/16-bit) live to the backend's
+  // realtime STT. No `endpoint` — the backend VAD auto-commits and pushes
+  // transcript_partial/transcript_committed frames. Safe to call rapidly; drops
+  // silently if the socket isn't open.
+  streamPcm: (pcm: ArrayBuffer) => void;
+  // Whether the backend chose the STREAMING protocol for this session (from the
+  // `session` frame). The caller picks PCM capture vs. clip recording off this.
+  streaming: boolean;
   // Tap-to-confirm a pending command on the SAME socket (agent-loop confirm).
   confirm: (token: string) => void;
+  // Report the OUTCOME of a client-side effect (e.g. a ui_action click/fill) back
+  // to the backend, so the agent loop can see what happened and re-plan its next
+  // step. `status` is a short machine reason ("done", "not_found", …).
+  reportAction: (action: string, status: string, detail?: string) => void;
+  // Push a snapshot of the current page (DOM text, not pixels) so the agent's
+  // read_screen sees what the user is looking at. Sent after a UI change so the
+  // next ui_action step reads the fresh screen.
+  pushPageState: (snapshot: PageSnapshot) => void;
   // Close the session and release the socket.
   close: () => void;
+}
+
+// An EXTENSIVE page snapshot for read_screen — mirrors the backend's PageSnapshot
+// (apps/ai/src/services/agent-loop.ts). Carries page structure (headings), the
+// interactive controls Vivid can act on by label (buttons/links/tabs — what
+// ui_action can click right now), form fields + values, open dialogs, visible
+// errors, and a bounded text dump for everything else.
+export interface PageSnapshot {
+  url?: string;
+  title?: string;
+  headings?: string[];
+  buttons?: string[];
+  links?: string[];
+  tabs?: string[];
+  fields?: Record<string, string>;
+  openModals?: string[];
+  errors?: string[];
+  visibleText?: string;
+  capturedAt?: number;
 }
 
 interface UseVividSession {
@@ -113,26 +149,60 @@ export function useVividSession(): UseVividSession {
 
           const session: VividSession = {
             sendUtterance: (audio: Blob) => this_sendUtterance(ws, audio),
+            streamPcm: (pcm: ArrayBuffer) => {
+              // Raw binary frame — the backend's streaming path relays it to the
+              // realtime STT session. No JSON, no endpoint. Drop if not open.
+              if (ws.readyState === WebSocket.OPEN) ws.send(pcm);
+            },
+            // Default false; flipped to the backend's choice when the `session`
+            // frame lands (see onmessage). The batch path is the safe default.
+            streaming: false,
             confirm: (confirmToken: string) => {
               if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "confirm", token: confirmToken }));
               }
             },
+            reportAction: (action, status, detail) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "action_report", action, status, detail }));
+              }
+            },
+            pushPageState: (snapshot: PageSnapshot) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "page_state", snapshot }));
+              }
+            },
             close: teardown,
           };
+
+          // Resolve `open()` only once the backend's `session` frame has landed
+          // (below), NOT merely on socket-open — the frame is what carries the
+          // chosen protocol (`streaming`). Resolving on socket-open created a
+          // race: start() read session.streaming (still the default `false`)
+          // ~6ms BEFORE the frame arrived, so a streaming backend was driven
+          // with the batch loop → endpoint → protocol_mismatch → dead turn.
+          // Fallback: if no session frame arrives shortly (old/edge backend),
+          // resolve anyway on the open socket so we never hang; streaming stays
+          // false (safe batch default) in that case.
+          let readyFallback: ReturnType<typeof setTimeout> | null = null;
 
           const onReady = () => {
             if (opened) return;
             opened = true;
+            if (readyFallback !== null) {
+              clearTimeout(readyFallback);
+              readyFallback = null;
+            }
             startKeepalive();
             resolve(session);
           };
 
-          if (ws.readyState === WebSocket.OPEN) {
-            onReady();
-          } else {
-            ws.onopen = onReady;
-          }
+          readyFallback = setTimeout(() => {
+            if (!opened && ws.readyState === WebSocket.OPEN) {
+              vwarn("socket", "no session frame within grace — resolving on open (batch default)");
+              onReady();
+            }
+          }, 2000);
 
           ws.onmessage = (ev) => {
             let frame: VividFrame;
@@ -140,6 +210,14 @@ export function useVividSession(): UseVividSession {
               frame = JSON.parse(String(ev.data)) as VividFrame;
             } catch {
               return;
+            }
+            // Learn which protocol the backend chose for this session, so the
+            // caller streams PCM vs. sends clips accordingly.
+            if (frame.type === "session") {
+              session.streaming = frame.data.streaming === true;
+              vlog("socket", "session ready", { streaming: session.streaming });
+              // The protocol is now known → safe to hand the session to start().
+              onReady();
             }
             // Keepalive replies never reach the caller.
             if (frame.type === "pong") return;

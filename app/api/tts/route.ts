@@ -5,13 +5,13 @@ import { verifyRequest } from "@/lib/server/auth";
 // itself, so the AI backend stays lean (STT + intent only). This route keeps the
 // ElevenLabs key server-side and STREAMS the audio straight through to the
 // browser — chunks flow as ElevenLabs produces them, so speech starts almost
-// immediately rather than waiting for the whole clip. British-English voice by
-// default (see .env ELEVENLABS_TTS_VOICE_ID).
+// immediately rather than waiting for the whole clip. Defaults to the "Jessica"
+// voice; override with .env ELEVENLABS_TTS_VOICE_ID.
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io";
 
 const API_KEY = process.env.ELEVENLABS_API_KEY ?? "";
-const VOICE_ID = process.env.ELEVENLABS_TTS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb"; // "George" (UK)
+const VOICE_ID = process.env.ELEVENLABS_TTS_VOICE_ID ?? "cgSgspJ2msm6clMCkdW9"; // "Jessica"
 // Flash v2.5 is the low-latency model — first audio bytes come back fast, which
 // is what makes streamed speech feel responsive.
 const MODEL_ID = process.env.ELEVENLABS_TTS_MODEL ?? "eleven_flash_v2_5";
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           text,
           model_id: MODEL_ID,
-          // A hint that keeps British pronunciation stable on the flash model.
+          // A hint that keeps English pronunciation stable on the flash model.
           language_code: "en",
           voice_settings: { stability: 0.5, similarity_boost: 0.8, speed: 1.0 },
         }),

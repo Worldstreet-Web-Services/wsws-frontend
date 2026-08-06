@@ -183,10 +183,18 @@ export async function readLegacyClaimState(wallet: string): Promise<LegacyClaimS
 
   // Mark each position solvent iff the market can actually pay it. redeem()
   // reverts "insolvent" when payout (= shares, 1:1) exceeds market collateral.
+  // Collateral is a PER-MARKET pool that every redeem in the batch draws down,
+  // so positions on the same market (both sides of an invalidated one) must
+  // fit together: the check is cumulative, not per-position, or the second
+  // side could pass alone yet revert the whole batch.
   const redeemables: LegacyRedeemable[] = [];
+  const drawnByMarket = new Map<bigint, bigint>();
   for (const r of raw) {
     const collateral = await collateralOf(r.marketId);
-    redeemables.push({ ...r, solvent: r.shares <= collateral });
+    const drawn = drawnByMarket.get(r.marketId) ?? 0n;
+    const solvent = drawn + r.shares <= collateral;
+    if (solvent) drawnByMarket.set(r.marketId, drawn + r.shares);
+    redeemables.push({ ...r, solvent });
   }
 
   const pending = (await client.readContract({

@@ -46,6 +46,15 @@ const TURN_TIMEOUT = Symbol("turn-timeout");
 // ambient talk), pause the session. A hard backstop so the loop can NEVER spin.
 const MAX_UNADDRESSED = 6;
 
+// Keep the mic OPEN while Vivid speaks (FIXES.md — the frontend half that
+// unlocks barge-in). Previously the mic was muted during playback to stop the
+// self-talk loop; the BACKEND now defends against that with self-transcript echo
+// matching + Silero VAD, so we can safely stream during speech and let the user
+// interrupt. Flagged so we can fall straight back to muting if self-talk returns
+// in the wild. Off → the old mute-during-speech behaviour (byte-identical).
+const OPEN_MIC_WHILE_SPEAKING =
+  process.env.NEXT_PUBLIC_VIVID_OPEN_MIC_WHILE_SPEAKING !== "0";
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -106,7 +115,7 @@ export function useVoiceSession(): UseVoiceSession {
   const { supported, capture } = useVoiceRecord();
   const pcm = usePcmCapture();
   const { configured, open } = useVividSession();
-  const { speak } = useSpeech();
+  const { speak, duck, unduck } = useSpeech();
   const { totalUsd, refetch } = usePortfolio();
   const money = useMoney();
   const { rate } = useFx();
@@ -276,7 +285,15 @@ export function useVoiceSession(): UseVoiceSession {
       // ── Streaming-path frames ──────────────────────────────────────────────
       // A partial is the in-progress line — surface nothing yet (kept quiet to
       // avoid transcript flicker); the committed frame is the turn boundary.
-      if (frame.type === "transcript_partial") return;
+      if (frame.type === "transcript_partial") {
+        // FIXES.md ducking: a partial arriving WHILE Vivid speaks means the user
+        // is talking over her (and it already survived the backend's echo filter,
+        // so it's likely real speech, not her own voice). Duck her volume — the
+        // backend hears the user more cleanly, and it audibly signals she's
+        // yielding. If barge-in isn't confirmed, the turn ends and stop() unducks.
+        if (speakingRef.current) duck();
+        return;
+      }
 
       if (frame.type === "barge_in") {
         // The backend confirmed the user interrupted while Vivid was speaking.
@@ -413,7 +430,7 @@ export function useVoiceSession(): UseVoiceSession {
       const speech = dispatch(intent);
       completeTurn(speech);
     },
-    [dispatch, completeTurn, stop, hidden, rate, money, totalUsd, addMessage, pushCurrentScreen]
+    [dispatch, completeTurn, stop, hidden, rate, money, totalUsd, addMessage, pushCurrentScreen, duck]
   );
 
   // The turn state machine — the heart of the ChatGPT/Claude-style loop. Each
@@ -544,14 +561,13 @@ export function useVoiceSession(): UseVoiceSession {
     // each 20ms chunk straight to the backend's realtime STT.
     try {
       await pcm.start((chunk) => {
-        // Do NOT stream mic audio to the backend while Vivid is speaking —
-        // otherwise its own TTS leaks back into the mic (browser echo
-        // cancellation is imperfect against loud playback), gets transcribed,
-        // and is treated as a new turn: Vivid answers itself in a continuous
-        // self-talk loop and never actually listens to the user. Gating on
-        // speakingRef closes the mic→STT path for the duration of playback; the
-        // PCM worklet keeps running (no restart cost), we just drop its chunks.
-        if (activeRef.current && !speakingRef.current) session.streamPcm(chunk);
+        if (!activeRef.current) return;
+        // FIXES.md: stream mic audio EVEN while Vivid is speaking, so the backend
+        // can hear (and confirm) a barge-in. The self-talk risk that used to force
+        // muting here is now handled server-side (self-transcript echo matching +
+        // Silero VAD reject Vivid's own voice). Flag off → revert to the old mute-
+        // during-speech behaviour.
+        if (OPEN_MIC_WHILE_SPEAKING || !speakingRef.current) session.streamPcm(chunk);
       });
     } catch (err) {
       vwarn("loop", "PCM capture failed to start — falling back is not automatic", err);
@@ -601,6 +617,10 @@ export function useVoiceSession(): UseVoiceSession {
           })(),
         ]);
         speakingRef.current = false;
+        // Restore full volume for the next turn. If a barge-in fired, speak() was
+        // superseded and its own stop() already reset the duck; this covers the
+        // false-alarm case (we ducked on a partial but no barge-in was confirmed).
+        unduck();
         setTurnPhase("listening");
       } else {
         // Unaddressed / no speech — just keep listening (streaming has no empty-
@@ -613,7 +633,7 @@ export function useVoiceSession(): UseVoiceSession {
     pcm.stop();
     vlog("loop", "streaming loop exited");
     if (activeRef.current) stop();
-  }, [pcm, speak, setTurnPhase, stop, addMessage, pushCurrentScreen]);
+  }, [pcm, speak, setTurnPhase, stop, addMessage, pushCurrentScreen, unduck]);
 
   const start = useCallback(async () => {
     if (activeRef.current) return;

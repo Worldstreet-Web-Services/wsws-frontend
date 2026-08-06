@@ -39,11 +39,22 @@ function chunkText(text: string): string[] {
   return chunks;
 }
 
+// How far to duck (lower) Vivid's own volume when the user starts talking over
+// her — quiet enough that her voice barely reaches the mic (cleaner user STT and
+// less echo for the backend to filter), but not silent, so she keeps talking
+// until the interruption is actually confirmed.
+const DUCK_VOLUME = 0.25;
+
 export interface UseSpeech {
   // Speak the text aloud. Cancels any in-progress speech first (barge-in).
   speak: (text: string) => Promise<void>;
   // Stop any current speech immediately.
   stop: () => void;
+  // Lower Vivid's playback volume on speech onset during her turn (FIXES.md
+  // Step 2 ducking). Reduces echo into the mic and signals she's yielding.
+  duck: () => void;
+  // Restore full volume (a false alarm — the "interruption" wasn't real).
+  unduck: () => void;
   // Whether TTS is configured (always true client-side; the server may still 503).
   supported: boolean;
 }
@@ -54,6 +65,10 @@ export function useSpeech(): UseSpeech {
   const turnRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
+  // Current duck state — applied to the live element AND to any chunk that
+  // starts playing while ducked (multi-chunk replies), so the whole reply stays
+  // quiet until unduck()/stop().
+  const duckedRef = useRef(false);
 
   const cleanupAudio = useCallback(() => {
     const el = audioRef.current;
@@ -77,8 +92,23 @@ export function useSpeech(): UseSpeech {
   const stop = useCallback(() => {
     vlog("tts", "stop (barge-in / cancel)");
     turnRef.current += 1; // invalidate any in-flight/queued playback
+    duckedRef.current = false; // a new turn starts at full volume
     cleanupAudio();
   }, [cleanupAudio]);
+
+  const duck = useCallback(() => {
+    if (duckedRef.current) return;
+    duckedRef.current = true;
+    if (audioRef.current) audioRef.current.volume = DUCK_VOLUME;
+    vlog("tts", "ducked (user speaking over Vivid)");
+  }, []);
+
+  const unduck = useCallback(() => {
+    if (!duckedRef.current) return;
+    duckedRef.current = false;
+    if (audioRef.current) audioRef.current.volume = 1;
+    vlog("tts", "unducked (false alarm)");
+  }, []);
 
   // Play a single chunk to completion. Resolves when it finishes or is superseded.
   const playChunk = useCallback(
@@ -103,6 +133,9 @@ export function useSpeech(): UseSpeech {
 
       const url = URL.createObjectURL(blob);
       const el = new Audio(url);
+      // A multi-sentence reply plays as several chunks; if the user ducked us
+      // mid-reply, keep the following chunks quiet too until unduck()/stop().
+      el.volume = duckedRef.current ? DUCK_VOLUME : 1;
       audioRef.current = el;
       urlRef.current = url;
 
@@ -151,5 +184,5 @@ export function useSpeech(): UseSpeech {
   // Never leave audio playing if the component unmounts.
   useEffect(() => () => stop(), [stop]);
 
-  return { speak, stop, supported: true };
+  return { speak, stop, duck, unduck, supported: true };
 }

@@ -56,7 +56,10 @@ export default function ReclaimPage() {
   }, [authenticated, wallet, load]);
 
   const claim = useCallback(async () => {
-    if (!state || state.redeemables.length === 0) return;
+    // Pending-only is claimable too: shares already redeemed but never pulled
+    // out leave redeemables empty with pendingWithdrawals > 0, and the call
+    // builder then emits just the trailing claim().
+    if (!state || (state.redeemables.length === 0 && state.pending === 0n)) return;
     setPhase("claiming");
     setError(null);
     try {

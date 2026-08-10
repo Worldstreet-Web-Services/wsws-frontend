@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
@@ -38,15 +38,6 @@ const chessApi = vi.hoisted(() => ({
   cancelChallenge: vi.fn(),
 }));
 vi.mock("@/lib/casino/api/chess", () => chessApi);
-
-const drawApi = vi.hoisted(() => ({
-  fetchCurrentRound: vi.fn(),
-  fetchPastResults: vi.fn(),
-  fetchMyEntries: vi.fn(),
-  createEntries: vi.fn(),
-  claimDrawPrize: vi.fn(),
-}));
-vi.mock("@/lib/casino/api/draw", () => drawApi);
 
 const bettingHooks = vi.hoisted(() => ({
   useMatchMarket: vi.fn(),
@@ -107,7 +98,6 @@ import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section"
 import { PlaySection } from "@/components/dashboard/casino/chess/play-section";
 import { SpectateSection } from "@/components/dashboard/casino/chess/spectate-section";
 import { CreateSection } from "@/components/dashboard/casino/chess/create-section";
-import { DrawSection } from "@/components/dashboard/casino/draw/draw-section";
 import messages from "@/messages/en.json";
 
 // The screens read their copy through next-intl, so the wrapper provides the
@@ -122,12 +112,6 @@ function wrapper({ children }: { children: ReactNode }) {
     </NextIntlClientProvider>
   );
 }
-
-const money = (usd: number, symbol = "ETH") => ({
-  wei: BigInt(Math.round((usd / 2000) * 1e18)).toString(),
-  tokenSymbol: symbol,
-  usdValue: usd,
-});
 
 const challenge = (over: Record<string, unknown> = {}) => ({
   id: "c1",
@@ -185,8 +169,6 @@ beforeEach(() => {
     error: null,
   });
   bettingHooks.placeBetMutateAsync.mockReset();
-  drawApi.fetchPastResults.mockResolvedValue([]);
-  drawApi.fetchMyEntries.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -386,76 +368,6 @@ describe("create a game", () => {
 
     // The creator lands on the board (id c1); the invite link is shared from there.
     await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=c1"));
-  });
-});
-
-describe("draw", () => {
-  const round = {
-    id: "r1",
-    closesAt: new Date(Date.now() + 3_600_000).toISOString(),
-    jackpot: money(50_000),
-    entryCost: money(1),
-    mainPool: 49,
-    mainPicks: 5,
-    bonusPool: 10,
-    state: "open" as const,
-    prizeTiers: [{ matches: 5, bonusRequired: true, prize: money(50_000), label: "5 + bonus" }],
-  };
-
-  it("won't buy until five numbers and a bonus are chosen", async () => {
-    drawApi.fetchCurrentRound.mockResolvedValue(round);
-    const { container } = render(<DrawSection />, { wrapper });
-
-    await screen.findByText("Prize tiers");
-    expect(screen.getByRole("button", { name: "Pick 5 more" })).toBeDisabled();
-
-    // 1-10 appear in both grids, so scope picks to the main one.
-    const main = within(container.querySelector(".grid-cols-7") as HTMLElement);
-    [1, 2, 3, 4, 5].forEach((n) => fireEvent.click(main.getByRole("button", { name: String(n) })));
-    expect(screen.getByRole("button", { name: "Pick a bonus number" })).toBeDisabled();
-
-    const bonus = within(container.querySelector(".grid-cols-10") as HTMLElement);
-    fireEvent.click(bonus.getByRole("button", { name: "7" }));
-    expect(screen.getByRole("button", { name: "Confirm entry" })).toBeEnabled();
-  });
-
-  it("buys the chosen numbers for the open round", async () => {
-    drawApi.fetchCurrentRound.mockResolvedValue(round);
-    drawApi.createEntries.mockResolvedValue([]);
-    const { container } = render(<DrawSection />, { wrapper });
-
-    await screen.findByText("Prize tiers");
-    const main = within(container.querySelector(".grid-cols-7") as HTMLElement);
-    [3, 1, 5, 2, 4].forEach((n) => fireEvent.click(main.getByRole("button", { name: String(n) })));
-    const bonus = within(container.querySelector(".grid-cols-10") as HTMLElement);
-    fireEvent.click(bonus.getByRole("button", { name: "7" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm entry" }));
-
-    await waitFor(() => expect(drawApi.createEntries).toHaveBeenCalled());
-    expect(drawApi.createEntries.mock.calls[0][0]).toEqual({
-      roundId: "r1",
-      // Sorted before submission regardless of pick order.
-      mainNumbers: [1, 2, 3, 4, 5],
-      bonusNumber: 7,
-      quantity: 1,
-    });
-  });
-
-  it("closes entry once the round is no longer open", async () => {
-    drawApi.fetchCurrentRound.mockResolvedValue({ ...round, state: "drawing" as const });
-    render(<DrawSection />, { wrapper });
-
-    await screen.findByText("Prize tiers");
-    expect(screen.getByRole("button", { name: "Round closed" })).toBeDisabled();
-    expect(screen.getByText("Drawing now…")).toBeInTheDocument();
-  });
-
-  it("shows the casino as unavailable when the gateway isn't configured", async () => {
-    drawApi.fetchCurrentRound.mockRejectedValue(
-      Object.assign(new Error("nope"), { code: "NOT_CONFIGURED" })
-    );
-    render(<DrawSection />, { wrapper });
-    expect(await screen.findByText(/the draw isn't available yet/i)).toBeInTheDocument();
   });
 });
 

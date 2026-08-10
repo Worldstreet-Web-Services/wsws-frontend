@@ -11,7 +11,7 @@
 // checks stable across devices.
 
 import { chessGet, chessPost } from "@/lib/casino/api/chess-client";
-import { apiError } from "@/lib/casino/api/envelope";
+import { apiError } from "@/lib/api/envelope";
 import { formatTimeControl, isMatchId } from "@/lib/casino/api/chess-wire";
 
 export type SwissStatusWire = "created" | "started" | "finished";

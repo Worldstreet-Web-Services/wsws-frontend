@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { apiError } from "@/lib/casino/api/envelope";
+import { apiError } from "@/lib/api/envelope";
 import {
   cashierLockBuckets,
   exceedsUsdcBalance,

@@ -213,22 +213,24 @@ file (take the restructure branch's version, it is further ahead).
 
 Independent of the restructure. Pure subtraction and CI hardening.
 
-- [~] **1.1 Delete the dead casino stack.** Done: `casino-service/` (13 files),
-  `hooks/use-casino-hub.ts`, `lib/casino/api/hub.ts`, and the orphaned
-  `wins-ticker.tsx`. The hub's live-data path was a visual no-op: with the
-  gateway unset, `recentWins` and `presence` were always empty, so the ticker
-  never rendered and every tile fell back to its static state. Remaining:
-  `app/api/casino/`, `lib/casino/api/{client,draw}.ts`,
-  `hooks/use-casino-draw.ts`, and the `.env.example` entries. Those are
-  blocked on 1.2, since the Draw feature is their only remaining caller.
-  Branch: `refactor/architecture`
-- [ ] **1.2 Decide the fate of `/casino/draw`.** Resolved for the hub: `/casino`
-      degrades by design and stays, now without the dead calls. Draw is
-      different. `draw-section` renders `<CasinoError>` permanently when the
-      round fetch fails, and `/casino/draw` is listed in the casino nav, so it is
-      a reachable, permanently broken page. **Recommendation:** remove the two
-      routes, their components, and the nav entry until a backend exists; the code
-      stays in git history. Owner decision required. PR: _n/a_
+- [x] **1.1 Delete the dead casino stack.** `casino-service/` (13 files), the
+      hub's dead live-data path (`use-casino-hub`, `lib/casino/api/hub.ts`, the
+      orphaned wins ticker), and with 1.2 resolved: `app/api/casino/`,
+      `lib/casino/api/{client,draw}.ts`, `hooks/use-casino-draw.ts` and the
+      `NEXT_PUBLIC_CASINO_API_URL` / `CASINO_API_KEY` entries.
+      Branch: `refactor/architecture`
+- [x] **1.2 Draw removed.** `/casino` degrades by design and stays. Draw did
+      not: it was ~771 lines of finished lottery UI with a backend that was never
+      built. The deleted service carried the proof, a handler commented
+      `Draw (not implemented yet)` that threw `NOT_CONFIGURED`, because a draw needs
+      a scheduler and an auditable randomness source. Nothing linked to it either:
+      the games tile is `href: null, comingSoon: true`, and the `/casino/draw` entry
+      in `SECTION_LABEL` was a back-link label, not navigation. The only way in was
+      typing the URL, which showed a permanent error card. Removed the two routes,
+      four components, hook, api module, transport, proxy route, its tests, and 26
+      i18n keys per locale. The tile stays so the product intent is still visible,
+      and `git` history keeps the UI if the backend ever ships.
+      Branch: `refactor/architecture`
 - [x] **1.3 Add `tsc --noEmit` to CI.** Added `pnpm typecheck` and a CI step
       after ESLint. `next build` only typechecks what the build graph reaches.
       Branch: `refactor/architecture`
@@ -266,8 +268,10 @@ Independent of the restructure. Pure subtraction and CI hardening.
   error codes. Query building is now uniform: `undefined` values are dropped
   instead of being sent as the string "undefined", which only earn did
   before. Covered by `__tests__/api-service-client.test.ts` (9 cases).
-  Remaining: `lib/casino/api/client.ts` and the `lib/casino/api/envelope.ts`
-  alias, both blocked on 1.2 since Draw is their last caller.
+  Complete. `lib/casino/api/client.ts` went with Draw, and the
+  `lib/casino/api/envelope.ts` alias is gone: its three live importers
+  (`cashier`, `chess`, `swiss`) now use `lib/api/envelope` directly, with
+  `CasinoApiError` renamed to its real name, `GatewayApiError`.
   Branch: `refactor/architecture`
 - [x] **2.4 Zod at the proxy boundary, money paths first.** Pattern established
       and payment done. `lib/api/schemas/payment.ts` describes what the off-ramp

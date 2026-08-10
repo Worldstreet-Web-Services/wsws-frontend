@@ -9,7 +9,7 @@
 // in exact base units, never floats.
 
 import { chessGet, chessPost } from "@/lib/casino/api/chess-client";
-import type { CasinoApiError } from "@/lib/casino/api/envelope";
+import type { GatewayApiError } from "@/lib/api/envelope";
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 
 export const USDC_DECIMALS = 6;
@@ -86,7 +86,7 @@ export async function createChessWithdrawal(
 // envelope maps a dead gateway to SERVICE_UNAVAILABLE; either way the cashier
 // UI should vanish instead of erroring.
 export function isCashierUnavailable(error: unknown): boolean {
-  const code = (error as CasinoApiError | null)?.code;
+  const code = (error as GatewayApiError | null)?.code;
   return code === "CONFLICT" || code === "NOT_CONFIGURED" || code === "SERVICE_UNAVAILABLE";
 }
 
@@ -94,7 +94,7 @@ export function isCashierUnavailable(error: unknown): boolean {
 // session, so a 401 or "no wallet on the account" is not a transient fault.
 // Retrying or polling those only spams the console and burns rate limits.
 export function isCashierAccessDenied(error: unknown): boolean {
-  const code = (error as CasinoApiError | null)?.code;
+  const code = (error as GatewayApiError | null)?.code;
   return code === "UNAUTHORIZED" || code === "NO_WALLET";
 }
 

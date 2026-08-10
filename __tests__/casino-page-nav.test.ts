@@ -20,7 +20,6 @@ describe("casino back link", () => {
   });
 
   it("works the same for the other games", () => {
-    expect(parentRoute("/casino/draw/entries")).toEqual({ href: "/casino/draw", label: "Draw" });
     expect(parentRoute("/casino/last-standing")).toEqual({ href: "/casino", label: "Arkade" });
   });
 

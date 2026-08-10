@@ -19,7 +19,6 @@ import { loadInterest } from "@/lib/preferences";
 const SECTION_LABEL: Record<string, string> = {
   "/casino": "Arkade",
   "/casino/chess": "Chess",
-  "/casino/draw": "Draw",
   "/casino/last-standing": "The Last Man",
 };
 

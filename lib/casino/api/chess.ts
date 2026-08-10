@@ -21,7 +21,7 @@ import {
   type ChessMatchNoteWire,
   type ChessMoveWire,
 } from "@/lib/casino/api/chess-wire";
-import { apiError } from "@/lib/casino/api/envelope";
+import { apiError } from "@/lib/api/envelope";
 import type {
   ChessChatMessage,
   ChessChatRoom,

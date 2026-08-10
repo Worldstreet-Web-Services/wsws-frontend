@@ -9,7 +9,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Pager } from "@/components/ui/pager";
-import { MoneyTicker } from "@/components/ui/money-ticker";
+import { MoneyTicker } from "@/components/dashboard/casino/last-standing/money-ticker";
 import { useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { FundSheet } from "@/components/dashboard/casino/last-standing/fund-sheet";

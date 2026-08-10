@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { SidePanel } from "@/components/ui/side-panel";
+import { SidePanel } from "@/components/dashboard/earn/side-panel";
 import { useMarkNotificationsRead, useNotifications } from "@/hooks/use-earn-notifications";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import type { EarnNotification } from "@/lib/earn/api/types";

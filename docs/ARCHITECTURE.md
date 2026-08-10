@@ -196,6 +196,19 @@ PR number, so this file is the single place to see where the restructure stands.
 
 Legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 
+### Open branches
+
+Nothing here is merged yet. Keep this list current so no branch is forgotten.
+
+| Branch                    | Holds                                                         | State                                             |
+| ------------------------- | ------------------------------------------------------------- | ------------------------------------------------- |
+| `docs/architecture-guide` | This document, `CONTRIBUTING.md`, SKILL and PR template edits | Pushed, no PR. Docs only, safe to merge any time. |
+| `refactor/architecture`   | Phases 1 and 2. Branched off `main`, carries the docs commit  | Pushed, no PR. Held until tested end to end.      |
+
+Merge order when the time comes: `docs/architecture-guide` first, then
+`refactor/architecture`, which will need a trivial conflict resolution on this
+file (take the restructure branch's version, it is further ahead).
+
 ### Phase 1: cleanup
 
 Independent of the restructure. Pure subtraction and CI hardening.
@@ -231,13 +244,19 @@ Independent of the restructure. Pure subtraction and CI hardening.
 
 ### Phase 2: boundaries
 
-- [ ] **2.1 Promote three shared primitives to `components/ui/`.**
-      `sheet-nav.tsx` (used by casino, remit, trade), `qr-code.tsx` (casino),
-      `deposit-status.tsx` (casino). These are the only genuine cross-feature
-      couplings in the codebase. PR: _n/a_
-- [ ] **2.2 Demote four feature components out of `components/ui/`.**
+- [x] **2.1 Promote three shared primitives to `components/ui/`.**
+      `sheet-nav.tsx` (12 consumers across funds, casino, remit, trade),
+      `qr-code.tsx` (funds, casino), `deposit-status.tsx` (funds, casino). These
+      were the only genuine cross-feature couplings in the codebase.
+      Branch: `refactor/architecture`
+- [x] **2.2 Demote feature components out of `components/ui/`.**
       `side-panel.tsx` and `image-upload-field.tsx` to earn, `money-ticker.tsx`
-      to casino, `sparkline.tsx` to portfolio. PR: _n/a_
+      to casino/last-standing. They move to their current feature folder, not to
+      `features/`, so they travel with the slice when it migrates.
+      **`sparkline.tsx` stays in `ui/`.** The earlier plan listed it for
+      demotion on usage count, but its only consumer is a shared modal, not a
+      feature, and a sparkline knows nothing about any feature. By the rule in
+      section 2 it is a primitive. Branch: `refactor/architecture`
 - [ ] **2.3 Collapse to one transport.** One `apiFetch`, one envelope, one
       `ApiError` in `lib/api/`. Delete `lib/vault-api.ts`,
       `lib/casino/api/client.ts`, `lib/casino/api/chess-client.ts`,

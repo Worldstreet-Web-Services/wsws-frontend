@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { KycOnboarding } from "@/components/dashboard/funds/kyc/kyc-onboarding";
 import { ArrowUpRightIcon, CheckIcon, SearchIcon, SwapIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";

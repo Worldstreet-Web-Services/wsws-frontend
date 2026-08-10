@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
-import { DepositStatus } from "@/components/dashboard/funds/deposit-status";
+import { SheetNav } from "@/components/ui/sheet-nav";
+import { DepositStatus } from "@/components/ui/deposit-status";
 import { useMoney } from "@/components/ui/currency-select";
 import { useSendToken } from "@/hooks/use-withdraw";
 import {

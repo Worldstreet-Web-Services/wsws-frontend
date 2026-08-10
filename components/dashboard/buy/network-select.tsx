@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { CoinBadge } from "@/components/ui/coin-badge";
 import { CheckIcon, ChevronLeftIcon } from "@/components/ui/icons";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 
 export interface NetworkOption {
   chainId: number;

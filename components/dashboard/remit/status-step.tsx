@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { useRampOrder } from "@/hooks/use-offramp";
 import { clearPendingRemit } from "@/lib/payment/pending";
 import { isTerminalRampStatus, type RampPublicStatus } from "@/lib/payment/offramp";

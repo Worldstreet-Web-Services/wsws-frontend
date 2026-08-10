@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import confetti from "canvas-confetti";
-import { MoneyTicker } from "@/components/ui/money-ticker";
+import { MoneyTicker } from "@/components/dashboard/casino/last-standing/money-ticker";
 
 // Two confetti palettes: gold-forward when this wallet won, cooler house
 // colours when we're celebrating someone else taking the pot.

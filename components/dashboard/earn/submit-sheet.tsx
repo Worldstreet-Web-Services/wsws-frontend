@@ -5,7 +5,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { TextAreaField, TextField } from "@/components/dashboard/earn/form-field";
 import { TalentProfileForm } from "@/components/dashboard/earn/talent-profile-form";
 import { AsyncLoading } from "@/components/dashboard/async-state";
-import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { ImageUploadField } from "@/components/dashboard/earn/image-upload-field";
 import { useCreateSubmission } from "@/hooks/use-earn-submission";
 import { useTalentProfile } from "@/hooks/use-earn-talent";
 import { useScrollToFirstError } from "@/hooks/use-scroll-to-first-error";

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { SearchIcon, CheckIcon } from "@/components/ui/icons";
 import { usePayoutBanks, useVerifyRecipient } from "@/hooks/use-offramp";
 import { normalizePhone } from "@/lib/payment/offramp";

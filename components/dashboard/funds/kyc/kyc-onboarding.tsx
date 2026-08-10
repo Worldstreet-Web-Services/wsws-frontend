@@ -9,7 +9,7 @@ import {
   ClockIcon,
   CloseIcon,
 } from "@/components/ui/icons";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { OtpInput } from "@/components/auth/otp-input";
 import { KycForm } from "@/components/dashboard/funds/kyc/kyc-form";
 import { useKycInitiate, useKycStatus, useKycVerify } from "@/hooks/use-pouch-kyc";

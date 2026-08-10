@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
-import { useCasinoWallet } from "@/hooks/use-casino-wallet";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { GameTile } from "@/components/dashboard/casino/game-tile";
 import { formatQty } from "@/lib/format";
@@ -28,7 +27,6 @@ const CATEGORY_KEY: Record<GameCategoryFilter, string> = {
 
 export function HubSection() {
   const t = useTranslations("casino.hub");
-  const wallet = useCasinoWallet();
   const { mask } = useBalanceVisibility();
   const portfolio = usePortfolio();
   const usdcBalance =

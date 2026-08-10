@@ -13,7 +13,7 @@ import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import { BoardThemePicker } from "@/components/dashboard/casino/chess/board-theme-picker";
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
-import { QrCode } from "@/components/dashboard/funds/qr-code";
+import { QrCode } from "@/components/ui/qr-code";
 import { formatChatTime, matchActorLabel, playerDisplayName } from "@/lib/casino/chess/social";
 import { LiveChatFeed } from "@/components/dashboard/casino/chess/live-chat-feed";
 import { identifyOpening } from "@/lib/casino/chess/openings";

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { NetworkTabs } from "@/components/dashboard/funds/network-tabs";
 import { TokenList } from "@/components/dashboard/funds/token-list";
 import { AddressPanel } from "@/components/dashboard/funds/address-panel";

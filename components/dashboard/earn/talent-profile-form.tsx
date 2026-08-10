@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { SelectField, TextAreaField, TextField } from "@/components/dashboard/earn/form-field";
-import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { ImageUploadField } from "@/components/dashboard/earn/image-upload-field";
 import { useWallets } from "@privy-io/react-auth";
 import { useCompleteTalentProfile } from "@/hooks/use-earn-talent";
 import { useScrollToFirstError } from "@/hooks/use-scroll-to-first-error";

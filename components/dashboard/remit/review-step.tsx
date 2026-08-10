@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
-import { SheetNav } from "@/components/dashboard/funds/sheet-nav";
+import { SheetNav } from "@/components/ui/sheet-nav";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { useFx } from "@/hooks/use-fx";
 import { useCreateOfframp, useOfframpQuote, useRampOrder } from "@/hooks/use-offramp";

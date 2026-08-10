@@ -1,9 +1,9 @@
 "use client";
 
 // REST client for the Last Man Standing vault game (world-street-vault service).
-// Called directly against the game's own gateway, not proxied through our
-// /api/* routes: the gateway handles CORS and every read here is public, no
-// key required. See world-street-vault-frontend.md for the full contract.
+// See world-street-vault-frontend.md for the full contract.
+
+import { createServiceClient } from "@/lib/api/service";
 
 export interface TokenAmount {
   amount: string;
@@ -44,50 +44,29 @@ export interface VaultActivity {
   createdAt: string;
 }
 
-interface VaultApiError {
-  code: string;
-  message: string;
-  details?: unknown;
-}
-
 // Reads go through our own same-origin proxy (app/api/vault) rather than the
 // vault gateway directly: the gateway sends no CORS headers, so a direct
 // browser fetch is blocked. The proxy forwards server-side and caches briefly.
-const BASE_PATH = "/api/vault";
-
-// Unwraps the { success, data | error } envelope and throws a typed error.
-async function unwrap<T>(res: Response): Promise<T> {
-  const body = await res.json().catch(() => null);
-  if (body && body.success === true) return body.data as T;
-  const err: VaultApiError = body?.error ?? {
-    code: "SERVICE_UNAVAILABLE",
-    message: "Request failed",
-  };
-  const thrown = new Error(err.message) as Error & { code: string; details?: unknown };
-  thrown.code = err.code;
-  thrown.details = err.details;
-  throw thrown;
-}
+// Every read here is public, so none of them need the caller's session.
+const vault = createServiceClient("/api/vault", "The vault is unavailable right now.");
 
 export async function fetchVaultStatus(): Promise<VaultGameStatus> {
-  return unwrap<VaultGameStatus>(await fetch(`${BASE_PATH}/game/status`));
+  return vault.get<VaultGameStatus>("/game/status");
 }
 
 export async function fetchPendingWinnings(address: string): Promise<TokenAmount> {
-  const data = await unwrap<{ pendingWinnings: TokenAmount }>(
-    await fetch(`${BASE_PATH}/game/pending-winnings/${encodeURIComponent(address)}`)
+  const data = await vault.get<{ pendingWinnings: TokenAmount }>(
+    `/game/pending-winnings/${encodeURIComponent(address)}`
   );
   return data.pendingWinnings;
 }
 
 export async function fetchVaultWinners(): Promise<VaultWinner[]> {
-  const data = await unwrap<{ winners: VaultWinner[] }>(await fetch(`${BASE_PATH}/game/winners`));
+  const data = await vault.get<{ winners: VaultWinner[] }>("/game/winners");
   return data.winners;
 }
 
 export async function fetchVaultActivities(): Promise<VaultActivity[]> {
-  const data = await unwrap<{ activities: VaultActivity[] }>(
-    await fetch(`${BASE_PATH}/game/activities`)
-  );
+  const data = await vault.get<{ activities: VaultActivity[] }>("/game/activities");
   return data.activities;
 }

@@ -257,10 +257,18 @@ Independent of the restructure. Pure subtraction and CI hardening.
       demotion on usage count, but its only consumer is a shared modal, not a
       feature, and a sparkline knows nothing about any feature. By the rule in
       section 2 it is a primitive. Branch: `refactor/architecture`
-- [ ] **2.3 Collapse to one transport.** One `apiFetch`, one envelope, one
-      `ApiError` in `lib/api/`. Delete `lib/vault-api.ts`,
-      `lib/casino/api/client.ts`, `lib/casino/api/chess-client.ts`,
-      `lib/earn/api/client.ts`, and `lib/casino/api/envelope.ts`. PR: _n/a_
+- [~] **2.3 Collapse to one transport.** New `lib/api/service.ts` exposes
+  `createServiceClient(basePath, fallbackMessage)`, so a service is defined
+  by those two facts rather than by a copied wrapper. Earn, chess and vault
+  now bind to it and keep their existing export names, so no call site
+  changed. Vault lost a genuinely duplicated `unwrap` that swallowed
+  plain-text upstream errors and never checked `res.ok`; it also gains typed
+  error codes. Query building is now uniform: `undefined` values are dropped
+  instead of being sent as the string "undefined", which only earn did
+  before. Covered by `__tests__/api-service-client.test.ts` (9 cases).
+  Remaining: `lib/casino/api/client.ts` and the `lib/casino/api/envelope.ts`
+  alias, both blocked on 1.2 since Draw is their last caller.
+  Branch: `refactor/architecture`
 - [ ] **2.4 Zod at the proxy boundary, money paths first.** payment, trade, rwa.
       Replaces the hand-written normalizers and fails loudly when an upstream
       shape changes. PR: _n/a_

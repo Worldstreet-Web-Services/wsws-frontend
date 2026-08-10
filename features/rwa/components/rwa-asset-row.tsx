@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
-import { assetPriceUsd, rwaLogoUrl } from "@/lib/rwa-api";
+import { assetPriceUsd, rwaLogoUrl } from "@/features/rwa/lib/api";
 import { formatUsd } from "@/lib/trade/math";
 import {
   assetLiquidityUsd,
@@ -13,7 +13,7 @@ import {
   gradientFor,
   isTradable,
   type RwaAssetView,
-} from "@/lib/rwa/presenter";
+} from "@/features/rwa/lib/presenter";
 
 interface RwaAssetRowProps {
   asset: RwaAssetView;

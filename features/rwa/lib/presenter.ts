@@ -10,7 +10,7 @@ import {
   type RwaApiAsset,
   type RwaChain,
   type RwaQuote,
-} from "@/lib/rwa-api";
+} from "@/features/rwa/lib/api";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 // Yield APY as a percent number. yieldApyBps is in basis points, so 485 -> 4.85.

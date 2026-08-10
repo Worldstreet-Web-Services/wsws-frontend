@@ -2,9 +2,8 @@
 
 import { useMemo } from "react";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { useRwaAssets } from "@/hooks/use-rwa-assets";
 import { useMarketTokens } from "@/hooks/use-market-tokens";
-import { rwaLogoUrl } from "@/lib/rwa-api";
+import { rwaLogoUrl, useRwaAssets } from "@/features/rwa";
 
 export type SearchKind = "holding" | "rwa" | "market";
 

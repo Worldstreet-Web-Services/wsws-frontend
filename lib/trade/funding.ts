@@ -5,7 +5,7 @@
 // Both legs are LI.FI routes whose transaction executes on Base, so the user's
 // sponsored Base send pays no gas for either.
 
-import { USDC_BY_CHAIN } from "@/lib/rwa-api";
+import { USDC_BY_CHAIN } from "@/lib/trade/usdc";
 import { SETTLE_CHAINS } from "@/lib/deposit";
 
 // LI.FI's chain id for Solana.

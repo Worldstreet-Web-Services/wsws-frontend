@@ -10,7 +10,7 @@ import { fetchSellQuote } from "@/lib/sell";
 import { fetchSolanaBridgeQuote } from "@/lib/trade/lifi";
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
 import { sponsorSolanaTransaction } from "@/lib/trade/solana-sponsor";
-import { BASE_USDC, LIFI_BASE_CHAIN, LIFI_NATIVE_SOL } from "@/lib/rwa/funding";
+import { BASE_USDC, LIFI_BASE_CHAIN, LIFI_NATIVE_SOL } from "@/lib/trade/funding";
 
 export interface SellExecuteInput {
   // Alchemy network id of the held asset.

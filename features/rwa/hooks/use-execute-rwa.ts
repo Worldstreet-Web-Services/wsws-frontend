@@ -7,7 +7,7 @@ import { awaitReceipt, isReceiptChain, publicClientForChain } from "@/lib/trade/
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
 import { sponsorSolanaTransaction } from "@/lib/trade/solana-sponsor";
 import { useEvmSend } from "@/hooks/use-evm-send";
-import type { RwaAction, RwaChain, RwaStep } from "@/lib/rwa-api";
+import type { RwaAction, RwaChain, RwaStep } from "@/features/rwa/lib/api";
 
 // EVM chain ids per RWA chain. Without an explicit chainId, Privy defaults to
 // Ethereum mainnet (1), so a non-Ethereum RWA buy would be signed on the wrong

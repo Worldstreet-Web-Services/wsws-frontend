@@ -3,9 +3,9 @@
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { ArrowUpRightIcon, LockIcon } from "@/components/ui/icons";
-import { assetPriceUsd, rwaLogoUrl, type RwaApiAsset } from "@/lib/rwa-api";
+import { assetPriceUsd, rwaLogoUrl, type RwaApiAsset } from "@/features/rwa/lib/api";
 import { formatUsd } from "@/lib/trade/math";
-import { formatApy, formatCompactUsd, gradientFor } from "@/lib/rwa/presenter";
+import { formatApy, formatCompactUsd, gradientFor } from "@/features/rwa/lib/presenter";
 
 interface RwaIssuerCardProps {
   asset: RwaApiAsset;

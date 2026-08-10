@@ -5,11 +5,11 @@ import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { RwaIssuerCard } from "@/components/dashboard/rwa/rwa-issuer-card";
-import { RwaProgress, type ProgressStep } from "@/components/dashboard/rwa/rwa-progress";
+import { RwaIssuerCard } from "@/features/rwa/components/rwa-issuer-card";
+import { RwaProgress, type ProgressStep } from "@/features/rwa/components/rwa-progress";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { useRwaQuote, useRwaBuild } from "@/hooks/use-rwa-trade";
-import { useExecuteRwa } from "@/hooks/use-execute-rwa";
+import { useRwaQuote, useRwaBuild } from "@/features/rwa/hooks/use-rwa-trade";
+import { useExecuteRwa } from "@/features/rwa/hooks/use-execute-rwa";
 import { tokenLogoKey, useTokenLogos } from "@/hooks/use-token-logos";
 import {
   assetPriceUsd,
@@ -18,10 +18,10 @@ import {
   type RwaApiAsset,
   type RwaQuote,
   type RwaQuoteRequest,
-} from "@/lib/rwa-api";
+} from "@/features/rwa/lib/api";
 import { getWalletAddress } from "@/lib/user";
 import { useSolanaFunding } from "@/hooks/use-solana-funding";
-import { planAffordable, planBaseFunding, planSolanaFunding } from "@/lib/rwa/funding";
+import { planAffordable, planBaseFunding, planSolanaFunding } from "@/lib/trade/funding";
 import { useSolanaProceeds } from "@/hooks/use-solana-proceeds";
 import { toast } from "@/lib/toast";
 import { formatAmount, formatUsd, toBaseUnits } from "@/lib/trade/math";
@@ -46,7 +46,7 @@ import {
   requiresNativeGas,
   rwaErrorInfo,
   sellQuoteRequest,
-} from "@/lib/rwa/presenter";
+} from "@/features/rwa/lib/presenter";
 
 type Mode = "buy" | "sell";
 type Phase = "idle" | "quoting" | "quoted" | "confirming" | "done";

@@ -7,7 +7,7 @@ import {
   type RwaAction,
   type RwaQuoteRequest,
   type RwaQuoteResult,
-} from "@/lib/rwa-api";
+} from "@/features/rwa/lib/api";
 
 export function useRwaQuote() {
   return useMutation<RwaQuoteResult, Error, RwaQuoteRequest>({

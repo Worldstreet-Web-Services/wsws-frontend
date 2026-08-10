@@ -11,13 +11,13 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { RwaAssetRow } from "@/components/dashboard/rwa/rwa-asset-row";
-import { RwaCategoryTabs } from "@/components/dashboard/rwa/rwa-category-tabs";
-import { RwaPagination } from "@/components/dashboard/rwa/rwa-pagination";
+import { RwaAssetRow } from "@/features/rwa/components/rwa-asset-row";
+import { RwaCategoryTabs } from "@/features/rwa/components/rwa-category-tabs";
+import { RwaPagination } from "@/features/rwa/components/rwa-pagination";
 import { SearchIcon } from "@/components/ui/icons";
 import { tokenLogoKey, useTokenLogos } from "@/hooks/use-token-logos";
-import { assetPriceUsd, type RwaApiAsset } from "@/lib/rwa-api";
-import { assetLiquidityUsd, type RwaAssetView } from "@/lib/rwa/presenter";
+import { assetPriceUsd, type RwaApiAsset } from "@/features/rwa/lib/api";
+import { assetLiquidityUsd, type RwaAssetView } from "@/features/rwa/lib/presenter";
 
 interface RwaAssetListProps {
   assets: RwaAssetView[];

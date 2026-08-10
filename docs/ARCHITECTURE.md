@@ -308,8 +308,18 @@ Independent of the restructure. Pure subtraction and CI hardening.
 Migrate a feature when you are already working in it. Moves only, no edits in
 the same commit, so `git` tracks renames and review stays readable.
 
-- [ ] **3.1 `features/rwa/`** the pilot. Nine components, its own lib, one route.
-      Small enough to revert. PR: _n/a_
+- [x] **3.1 `features/rwa/`** the pilot. 18 files: 10 components, 5 hooks, 2 lib
+      modules and the index. `app/dashboard` and `use-global-search` reach it only
+      through `features/rwa/index.ts`. Zero deep imports from outside, zero upward
+      imports from `lib/` or `components/`. The move disproved the claim in section 3
+      that this slice was self-contained: `lib/rwa/funding.ts` is the cross-chain
+      funding engine that `use-sell`, `use-solana-funding` and `use-solana-proceeds`
+      all depend on, and `USDC_BY_CHAIN` is a chain constant, not an RWA concept.
+      Both came out first, to `lib/trade/funding.ts` and `lib/trade/usdc.ts`, or the
+      slice would have inherited false ownership. Expect this on every slice: what
+      looks like feature code is often cross-cutting code that arrived with the first
+      feature to need it. Branch: `refactor/architecture`
+
 - [ ] **3.2 Add `eslint-plugin-boundaries`.** After the second slice exists, so
       the rule has something to catch. PR: _n/a_
 - [ ] **3.3 `features/portfolio/`** PR: _n/a_

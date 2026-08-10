@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { RwaTradePanel } from "@/components/dashboard/rwa/rwa-trade-panel";
-import { useRwaAssets } from "@/hooks/use-rwa-assets";
-import { useRwaEnrichedAssets } from "@/hooks/use-rwa-prices";
-import { findRwaAsset } from "@/lib/rwa/presenter";
+import { RwaTradePanel } from "@/features/rwa/components/rwa-trade-panel";
+import { useRwaAssets } from "@/features/rwa/hooks/use-rwa-assets";
+import { useRwaEnrichedAssets } from "@/features/rwa/hooks/use-rwa-prices";
+import { findRwaAsset } from "@/features/rwa/lib/presenter";
 import type { RwaTradePayload } from "@/components/dashboard/modal-types";
 
 // Trade a held RWA from the holdings list. Resolves the registry asset by network

@@ -9,7 +9,7 @@ import {
   planBaseFunding,
   planSolanaFunding,
   resizeBridgeSend,
-} from "@/lib/rwa/funding";
+} from "@/lib/trade/funding";
 
 const base = { spendUsdc: 20, solanaUsdc: 0, solanaSol: 0, baseUsdc: 100 };
 

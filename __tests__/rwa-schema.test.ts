@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkUpstream } from "@/lib/server/validate-upstream";
 import { buildSchema, quoteSchema, rwaSchemaFor } from "@/lib/api/schemas/rwa";
-import { formatApy } from "@/lib/rwa/presenter";
+import { formatApy } from "@/features/rwa/lib/presenter";
 
 const where = { service: "rwa", path: "assets" };
 const ok = (data: unknown) => ({ success: true, data });
@@ -60,7 +60,7 @@ describe("rwa asset schema", () => {
   });
 
   it("rejects an asset missing an identifier the table renders", () => {
-    const { symbol: _gone, ...noSymbol } = USDY;
+    const noSymbol = Object.fromEntries(Object.entries(USDY).filter(([k]) => k !== "symbol"));
     const check = checkUpstream(rwaSchemaFor("assets"), ok([noSymbol]), where);
     expect(check.ok).toBe(false);
     expect(check.problem).toContain("symbol");

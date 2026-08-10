@@ -4,8 +4,8 @@ import {
   formatChange,
   mergeMarket,
   type RwaMarketStats,
-} from "@/lib/rwa/presenter";
-import type { RwaApiAsset } from "@/lib/rwa-api";
+} from "@/features/rwa/lib/presenter";
+import type { RwaApiAsset } from "@/features/rwa/lib/api";
 
 function asset(overrides: Partial<RwaApiAsset>): RwaApiAsset {
   return {

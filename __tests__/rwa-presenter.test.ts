@@ -35,8 +35,8 @@ import {
   routeLabel,
   rwaErrorInfo,
   sellQuoteRequest,
-} from "@/lib/rwa/presenter";
-import type { RwaApiAsset, RwaQuote } from "@/lib/rwa-api";
+} from "@/features/rwa/lib/presenter";
+import type { RwaApiAsset, RwaQuote } from "@/features/rwa/lib/api";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 function asset(overrides: Partial<RwaApiAsset> = {}): RwaApiAsset {

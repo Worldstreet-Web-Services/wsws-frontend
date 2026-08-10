@@ -6,9 +6,9 @@ import { ArrowUpRightIcon } from "@/components/ui/icons";
 import { PriceChart } from "@/components/ui/price-chart";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { useRwaPriceHistory } from "@/hooks/use-rwa-price-history";
+import { useRwaPriceHistory } from "@/features/rwa/hooks/use-rwa-price-history";
 import { tokenLogoKey, useTokenLogos } from "@/hooks/use-token-logos";
-import { assetPriceUsd, rwaLogoUrl, type RwaApiAsset } from "@/lib/rwa-api";
+import { assetPriceUsd, rwaLogoUrl, type RwaApiAsset } from "@/features/rwa/lib/api";
 import { formatAmount, formatUsd } from "@/lib/trade/math";
 import {
   assetLiquidityUsd,
@@ -20,7 +20,7 @@ import {
   gradientFor,
   isTradable,
   type RwaAssetView,
-} from "@/lib/rwa/presenter";
+} from "@/features/rwa/lib/presenter";
 
 interface RwaDetailSheetProps {
   asset: RwaAssetView;

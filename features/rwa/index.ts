@@ -1,0 +1,10 @@
+// The public surface of the RWA slice. Anything not exported here is private
+// to the feature.
+
+export { RwaSection } from "./components/rwa-section";
+export { RwaTradeModal } from "./components/rwa-trade-modal";
+
+export { useRwaAssets } from "./hooks/use-rwa-assets";
+
+export { rwaLogoUrl } from "./lib/api";
+export type { RwaApiAsset, RwaChain } from "./lib/api";

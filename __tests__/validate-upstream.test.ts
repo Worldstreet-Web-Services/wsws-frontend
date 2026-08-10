@@ -37,7 +37,7 @@ describe("checkUpstream", () => {
   });
 
   it("catches a field the flow depends on going missing", () => {
-    const { pay: _dropped, ...withoutPay } = QUOTE;
+    const withoutPay = Object.fromEntries(Object.entries(QUOTE).filter(([k]) => k !== "pay"));
     const check = checkUpstream(offrampQuoteSchema, ok(withoutPay), where);
     expect(check.ok).toBe(false);
     expect(check.problem).toContain("pay");

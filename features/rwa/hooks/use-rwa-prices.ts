@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { mergeMarket, type RwaAssetView, type RwaMarketStats } from "@/lib/rwa/presenter";
-import type { RwaApiAsset } from "@/lib/rwa-api";
+import { mergeMarket, type RwaAssetView, type RwaMarketStats } from "@/features/rwa/lib/presenter";
+import type { RwaApiAsset } from "@/features/rwa/lib/api";
 
 const MARKET_STALE_MS = 60_000;
 

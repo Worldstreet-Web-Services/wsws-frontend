@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchRwaAssets, fetchRwaCategories } from "@/lib/rwa-api";
+import { fetchRwaAssets, fetchRwaCategories } from "@/features/rwa/lib/api";
 import { PERSISTED_GC_TIME } from "@/lib/query-persist";
 
 const SIXTY_SECONDS = 60 * 1000;

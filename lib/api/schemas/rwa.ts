@@ -1,11 +1,7 @@
 import { z } from "zod";
 
-// What the RWA screens depend on from the rwa service.
-//
-// Same contract as the payment schemas: model what the frontend reads, stay
-// tolerant of fields the backend adds, fail loudly when one the flow needs
-// disappears or changes type. The build response matters most, because its
-// steps are the transactions a user is asked to sign.
+// What the RWA screens read. The build response matters most: its steps are
+// the transactions a user is asked to sign.
 
 const chain = z.enum(["solana", "ethereum", "base", "arbitrum", "bsc", "polygon"]);
 
@@ -18,11 +14,8 @@ const asset = z.object({
   issuer: z.string(),
   category: z.string(),
   freelyTradable: z.boolean(),
-  // Best-effort upstream: null when the price source is cold. The table renders
-  // a dash for it, so null is expected rather than a fault.
   priceUsd: z.string().nullable().optional(),
-  // Null for 29 of the 45 assets the registry currently returns, despite the
-  // gateway's own spec typing it as a plain integer. Nullable is the reality.
+  // Null for 29 of 45 live assets, though the gateway spec types it as integer.
   yieldApyBps: z.number().nullable().optional(),
   accessMode: z.enum(["dex", "issuer", "hybrid"]).optional(),
   kycRequired: z.boolean().optional(),
@@ -34,7 +27,6 @@ const asset = z.object({
 const quote = z.object({
   provider: z.string(),
   input: z.object({ chain: z.string(), address: z.string(), amount: z.string() }),
-  // output.amount is what the buyer is told they receive.
   output: z.object({
     chain: z.string(),
     address: z.string(),
@@ -44,8 +36,7 @@ const quote = z.object({
   priceImpactBps: z.number().nullable(),
 });
 
-// A step the wallet is asked to sign. `kind` decides how the client handles it,
-// so an unrecognised value must not pass silently.
+// kind decides how the client handles the step, so an unknown one must fail.
 const step = z.object({
   id: z.string(),
   kind: z.enum(["sign-transaction", "sign-typed-data", "post-to-endpoint"]),

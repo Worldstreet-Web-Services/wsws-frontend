@@ -269,18 +269,18 @@ Independent of the restructure. Pure subtraction and CI hardening.
   Remaining: `lib/casino/api/client.ts` and the `lib/casino/api/envelope.ts`
   alias, both blocked on 1.2 since Draw is their last caller.
   Branch: `refactor/architecture`
-- [~] **2.4 Zod at the proxy boundary, money paths first.** Pattern established
-  and payment done. `lib/api/schemas/payment.ts` describes what the off-ramp
-  flow depends on; `lib/server/validate-upstream.ts` is the guard every proxy
-  runs. Two rules make it safe on a live route: it **validates without
-  transforming**, so the original payload still reaches the client and a
-  field the schema does not model is never dropped, and it **only judges
-  successful envelopes**, so an upstream error passes through with its own
-  status. A schema miss is a 502 plus a log line naming the service, path and
-  failing key. Verified against four live gateway responses. Covered by
-  `__tests__/validate-upstream.test.ts` (11 cases), including both real
-  breakages that already shipped: `fiat.totalFee` disappearing, and a type
-  change under an existing key.
+- [x] **2.4 Zod at the proxy boundary, money paths first.** Pattern established
+      and payment done. `lib/api/schemas/payment.ts` describes what the off-ramp
+      flow depends on; `lib/server/validate-upstream.ts` is the guard every proxy
+      runs. Two rules make it safe on a live route: it **validates without
+      transforming**, so the original payload still reaches the client and a
+      field the schema does not model is never dropped, and it **only judges
+      successful envelopes**, so an upstream error passes through with its own
+      status. A schema miss is a 502 plus a log line naming the service, path and
+      failing key. Verified against four live gateway responses. Covered by
+      `__tests__/validate-upstream.test.ts` (11 cases), including both real
+      breakages that already shipped: `fiat.totalFee` disappearing, and a type
+      change under an existing key.
 
   RWA is done too, guarding assets, categories, quote and build. The build
   response matters most, because its steps are the transactions a user is asked
@@ -292,7 +292,15 @@ Independent of the restructure. Pure subtraction and CI hardening.
   `number | null`. Covered by `__tests__/rwa-schema.test.ts` (10 cases) using
   fixtures captured verbatim from the registry.
 
-  Remaining: the trade proxy, whose only caller is `lib/meme/api.ts`.
+  Trade is done, guarding the token lists and the swap quote whose calls the
+  wallet signs. Live checking paid off again: `/tokens/search` returns a bare
+  array while `/tokens` and `/tokens/trending` return `{ items }`, so the three
+  do not share a schema. A non-JSON upstream body is passed through rather than
+  treated as a validation failure. Covered by `__tests__/trade-schema.test.ts`
+  (8 cases).
+
+  2.4 is complete for the money paths. Apply the same pattern to a proxy when
+  you next touch it; the guard and the schema folder already exist.
   Branch: `refactor/architecture`
 
 ### Phase 3: slices

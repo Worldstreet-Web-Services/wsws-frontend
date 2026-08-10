@@ -1,12 +1,7 @@
 import { z } from "zod";
 
-// What the off-ramp flow actually reads from the payment service.
-//
-// These describe the frontend's requirements, not the service's full response:
-// if the backend adds a field we do not model, nothing breaks, but if it stops
-// sending one the flow depends on, the proxy fails loudly instead of letting a
-// component render undefined. That has already happened twice, with the removal
-// of fiat.totalFee and of the sender object.
+// What the off-ramp flow reads, not the service's full response. Extra fields
+// are fine; a missing one the flow depends on is not.
 
 const tokenAmount = z.object({
   amount: z.string(),
@@ -19,8 +14,7 @@ const fiatQuote = z.object({
   fxRate: z.string(),
   receive: z.object({ amount: z.string(), currency: z.string() }),
   send: z.object({ amount: z.string(), currency: z.string() }),
-  // The rail stopped quoting an explicit fee line. Optional on purpose: the
-  // review step only renders the row when a fee is actually returned.
+  // Dropped by the rail; the review step only renders the row when present.
   totalFee: z.string().optional(),
 });
 
@@ -37,7 +31,7 @@ export const walletsSchema = z.object({
     z.object({
       name: z.string(),
       country: z.string(),
-      // Published inconsistently: Ghana returns empty strings for both.
+      // Ghana returns empty strings for both.
       minPerTx: z.string(),
       maxPerTx: z.string(),
     })
@@ -54,8 +48,7 @@ export const offrampQuoteSchema = z.object({
   fiat: fiatQuote,
   spreadBps: z.number(),
   settlement: tokenAmount,
-  // pay.amountIn is what the user is asked to send. The funding step sends
-  // exactly these base units, so a missing value must never reach the client.
+  // The funding step sends exactly these base units.
   pay: z.object({ amountIn: tokenAmount }),
 });
 
@@ -63,7 +56,6 @@ export const rampOrderSchema = z.object({
   id: z.string(),
   status: z.string(),
   publicStatus: z.enum(["awaiting_deposit", "processing", "completed", "needs_attention"]),
-  // The address the user funds. A missing one would strand a payment.
   depositAddress: z.string(),
   expectedSettlement: tokenAmount.optional(),
   fiatQuote: fiatQuote.optional(),
@@ -71,8 +63,7 @@ export const rampOrderSchema = z.object({
   updatedAt: z.string(),
 });
 
-// Which schema guards which allowlisted path. Keys are matched against the
-// joined request path, so they stay in step with the route's own allowlist.
+// Mirrors the route's own allowlist.
 export const PAYMENT_SCHEMAS: { pattern: RegExp; schema: z.ZodType }[] = [
   { pattern: /^corridors$/, schema: corridorsSchema },
   { pattern: /^corridors\/[A-Za-z]{2}\/banks$/, schema: banksSchema },

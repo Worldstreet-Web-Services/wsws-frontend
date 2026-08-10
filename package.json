@@ -47,7 +47,8 @@
     "sonner": "^2.0.7",
     "stockfish": "^18.0.8",
     "tailwind-merge": "^3.6.0",
-    "viem": "^2.55.8"
+    "viem": "^2.55.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

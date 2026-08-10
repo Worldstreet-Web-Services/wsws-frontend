@@ -269,9 +269,19 @@ Independent of the restructure. Pure subtraction and CI hardening.
   Remaining: `lib/casino/api/client.ts` and the `lib/casino/api/envelope.ts`
   alias, both blocked on 1.2 since Draw is their last caller.
   Branch: `refactor/architecture`
-- [ ] **2.4 Zod at the proxy boundary, money paths first.** payment, trade, rwa.
-      Replaces the hand-written normalizers and fails loudly when an upstream
-      shape changes. PR: _n/a_
+- [~] **2.4 Zod at the proxy boundary, money paths first.** Pattern established
+  and payment done. `lib/api/schemas/payment.ts` describes what the off-ramp
+  flow depends on; `lib/server/validate-upstream.ts` is the guard every proxy
+  runs. Two rules make it safe on a live route: it **validates without
+  transforming**, so the original payload still reaches the client and a
+  field the schema does not model is never dropped, and it **only judges
+  successful envelopes**, so an upstream error passes through with its own
+  status. A schema miss is a 502 plus a log line naming the service, path and
+  failing key. Verified against four live gateway responses. Covered by
+  `__tests__/validate-upstream.test.ts` (11 cases), including both real
+  breakages that already shipped: `fiat.totalFee` disappearing, and a type
+  change under an existing key. Remaining: trade and rwa.
+  Branch: `refactor/architecture`
 
 ### Phase 3: slices
 

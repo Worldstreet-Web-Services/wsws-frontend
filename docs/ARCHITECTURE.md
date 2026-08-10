@@ -280,7 +280,19 @@ Independent of the restructure. Pure subtraction and CI hardening.
   failing key. Verified against four live gateway responses. Covered by
   `__tests__/validate-upstream.test.ts` (11 cases), including both real
   breakages that already shipped: `fiat.totalFee` disappearing, and a type
-  change under an existing key. Remaining: trade and rwa.
+  change under an existing key.
+
+  RWA is done too, guarding assets, categories, quote and build. The build
+  response matters most, because its steps are the transactions a user is asked
+  to sign, so an unrecognised step `kind` now stops at the proxy. Checking the
+  schema against the live registry immediately found a contract lie: the gateway
+  types `yieldApyBps` as an integer but returns `null` for 29 of its 45 assets,
+  and our own `RwaAsset` declared `number | undefined`. Not a user-visible bug,
+  because `formatApy` compares with `==`, but the type was wrong and is now
+  `number | null`. Covered by `__tests__/rwa-schema.test.ts` (10 cases) using
+  fixtures captured verbatim from the registry.
+
+  Remaining: the trade proxy, whose only caller is `lib/meme/api.ts`.
   Branch: `refactor/architecture`
 
 ### Phase 3: slices

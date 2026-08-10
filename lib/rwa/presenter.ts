@@ -14,12 +14,12 @@ import {
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 // Yield APY as a percent number. yieldApyBps is in basis points, so 485 -> 4.85.
-export function apyPercent(bps?: number): number | null {
+export function apyPercent(bps?: number | null): number | null {
   if (bps == null || !Number.isFinite(bps) || bps <= 0) return null;
   return bps / 100;
 }
 
-export function formatApy(bps?: number): string | null {
+export function formatApy(bps?: number | null): string | null {
   const pct = apyPercent(bps);
   return pct == null ? null : `${pct.toFixed(2)}%`;
 }

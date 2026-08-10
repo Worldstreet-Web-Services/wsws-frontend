@@ -13,7 +13,8 @@ export interface RwaApiAsset {
   name: string;
   issuer: string;
   category: string;
-  yieldApyBps?: number;
+  // Null for most assets in practice, not merely absent.
+  yieldApyBps?: number | null;
   priceUsd: string | null;
   freelyTradable: boolean;
   accessMode?: AccessMode;

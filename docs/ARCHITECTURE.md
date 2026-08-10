@@ -1,0 +1,305 @@
+# Frontend Architecture
+
+The authoritative description of how this frontend is structured, why, and what
+still has to move. Read it before adding a directory, a transport, or a shared
+component. `.claude/skills/wsws-engineering-standards/SKILL.md` sets the coding
+bar; this document sets the shape.
+
+Status: the target structure below is agreed. The migration is in progress and
+tracked in [Migration status](#migration-status). Until a slice is migrated, work
+in it stays where it is. Do not half-move a feature.
+
+---
+
+## 1. The audit that produced this
+
+Measured against `main` at `49e85b1`, by import graph and file count, not by
+impression.
+
+| Signal                  | Measured              | Read                                                                                                                                |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| BFF proxy routes        | 43                    | Keys never reach the browser. Paths allowlisted, sessions verified server side. Keep.                                               |
+| Client transports       | 4 + `apiFetch`        | `vault-api`, `casino/api/client`, `casino/api/chess-client`, `earn/api/client` each redefine base path, error text, and unwrapping. |
+| Envelope unwrappers     | 2                     | `lib/api/envelope.ts` (65 lines) and `lib/casino/api/envelope.ts` (12 lines) parse the same `{ success, data, error }`.             |
+| Files over 400 lines    | 29                    | Largest: `play-section.tsx` 1,530, `last-standing-section.tsx` 1,172, `swiss/detail-section.tsx` 830.                               |
+| Client components       | 246 of 327            | 75 percent. Two server pages, neither fetches data.                                                                                 |
+| Query hooks             | 57 of 105             | TanStack Query is the de facto data layer. Only 3 hooks still fetch inside `useEffect`.                                             |
+| Tests                   | 985 across 94 files   | Logic is well covered. 4 component tests, 0 end to end.                                                                             |
+| CI gates                | 4                     | format, lint, test, build. No `tsc --noEmit`.                                                                                       |
+| `components/dashboard/` | 180 of 245 components | 73 percent of all components in one folder with 28 children.                                                                        |
+| Cross-feature imports   | 3 files               | The only genuine coupling between features. Everything else was the shell mounting a view.                                          |
+
+### Verdict
+
+There is a real architecture here: a backend for frontend proxy layer, pure
+tested logic in `lib/`, and one data layer. It is not documented and not
+enforced, so each new feature reinvents its own transport, error envelope, and
+folder. The fix is to name the architecture, delete what is dead, and put a
+linter behind the boundaries. It is not a rewrite.
+
+### Dead code confirmed
+
+`casino-service/` is a Fastify backend committed inside this repository. 13
+tracked files, its own `package.json`, `pnpm-workspace.yaml`, and lockfile. Last
+touched 2026-07-30 in PR #63. Nothing in the frontend imports it and Vercel does
+not deploy it. The nested workspace file can also confuse tooling that infers a
+workspace root.
+
+It left a client chain that is still wired into two shipped pages:
+
+```
+/casino, /casino/draw
+  -> hooks/use-casino-hub.ts, hooks/use-casino-draw.ts
+  -> lib/casino/api/{hub,draw}.ts
+  -> casinoGet / casinoPost  (lib/casino/api/client.ts)
+  -> app/api/casino/[...path]
+  -> NEXT_PUBLIC_CASINO_API_URL     <- unset. Dead end.
+```
+
+Chess escaped this: it moved to its own service and transport
+(`chess-client.ts` -> `/api/chess` -> the gateway). That is why half of
+`lib/casino/api/` is live and half is not.
+
+---
+
+## 2. The one rule
+
+Four layers. Every import points downward. That is the whole model.
+
+```
+app/            routes and BFF handlers. Composes features, owns no logic.
+   |  may import
+features/       vertical slices. Never import a sibling's internals.
+   |  may import
+components/ui/  design system primitives. Know nothing about any feature.
+   |  may import
+lib/            pure cross-cutting: api client, money, format, brand.
+```
+
+Reusable building blocks live in `components/ui/` and `lib/`. They are shared by
+everyone precisely because they sit below the feature line and depend on nothing
+above it. A feature slice is not a silo. It is the layer that consumes the
+shared floor.
+
+Three consequences worth stating plainly:
+
+1. **Features never import each other's internals.** Cross-feature use goes
+   through `features/<name>/index.ts`. Enforced by `eslint-plugin-boundaries`.
+2. **`lib/` is for what two or more features need.** If only RWA uses it, it
+   belongs in `features/rwa/lib/`.
+3. **One transport.** One `apiFetch`, one envelope unwrapper, one `ApiError`.
+
+### Deciding where a component belongs
+
+Judge membership of `components/ui/` by whether the component knows anything
+about a feature, not by how many places import it. A `Switch` is a primitive
+even if used once. A `MoneyTicker` that understands casino wins is a feature
+component that happens to live upstairs.
+
+---
+
+## 3. Target structure
+
+```
+app/                            routes and BFF only
+  (marketing)/                  route group, no dashboard shell
+  (app)/                        route group, shares the dashboard shell
+  api/                          one folder per upstream service
+  layout.tsx  providers.tsx  globals.css
+
+features/                       a feature owns its whole vertical
+  rwa/
+    components/                 from components/dashboard/rwa/
+    hooks/                      from hooks/use-rwa-*.ts
+    lib/                        from lib/rwa/, pure and unit tested
+    index.ts                    the only thing outside may import
+  casino/                       sub-slices: chess/, last-standing/
+  funds/                        deposit, withdraw, KYC, bank rails
+  prediction/                   markets, positions, Polymarket cash out
+  trade/                        spot, perps, buy and sell sheets, meme
+  earn/                         listings, sponsors, submissions
+  remit/                        cross-border off-ramp wizard
+  portfolio/                    balance card, donut, holdings
+
+components/
+  ui/                           design system, used by three or more features
+  layout/                       the shell itself: dashboard-shell, sidebar, topbar, nav-items
+
+lib/                            cross-cutting only
+  api/                          client.ts, envelope.ts, error.ts, schemas/
+  money/  format/  brand.ts  currencies.ts  wsapi-base.ts
+  server/                       server only, a client import must fail
+
+messages/                       five locales, unchanged
+config/                         chain registries, unchanged
+```
+
+`components/dashboard/` dissolves. Around 165 of its files are feature
+components that move into their slice. The roughly 15 that are genuinely shell
+move to `components/layout/`.
+
+Tests colocate as `*.test.ts` beside the code they cover, so a slice can be
+read, moved, or deleted with its tests.
+
+---
+
+## 4. Data flow
+
+This does not change. It is already correct and is written down here so it stops
+being folklore.
+
+```
+component -> hook (TanStack Query) -> lib client -> app/api/<service> -> gateway
+```
+
+- A component never calls `fetch` directly and never holds a base URL.
+- Every upstream call goes through a route handler in `app/api/`. The handler
+  holds the secret, allowlists the path, and verifies the Privy session.
+- Every service URL derives from `WSAPI_BASE_URL` via `wsapiService("<service>")`.
+  Per-service environment variables exist only as local overrides.
+- Upstream payloads are validated at the proxy boundary and never reach a
+  component raw. Zod schemas live in `lib/api/schemas/`.
+- Pure derivation, validation, and money math live in a `lib/` file with tests.
+  Components render, hooks orchestrate.
+
+---
+
+## 5. Conventions
+
+**Feature public surface.** Each slice exports only what others may use:
+
+```ts
+// features/rwa/index.ts
+export { RwaSection } from "./components/rwa-section";
+export { useRwaAssets } from "./hooks/use-rwa-assets";
+export type { RwaAsset } from "./lib/types";
+```
+
+**Naming.** Files are kebab-case. Components are PascalCase and named for what
+they are. Hooks are `use<Thing>`. A pure module is named for its domain, not its
+shape: `presenter.ts`, `gas-buffer.ts`, not `utils.ts` or `helpers.ts`.
+
+**Size.** A component over roughly 300 lines is usually holding three jobs:
+server state, derivation, and layout. Extract the first two. There is no hard
+limit, but 400 lines is where a reviewer should ask.
+
+**Server components.** Default to server. Reach for `"use client"` only for
+interactivity, browser APIs, or client state, and push the boundary as deep as
+possible. New read-heavy pages should fetch on the server.
+
+---
+
+## 6. Migration status
+
+Update this table in the same PR that does the work. One line per step, with the
+PR number, so this file is the single place to see where the restructure stands.
+
+Legend: `[ ]` not started, `[~]` in progress, `[x]` done.
+
+### Phase 1: cleanup
+
+Independent of the restructure. Pure subtraction and CI hardening.
+
+- [ ] **1.1 Delete the dead casino stack.** Remove `casino-service/`,
+      `app/api/casino/`, `lib/casino/api/{client,hub,draw}.ts`,
+      `hooks/use-casino-{hub,draw}.ts`, and the `NEXT_PUBLIC_CASINO_API_URL` and
+      `CASINO_API_KEY` entries in `.env.example`. PR: _n/a_
+- [ ] **1.2 Decide the fate of `/casino` and `/casino/draw`.** They currently
+      ship with a data layer connected to nothing. Either point them at a real
+      gateway service or remove the routes. Owner decision required. PR: _n/a_
+- [ ] **1.3 Add `tsc --noEmit` to CI.** `next build` only typechecks what the
+      build graph reaches. PR: _n/a_
+- [ ] **1.4 Add `knip` to CI as a warning.** Finds unused files, exports, and
+      dependencies. It would have found 1.1 on its own. PR: _n/a_
+- [ ] **1.5 Prune stale branches.** 35 remote branches are superseded by squash
+      merges and will never show as merged. Enable "Automatically delete head
+      branches" in repository settings, then delete the existing set. PR: _n/a_
+- [ ] **1.6 Fix the PR template.** It still tells contributors to target `dev`,
+      which was removed on 2026-07-29. PR: _n/a_
+- [ ] **1.7 Retire `PREDICTION_INTEGRATION_TODO.md`.** Move any live items into
+      issues; the file is a working note at the repository root. PR: _n/a_
+
+### Phase 2: boundaries
+
+- [ ] **2.1 Promote three shared primitives to `components/ui/`.**
+      `sheet-nav.tsx` (used by casino, remit, trade), `qr-code.tsx` (casino),
+      `deposit-status.tsx` (casino). These are the only genuine cross-feature
+      couplings in the codebase. PR: _n/a_
+- [ ] **2.2 Demote four feature components out of `components/ui/`.**
+      `side-panel.tsx` and `image-upload-field.tsx` to earn, `money-ticker.tsx`
+      to casino, `sparkline.tsx` to portfolio. PR: _n/a_
+- [ ] **2.3 Collapse to one transport.** One `apiFetch`, one envelope, one
+      `ApiError` in `lib/api/`. Delete `lib/vault-api.ts`,
+      `lib/casino/api/client.ts`, `lib/casino/api/chess-client.ts`,
+      `lib/earn/api/client.ts`, and `lib/casino/api/envelope.ts`. PR: _n/a_
+- [ ] **2.4 Zod at the proxy boundary, money paths first.** payment, trade, rwa.
+      Replaces the hand-written normalizers and fails loudly when an upstream
+      shape changes. PR: _n/a_
+
+### Phase 3: slices
+
+Migrate a feature when you are already working in it. Moves only, no edits in
+the same commit, so `git` tracks renames and review stays readable.
+
+- [ ] **3.1 `features/rwa/`** the pilot. Nine components, its own lib, one route.
+      Small enough to revert. PR: _n/a_
+- [ ] **3.2 Add `eslint-plugin-boundaries`.** After the second slice exists, so
+      the rule has something to catch. PR: _n/a_
+- [ ] **3.3 `features/portfolio/`** PR: _n/a_
+- [ ] **3.4 `features/funds/`** PR: _n/a_
+- [ ] **3.5 `features/remit/`** PR: _n/a_
+- [ ] **3.6 `features/prediction/`** PR: _n/a_
+- [ ] **3.7 `features/trade/`** PR: _n/a_
+- [ ] **3.8 `features/earn/`** PR: _n/a_
+- [ ] **3.9 `features/casino/`** last. 39 components, and the two files over
+      1,000 lines want splitting on the way in. PR: _n/a_
+- [ ] **3.10 `components/layout/`** move the shell out of
+      `components/dashboard/`, then delete the empty folder. PR: _n/a_
+- [ ] **3.11 Colocate tests.** Move `__tests__/*` beside their subjects. PR: _n/a_
+
+### Phase 4: confidence
+
+- [ ] **4.1 Five Playwright specs against a preview deployment.** Log in,
+      deposit, withdraw, buy, sell. This is what turns "the diff looks fine" into
+      "the money still moves". PR: _n/a_
+- [ ] **4.2 Split the files over 1,000 lines.** `play-section.tsx`,
+      `last-standing-section.tsx`. Extract server state into hooks and derivation
+      into tested `lib/` functions. PR: _n/a_
+- [ ] **4.3 `CODEOWNERS`.** Route `lib/trade`, `lib/payment`, `app/api/**` to a
+      reviewer by default. PR: _n/a_
+
+---
+
+## 7. Packages
+
+Add these. The dependency list is otherwise lean and should stay that way.
+
+| Package                         | Why                                                                                                                                                                                              | Priority |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `zod`                           | Validates upstream responses at the boundary and infers the type. Replaces the hand-written normalizers. A backend shape change then fails loudly at the proxy instead of rendering `undefined`. | High     |
+| `eslint-plugin-boundaries`      | Makes the layering a CI failure rather than a review opinion. Without it the structure decays.                                                                                                   | High     |
+| `@playwright/test`              | No end to end coverage today on an app that moves money.                                                                                                                                         | High     |
+| `knip`                          | Finds unused files, exports, and dependencies.                                                                                                                                                   | Medium   |
+| `@tanstack/eslint-plugin-query` | Catches query key and dependency mistakes across 57 hooks.                                                                                                                                       | Medium   |
+
+Deliberately not adding: a state manager (Query plus local state covers it), a
+component library (there is a real design system in `globals.css` and adding one
+now would fragment it), a form library (forms are small), Storybook (high
+maintenance for this team size; Playwright buys more).
+
+---
+
+## 8. Open decisions
+
+Recorded so they are chosen rather than defaulted into.
+
+1. **Client versus server components.** 75 percent client with no server data
+   fetching means the App Router is being used as a client side router with a
+   proxy layer. That is a legitimate architecture, but it should be a decision.
+   Current position: new read-heavy pages fetch on the server; existing pages are
+   not migrated for their own sake.
+2. **The Arkade hub and Draw pages.** See task 1.2. They are live routes with a
+   dead data layer.
+3. **Slice boundaries.** If two slices keep reaching for each other, that is
+   evidence they are one feature. Merging them is the correct response. The
+   structure serves the code, not the other way round.

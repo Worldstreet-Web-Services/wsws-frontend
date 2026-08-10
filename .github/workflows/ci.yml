@@ -39,6 +39,11 @@ jobs:
       - name: ESLint
         run: pnpm lint
 
+      # `next build` only typechecks what the build graph reaches. This covers
+      # tests, unreferenced modules, and anything the bundler tree-shakes out.
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Unit tests
         run: pnpm test
 

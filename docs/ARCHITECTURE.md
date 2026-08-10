@@ -16,18 +16,18 @@ in it stays where it is. Do not half-move a feature.
 Measured against `main` at `49e85b1`, by import graph and file count, not by
 impression.
 
-| Signal                  | Measured              | Read                                                                                                                                |
-| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| BFF proxy routes        | 43                    | Keys never reach the browser. Paths allowlisted, sessions verified server side. Keep.                                               |
-| Client transports       | 4 + `apiFetch`        | `vault-api`, `casino/api/client`, `casino/api/chess-client`, `earn/api/client` each redefine base path, error text, and unwrapping. |
-| Envelope unwrappers     | 2                     | `lib/api/envelope.ts` (65 lines) and `lib/casino/api/envelope.ts` (12 lines) parse the same `{ success, data, error }`.             |
-| Files over 400 lines    | 29                    | Largest: `play-section.tsx` 1,530, `last-standing-section.tsx` 1,172, `swiss/detail-section.tsx` 830.                               |
-| Client components       | 246 of 327            | 75 percent. Two server pages, neither fetches data.                                                                                 |
-| Query hooks             | 57 of 105             | TanStack Query is the de facto data layer. Only 3 hooks still fetch inside `useEffect`.                                             |
-| Tests                   | 985 across 94 files   | Logic is well covered. 4 component tests, 0 end to end.                                                                             |
-| CI gates                | 4                     | format, lint, test, build. No `tsc --noEmit`.                                                                                       |
-| `components/dashboard/` | 180 of 245 components | 73 percent of all components in one folder with 28 children.                                                                        |
-| Cross-feature imports   | 3 files               | The only genuine coupling between features. Everything else was the shell mounting a view.                                          |
+| Signal                  | Measured              | Read                                                                                                                                                                                            |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BFF proxy routes        | 43                    | Keys never reach the browser. Paths allowlisted, sessions verified server side. Keep.                                                                                                           |
+| Client transports       | 4 + `apiFetch`        | `vault-api`, `casino/api/client`, `casino/api/chess-client`, `earn/api/client` each redefine base path, error text, and unwrapping.                                                             |
+| Envelope unwrappers     | 1 plus an alias       | `lib/api/envelope.ts` holds the logic. `lib/casino/api/envelope.ts` is a 12-line re-export kept so casino and chess call sites keep their old names. Delete it with the transport merge in 2.3. |
+| Files over 400 lines    | 29                    | Largest: `play-section.tsx` 1,530, `last-standing-section.tsx` 1,172, `swiss/detail-section.tsx` 830.                                                                                           |
+| Client components       | 246 of 327            | 75 percent. Two server pages, neither fetches data.                                                                                                                                             |
+| Query hooks             | 57 of 105             | TanStack Query is the de facto data layer. Only 3 hooks still fetch inside `useEffect`.                                                                                                         |
+| Tests                   | 985 across 94 files   | Logic is well covered. 4 component tests, 0 end to end.                                                                                                                                         |
+| CI gates                | 4                     | format, lint, test, build. No `tsc --noEmit`.                                                                                                                                                   |
+| `components/dashboard/` | 180 of 245 components | 73 percent of all components in one folder with 28 children.                                                                                                                                    |
+| Cross-feature imports   | 3 files               | The only genuine coupling between features. Everything else was the shell mounting a view.                                                                                                      |
 
 ### Verdict
 
@@ -200,15 +200,25 @@ Legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 
 Independent of the restructure. Pure subtraction and CI hardening.
 
-- [ ] **1.1 Delete the dead casino stack.** Remove `casino-service/`,
-      `app/api/casino/`, `lib/casino/api/{client,hub,draw}.ts`,
-      `hooks/use-casino-{hub,draw}.ts`, and the `NEXT_PUBLIC_CASINO_API_URL` and
-      `CASINO_API_KEY` entries in `.env.example`. PR: _n/a_
-- [ ] **1.2 Decide the fate of `/casino` and `/casino/draw`.** They currently
-      ship with a data layer connected to nothing. Either point them at a real
-      gateway service or remove the routes. Owner decision required. PR: _n/a_
-- [ ] **1.3 Add `tsc --noEmit` to CI.** `next build` only typechecks what the
-      build graph reaches. PR: _n/a_
+- [~] **1.1 Delete the dead casino stack.** Done: `casino-service/` (13 files),
+  `hooks/use-casino-hub.ts`, `lib/casino/api/hub.ts`, and the orphaned
+  `wins-ticker.tsx`. The hub's live-data path was a visual no-op: with the
+  gateway unset, `recentWins` and `presence` were always empty, so the ticker
+  never rendered and every tile fell back to its static state. Remaining:
+  `app/api/casino/`, `lib/casino/api/{client,draw}.ts`,
+  `hooks/use-casino-draw.ts`, and the `.env.example` entries. Those are
+  blocked on 1.2, since the Draw feature is their only remaining caller.
+  Branch: `refactor/architecture`
+- [ ] **1.2 Decide the fate of `/casino/draw`.** Resolved for the hub: `/casino`
+      degrades by design and stays, now without the dead calls. Draw is
+      different. `draw-section` renders `<CasinoError>` permanently when the
+      round fetch fails, and `/casino/draw` is listed in the casino nav, so it is
+      a reachable, permanently broken page. **Recommendation:** remove the two
+      routes, their components, and the nav entry until a backend exists; the code
+      stays in git history. Owner decision required. PR: _n/a_
+- [x] **1.3 Add `tsc --noEmit` to CI.** Added `pnpm typecheck` and a CI step
+      after ESLint. `next build` only typechecks what the build graph reaches.
+      Branch: `refactor/architecture`
 - [ ] **1.4 Add `knip` to CI as a warning.** Finds unused files, exports, and
       dependencies. It would have found 1.1 on its own. PR: _n/a_
 - [ ] **1.5 Prune stale branches.** 35 remote branches are superseded by squash

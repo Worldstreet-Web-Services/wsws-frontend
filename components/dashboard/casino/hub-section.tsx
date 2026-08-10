@@ -5,11 +5,8 @@ import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { useCasinoWallet } from "@/hooks/use-casino-wallet";
-import { useCasinoHub } from "@/hooks/use-casino-hub";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { WinsTicker } from "@/components/dashboard/casino/wins-ticker";
 import { GameTile } from "@/components/dashboard/casino/game-tile";
-import { amountUsd } from "@/lib/casino/money";
 import { formatQty } from "@/lib/format";
 import {
   CASINO_GAMES,
@@ -33,7 +30,6 @@ export function HubSection() {
   const t = useTranslations("casino.hub");
   const wallet = useCasinoWallet();
   const { mask } = useBalanceVisibility();
-  const { recentWins, presence } = useCasinoHub();
   const portfolio = usePortfolio();
   const usdcBalance =
     portfolio.tokens.find((t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "USDC")
@@ -46,11 +42,6 @@ export function HubSection() {
     () => filterGames(CASINO_GAMES, category, search, (g) => t(`games.${g.id}.name`)),
     [category, search, t]
   );
-  const presenceById = useMemo(
-    () => new Map(presence.map((p) => [p.game as string, p])),
-    [presence]
-  );
-
   return (
     <div className="relative mx-auto w-full max-w-[1520px] overflow-hidden p-4 sm:p-6 lg:p-8">
       <div
@@ -86,12 +77,6 @@ export function HubSection() {
           </div>
         </div>
       </div>
-
-      {recentWins.length > 0 ? (
-        <div className="mt-6">
-          <WinsTicker wins={recentWins} />
-        </div>
-      ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <div className="font-sans text-[20px] font-bold text-white">
@@ -130,21 +115,9 @@ export function HubSection() {
         </div>
       ) : (
         <div className="mt-5 grid [grid-auto-flow:dense] grid-cols-6 gap-4">
-          {games.map((g) => {
-            const p = presenceById.get(g.id);
-            return (
-              <GameTile
-                key={g.id}
-                game={g}
-                presence={p}
-                headline={
-                  p?.headline
-                    ? wallet.format(amountUsd(p.headline, wallet.unitPriceUsd))
-                    : undefined
-                }
-              />
-            );
-          })}
+          {games.map((g) => (
+            <GameTile key={g.id} game={g} />
+          ))}
         </div>
       )}
     </div>

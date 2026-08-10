@@ -11,7 +11,7 @@ import { ChessBoard } from "@/components/dashboard/casino/chess/chess-board";
 import { FinalCountdown } from "@/components/dashboard/casino/chess/final-countdown";
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
 import { matchActorLabel, playerDisplayName } from "@/lib/casino/chess/social";
-import { LiveChatFeed } from "@/components/dashboard/casino/chess/live-chat-feed";
+import { LiveChatFeed } from "@/components/dashboard/casino/live-chat-feed";
 import { CapturedRow } from "@/components/dashboard/casino/chess/captured-row";
 import {
   CHESS_CARD_BG,

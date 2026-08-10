@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { toBetSlip, toMarketOdds } from "@/lib/casino/api/betting-wire";
-import { estimatePariMutuelReturn, impliedProbability } from "@/lib/casino/betting-math";
+import {
+  estimatePariMutuelReturn,
+  impliedProbability,
+  pariMutuelBreakdown,
+} from "@/lib/casino/betting-math";
 import type { MarketOdds } from "@/lib/casino/api/types";
 
 describe("toMarketOdds", () => {
@@ -120,5 +124,93 @@ describe("impliedProbability", () => {
   it("is zero when the market is empty", () => {
     const empty: MarketOdds = { ...market, total: "0" };
     expect(impliedProbability(empty, "white")).toBe(0);
+  });
+});
+
+describe("pariMutuelBreakdown", () => {
+  function market(white: string, black: string, draw: string): MarketOdds {
+    const total = Number(white) + Number(black) + Number(draw);
+    return {
+      status: "open",
+      total: String(total),
+      outcomes: {
+        white: { pool: white, odds: null },
+        draw: { pool: draw, odds: null },
+        black: { pool: black, odds: null },
+      },
+      winningOutcome: null,
+      voidReason: null,
+    };
+  }
+
+  it("agrees with the service's own settlement example", () => {
+    // The service's reference case (betting/settlement.rs): white backers hold
+    // 600 between them, losers hold 400, rake is 5%. A bettor putting 400 into
+    // a white pool that already holds 200 is credited 400 + 253 there, so the
+    // estimate shown before staking must land on the same figure.
+    const odds = market("200", "300", "100");
+    const result = pariMutuelBreakdown(400, odds, "white", 500);
+
+    expect(result.stake).toBe(400);
+    // 400/600 of (400 - 20 rake) = 253.33…, which the service floors to 253.
+    expect(result.profit).toBeCloseTo(253.333, 3);
+    expect(result.total).toBeCloseTo(653.333, 3);
+    expect(result.refundOnly).toBe(false);
+  });
+
+  it("never rakes the winner's own stake", () => {
+    const odds = market("0", "100", "0");
+    const result = pariMutuelBreakdown(100, odds, "white", 500);
+    // Losing pool is 100, so rake is 5 and the whole remaining 95 is this
+    // bettor's, since they are the only winner. The 100 they staked comes back
+    // untouched on top.
+    expect(result.stake).toBe(100);
+    expect(result.profit).toBeCloseTo(95, 6);
+    expect(result.rake).toBeCloseTo(5, 6);
+    expect(result.total).toBeCloseTo(195, 6);
+  });
+
+  it("reports a one-sided pool as a full refund rather than a win", () => {
+    // Nobody has backed anything else, so there is nothing to be paid from.
+    // The service voids the market and refunds every stake with no rake.
+    const result = pariMutuelBreakdown(50, market("120", "0", "0"), "white", 500);
+    expect(result.refundOnly).toBe(true);
+    expect(result.total).toBe(50);
+    expect(result.profit).toBe(0);
+    expect(result.rake).toBe(0);
+  });
+
+  it("pays more for a bigger stake, but less than proportionally", () => {
+    // Staking into a pool that already has winners in it dilutes your own
+    // share: doubling the stake raises the profit without doubling it, because
+    // the winning pool you are splitting grows by exactly what you put in.
+    const odds = market("100", "300", "0");
+    const small = pariMutuelBreakdown(100, odds, "white", 500);
+    const large = pariMutuelBreakdown(200, odds, "white", 500);
+
+    expect(large.profit).toBeGreaterThan(small.profit);
+    expect(large.profit).toBeLessThan(small.profit * 2);
+    // 100/200 of 285 = 142.5 against 200/300 of 285 = 190.
+    expect(small.profit).toBeCloseTo(142.5, 6);
+    expect(large.profit).toBeCloseTo(190, 6);
+  });
+
+  it("gives a sole winner the whole losing pool whatever they stake", () => {
+    // With no other winners the share is 1 regardless of size, so the profit is
+    // the losing pool net of rake either way. Only the stake returned differs.
+    const odds = market("0", "300", "0");
+    expect(pariMutuelBreakdown(100, odds, "white", 500).profit).toBeCloseTo(285, 6);
+    expect(pariMutuelBreakdown(200, odds, "white", 500).profit).toBeCloseTo(285, 6);
+  });
+
+  it("returns nothing for a zero or negative stake", () => {
+    expect(pariMutuelBreakdown(0, market("10", "10", "0"), "white", 500).total).toBe(0);
+    expect(pariMutuelBreakdown(-5, market("10", "10", "0"), "white", 500).total).toBe(0);
+  });
+
+  it("honours a rake other than the 5% default", () => {
+    const odds = market("0", "100", "0");
+    expect(pariMutuelBreakdown(100, odds, "white", 0).profit).toBeCloseTo(100, 6);
+    expect(pariMutuelBreakdown(100, odds, "white", 1000).profit).toBeCloseTo(90, 6);
   });
 });

@@ -10,7 +10,7 @@ import {
   CasinoLoading,
 } from "@/components/dashboard/casino/casino-state";
 import { SwissCreateForm } from "@/components/dashboard/casino/chess/swiss/create-form";
-import type { SwissState, SwissSummary } from "@/lib/casino/api/swiss";
+import type { SwissGameKind, SwissState, SwissSummary } from "@/lib/casino/api/swiss";
 
 // Running events lead: they are what a visitor can watch right now. Open ones
 // follow because they are joinable, finished ones close the page as a record.
@@ -32,7 +32,11 @@ function TournamentRow({ tournament }: { tournament: SwissSummary }) {
 
   return (
     <Link
-      href={`/casino/chess/swiss/${tournament.id}`}
+      href={
+        tournament.game === "draughts"
+          ? `/casino/checkers/tournaments/${tournament.id}`
+          : `/casino/chess/swiss/${tournament.id}`
+      }
       className="grid grid-cols-[2fr_1fr_1fr_1fr_90px] items-center border-t border-white/6 px-4.5 py-3 text-[13px] transition-colors hover:bg-white/4"
     >
       <div className="truncate pr-3">
@@ -86,9 +90,9 @@ function TournamentGroup({ state, items }: { state: SwissState; items: SwissSumm
   );
 }
 
-export function SwissListSection() {
+export function SwissListSection({ game }: { game?: SwissGameKind } = {}) {
   const t = useTranslations("casino.chess.swiss");
-  const { tournaments, isLoading, error, refetch } = useSwissList();
+  const { tournaments, isLoading, error, refetch } = useSwissList(game);
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -106,7 +110,7 @@ export function SwissListSection() {
         </button>
       </div>
 
-      {showCreate ? <SwissCreateForm /> : null}
+      {showCreate ? <SwissCreateForm game={game} /> : null}
 
       {error ? (
         <CasinoError error={error} subject={t("subject")} onRetry={refetch} />

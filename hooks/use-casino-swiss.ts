@@ -14,6 +14,7 @@ import {
   startNextSwissRound,
   withdrawSwiss,
   type SwissDetail,
+  type SwissGameKind,
   type SwissSummary,
 } from "@/lib/casino/api/swiss";
 import { parseTimeControl } from "@/lib/casino/api/chess-wire";
@@ -62,15 +63,21 @@ function rememberJoinedName(tournamentId: string, wallet: string | null, name: s
   }
 }
 
-export function useSwissList() {
+export function useSwissList(game?: SwissGameKind) {
   const query = useQuery({
     queryKey: SWISS_KEYS.list,
     queryFn: fetchSwissList,
     refetchInterval: LIST_POLL_MS,
   });
 
+  // The service lists every tournament regardless of game, so a game-specific
+  // surface narrows it here rather than showing the other game's boards.
+  const tournaments = ((query.data ?? []) as SwissSummary[]).filter(
+    (tournament) => !game || tournament.game === game
+  );
+
   return {
-    tournaments: (query.data ?? []) as SwissSummary[],
+    tournaments,
     isLoading: query.isLoading,
     error: query.error,
     refetch: () => void query.refetch(),
@@ -79,6 +86,8 @@ export function useSwissList() {
 
 export interface CreateSwissFormInput {
   name: string;
+  // Which board game the tournament runs; chess when omitted.
+  game?: SwissGameKind;
   nbRounds: number;
   timeControl: ChessTimeControl;
   password?: string;
@@ -96,6 +105,7 @@ export function useCreateSwiss() {
       return createSwiss({
         organizer: defaultPlayerName(address),
         name: input.name,
+        ...(input.game ? { game: input.game } : {}),
         nbRounds: input.nbRounds,
         initialSeconds,
         incrementSeconds,

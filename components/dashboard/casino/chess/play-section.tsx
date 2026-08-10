@@ -15,7 +15,7 @@ import { BoardThemePicker } from "@/components/dashboard/casino/chess/board-them
 import { useBoardTheme } from "@/lib/casino/chess/board-theme";
 import { QrCode } from "@/components/dashboard/funds/qr-code";
 import { formatChatTime, matchActorLabel, playerDisplayName } from "@/lib/casino/chess/social";
-import { LiveChatFeed } from "@/components/dashboard/casino/chess/live-chat-feed";
+import { LiveChatFeed } from "@/components/dashboard/casino/live-chat-feed";
 import { identifyOpening } from "@/lib/casino/chess/openings";
 import { formatEngineScore, pvToSan, uciToSan } from "@/lib/casino/chess/engine-analysis";
 import {

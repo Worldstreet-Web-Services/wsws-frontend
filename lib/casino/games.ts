@@ -91,9 +91,10 @@ export const CASINO_GAMES: CasinoGame[] = [
     glyph: "⛃",
     image: "https://upload.wikimedia.org/wikipedia/commons/3/30/International_draughts.jpg",
     tintRgb: "148 163 184",
-    href: null,
+    href: "/casino/checkers",
+    isNew: true,
     note: "Fast staked matches",
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     id: "ayo",

@@ -1,6 +1,12 @@
 "use client";
 
-import type { ChessChatMessage } from "@/lib/casino/api/types";
+// The minimum a line needs to be rendered here. Chess and draughts each have
+// their own chat message type; both satisfy this, so one feed serves both.
+export interface LiveChatLine {
+  id: number;
+  author: string;
+  text: string;
+}
 
 // Only the tail of the room is ever on screen; older lines are pushed out the
 // masked top rather than scrolled to.
@@ -30,7 +36,7 @@ const AUTHOR_COLORS = [
 // that a line is a stake event and should render as a highlight banner, the
 // way a gift lands in a TikTok live rather than as an ordinary comment.
 const BET_MARK = "🎰";
-function isBetLine(line: ChessChatMessage): boolean {
+function isBetLine(line: LiveChatLine): boolean {
   return line.text.startsWith(BET_MARK);
 }
 
@@ -42,15 +48,15 @@ function authorColor(author: string, viewer: string | null): string {
   return AUTHOR_COLORS[Math.abs(hash) % AUTHOR_COLORS.length];
 }
 
-export function LiveChatFeed({
+export function LiveChatFeed<T extends LiveChatLine>({
   messages,
   labelFor,
   emptyHint,
   viewer = null,
   className = "",
 }: {
-  messages: ChessChatMessage[];
-  labelFor: (line: ChessChatMessage) => string;
+  messages: T[];
+  labelFor: (line: T) => string;
   emptyHint: string;
   // The viewer's wallet, so their own lines carry the green signature.
   viewer?: string | null;

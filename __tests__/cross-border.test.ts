@@ -13,7 +13,7 @@ import {
   searchPayoutCountries,
   supportsMethod,
   totalDebitUsd,
-} from "@/lib/cross-border";
+} from "@/features/remit/lib/cross-border";
 
 describe("cross-border corridors", () => {
   it("exposes valid ISO country codes so flags resolve", () => {

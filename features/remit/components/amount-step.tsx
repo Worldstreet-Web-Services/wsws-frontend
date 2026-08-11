@@ -5,7 +5,12 @@ import { SheetNav } from "@/components/ui/sheet-nav";
 import { useFx } from "@/hooks/use-fx";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatAmount } from "@/lib/trade/math";
-import { feeUsd, recipientReceives, totalDebitUsd, type PayoutCountry } from "@/lib/cross-border";
+import {
+  feeUsd,
+  recipientReceives,
+  totalDebitUsd,
+  type PayoutCountry,
+} from "@/features/remit/lib/cross-border";
 
 interface AmountStepProps {
   country: PayoutCountry;

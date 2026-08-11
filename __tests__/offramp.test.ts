@@ -8,7 +8,7 @@ import {
   splitName,
   unwrapEnvelope,
   type OfframpQuote,
-} from "@/lib/payment/offramp";
+} from "@/features/remit/lib/offramp";
 
 describe("liveCountryCodes", () => {
   it("lowercases so the static catalogue's codes match", () => {
@@ -90,7 +90,7 @@ describe("pending remit store", async () => {
     isPendingRemitActive,
     pendingRemitSnapshot,
     savePendingRemit,
-  } = await import("@/lib/payment/pending");
+  } = await import("@/features/remit/lib/pending");
 
   it("round-trips a pending order through storage", () => {
     clearPendingRemit();

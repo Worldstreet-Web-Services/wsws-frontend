@@ -2,9 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { useRampOrder } from "@/hooks/use-offramp";
-import { clearPendingRemit } from "@/lib/payment/pending";
-import { isTerminalRampStatus, type RampPublicStatus } from "@/lib/payment/offramp";
+import { useRampOrder } from "@/features/remit/hooks/use-offramp";
+import { clearPendingRemit } from "@/features/remit/lib/pending";
+import { isTerminalRampStatus, type RampPublicStatus } from "@/features/remit/lib/offramp";
 
 function StatusCard({ status }: { status: RampPublicStatus }) {
   const t = useTranslations("remit");

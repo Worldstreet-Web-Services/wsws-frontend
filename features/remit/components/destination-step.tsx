@@ -2,16 +2,16 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { CountryPicker } from "@/components/dashboard/remit/country-picker";
-import { useCorridors, usePayoutWallets } from "@/hooks/use-offramp";
-import { liveCountryCodes } from "@/lib/payment/offramp";
+import { CountryPicker } from "@/features/remit/components/country-picker";
+import { useCorridors, usePayoutWallets } from "@/features/remit/hooks/use-offramp";
+import { liveCountryCodes } from "@/features/remit/lib/offramp";
 import { WalletIcon, BankIcon } from "@/components/ui/icons";
 import {
   defaultMethod,
   type PayoutCountry,
   type PayoutMethodId,
   type MobileNetwork,
-} from "@/lib/cross-border";
+} from "@/features/remit/lib/cross-border";
 
 interface DestinationStepProps {
   country: PayoutCountry | null;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   createColumnHelper,
@@ -15,7 +16,6 @@ import { toast } from "@/lib/toast";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/components/dashboard/kash/kash-banner";
 import { KashCard } from "@/components/dashboard/kash/kash-card";
-import { CrossBorderBanner } from "@/components/dashboard/remit/cross-border-banner";
 import { Switch } from "@/components/ui/switch";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
@@ -40,7 +40,7 @@ import type {
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
-  onOpenCrossBorder: () => void;
+  crossBorderSlot: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -122,7 +122,7 @@ const HOLDINGS_COLUMNS = [
 export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
-  onOpenCrossBorder,
+  crossBorderSlot,
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
@@ -285,9 +285,7 @@ export function PortfolioView({
         <KashCard />
       </div>
 
-      <div className="mt-3">
-        <CrossBorderBanner onClick={onOpenCrossBorder} />
-      </div>
+      <div className="mt-3">{crossBorderSlot}</div>
 
       {errored ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">

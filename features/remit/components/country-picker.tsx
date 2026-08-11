@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { SearchIcon, CheckIcon, ChevronLeftIcon } from "@/components/ui/icons";
-import { countryCurrency, searchPayoutCountries, type PayoutCountry } from "@/lib/cross-border";
+import {
+  countryCurrency,
+  searchPayoutCountries,
+  type PayoutCountry,
+} from "@/features/remit/lib/cross-border";
 
 interface CountryPickerProps {
   selected: PayoutCountry | null;

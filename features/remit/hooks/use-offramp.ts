@@ -15,8 +15,8 @@ import {
   type VerifyRecipientInput,
   type VerifyRecipientResult,
   type WalletProvider,
-} from "@/lib/payment/offramp";
-import { OFFRAMP_ORIGIN } from "@/lib/payment/offramp";
+} from "@/features/remit/lib/offramp";
+import { OFFRAMP_ORIGIN } from "@/features/remit/lib/offramp";
 
 const QUOTE_DEBOUNCE_MS = 500;
 const ORDER_POLL_MS = 5_000;

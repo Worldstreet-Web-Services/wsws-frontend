@@ -6,12 +6,16 @@ import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { FlagIcon } from "@/components/ui/flag-icon";
 import { useFx } from "@/hooks/use-fx";
-import { useCreateOfframp, useOfframpQuote, useRampOrder } from "@/hooks/use-offramp";
+import {
+  useCreateOfframp,
+  useOfframpQuote,
+  useRampOrder,
+} from "@/features/remit/hooks/use-offramp";
 import { useSendToken } from "@/hooks/use-withdraw";
 import { formatAmount } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { getWalletAddress } from "@/lib/user";
-import { maskNumber } from "@/lib/cross-border";
+import { maskNumber } from "@/features/remit/lib/cross-border";
 import {
   OFFRAMP_ORIGIN,
   isTerminalRampStatus,
@@ -20,10 +24,10 @@ import {
   receiveAmountFromUsd,
   splitName,
   type RampPublicStatus,
-} from "@/lib/payment/offramp";
-import { clearPendingRemit, savePendingRemit } from "@/lib/payment/pending";
+} from "@/features/remit/lib/offramp";
+import { clearPendingRemit, savePendingRemit } from "@/features/remit/lib/pending";
 import { toast } from "@/lib/toast";
-import type { RemitForm } from "@/components/dashboard/remit/remit-types";
+import type { RemitForm } from "@/features/remit/components/remit-types";
 
 interface ReviewStepProps {
   form: RemitForm;

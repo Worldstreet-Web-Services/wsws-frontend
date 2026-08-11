@@ -88,8 +88,13 @@ shared floor.
 
 Three consequences worth stating plainly:
 
-1. **Features never import each other's internals.** Cross-feature use goes
-   through `features/<name>/index.ts`. Enforced by `eslint-plugin-boundaries`.
+1. **Features never import each other, at all.** Not even through the index.
+   Features are siblings; the route composes them. When one feature's view needs
+   to display another's, the page passes it down as a slot: `app/dashboard`
+   renders `<PortfolioView crossBorderSlot={<CrossBorderBanner … />} />` rather
+   than letting portfolio reach for remit. This keeps the feature graph flat, so
+   no pair of slices can become mutually undeletable. Enforced by
+   `eslint-plugin-boundaries`.
 2. **`lib/` is for what two or more features need.** If only RWA uses it, it
    belongs in `features/rwa/lib/`.
 3. **One transport.** One `apiFetch`, one envelope unwrapper, one `ApiError`.
@@ -367,7 +372,14 @@ the same commit, so `git` tracks renames and review stays readable.
       section 2, `hooks/` is the shared behaviour layer beside `components/ui/`.
       Branch: `refactor/architecture`
 - [ ] **3.4 `features/funds/`** PR: _n/a_
-- [ ] **3.5 `features/remit/`** PR: _n/a_
+- [x] **3.5 `features/remit/`** the cross-border corridor: 9 components,
+      `use-offramp`, `cross-border`, and the payment-service `offramp` and `pending`
+      helpers. `lib/pouch/*` and `use-pouch-offramp` stayed shared. They read like
+      remit, but they are the PouchPay NGN bank rail, with six consumers across funds,
+      portfolio and two API routes. Two different off-ramps, one name. Moving the
+      banner into this slice exposed a portfolio-to-remit import, which the 3.2 rules
+      caught. Resolved with a slot prop rather than a relaxed rule. Branch:
+      `refactor/architecture`
 - [ ] **3.6 `features/prediction/`** PR: _n/a_
 - [ ] **3.7 `features/trade/`** PR: _n/a_
 - [ ] **3.8 `features/earn/`** PR: _n/a_

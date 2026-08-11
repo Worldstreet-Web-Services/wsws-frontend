@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { SearchIcon, CheckIcon } from "@/components/ui/icons";
-import { usePayoutBanks, useVerifyRecipient } from "@/hooks/use-offramp";
-import { normalizePhone } from "@/lib/payment/offramp";
+import { usePayoutBanks, useVerifyRecipient } from "@/features/remit/hooks/use-offramp";
+import { normalizePhone } from "@/features/remit/lib/offramp";
 import {
   isValidAccount,
   isValidMobile,
@@ -13,8 +13,8 @@ import {
   type PayoutCountry,
   type PayoutMethodId,
   type MobileNetwork,
-} from "@/lib/cross-border";
-import type { PayoutBank } from "@/lib/payment/offramp";
+} from "@/features/remit/lib/cross-border";
+import type { PayoutBank } from "@/features/remit/lib/offramp";
 
 interface RecipientStepProps {
   country: PayoutCountry;

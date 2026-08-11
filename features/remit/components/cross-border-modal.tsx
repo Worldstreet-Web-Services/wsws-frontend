@@ -1,25 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { DestinationStep } from "@/components/dashboard/remit/destination-step";
-import { StatusStep } from "@/components/dashboard/remit/status-step";
+import { DestinationStep } from "@/features/remit/components/destination-step";
+import { StatusStep } from "@/features/remit/components/status-step";
 import {
   clearPendingRemit,
   isPendingRemitActive,
   pendingRemitSnapshot,
   serverPendingRemitSnapshot,
   subscribePendingRemit,
-} from "@/lib/payment/pending";
-import { RecipientStep } from "@/components/dashboard/remit/recipient-step";
-import { AmountStep } from "@/components/dashboard/remit/amount-step";
-import { ReviewStep } from "@/components/dashboard/remit/review-step";
+} from "@/features/remit/lib/pending";
+import { RecipientStep } from "@/features/remit/components/recipient-step";
+import { AmountStep } from "@/features/remit/components/amount-step";
+import { ReviewStep } from "@/features/remit/components/review-step";
 import {
   EMPTY_REMIT_FORM,
   type RemitForm,
   type RemitStep,
-} from "@/components/dashboard/remit/remit-types";
-import type { PayoutCountry, PayoutMethodId, MobileNetwork } from "@/lib/cross-border";
-import type { PayoutBank } from "@/lib/payment/offramp";
+} from "@/features/remit/components/remit-types";
+import type {
+  PayoutCountry,
+  PayoutMethodId,
+  MobileNetwork,
+} from "@/features/remit/lib/cross-border";
+import type { PayoutBank } from "@/features/remit/lib/offramp";
 
 // The cross-border send flow. Owns the wizard step and the collected form, and
 // hands each step exactly the slice it needs. Kept as the one stateful piece so

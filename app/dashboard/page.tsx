@@ -16,7 +16,7 @@ import { DetailModal } from "@/components/dashboard/modals/detail-modal";
 import { ConfirmModal } from "@/components/dashboard/modals/confirm-modal";
 import { FundsModal } from "@/components/dashboard/modals/funds-modal";
 import { WithdrawModal } from "@/components/dashboard/modals/withdraw-modal";
-import { CrossBorderModal } from "@/components/dashboard/remit/cross-border-modal";
+import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
 import { BuySheet } from "@/components/dashboard/buy/buy-sheet";
 import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
@@ -107,7 +107,7 @@ export default function DashboardPage() {
       <Portfolio
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
-        onOpenCrossBorder={openCrossBorder}
+        crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}

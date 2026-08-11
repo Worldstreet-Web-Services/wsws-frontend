@@ -1,5 +1,9 @@
-import type { PayoutCountry, PayoutMethodId, MobileNetwork } from "@/lib/cross-border";
-import type { PayoutBank } from "@/lib/payment/offramp";
+import type {
+  PayoutCountry,
+  PayoutMethodId,
+  MobileNetwork,
+} from "@/features/remit/lib/cross-border";
+import type { PayoutBank } from "@/features/remit/lib/offramp";
 
 // The wizard steps, in order. Review quotes the live rail and sends.
 export type RemitStep = "destination" | "recipient" | "amount" | "review";

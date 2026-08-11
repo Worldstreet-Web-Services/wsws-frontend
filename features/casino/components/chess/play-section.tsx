@@ -19,7 +19,7 @@ import {
   matchActorLabel,
   playerDisplayName,
 } from "@/features/casino/lib/chess/social";
-import { LiveChatFeed } from "@/features/casino/components/chess/live-chat-feed";
+import { LiveChatFeed } from "@/features/casino/components/live-chat-feed";
 import { identifyOpening } from "@/features/casino/lib/chess/openings";
 import { formatEngineScore, pvToSan, uciToSan } from "@/features/casino/lib/chess/engine-analysis";
 import {

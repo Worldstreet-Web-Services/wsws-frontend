@@ -12,6 +12,7 @@ import {
   roundsError,
   TOURNAMENT_NAME_MAX,
   tournamentNameError,
+  type SwissGameKind,
 } from "@/features/casino/lib/api/swiss";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
@@ -33,9 +34,16 @@ const ROUND_PRESETS = [3, 5, 7] as const;
 interface SwissCreateFormProps {
   embedded?: boolean;
   onCreated?: (tournamentId: string) => void;
+  // Which board game the tournament runs. Chess unless a draughts surface asks
+  // for otherwise, which is what every tournament was before draughts existed.
+  game?: SwissGameKind;
 }
 
-export function SwissCreateForm({ embedded = false, onCreated }: SwissCreateFormProps) {
+export function SwissCreateForm({
+  embedded = false,
+  onCreated,
+  game = "chess",
+}: SwissCreateFormProps) {
   const t = useTranslations("casino.chess.swiss");
   const router = useRouter();
   const wallet = useCasinoWallet();
@@ -63,6 +71,7 @@ export function SwissCreateForm({ embedded = false, onCreated }: SwissCreateForm
     try {
       const tournament = await create.mutateAsync({
         name,
+        game,
         nbRounds: rounds,
         timeControl,
         password: password || undefined,
@@ -70,7 +79,11 @@ export function SwissCreateForm({ embedded = false, onCreated }: SwissCreateForm
       });
       toast.success(t("toastCreated"), { id });
       onCreated?.(tournament.id);
-      router.push(`/casino/chess/swiss/${tournament.id}?created=1`);
+      router.push(
+        game === "draughts"
+          ? `/casino/checkers/tournaments/${tournament.id}?created=1`
+          : `/casino/chess/swiss/${tournament.id}?created=1`
+      );
     } catch (e) {
       toast.error(friendlyError(e, t("toastCreateFailed")), { id });
     }

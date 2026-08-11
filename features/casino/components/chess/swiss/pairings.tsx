@@ -37,6 +37,23 @@ function PairingAction({ pairing, yourName }: { pairing: SwissPairing; yourName:
   const t = useTranslations("casino.chess.swiss");
   if (!pairing.matchId || pairing.status !== "ongoing") return null;
 
+  // A draughts tournament runs its boards on the checkers surface, where one
+  // route serves both playing and watching.
+  if (pairing.game === "draughts") {
+    return (
+      <Link
+        href={`/casino/checkers?match=${pairing.matchId}`}
+        className={
+          isSeated(pairing, yourName)
+            ? "bg-up text-up-ink rounded-full px-4 py-1.5 text-center font-sans text-[12px] font-medium"
+            : "rounded-full border border-white/15 px-4 py-1.5 text-center font-sans text-[12px] font-semibold text-white/70 transition-colors hover:border-white/35 hover:text-white"
+        }
+      >
+        {isSeated(pairing, yourName) ? t("play") : t("watch")}
+      </Link>
+    );
+  }
+
   return isSeated(pairing, yourName) ? (
     <Link
       href={`/casino/chess/play?match=${pairing.matchId}&player=${encodeURIComponent(yourName ?? "")}`}

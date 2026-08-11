@@ -7,6 +7,7 @@
 // are filled with honest neutral values, never invented data.
 
 import { truncateAddress } from "@/lib/format";
+import { formatTimeControl, parseTimeControl } from "@/features/casino/lib/time-control";
 import type {
   ChessChatMessage,
   ChessChatRoom,
@@ -161,51 +162,10 @@ export function toColor(side: ChessSideWire): ChessColor {
   return side === "white" ? "w" : "b";
 }
 
-// A per-move budget of `seconds` shown as a single chip: "30s", or "2m" for a
-// whole number of minutes. The seconds form is kept below a minute so a 45s
-// budget doesn't render as "0.75m".
-function formatPerMove(seconds: number): string {
-  return seconds >= 60 && seconds % 60 === 0 ? `${seconds / 60}m` : `${seconds}s`;
-}
-
-// The seconds behind a per-move chip: "30s" -> 30, "2m" -> 120, bare "90" -> 90.
-function parsePerMove(label: string): number {
-  const trimmed = label.trim();
-  const unit = trimmed.slice(-1);
-  const value = Number(unit === "s" || unit === "m" ? trimmed.slice(0, -1) : trimmed);
-  if (!Number.isFinite(value)) throw new Error(`Unrecognised time control: ${label}`);
-  return unit === "m" ? value * 60 : value;
-}
-
-// The chosen label a match's clocks read back as. Our own games use the per-move
-// model, where the service holds an equal base and Fischer increment, so an
-// `initialSeconds === incrementSeconds` pair is shown as one per-move budget.
-// A match made elsewhere with a distinct base and increment (standard chess)
-// still reads correctly as "5+3" rather than being forced into the per-move form.
-export function formatTimeControl(initialSeconds: number, incrementSeconds: number): string {
-  if (initialSeconds === incrementSeconds) return formatPerMove(initialSeconds);
-  const minutes = initialSeconds / 60;
-  const main = Number.isInteger(minutes) ? `${minutes}` : `${initialSeconds}s`;
-  return `${main}+${incrementSeconds}`;
-}
-
-// Turn a chip back into the seconds the create endpoint wants. A per-move chip
-// ("30s", "2m") maps to an equal base and increment: every move restores that
-// budget, so the player always has about that long to move. A legacy "5+3" chip
-// still parses into a distinct base and increment.
-export function parseTimeControl(label: string): ChessTimeControlWire {
-  if (label.includes("+")) {
-    const [main = "", increment = "0"] = label.split("+");
-    const initialSeconds = main.endsWith("s") ? Number(main.slice(0, -1)) : Number(main) * 60;
-    const incrementSeconds = Number(increment);
-    if (!Number.isFinite(initialSeconds) || !Number.isFinite(incrementSeconds)) {
-      throw new Error(`Unrecognised time control: ${label}`);
-    }
-    return { initialSeconds, incrementSeconds };
-  }
-  const perMove = parsePerMove(label);
-  return { initialSeconds: perMove, incrementSeconds: perMove };
-}
+// Clock formatting is shared with draughts, which runs on the same service and
+// the same base-plus-increment encoding. Re-exported so chess call sites keep
+// importing it from here.
+export { formatTimeControl, parseTimeControl };
 
 // The service reports a winner and a free-text reason separately, while our
 // result type pairs them. The reason is matched loosely because the exact

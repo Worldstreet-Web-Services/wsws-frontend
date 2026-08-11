@@ -22,10 +22,20 @@ export interface SwissTimeControlWire {
   incrementSeconds: number;
 }
 
+// Swiss is shared by the two board games on this service. A tournament creates
+// boards of its own kind, so the kind decides which surface a pairing opens.
+export type SwissGameKind = "chess" | "draughts";
+
+// Older responses predate the field, and everything before draughts was chess.
+export function toSwissGameKind(value: string | undefined): SwissGameKind {
+  return value === "draughts" ? "draughts" : "chess";
+}
+
 export interface SwissSummaryWire {
   id: string;
   name: string;
   organizer: string;
+  game?: string;
   status: SwissStatusWire;
   round: number;
   nbRounds: number;
@@ -55,6 +65,7 @@ export interface SwissStandingWire {
 export interface SwissPairingWire {
   round: number;
   board: number;
+  game?: string;
   white: string;
   black: string | null;
   matchId: string | null;
@@ -82,6 +93,7 @@ export interface SwissSummary {
   id: string;
   name: string;
   organizer: string;
+  game: SwissGameKind;
   state: SwissState;
   round: number;
   nbRounds: number;
@@ -109,6 +121,7 @@ export interface SwissStanding {
 export interface SwissPairing {
   round: number;
   board: number;
+  game: SwissGameKind;
   white: string;
   black: string | null;
   matchId: string | null;
@@ -137,6 +150,7 @@ export function toSwissSummary(wire: SwissSummaryWire): SwissSummary {
     id: wire.id,
     name: wire.name,
     organizer: wire.organizer,
+    game: toSwissGameKind(wire.game),
     state: STATE_BY_STATUS[wire.status],
     round: wire.round,
     nbRounds: wire.nbRounds,
@@ -172,6 +186,9 @@ export function toSwissDetail(wire: SwissDetailWire): SwissDetail {
       pairings: r.pairings.map((p) => ({
         round: p.round,
         board: p.board,
+        // A pairing falls back to the tournament's own kind, so a board always
+        // opens on the right surface even if the field is missing.
+        game: toSwissGameKind(p.game ?? wire.game),
         white: p.white,
         black: p.black,
         matchId: p.matchId,
@@ -295,6 +312,9 @@ export async function fetchSwiss(id: string): Promise<SwissDetail> {
 export interface CreateSwissInput {
   organizer: string;
   name: string;
+  // Which board game the tournament runs. Defaults to chess when omitted, which
+  // is what every tournament created before draughts existed was.
+  game?: SwissGameKind;
   nbRounds: number;
   initialSeconds: number;
   incrementSeconds: number;
@@ -312,6 +332,7 @@ export async function createSwiss(input: CreateSwissInput): Promise<SwissSummary
   const wire = await chessPost<SwissSummaryWire>("/swiss", {
     organizer: input.organizer,
     name: input.name.trim(),
+    ...(input.game ? { game: input.game } : {}),
     nbRounds: input.nbRounds,
     initial_seconds: input.initialSeconds,
     increment_seconds: input.incrementSeconds,

@@ -9,10 +9,11 @@ These are the rules for building the Worldstreet SuperApp frontend. They apply t
 
 ## Architecture
 
-`docs/ARCHITECTURE.md` holds the target structure, the layer diagram, and the live migration status. Read it before adding a directory, a transport, or a shared component. The rules below are the parts that apply to every change.
+`docs/ARCHITECTURE.md` holds the layer diagram, the structure, and the enforcement. Read it before adding a directory, a transport, or a shared component. The rules below are the parts that apply to every change.
 
-- Four layers, and every import points downward: `app/` (routes and API route handlers) to `features/` (one folder per product area) to `components/ui/` (design system primitives) to `lib/` (pure cross-cutting). Nothing imports upward.
-- Features never import each other's internals. Cross-feature use goes through `features/<name>/index.ts`. If two slices keep reaching for each other, they are one feature; merge them rather than widening the surface.
+- Four layers, and every import points downward: `app/` (routes and API route handlers) and `components/layout/` (the shell) to `features/` (one folder per product area) to `components/ui/` and `hooks/` (design system primitives and cross-cutting behaviour) to `lib/` (pure cross-cutting, framework-free). Nothing imports upward.
+- Features never import each other, not even through the index. The route composes them, passing a slot, a callback, or a render prop. `pnpm lint` fails on a cross-feature import. If two slices keep reaching for each other, they are one feature; merge them rather than widening the surface.
+- Anything a route handler needs lives in `lib/server/`. Importing a slice barrel into a route handler pulls client components into the server bundle, and no lint rule catches it.
 - Shared building blocks belong below the feature line. Judge membership of `components/ui/` by whether the component knows anything about a feature, not by how many places import it. A `Switch` is a primitive even if used once. A ticker that understands casino wins is a feature component.
 - `lib/` is for what two or more features need. If only one feature uses it, it lives in that feature.
 - One transport. One `apiFetch`, one envelope unwrapper, one `ApiError`. Do not add a second client with its own base path and error text.

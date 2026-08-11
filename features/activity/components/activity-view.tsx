@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ClockIcon } from "@/components/ui/icons";
 import { ActivityRow, dayHeading } from "@/features/activity/components/activity-row";
-import { useActivity, type ActivityEntry } from "@/hooks/use-activity";
+import { useActivity, type ActivityEntry } from "@/features/activity/hooks/use-activity";
 import { usePortfolio } from "@/hooks/use-portfolio";
 
 // Wallet history across every chain we track, newest first and grouped by day.

@@ -1,7 +1,6 @@
 "use client";
 
 // REST client for the Last Man Standing vault game (world-street-vault service).
-// See world-street-vault-frontend.md for the full contract.
 
 import { createServiceClient } from "@/lib/api/service";
 

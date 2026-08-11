@@ -40,9 +40,14 @@ A feature slice is not a silo. It is the layer that consumes the shared floor.
    siblings; the route composes them. See [section 4](#4-composing-across-features).
 2. **`lib/` is for what two or more features need.** If only RWA uses it, it
    belongs in `features/rwa/lib/`.
-3. **A hook three or more features need belongs in `hooks/`.** `usePortfolio` is
-   the clearest case, with 34 importers across every feature area. It is the
-   app's balance source, not a feature's.
+3. **A hook belongs in `hooks/` when it is generic behaviour, not when it has
+   many callers.** Same test as `components/ui/` below: does it know anything
+   about a feature? `usePortfolio` is shared because it is the app's balance
+   source, and 34 importers confirm it. But `useDebouncedValue`, `useQrScanner`
+   and `useTokenLogos` also stay, each with a single caller today, because
+   nothing about them is tied to the feature that happens to use them. The
+   inverse is `usePerpOrders`, which is the perps product surface and lives in
+   `features/trade/hooks/` even though the count alone would not say so.
 4. **Anything a route handler needs belongs in `lib/server/`.** Importing a
    slice barrel into a route handler drags client components into the server
    bundle. The lint rules allow it, so this one is on you.
@@ -75,7 +80,7 @@ components/
   layout/               dashboard-shell, sidebar, topbar, nav-items, modals
   auth/  landing/  providers/  interests/  voice/
 
-hooks/                  cross-cutting hooks, e.g. usePortfolio
+hooks/                  generic cross-cutting hooks, e.g. usePortfolio
 lib/                    cross-cutting only
   api/                  client.ts, envelope.ts, service.ts, schemas/
   server/               server only. A client import must fail.

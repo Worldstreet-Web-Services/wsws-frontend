@@ -3,8 +3,8 @@
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useEvmSendBatch } from "@/hooks/use-evm-send";
-import { usePerpOrders } from "@/hooks/use-perp-orders";
-import { usePerpPositions } from "@/hooks/use-perp-positions";
+import { usePerpOrders } from "@/features/trade/hooks/use-perp-orders";
+import { usePerpPositions } from "@/features/trade/hooks/use-perp-positions";
 import { readUsdcAllowance } from "@/lib/perp/allowance";
 import {
   buildApproveUsdc,

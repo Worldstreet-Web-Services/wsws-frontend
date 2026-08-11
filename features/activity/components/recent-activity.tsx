@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ClockIcon } from "@/components/ui/icons";
 import { ActivityRow } from "@/features/activity/components/activity-row";
-import { useActivity } from "@/hooks/use-activity";
+import { useActivity } from "@/features/activity/hooks/use-activity";
 import { usePortfolio } from "@/hooks/use-portfolio";
 
 const PREVIEW_COUNT = 5;

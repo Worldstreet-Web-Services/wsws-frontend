@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { NetworkIcon } from "@/components/ui/network-icon";
 import { BellIcon } from "@/components/ui/icons";
-import { useActivity, type ActivityEntry } from "@/hooks/use-activity";
+import { useActivity, type ActivityEntry } from "@/features/activity/hooks/use-activity";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatQty } from "@/lib/format";
 import {

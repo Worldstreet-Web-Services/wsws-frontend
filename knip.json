@@ -1,5 +1,4 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": ["public/**", "vitest.server-only-stub.ts"],
-  "ignoreDependencies": ["stockfish"]
+  "ignore": ["public/**", "vitest.server-only-stub.ts"]
 }

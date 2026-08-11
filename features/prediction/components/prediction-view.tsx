@@ -22,7 +22,7 @@ import {
   CashoutError,
   usePolymarketCashout,
 } from "@/features/prediction/hooks/use-polymarket-cashout";
-import { useClaimedOnce } from "@/hooks/use-claimed-once";
+import { useClaimedOnce } from "@/features/prediction/hooks/use-claimed-once";
 import { usePolymarketRedeem } from "@/features/prediction/hooks/use-polymarket-redeem";
 import { useSettleToBase } from "@/features/prediction/hooks/use-settle";
 import { PREDICTIONS } from "@/lib/data/dashboard";

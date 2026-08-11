@@ -11,11 +11,11 @@ import { ConfirmDialog, type ConfirmRow } from "@/components/ui/confirm-dialog";
 import { PerpOrders } from "@/features/trade/components/perp-orders";
 import { PerpPositions } from "@/features/trade/components/perp-positions";
 import { PerpPairIcon } from "@/features/trade/components/perp-pair-icon";
-import { usePerpMarket } from "@/hooks/use-perp-markets";
+import { usePerpMarket } from "@/features/trade/hooks/use-perp-markets";
 import { usePerpQuote } from "@/features/trade/hooks/use-perp-quote";
-import { usePerpActions } from "@/hooks/use-perp-actions";
-import { usePerpOrders } from "@/hooks/use-perp-orders";
-import { usePerpPositions } from "@/hooks/use-perp-positions";
+import { usePerpActions } from "@/features/trade/hooks/use-perp-actions";
+import { usePerpOrders } from "@/features/trade/hooks/use-perp-orders";
+import { usePerpPositions } from "@/features/trade/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import type { OpenTradeRequest } from "@/lib/perp/types";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
@@ -28,7 +28,7 @@ import {
   validateOrder,
 } from "@/lib/perp/logic";
 import { tradingViewFallbackSymbol, tradingViewSymbol } from "@/lib/perp/tradingview";
-import { usePerpFormAutostage } from "@/hooks/use-perp-form-autostage";
+import { usePerpFormAutostage } from "@/features/trade/hooks/use-perp-form-autostage";
 import type { PerpPrefill } from "@/lib/voice/intent";
 import type { OpenPosition, PerpCategory, PerpOrderType, PerpPair } from "@/lib/perp/types";
 

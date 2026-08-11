@@ -8,14 +8,14 @@ import { FlashPrice } from "@/features/trade/components/flash-price";
 import { ConfirmDialog, type ConfirmRow } from "@/components/ui/confirm-dialog";
 import { PerpPositions } from "@/features/trade/components/perp-positions";
 import { usePerpQuote } from "@/features/trade/hooks/use-perp-quote";
-import { usePerpActions } from "@/hooks/use-perp-actions";
-import { usePerpPositions } from "@/hooks/use-perp-positions";
+import { usePerpActions } from "@/features/trade/hooks/use-perp-actions";
+import { usePerpPositions } from "@/features/trade/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
 import { orderFieldValidity, pairSymbol, validateOrder } from "@/lib/perp/logic";
 import { tradingViewFallbackSymbol, tradingViewSymbol } from "@/lib/perp/tradingview";
 import { findAsset } from "@/lib/trade/assets";
-import { usePerpFormAutostage } from "@/hooks/use-perp-form-autostage";
+import { usePerpFormAutostage } from "@/features/trade/hooks/use-perp-form-autostage";
 import type { OpenPosition, PerpPair } from "@/lib/perp/types";
 import type { PerpPrefill } from "@/lib/voice/intent";
 

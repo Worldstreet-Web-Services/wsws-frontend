@@ -2,10 +2,8 @@
 
 import { useEffect } from "react";
 
-// The confirm step in front of every perp trade that moves money (open and
-// close). Centred dialog over a dimmed backdrop: a summary of exactly what is
-// about to happen, a risk line, and an explicit Cancel / Continue choice —
-// signing is headless on Base, so this is the user's checkpoint.
+// Signing is headless on Base, so this dialog is the user's only checkpoint
+// before money moves.
 
 export interface ConfirmRow {
   label: string;
@@ -13,7 +11,7 @@ export interface ConfirmRow {
   tone?: "up" | "down";
 }
 
-interface PerpConfirmModalProps {
+interface ConfirmDialogProps {
   title: string;
   rows: ConfirmRow[];
   warning: string;
@@ -23,7 +21,7 @@ interface PerpConfirmModalProps {
   onContinue: () => void;
 }
 
-export function PerpConfirmModal({
+export function ConfirmDialog({
   title,
   rows,
   warning,
@@ -31,7 +29,7 @@ export function PerpConfirmModal({
   continueLabel,
   onCancel,
   onContinue,
-}: PerpConfirmModalProps) {
+}: ConfirmDialogProps) {
   // Escape cancels — the safe default for a money confirmation.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

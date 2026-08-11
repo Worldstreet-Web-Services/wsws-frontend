@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useBuy } from "@/hooks/use-buy";
-import { useSell } from "@/hooks/use-sell";
+import { useBuy } from "@/features/trade/hooks/use-buy";
+import { useSell } from "@/features/trade/hooks/use-sell";
 import { useDepositStatus } from "@/hooks/use-deposit";
 import { useLifiSettlement } from "@/hooks/use-lifi-settlement";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -27,7 +27,7 @@ import {
   SpotConfirmSheet,
   type SpotConfirmRow,
   type SpotOrderPhase,
-} from "@/components/dashboard/trade/spot-confirm-sheet";
+} from "@/features/trade/components/spot-confirm-sheet";
 
 // The spot order ticket: buy with USDC or sell a held balance, market orders
 // only (there is no order-monitoring backend for limit or TP/SL yet). The amount

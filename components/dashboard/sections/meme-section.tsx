@@ -2,9 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { MemeModeSwitch, useMemeMode } from "@/components/dashboard/meme/meme-mode";
-import { MemeSimpleView } from "@/components/dashboard/meme/meme-simple-view";
-import { MemeProView } from "@/components/dashboard/meme/meme-pro-view";
+import { MemeModeSwitch, useMemeMode } from "@/features/trade/components/meme-mode";
+import { MemeSimpleView } from "@/features/trade/components/meme-simple-view";
+import { MemeProView } from "@/features/trade/components/meme-pro-view";
 
 // Memecoin trading on Base: trending cards for the simple interface, the
 // search/table/chart desk for pro. Both trade through the same sheet.

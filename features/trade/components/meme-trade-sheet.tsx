@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/components/dashboard/meme/meme-bits";
-import { useMemeToken } from "@/hooks/use-meme-tokens";
-import { useMemePreview, useMemeTrade } from "@/hooks/use-meme-trade";
+import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/features/trade/components/meme-bits";
+import { useMemeToken } from "@/features/trade/hooks/use-meme-tokens";
+import { useMemePreview, useMemeTrade } from "@/features/trade/hooks/use-meme-trade";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { TradeApiError, isValidTradeAmount, type MemeToken } from "@/lib/meme/api";
 import { toast } from "@/lib/toast";

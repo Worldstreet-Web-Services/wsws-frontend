@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useBuyDestinations } from "@/hooks/use-buy-catalog";
-import { useMarketTokens } from "@/hooks/use-market-tokens";
+import { useBuyDestinations } from "@/features/trade/hooks/use-buy-catalog";
+import { useMarketTokens } from "@/features/trade/hooks/use-market-tokens";
 import { usePrices } from "@/hooks/use-prices";
 import { buyableLogos, buyableSymbols } from "@/lib/buy";
 import { isSpotStable } from "@/lib/spot-chart";

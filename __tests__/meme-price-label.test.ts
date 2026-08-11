@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceLabel } from "@/components/dashboard/meme/meme-bits";
+import { priceLabel } from "@/features/trade/components/meme-bits";
 
 describe("priceLabel", () => {
   it("keeps ordinary prices plain", () => {

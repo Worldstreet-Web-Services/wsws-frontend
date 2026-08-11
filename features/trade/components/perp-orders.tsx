@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { PerpPairIcon } from "@/components/dashboard/trade/perp-pair-icon";
+import { PerpPairIcon } from "@/features/trade/components/perp-pair-icon";
 import { formatUsd } from "@/lib/trade/math";
 import { isUnsetLevel, pairSymbol } from "@/lib/perp/logic";
 import type { PerpOrder, PerpPair } from "@/lib/perp/types";

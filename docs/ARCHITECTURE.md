@@ -397,7 +397,16 @@ the same commit, so `git` tracks renames and review stays readable.
       `lib/server/polymarket`) and `lib/polymarket/config` and `restricted`, both read
       by API routes, which must not pull a client barrel into a route handler.
       `lib/prediction.ts` became `lib/positions.ts`. Branch: `refactor/architecture`
-- [ ] **3.7 `features/trade/`** PR: _n/a_
+- [x] **3.7 `features/trade/`** spot, perps, buy, sell and meme: 20 components and
+      10 hooks. All of `lib/` stayed. `lib/sell` and `lib/meme/api` are read by
+      prediction and portfolio, and `lib/buy` is anchored by `lib/buy-quote`, which
+      `lib/sell` reads in turn. `use-trade-prefill` and `use-evm-swap-execute` stayed
+      for the same reason, since rwa and prediction call them. Two couplings needed
+      real fixes rather than exemptions: `PerpConfirmModal` had no perp knowledge at
+      all, only title, rows and callbacks, so it became `components/ui/confirm-dialog`
+      where prediction can use it honestly; and the meme sell sheet moved up to
+      `app/dashboard`, following the `onOpen*` convention portfolio already used for
+      buy, sell, detail and rwa. Branch: `refactor/architecture`
 - [ ] **3.8 `features/earn/`** PR: _n/a_
 - [ ] **3.9 `features/casino/`** last. 39 components, and the two files over
       1,000 lines want splitting on the way in. PR: _n/a_

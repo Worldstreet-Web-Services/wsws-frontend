@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { useMoney } from "@/components/ui/currency-select";
-import { PerpConfirmModal, type ConfirmRow } from "@/components/dashboard/trade/perp-confirm-modal";
+import { ConfirmDialog, type ConfirmRow } from "@/components/ui/confirm-dialog";
 import {
   betSlip,
   isCashoutable,
@@ -134,7 +134,7 @@ export function BetSlipSheet({ position, onClaim, claiming, onSell, selling }: B
       )}
 
       {confirming ? (
-        <PerpConfirmModal
+        <ConfirmDialog
           title={t("confirmSellTitle")}
           rows={confirmRows}
           warning={t("confirmSellWarning")}

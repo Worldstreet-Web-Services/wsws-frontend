@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { SearchIcon } from "@/components/ui/icons";
-import { useSpotMarkets, type SpotMarket } from "@/hooks/use-spot-markets";
+import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatUsd } from "@/lib/trade/math";
 import type { BuyPayload, DetailPayload } from "@/components/dashboard/modal-types";

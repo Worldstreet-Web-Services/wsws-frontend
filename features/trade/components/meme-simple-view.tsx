@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/components/dashboard/meme/meme-bits";
-import { MemeTradeSheet } from "@/components/dashboard/meme/meme-trade-sheet";
-import { useTrendingMemes } from "@/hooks/use-meme-tokens";
+import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/features/trade/components/meme-bits";
+import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
+import { useTrendingMemes } from "@/features/trade/hooks/use-meme-tokens";
 import type { MemeToken } from "@/lib/meme/api";
 
 // The guided interface: trending memecoins as tap-to-trade cards. No table, no

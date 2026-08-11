@@ -17,7 +17,7 @@ import {
   MiniTimerLauncher,
   formatCountdown,
 } from "@/components/dashboard/casino/last-standing/mini-timer";
-import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
+import { SellSheet } from "@/features/trade/components/sell-sheet";
 import {
   RoundOverlay,
   type RoundPhase,

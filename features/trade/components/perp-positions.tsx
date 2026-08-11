@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { PerpPairIcon } from "@/components/dashboard/trade/perp-pair-icon";
+import { PerpPairIcon } from "@/features/trade/components/perp-pair-icon";
 import { formatUsd } from "@/lib/trade/math";
 import {
   USDC_DECIMALS,

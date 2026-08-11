@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { SpotModeSwitch, useSpotMode } from "@/components/dashboard/trade/spot-mode";
+import { SpotModeSwitch, useSpotMode } from "@/features/trade/components/spot-mode";
 import { MarketsView } from "@/components/dashboard/views/markets-view";
 import { SpotSimpleView } from "@/components/dashboard/views/spot-simple-view";
 import type { BuyPayload, DetailPayload } from "@/components/dashboard/modal-types";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { subscriptZeros } from "@/lib/format";
 import { formatMoney } from "@/lib/currencies";
-import { priceLabel } from "@/components/dashboard/meme/meme-bits";
+import { priceLabel } from "@/features/trade/components/meme-bits";
 
 const USD = { code: "USD", name: "US Dollar", symbol: "$", region: "Global" } as const;
 const usd = (n: number) => formatMoney(n, USD, 1);

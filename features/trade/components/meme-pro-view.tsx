@@ -4,9 +4,13 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SearchIcon } from "@/components/ui/icons";
 import { AssetChart } from "@/components/ui/asset-chart";
-import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/components/dashboard/meme/meme-bits";
-import { MemeTradeSheet } from "@/components/dashboard/meme/meme-trade-sheet";
-import { useMemeCatalog, useMemeSearch, useMemeToken } from "@/hooks/use-meme-tokens";
+import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/features/trade/components/meme-bits";
+import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
+import {
+  useMemeCatalog,
+  useMemeSearch,
+  useMemeToken,
+} from "@/features/trade/hooks/use-meme-tokens";
 import { useCoingeckoId } from "@/hooks/use-coingecko-id";
 import { compactUsd } from "@/lib/meme/api";
 

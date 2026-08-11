@@ -8,7 +8,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useDepositStatus } from "@/hooks/use-deposit";
 import { useLifiSettlement } from "@/hooks/use-lifi-settlement";
-import { useSell } from "@/hooks/use-sell";
+import { useSell } from "@/features/trade/hooks/use-sell";
 import { depositProgress, type DepositStage } from "@/lib/deposit";
 import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { maxSellable } from "@/lib/trade/gas-buffer";

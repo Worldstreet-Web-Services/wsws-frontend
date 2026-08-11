@@ -6,13 +6,13 @@ import { Pager } from "@/components/ui/pager";
 import { usePaged } from "@/hooks/use-paged";
 import { SearchIcon } from "@/components/ui/icons";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
-import { FlashPrice } from "@/components/dashboard/trade/flash-price";
-import { PerpConfirmModal, type ConfirmRow } from "@/components/dashboard/trade/perp-confirm-modal";
-import { PerpOrders } from "@/components/dashboard/trade/perp-orders";
-import { PerpPositions } from "@/components/dashboard/trade/perp-positions";
-import { PerpPairIcon } from "@/components/dashboard/trade/perp-pair-icon";
+import { FlashPrice } from "@/features/trade/components/flash-price";
+import { ConfirmDialog, type ConfirmRow } from "@/components/ui/confirm-dialog";
+import { PerpOrders } from "@/features/trade/components/perp-orders";
+import { PerpPositions } from "@/features/trade/components/perp-positions";
+import { PerpPairIcon } from "@/features/trade/components/perp-pair-icon";
 import { usePerpMarket } from "@/hooks/use-perp-markets";
-import { usePerpQuote } from "@/hooks/use-perp-quote";
+import { usePerpQuote } from "@/features/trade/hooks/use-perp-quote";
 import { usePerpActions } from "@/hooks/use-perp-actions";
 import { usePerpOrders } from "@/hooks/use-perp-orders";
 import { usePerpPositions } from "@/hooks/use-perp-positions";
@@ -648,7 +648,7 @@ export function ProPerps({ pairs, priceOf, live, voicePrefill }: ProPerpsProps) 
       />
 
       {confirm ? (
-        <PerpConfirmModal
+        <ConfirmDialog
           title={confirm.kind === "open" ? t("confirmOpenTitle") : t("confirmCloseTitle")}
           rows={confirmRows}
           warning={confirm.kind === "open" ? t("confirmRiskOpen") : t("confirmRiskClose")}

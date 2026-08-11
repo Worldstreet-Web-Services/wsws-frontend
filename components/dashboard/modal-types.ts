@@ -1,3 +1,4 @@
+import type { MemeToken } from "@/lib/meme/api";
 import type { DepositPrefill } from "@/lib/voice/intent";
 
 export interface StatLine {
@@ -83,6 +84,7 @@ export type DashboardModal =
   | { type: "buy"; buy: BuyPayload }
   | { type: "sell"; sell: SellPayload }
   | { type: "rwaTrade"; rwaTrade: RwaTradePayload }
+  | { type: "memeSell"; memeSell: MemeToken }
   | { type: "funds"; deposit?: DepositPrefill }
   | { type: "withdraw" }
   | { type: "crossBorder" }

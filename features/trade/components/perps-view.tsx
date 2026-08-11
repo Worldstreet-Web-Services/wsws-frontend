@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { SimplePerps } from "@/components/dashboard/trade/simple-perps";
-import { ProPerps } from "@/components/dashboard/trade/pro-perps";
-import { usePerpMode } from "@/components/dashboard/trade/perp-mode";
+import { SimplePerps } from "@/features/trade/components/simple-perps";
+import { ProPerps } from "@/features/trade/components/pro-perps";
+import { usePerpMode } from "@/features/trade/components/perp-mode";
 import { usePerpPrefill } from "@/hooks/use-perp-prefill";
 import { usePerpPairs, usePerpPrices } from "@/hooks/use-perp-markets";
 import { usePerpPriceStream } from "@/hooks/use-perp-price-stream";

@@ -2,8 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { PerpModeSwitch } from "@/components/dashboard/trade/perp-mode";
-import { PerpsView } from "@/components/dashboard/trade/perps-view";
+import { PerpModeSwitch } from "@/features/trade/components/perp-mode";
+import { PerpsView } from "@/features/trade/components/perps-view";
 
 // Perpetuals as its own sidebar section: the header carries the simple/pro
 // switch, the body is the perps desk. Spot lives in its own section now.

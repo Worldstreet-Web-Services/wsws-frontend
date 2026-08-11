@@ -24,7 +24,6 @@ import { useMoney } from "@/components/ui/currency-select";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
-import { MemeTradeSheet } from "@/components/dashboard/meme/meme-trade-sheet";
 import { selectHoldings } from "@/features/portfolio/lib/holdings";
 import { canSellAsset } from "@/lib/sell";
 import type { MemeToken } from "@/lib/meme/api";
@@ -45,6 +44,7 @@ interface PortfolioViewProps {
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
   onOpenRwaTrade: (rwaTrade: RwaTradePayload) => void;
+  onOpenMemeSell: (token: MemeToken) => void;
 }
 
 const NETWORK_LABELS: Record<string, string> = {
@@ -127,6 +127,7 @@ export function PortfolioView({
   onOpenBuy,
   onOpenSell,
   onOpenRwaTrade,
+  onOpenMemeSell,
 }: PortfolioViewProps) {
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
@@ -141,7 +142,6 @@ export function PortfolioView({
   const [search, setSearch] = useState("");
   const [hideZero, setHideZero] = useState(true);
   // A meme holding being sold through the meme trade sheet.
-  const [memeSell, setMemeSell] = useState<TokenBalance | null>(null);
   const [sorting, setSorting] = useState<SortingState>([{ id: "value", desc: true }]);
 
   // The table shows bought assets only, so drop the USDC-on-Base deposit float
@@ -228,7 +228,7 @@ export function PortfolioView({
       : isMeme
         ? {
             cta2: t("sell", { name: token.name }),
-            onCta2: () => setMemeSell(token),
+            onCta2: () => onOpenMemeSell(toMemeToken(token)),
           }
         : sellable
           ? {
@@ -445,14 +445,6 @@ export function PortfolioView({
           )}
         </div>
       )}
-
-      {memeSell ? (
-        <MemeTradeSheet
-          token={toMemeToken(memeSell)}
-          defaultSide="SELL"
-          onClose={() => setMemeSell(null)}
-        />
-      ) : null}
     </div>
   );
 }

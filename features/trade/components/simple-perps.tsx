@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
-import { FlashPrice } from "@/components/dashboard/trade/flash-price";
-import { PerpConfirmModal, type ConfirmRow } from "@/components/dashboard/trade/perp-confirm-modal";
-import { PerpPositions } from "@/components/dashboard/trade/perp-positions";
-import { usePerpQuote } from "@/hooks/use-perp-quote";
+import { FlashPrice } from "@/features/trade/components/flash-price";
+import { ConfirmDialog, type ConfirmRow } from "@/components/ui/confirm-dialog";
+import { PerpPositions } from "@/features/trade/components/perp-positions";
+import { usePerpQuote } from "@/features/trade/hooks/use-perp-quote";
 import { usePerpActions } from "@/hooks/use-perp-actions";
 import { usePerpPositions } from "@/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -395,7 +395,7 @@ export function SimplePerps({ pairs, priceOf, live, voicePrefill }: SimplePerpsP
       </div>
 
       {confirm ? (
-        <PerpConfirmModal
+        <ConfirmDialog
           title={confirm.kind === "open" ? t("confirmOpenTitle") : t("confirmCloseTitle")}
           rows={confirmRows}
           warning={confirm.kind === "open" ? t("confirmRiskOpen") : t("confirmRiskClose")}

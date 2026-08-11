@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { usePerpMode } from "@/components/dashboard/trade/perp-mode";
+import { usePerpMode } from "@/features/trade/components/perp-mode";
 
 const KEY = "wsws.perp-mode.v1";
 

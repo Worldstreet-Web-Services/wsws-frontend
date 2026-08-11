@@ -16,8 +16,7 @@ import { DetailModal } from "@/components/dashboard/modals/detail-modal";
 import { ConfirmModal } from "@/components/dashboard/modals/confirm-modal";
 import { FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
-import { BuySheet } from "@/components/dashboard/buy/buy-sheet";
-import { SellSheet } from "@/components/dashboard/sell/sell-sheet";
+import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
@@ -25,6 +24,7 @@ import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import type { DepositPrefill } from "@/lib/voice/intent";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
+import type { MemeToken } from "@/lib/meme/api";
 import type {
   BuyPayload,
   ConfirmPayload,
@@ -93,6 +93,10 @@ export default function DashboardPage() {
   );
   const openBuy = useCallback((buy: BuyPayload) => setModal({ type: "buy", buy }), []);
   const openSell = useCallback((sell: SellPayload) => setModal({ type: "sell", sell }), []);
+  const openMemeSell = useCallback(
+    (memeSell: MemeToken) => setModal({ type: "memeSell", memeSell }),
+    []
+  );
   const openRwaTrade = useCallback(
     (rwaTrade: RwaTradePayload) => setModal({ type: "rwaTrade", rwaTrade }),
     []
@@ -110,6 +114,7 @@ export default function DashboardPage() {
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}
+        onOpenMemeSell={openMemeSell}
         onOpenRwaTrade={openRwaTrade}
       />
     ),
@@ -156,6 +161,9 @@ export default function DashboardPage() {
         ) : null}
         {modal?.type === "buy" ? <BuySheet payload={modal.buy} onClose={close} /> : null}
         {modal?.type === "sell" ? <SellSheet payload={modal.sell} onClose={close} /> : null}
+        {modal?.type === "memeSell" ? (
+          <MemeTradeSheet token={modal.memeSell} defaultSide="SELL" onClose={close} />
+        ) : null}
         {modal?.type === "rwaTrade" ? <RwaTradeModal payload={modal.rwaTrade} /> : null}
         {modal?.type === "funds" ? <FundsModal onClose={close} deposit={modal.deposit} /> : null}
         {modal?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}

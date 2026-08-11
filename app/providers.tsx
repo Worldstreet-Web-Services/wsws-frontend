@@ -17,7 +17,7 @@ import {
 import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusProvider } from "@/components/providers/network-status";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
-import { MiniTimerHost } from "@/components/dashboard/casino/last-standing/mini-timer";
+import { MiniTimerHost } from "@/features/casino";
 // import { RecordButton } from "@/components/voice/record-button";
 
 // Well-formed placeholder lets the app build before env vars are set.

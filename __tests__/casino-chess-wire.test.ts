@@ -14,7 +14,7 @@ import {
   toResult,
   type ChessMatchWire,
   type ChessMoveWire,
-} from "@/lib/casino/api/chess-wire";
+} from "@/features/casino/lib/api/chess-wire";
 
 // The chess service is the authority on a game, and this is the only place its
 // shape is understood. A mapping error here shows up as a wrong result on a

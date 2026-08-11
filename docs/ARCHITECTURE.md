@@ -414,8 +414,16 @@ the same commit, so `git` tracks renames and review stays readable.
       section files. It stayed clean because earn talks to its own gateway service and
       shares no money rails with the rest of the app.
       Branch: `refactor/architecture`
-- [ ] **3.9 `features/casino/`** last. 39 components, and the two files over
-      1,000 lines want splitting on the way in. PR: _n/a_
+- [x] **3.9 `features/casino/`** chess, Swiss tournaments and Last Man Standing:
+      35 components, 10 hooks, 23 lib files. `lib/casino/chess-identity` left the
+      folder entirely rather than joining the slice. It imports `@privy-io/node` and
+      only two route handlers call it, one of them the perp proxy, so it was server
+      code filed under a client feature and now lives in `lib/server/`. Last Man
+      Standing rendered trade's `SellSheet` from its own state deep inside an
+      1,100-line component: the fix was a render prop supplied by the route, which
+      inverts the dependency while leaving the JSX tree untouched. Splitting the two
+      files over 1,000 lines is deferred to 4.2, so this move stays reviewable.
+      Branch: `refactor/architecture`
 - [ ] **3.10 `components/layout/`** move the shell out of
       `components/dashboard/`, then delete the empty folder. PR: _n/a_
 - [ ] **3.11 Colocate tests.** Move `__tests__/*` beside their subjects. PR: _n/a_

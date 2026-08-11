@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chessMatchRefetchMs } from "@/hooks/use-casino-chess";
+import { chessMatchRefetchMs } from "@/features/casino/hooks/use-casino-chess";
 
 describe("chess match polling", () => {
   it("keeps waiting games polling so an opponent join shows up quickly", () => {

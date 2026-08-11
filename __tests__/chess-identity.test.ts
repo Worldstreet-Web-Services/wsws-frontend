@@ -5,7 +5,7 @@ import {
   walletOfUser,
   withChessReadIdentity,
   withChessIdentity,
-} from "@/lib/casino/chess-identity";
+} from "@/lib/server/chess-identity";
 
 function userWithWallet(address: string): User {
   return {

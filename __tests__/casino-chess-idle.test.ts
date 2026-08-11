@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useChessIdle } from "@/hooks/use-chess-idle";
+import { useChessIdle } from "@/features/casino/hooks/use-chess-idle";
 
 // The nudges decide when a game is abandoned and eventually resign it for the
 // player, so the thresholds are pinned exactly: firing early throws away a game

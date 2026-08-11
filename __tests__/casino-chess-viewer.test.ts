@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveViewerColor } from "@/lib/casino/chess/viewer";
-import type { ChessMatch } from "@/lib/casino/api/types";
+import { resolveViewerColor } from "@/features/casino/lib/chess/viewer";
+import type { ChessMatch } from "@/features/casino/lib/api/types";
 
 function match(over: Partial<ChessMatch> = {}): ChessMatch {
   return {

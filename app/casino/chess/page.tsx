@@ -1,7 +1,6 @@
 "use client";
 
-import { CasinoPage } from "@/components/dashboard/casino/casino-page";
-import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section";
+import { CasinoPage, LobbySection } from "@/features/casino";
 
 export default function ChessLobbyPage() {
   return (

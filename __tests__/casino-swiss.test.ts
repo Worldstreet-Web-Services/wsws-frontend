@@ -16,7 +16,7 @@ import {
   type SwissPairingWire,
   type SwissStandingWire,
   type SwissSummaryWire,
-} from "@/lib/casino/api/swiss";
+} from "@/features/casino/lib/api/swiss";
 
 // Fixtures mirror responses observed on the live service, byes included, so a
 // contract drift breaks here before it breaks a tournament page.

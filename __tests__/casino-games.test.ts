@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CASINO_GAMES, filterGames, type TileSize } from "@/lib/casino/games";
+import { CASINO_GAMES, filterGames, type TileSize } from "@/features/casino/lib/games";
 
 // Columns each tile size spans on the hub's six-column grid, at desktop width.
 const SPAN: Record<TileSize, number> = { hero: 4, tall: 2, medium: 2, wide: 3 };

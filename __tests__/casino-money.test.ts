@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { amountUsd, potBreakdown, unitsToWei, usdToWei, weiToUnits } from "@/lib/casino/money";
+import {
+  amountUsd,
+  potBreakdown,
+  unitsToWei,
+  usdToWei,
+  weiToUnits,
+} from "@/features/casino/lib/money";
 
 describe("casino money", () => {
   describe("usdToWei", () => {

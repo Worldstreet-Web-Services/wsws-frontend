@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { toBetSlip, toMarketOdds } from "@/lib/casino/api/betting-wire";
-import { estimatePariMutuelReturn, impliedProbability } from "@/lib/casino/betting-math";
-import type { MarketOdds } from "@/lib/casino/api/types";
+import { toBetSlip, toMarketOdds } from "@/features/casino/lib/api/betting-wire";
+import { estimatePariMutuelReturn, impliedProbability } from "@/features/casino/lib/betting-math";
+import type { MarketOdds } from "@/features/casino/lib/api/types";
 
 describe("toMarketOdds", () => {
   it("maps the map form and derives odds from pools when none are sent", () => {

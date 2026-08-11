@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parentRoute } from "@/components/dashboard/casino/casino-page";
+import { parentRoute } from "@/features/casino/components/casino-page";
 
 // Back goes up one level. Jumping straight to the hub from a game skipped the
 // lobby the game was started from, which is where anyone leaving a board

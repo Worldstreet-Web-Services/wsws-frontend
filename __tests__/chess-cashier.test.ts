@@ -10,11 +10,11 @@ import {
   normalizeUsdcAmount,
   parseUsdcAmount,
   wagerBreakdown,
-} from "@/lib/casino/api/cashier";
+} from "@/features/casino/lib/api/cashier";
 
 // Only the pure helpers are under test; the transport would drag Privy and
 // fetch into a unit test for arithmetic.
-vi.mock("@/lib/casino/api/chess-client", () => ({
+vi.mock("@/features/casino/lib/api/chess-client", () => ({
   chessGet: vi.fn(),
   chessPost: vi.fn(),
 }));

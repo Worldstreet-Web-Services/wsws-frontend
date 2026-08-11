@@ -37,13 +37,13 @@ const chessApi = vi.hoisted(() => ({
   deleteMatchComment: vi.fn(),
   cancelChallenge: vi.fn(),
 }));
-vi.mock("@/lib/casino/api/chess", () => chessApi);
+vi.mock("@/features/casino/lib/api/chess", () => chessApi);
 
 const bettingHooks = vi.hoisted(() => ({
   useMatchMarket: vi.fn(),
   placeBetMutateAsync: vi.fn(),
 }));
-vi.mock("@/hooks/use-casino-betting", () => ({
+vi.mock("@/features/casino/hooks/use-casino-betting", () => ({
   useMatchMarket: bettingHooks.useMatchMarket,
   usePlaceBet: () => ({
     isPending: false,
@@ -51,7 +51,7 @@ vi.mock("@/hooks/use-casino-betting", () => ({
   }),
 }));
 
-vi.mock("@/hooks/use-chess-cashier", () => ({
+vi.mock("@/features/casino/hooks/use-chess-cashier", () => ({
   useChessCashierStatus: () => ({
     configured: false,
     config: null,
@@ -74,7 +74,7 @@ vi.mock("next/navigation", () => ({
 // The wallet is the platform's; these tests care about how screens react to
 // its balance, not about Privy or the portfolio fetch beneath it.
 const wallet = vi.hoisted(() => ({ balance: 10, balanceUsd: 20_000, unitPriceUsd: 2000 }));
-vi.mock("@/hooks/use-casino-wallet", () => ({
+vi.mock("@/features/casino/hooks/use-casino-wallet", () => ({
   useCasinoWallet: () => ({
     address: "0xabc",
     connected: true,
@@ -94,10 +94,10 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 import { NextIntlClientProvider } from "next-intl";
-import { LobbySection } from "@/components/dashboard/casino/chess/lobby-section";
-import { PlaySection } from "@/components/dashboard/casino/chess/play-section";
-import { SpectateSection } from "@/components/dashboard/casino/chess/spectate-section";
-import { CreateSection } from "@/components/dashboard/casino/chess/create-section";
+import { LobbySection } from "@/features/casino/components/chess/lobby-section";
+import { PlaySection } from "@/features/casino/components/chess/play-section";
+import { SpectateSection } from "@/features/casino/components/chess/spectate-section";
+import { CreateSection } from "@/features/casino/components/chess/create-section";
 import messages from "@/messages/en.json";
 
 // The screens read their copy through next-intl, so the wrapper provides the

@@ -13,7 +13,7 @@ import {
   squareName,
   type Board,
   type Square,
-} from "@/lib/casino/chess/engine";
+} from "@/features/casino/lib/chess/engine";
 
 // Applies moves given in {from, to} algebraic-ish coordinates for readability.
 function play(board: Board, moves: Array<[Square, Square]>): Board {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ChessMatchWire } from "@/lib/casino/api/chess-wire";
-import type { ChessMatch } from "@/lib/casino/api/types";
+import type { ChessMatchWire } from "@/features/casino/lib/api/chess-wire";
+import type { ChessMatch } from "@/features/casino/lib/api/types";
 
 const chessClient = vi.hoisted(() => ({
   chessGet: vi.fn(),
@@ -9,7 +9,7 @@ const chessClient = vi.hoisted(() => ({
   chessDelete: vi.fn(),
 }));
 
-vi.mock("@/lib/casino/api/chess-client", () => chessClient);
+vi.mock("@/features/casino/lib/api/chess-client", () => chessClient);
 
 import {
   deleteMatchComment,
@@ -24,7 +24,7 @@ import {
   postMatchChatMessage,
   saveMatchNote,
   upsertMatchComment,
-} from "@/lib/casino/api/chess";
+} from "@/features/casino/lib/api/chess";
 
 function waitingMatch(
   id: string,

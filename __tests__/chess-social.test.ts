@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { matchActorLabel } from "@/lib/casino/chess/social";
-import type { ChessMatch } from "@/lib/casino/api/types";
+import { matchActorLabel } from "@/features/casino/lib/chess/social";
+import type { ChessMatch } from "@/features/casino/lib/api/types";
 
 const WHITE = "0x1111111111111111111111111111111111111111";
 const BLACK = "0x2222222222222222222222222222222222222222";

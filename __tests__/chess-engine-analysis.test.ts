@@ -5,7 +5,7 @@ import {
   parseEngineInfoLine,
   pvToSan,
   uciToSan,
-} from "@/lib/casino/chess/engine-analysis";
+} from "@/features/casino/lib/chess/engine-analysis";
 
 describe("engine analysis parsing", () => {
   it("parses stockfish info output", () => {

@@ -2,8 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { CasinoPage } from "@/components/dashboard/casino/casino-page";
-import { SpectateSection } from "@/components/dashboard/casino/chess/spectate-section";
+import { CasinoPage, SpectateSection } from "@/features/casino";
 
 function WatchFromParams() {
   return <SpectateSection matchId={useSearchParams()?.get("match") ?? null} />;

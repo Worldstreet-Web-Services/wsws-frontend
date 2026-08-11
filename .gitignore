@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Design handoff reference bundles (not shipped)
 design_handoff_*/
+
+# One-shot commit scripts handed to the developer, never part of the tree.
+commit-*.sh

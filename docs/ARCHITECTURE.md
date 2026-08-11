@@ -263,8 +263,10 @@ Independent of the restructure. Pure subtraction and CI hardening.
       branches" in repository settings, then delete the existing set. PR: _n/a_
 - [ ] **1.6 Fix the PR template.** It still tells contributors to target `dev`,
       which was removed on 2026-07-29. PR: _n/a_
-- [ ] **1.7 Retire `PREDICTION_INTEGRATION_TODO.md`.** Move any live items into
-      issues; the file is a working note at the repository root. PR: _n/a_
+- [x] **1.7 Retire `PREDICTION_INTEGRATION_TODO.md`.** Deleted. It was the
+      v1.2.0 integration guide from the backend team, and every step in it shipped in
+      PR #183. It carried no open items, and each path it named had since moved, so
+      it could only mislead. Branch: `refactor/architecture`
 
 ### Phase 2: boundaries
 

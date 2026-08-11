@@ -3,9 +3,9 @@
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { MarketLogo } from "@/components/ui/market-logo";
-import { Avatar } from "@/components/dashboard/avatar";
-import type { NavItem } from "@/components/dashboard/nav-items";
-import type { DashboardSection } from "@/components/dashboard/modal-types";
+import { Avatar } from "@/components/ui/avatar";
+import type { NavItem } from "@/components/layout/nav-items";
+import type { DashboardSection } from "@/lib/modal-types";
 import { deriveProfile } from "@/lib/user";
 
 interface SidebarProps {

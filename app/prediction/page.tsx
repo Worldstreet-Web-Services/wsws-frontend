@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { buildNav } from "@/components/dashboard/nav-items";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buildNav } from "@/components/layout/nav-items";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { PredictionView } from "@/features/prediction";
 import { loadInterest } from "@/lib/preferences";

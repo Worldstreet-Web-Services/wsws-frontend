@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { ListingCard } from "@/features/earn/components/listing-card";
 import { NotificationBell } from "@/features/earn/components/notification-bell";
 import { ListingFilters } from "@/features/earn/components/listing-filters";

@@ -15,7 +15,7 @@ import { depositProgress, usdcBaseUnits, type DepositStage } from "@/lib/deposit
 import { formatAmount, fromBaseUnits } from "@/lib/trade/math";
 import { toast } from "@/lib/toast";
 import { friendlyError } from "@/lib/errors";
-import type { BuyPayload } from "@/components/dashboard/modal-types";
+import type { BuyPayload } from "@/lib/modal-types";
 
 // 1% price tolerance, kept out of the UI. Non-crypto users should not have to
 // reason about slippage.

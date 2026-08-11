@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { base } from "viem/chains";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncLoading } from "@/components/ui/async-state";
 import { useFundListing } from "@/features/earn/hooks/use-earn-sponsor-listings";
 import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { useWallets } from "@privy-io/react-auth";

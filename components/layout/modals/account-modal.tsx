@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useLinkWithPasskey, useLogout, usePrivy } from "@privy-io/react-auth";
-import { Avatar } from "@/components/dashboard/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { WalletList } from "@/features/portfolio";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { deriveProfile } from "@/lib/user";

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { RewardBadge } from "@/features/earn/components/reward-badge";
 import { useMySubmissions } from "@/features/earn/hooks/use-earn-submission";
 import { useClaimInfo, useClaimReward } from "@/features/earn/hooks/use-earn-claim";

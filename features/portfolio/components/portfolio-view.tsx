@@ -14,8 +14,8 @@ import {
 } from "@tanstack/react-table";
 import { toast } from "@/lib/toast";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
-import { KashBanner } from "@/components/dashboard/kash/kash-banner";
-import { KashCard } from "@/components/dashboard/kash/kash-card";
+import { KashBanner } from "@/features/portfolio/components/kash-banner";
+import { KashCard } from "@/features/portfolio/components/kash-card";
 import { Switch } from "@/components/ui/switch";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
@@ -29,12 +29,7 @@ import { canSellAsset } from "@/lib/sell";
 import type { MemeToken } from "@/lib/meme/api";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
-import type {
-  BuyPayload,
-  DetailPayload,
-  RwaTradePayload,
-  SellPayload,
-} from "@/components/dashboard/modal-types";
+import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/lib/modal-types";
 
 interface PortfolioViewProps {
   onOpenFunds: () => void;

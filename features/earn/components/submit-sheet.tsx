@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { TextAreaField, TextField } from "@/features/earn/components/form-field";
 import { TalentProfileForm } from "@/features/earn/components/talent-profile-form";
-import { AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncLoading } from "@/components/ui/async-state";
 import { ImageUploadField } from "@/features/earn/components/image-upload-field";
 import { useCreateSubmission } from "@/features/earn/hooks/use-earn-submission";
 import { useTalentProfile } from "@/features/earn/hooks/use-earn-talent";

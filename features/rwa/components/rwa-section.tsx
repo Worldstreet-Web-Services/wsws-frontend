@@ -18,7 +18,7 @@ import {
 import { useRwaEnrichedAssets } from "@/features/rwa/hooks/use-rwa-prices";
 import type { RwaApiAsset } from "@/features/rwa/lib/api";
 import type { TradePrefill } from "@/lib/voice/intent";
-import type { ConfirmPayload, DetailPayload } from "@/components/dashboard/modal-types";
+import type { ConfirmPayload, DetailPayload } from "@/lib/modal-types";
 
 // The dashboard page passes detail and confirm openers, but the RWA section owns
 // its own detail sheet and trade flow, so it does not use them. The prop shape

@@ -14,7 +14,7 @@ import {
   resolutionInfo,
   type RawPosition,
 } from "@/features/prediction/lib/positions";
-import type { StatLine } from "@/components/dashboard/modal-types";
+import type { StatLine } from "@/lib/modal-types";
 
 interface BetSlipSheetProps {
   position: RawPosition;

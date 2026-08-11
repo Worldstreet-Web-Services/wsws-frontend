@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { DashboardSection } from "@/components/dashboard/modal-types";
+import type { DashboardSection } from "@/lib/modal-types";
 import { prefersReducedMotion } from "@/lib/scroll";
 
 interface SectionChipsProps {

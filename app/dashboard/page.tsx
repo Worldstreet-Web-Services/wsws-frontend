@@ -2,18 +2,18 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { buildNav } from "@/components/dashboard/nav-items";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
-import { SpotSection } from "@/components/dashboard/sections/spot-section";
-import { PerpsSection } from "@/components/dashboard/sections/perps-section";
-import { MemeSection } from "@/components/dashboard/sections/meme-section";
-import { ExploreBanners } from "@/components/dashboard/explore-banners";
-import { RecentActivity } from "@/components/dashboard/activity/recent-activity";
+import { SpotSection } from "@/features/trade/components/spot-section";
+import { PerpsSection } from "@/features/trade/components/perps-section";
+import { MemeSection } from "@/features/trade/components/meme-section";
+import { ExploreBanners } from "@/components/layout/explore-banners";
+import { RecentActivity } from "@/features/activity";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SuccessPanel } from "@/components/ui/success-panel";
-import { DetailModal } from "@/components/dashboard/modals/detail-modal";
-import { ConfirmModal } from "@/components/dashboard/modals/confirm-modal";
+import { DetailModal } from "@/components/layout/modals/detail-modal";
+import { ConfirmModal } from "@/components/layout/modals/confirm-modal";
 import { FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
@@ -32,8 +32,8 @@ import type {
   DashboardModal,
   RwaTradePayload,
   SellPayload,
-} from "@/components/dashboard/modal-types";
-import { AccountModal } from "@/components/dashboard/modals/account-modal";
+} from "@/lib/modal-types";
+import { AccountModal } from "@/components/layout/modals/account-modal";
 
 const SECTION_CLASS = "scroll-mt-[124px] md:scroll-mt-[76px]";
 

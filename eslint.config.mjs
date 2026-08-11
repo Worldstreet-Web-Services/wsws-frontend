@@ -27,8 +27,10 @@ const eslintConfig = defineConfig([
         { type: "feature", pattern: "features/*", capture: ["name"], partialMatch: false },
         { type: "app", pattern: "app/**", partialMatch: false },
         { type: "ui", pattern: "components/ui/**", partialMatch: false },
-        // Unmigrated shell. May reach anything until its slice moves out.
-        { type: "legacy", pattern: "components/**", partialMatch: false },
+        // The shell composes features, so it is the one place below app/ that
+        // may import them.
+        { type: "layout", pattern: "components/layout/**", partialMatch: false },
+        { type: "shared-ui", pattern: "components/**", partialMatch: false },
         { type: "hooks", pattern: "hooks/**", partialMatch: false },
         { type: "lib", pattern: "lib/**", partialMatch: false },
       ],
@@ -45,8 +47,8 @@ const eslintConfig = defineConfig([
               message: "A feature may not import another feature. Use its index.",
             },
             {
-              from: [{ element: { type: ["lib", "ui", "hooks"] } }],
-              disallow: [{ to: { element: { type: ["feature", "app", "legacy"] } } }],
+              from: [{ element: { type: ["lib", "ui", "hooks", "shared-ui"] } }],
+              disallow: [{ to: { element: { type: ["feature", "app", "layout"] } } }],
               message:
                 "lib, components/ui and hooks sit below features and must not import upward.",
             },

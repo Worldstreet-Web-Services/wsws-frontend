@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { RewardBadge } from "@/features/earn/components/reward-badge";
 import { useCurrentSponsor } from "@/features/earn/hooks/use-earn-sponsor";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { WinnerPicker } from "@/features/earn/components/sponsor/winner-picker";
 import {
   useRejectSubmissions,

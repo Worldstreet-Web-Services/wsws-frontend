@@ -16,7 +16,7 @@ import { SearchIcon } from "@/components/ui/icons";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatUsd } from "@/lib/trade/math";
-import type { BuyPayload, DetailPayload } from "@/components/dashboard/modal-types";
+import type { BuyPayload, DetailPayload } from "@/lib/modal-types";
 
 interface SpotSimpleViewProps {
   onOpenDetail: (detail: DetailPayload) => void;

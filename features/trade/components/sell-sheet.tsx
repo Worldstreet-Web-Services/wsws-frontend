@@ -15,7 +15,7 @@ import { maxSellable } from "@/lib/trade/gas-buffer";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 import { toast } from "@/lib/toast";
 import { friendlyError } from "@/lib/errors";
-import type { SellPayload } from "@/components/dashboard/modal-types";
+import type { SellPayload } from "@/lib/modal-types";
 
 // 1% price tolerance, hidden from the UI.
 const SLIPPAGE_BPS = 100;

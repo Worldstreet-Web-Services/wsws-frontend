@@ -2,7 +2,7 @@
 
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import type { ConfirmPayload } from "@/components/dashboard/modal-types";
+import type { ConfirmPayload } from "@/lib/modal-types";
 
 interface ConfirmModalProps {
   confirm: ConfirmPayload;

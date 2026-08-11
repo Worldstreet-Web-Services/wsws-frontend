@@ -7,10 +7,10 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useTranslations } from "next-intl";
 import { SearchIcon } from "@/components/ui/icons";
 import { LanguageSelect } from "@/components/ui/language-select";
-import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { AssetIcon } from "@/components/ui/asset-icon";
-import { Avatar } from "@/components/dashboard/avatar";
-import { useGlobalSearch, type SearchResult } from "@/components/dashboard/use-global-search";
+import { Avatar } from "@/components/ui/avatar";
+import { useGlobalSearch, type SearchResult } from "@/components/layout/use-global-search";
 import { deriveProfile } from "@/lib/user";
 
 interface TopbarProps {

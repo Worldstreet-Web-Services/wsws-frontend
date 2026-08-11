@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { RewardBadge } from "@/features/earn/components/reward-badge";
 import { SubmissionStatus } from "@/features/earn/components/submission-status";
 import { SubmitSheet } from "@/features/earn/components/submit-sheet";

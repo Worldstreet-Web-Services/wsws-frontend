@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { TalentProfileForm } from "@/features/earn/components/talent-profile-form";
 import { useTalentProfile } from "@/features/earn/hooks/use-earn-talent";
 

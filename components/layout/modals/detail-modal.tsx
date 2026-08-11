@@ -6,7 +6,7 @@ import { AssetChart } from "@/components/ui/asset-chart";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { DETAIL_LINE, Sparkline } from "@/components/ui/sparkline";
 import { isUp } from "@/lib/format";
-import type { DetailPayload } from "@/components/dashboard/modal-types";
+import type { DetailPayload } from "@/lib/modal-types";
 
 export function DetailModal({ detail }: { detail: DetailPayload }) {
   const t = useTranslations("portfolio");

@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { Sidebar } from "@/components/layout/sidebar";
 import { markKnownUser } from "@/lib/known-user";
-import { Topbar } from "@/components/dashboard/topbar";
-import { SectionChips } from "@/components/dashboard/section-chips";
-import { DashboardFooter } from "@/components/dashboard/dashboard-footer";
-import { AccountModal } from "@/components/dashboard/modals/account-modal";
+import { Topbar } from "@/components/layout/topbar";
+import { SectionChips } from "@/components/layout/section-chips";
+import { DashboardFooter } from "@/components/layout/dashboard-footer";
+import { AccountModal } from "@/components/layout/modals/account-modal";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
-import type { NavItem } from "@/components/dashboard/nav-items";
+import type { NavItem } from "@/components/layout/nav-items";
 import type { SectionId } from "@/lib/sections";
 
 interface DashboardShellProps {

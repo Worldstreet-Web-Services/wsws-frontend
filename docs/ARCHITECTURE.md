@@ -135,6 +135,7 @@ features/                       a feature owns its whole vertical
   earn/                         listings, sponsors, submissions
   remit/                        cross-border off-ramp wizard
   portfolio/                    balance card, donut, holdings
+  activity/                     the transaction feed
 
 components/
   ui/                           design system, used by three or more features
@@ -151,9 +152,13 @@ messages/                       five locales, unchanged
 config/                         chain registries, unchanged
 ```
 
-`components/dashboard/` dissolves. Around 165 of its files are feature
-components that move into their slice. The roughly 15 that are genuinely shell
-move to `components/layout/`.
+`components/dashboard/` dissolves. It held 190 files. 165 were feature
+components and went to their slice; 12 were genuinely shell and went to
+`components/layout/`. The remaining 13 landed in three other places, which is
+the useful part of the count: `async-state` and `avatar` were design-system
+primitives, `modal-types` was a pure type contract that belonged on the shared
+floor in `lib/`, and the rest were feature components filed under the shell,
+including a whole activity slice split across two folders.
 
 Tests colocate as `*.test.ts` beside the code they cover, so a slice can be
 read, moved, or deleted with its tests.
@@ -424,8 +429,15 @@ the same commit, so `git` tracks renames and review stays readable.
       inverts the dependency while leaving the JSX tree untouched. Splitting the two
       files over 1,000 lines is deferred to 4.2, so this move stays reviewable.
       Branch: `refactor/architecture`
-- [ ] **3.10 `components/layout/`** move the shell out of
-      `components/dashboard/`, then delete the empty folder. PR: _n/a_
+- [x] **3.10 `components/layout/`** `components/dashboard/` is gone. Twelve files
+      were the shell and moved to `components/layout/`. The other thirteen were not:
+      `async-state` and `avatar` were `ui/` primitives, `modal-types` was a pure type
+      contract read by six features and moved to `lib/`, the kash cards belonged to
+      portfolio, the spot, perps, meme and markets views belonged to trade, and the
+      activity feed was a ninth slice split across two folders. The lint element map
+      lost its `legacy` escape hatch in the same commit: `components/layout/` is now
+      its own type, and everything else under `components/` is `shared-ui`, which may
+      not import upward. Branch: `refactor/architecture`
 - [ ] **3.11 Colocate tests.** Move `__tests__/*` beside their subjects. PR: _n/a_
 
 ### Phase 4: confidence

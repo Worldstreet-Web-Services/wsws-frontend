@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { useTranslations } from "next-intl";
-import { buildNav } from "@/components/dashboard/nav-items";
+import { buildNav } from "@/components/layout/nav-items";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import {

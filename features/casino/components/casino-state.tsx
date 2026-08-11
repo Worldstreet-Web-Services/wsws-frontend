@@ -1,6 +1,6 @@
 "use client";
 
-import { AsyncError, AsyncEmpty, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncEmpty, AsyncLoading } from "@/components/ui/async-state";
 
 // These moved to components/dashboard/async-state once earn needed the same
 // three surfaces. The casino names stay here so its screens read as before,

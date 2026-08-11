@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@privy-io/react-auth";
-import { Avatar } from "@/components/dashboard/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { useStableStaticAddress } from "@/hooks/use-deposit";
 import { profileAddressSpec, type ProfileAddressSpec } from "@/lib/deposit";

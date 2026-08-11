@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncError, AsyncLoading } from "@/components/dashboard/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { RewardBadge } from "@/features/earn/components/reward-badge";
 import { ListingEditorSection } from "@/features/earn/components/sponsor/listing-editor-section";
 import { SubmissionReviewList } from "@/features/earn/components/sponsor/submission-review-list";

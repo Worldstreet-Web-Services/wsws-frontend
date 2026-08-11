@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import type { SellPayload } from "@/components/dashboard/modal-types";
+import type { SellPayload } from "@/lib/modal-types";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";

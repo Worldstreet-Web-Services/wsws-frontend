@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ClockIcon } from "@/components/ui/icons";
-import { ActivityRow } from "@/components/dashboard/activity/activity-row";
+import { ActivityRow } from "@/features/activity/components/activity-row";
 import { useActivity } from "@/hooks/use-activity";
 import { usePortfolio } from "@/hooks/use-portfolio";
 

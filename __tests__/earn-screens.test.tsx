@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowseSection } from "@/components/dashboard/earn/browse-section";
-import { ListingDetailSection } from "@/components/dashboard/earn/listing-detail-section";
-import { SubmitSheet } from "@/components/dashboard/earn/submit-sheet";
-import { SponsorDraftsSection } from "@/components/dashboard/earn/sponsor/sponsor-drafts-section";
-import { SponsorOnboardingSection } from "@/components/dashboard/earn/sponsor/sponsor-onboarding-section";
-import { SubmissionReviewList } from "@/components/dashboard/earn/sponsor/submission-review-list";
-import { parseRewardInput, rewardFrom } from "@/lib/earn/reward";
-import type { Listing, ListingSummary, SponsorListing, Submission } from "@/lib/earn/api/types";
+import { BrowseSection } from "@/features/earn/components/browse-section";
+import { ListingDetailSection } from "@/features/earn/components/listing-detail-section";
+import { SubmitSheet } from "@/features/earn/components/submit-sheet";
+import { SponsorDraftsSection } from "@/features/earn/components/sponsor/sponsor-drafts-section";
+import { SponsorOnboardingSection } from "@/features/earn/components/sponsor/sponsor-onboarding-section";
+import { SubmissionReviewList } from "@/features/earn/components/sponsor/submission-review-list";
+import { parseRewardInput, rewardFrom } from "@/features/earn/lib/reward";
+import type {
+  Listing,
+  ListingSummary,
+  SponsorListing,
+  Submission,
+} from "@/features/earn/lib/api/types";
 
 // The screens are mocked at the API-client seam, not inside the components, so
 // these exercise the real hooks, real query wiring and real render paths.
@@ -55,12 +60,12 @@ const imagesApi = vi.hoisted(() => ({
   completeImageUpload: vi.fn(),
 }));
 
-vi.mock("@/lib/earn/api/listings", () => listingsApi);
-vi.mock("@/lib/earn/api/sponsors", () => sponsorsApi);
-vi.mock("@/lib/earn/api/submissions", () => submissionsApi);
-vi.mock("@/lib/earn/api/sponsor-dashboard", () => dashboardApi);
-vi.mock("@/lib/earn/api/images", () => imagesApi);
-vi.mock("@/lib/earn/api/talent", () => talentApi);
+vi.mock("@/features/earn/lib/api/listings", () => listingsApi);
+vi.mock("@/features/earn/lib/api/sponsors", () => sponsorsApi);
+vi.mock("@/features/earn/lib/api/submissions", () => submissionsApi);
+vi.mock("@/features/earn/lib/api/sponsor-dashboard", () => dashboardApi);
+vi.mock("@/features/earn/lib/api/images", () => imagesApi);
+vi.mock("@/features/earn/lib/api/talent", () => talentApi);
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({

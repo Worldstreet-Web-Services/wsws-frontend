@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parentRoute } from "@/components/dashboard/earn/earn-page";
+import { parentRoute } from "@/features/earn/components/earn-page";
 
 // The back link used to drop one path segment, which pointed the listing
 // screens at /earn/sponsor/listing and /earn/listing. Neither has a page, so

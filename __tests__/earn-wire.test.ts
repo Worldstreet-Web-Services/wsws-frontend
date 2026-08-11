@@ -6,7 +6,7 @@ import {
   toSubmissionCheck,
   type ListingWire,
   type SubmissionWire,
-} from "@/lib/earn/api/wire";
+} from "@/features/earn/lib/api/wire";
 
 // The earn contract documents request bodies but not responses, so these pin
 // the normalizers against a field going missing or arriving with a value we do

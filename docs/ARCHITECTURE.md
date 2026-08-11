@@ -407,7 +407,13 @@ the same commit, so `git` tracks renames and review stays readable.
       where prediction can use it honestly; and the meme sell sheet moved up to
       `app/dashboard`, following the `onOpen*` convention portfolio already used for
       buy, sell, detail and rwa. Branch: `refactor/architecture`
-- [ ] **3.8 `features/earn/`** PR: _n/a_
+- [x] **3.8 `features/earn/`** the bounty board: 24 components, 8 hooks and 18 lib
+      files, and the first slice that moved whole. One sweep, one hit, and that hit was
+      `use-image-upload`, an earn component's own hook parked in the flat folder. Ten
+      route pages under `app/earn/` now import from the index instead of reaching for
+      section files. It stayed clean because earn talks to its own gateway service and
+      shares no money rails with the rest of the app.
+      Branch: `refactor/architecture`
 - [ ] **3.9 `features/casino/`** last. 39 components, and the two files over
       1,000 lines want splitting on the way in. PR: _n/a_
 - [ ] **3.10 `components/layout/`** move the shell out of

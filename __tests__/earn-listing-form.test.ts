@@ -5,14 +5,14 @@ import {
   slugify,
   validateListingForm,
   type ListingFormState,
-} from "@/lib/earn/listing-form";
+} from "@/features/earn/lib/listing-form";
 import {
   formatReward,
   parseRewardInput,
   rewardFrom,
   rewardToApi,
   sumRewards,
-} from "@/lib/earn/reward";
+} from "@/features/earn/lib/reward";
 
 // This is the money and the dates. A listing that publishes with a reward split
 // that does not add up pays somebody the wrong amount, and the service rejects a

@@ -4,7 +4,7 @@ import {
   imageRejectionReason,
   putSignedUpload,
   signImageUpload,
-} from "@/lib/earn/api/images";
+} from "@/features/earn/lib/api/images";
 
 // The shapes here were read off the running earn service, which is the one part
 // of earn that works today. They are pinned because the contract doc describes
@@ -12,7 +12,7 @@ import {
 // says nothing useful to a user mid-upload.
 
 const earnPost = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/earn/api/client", () => ({ earnPost, earnGet: vi.fn() }));
+vi.mock("@/features/earn/lib/api/client", () => ({ earnPost, earnGet: vi.fn() }));
 
 function pngFile(name = "logo.png", size = 1024): File {
   const file = new File([new Uint8Array(size)], name, { type: "image/png" });

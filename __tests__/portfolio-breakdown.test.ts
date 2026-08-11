@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { heldAssetCount, portfolioBreakdown, readyToSpendUsd } from "@/lib/portfolio-breakdown";
+import {
+  heldAssetCount,
+  portfolioBreakdown,
+  readyToSpendUsd,
+} from "@/features/portfolio/lib/breakdown";
 import type { TokenBalance } from "@/lib/server/alchemy";
 
 function token(kind: TokenBalance["kind"], valueUsd: number, symbol = "X"): TokenBalance {

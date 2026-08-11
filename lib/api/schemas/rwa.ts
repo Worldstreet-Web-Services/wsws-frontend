@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// What the RWA screens read. The build response matters most: its steps are
-// the transactions a user is asked to sign.
-
 const chain = z.enum(["solana", "ethereum", "base", "arbitrum", "bsc", "polygon"]);
 
 const asset = z.object({

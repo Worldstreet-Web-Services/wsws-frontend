@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-// What the meme screens read. Every price field is nullable in practice: a
-// freshly listed token has no market data yet.
+// A freshly listed token has no market data, so every price field is nullable.
 
 const nullableString = z.string().nullable();
 
@@ -31,7 +30,6 @@ export const tokenListSchema = z.object({ items: z.array(token) });
 export const tokenSearchSchema = z.array(token);
 export const tokenSchema = token;
 
-// A swap quote carries the calls the wallet will sign.
 export const swapQuoteSchema = z.object({
   swapId: z.string(),
   calls: z.array(

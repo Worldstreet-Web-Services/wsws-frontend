@@ -3,9 +3,6 @@
 import { apiFetch } from "@/lib/api";
 import { unwrap } from "@/lib/api/envelope";
 
-// One transport for every platform service. A service differs only by its
-// proxy path and the sentence shown when it is unreachable.
-
 export type QueryParams = Record<string, string | number | boolean | undefined>;
 
 function buildQuery(params?: QueryParams): string {
@@ -19,8 +16,7 @@ function buildQuery(params?: QueryParams): string {
   return query ? `?${query}` : "";
 }
 
-// Strict servers reject a JSON content-type with an empty body, and several
-// actions here carry none.
+// Strict servers reject a JSON content-type with an empty body.
 function bodyInit(method: string, body: unknown): RequestInit {
   if (body === undefined) return { method };
   return {

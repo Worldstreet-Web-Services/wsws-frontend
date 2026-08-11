@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDepositSettlementToken, selectHoldings } from "@/lib/holdings";
+import { isDepositSettlementToken, selectHoldings } from "@/features/portfolio/lib/holdings";
 import type { TokenBalance } from "@/lib/server/alchemy";
 
 // Minimal TokenBalance factory. Only the fields the holdings filter reads

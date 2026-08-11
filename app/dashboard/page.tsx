@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { buildNav } from "@/components/dashboard/nav-items";
-import { PortfolioView } from "@/components/dashboard/views/portfolio-view";
+import { PortfolioView } from "@/features/portfolio";
 import { SpotSection } from "@/components/dashboard/sections/spot-section";
 import { PerpsSection } from "@/components/dashboard/sections/perps-section";
 import { MemeSection } from "@/components/dashboard/sections/meme-section";

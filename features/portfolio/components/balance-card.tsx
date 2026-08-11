@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { PortfolioDonut } from "@/components/dashboard/portfolio-donut";
+import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePendingOnramp } from "@/hooks/use-pouch-onramp";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
-import { readyToSpendUsd } from "@/lib/portfolio-breakdown";
+import { readyToSpendUsd } from "@/features/portfolio/lib/breakdown";
 import { OFFRAMP_MIN_USDC } from "@/lib/pouch/offramp";
 
 // Refresh the portfolio on Base blocks, so a deposit, withdrawal or add-money

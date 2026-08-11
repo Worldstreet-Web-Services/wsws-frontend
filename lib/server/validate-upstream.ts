@@ -1,9 +1,7 @@
 import type { z } from "zod";
 
-// Guards a proxied response against the shape the frontend depends on.
-// Validates without transforming: the original payload still reaches the
-// client, so a field no schema models is never dropped. Only successful
-// envelopes are judged; an upstream error is already a useful answer.
+// Validates without transforming, so a field no schema models still reaches
+// the client. Only successful envelopes are judged.
 
 export interface UpstreamCheck {
   ok: boolean;

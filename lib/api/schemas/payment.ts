@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// What the off-ramp flow reads, not the service's full response. Extra fields
-// are fine; a missing one the flow depends on is not.
-
 const tokenAmount = z.object({
   amount: z.string(),
   chainId: z.number(),
@@ -48,7 +45,6 @@ export const offrampQuoteSchema = z.object({
   fiat: fiatQuote,
   spreadBps: z.number(),
   settlement: tokenAmount,
-  // The funding step sends exactly these base units.
   pay: z.object({ amountIn: tokenAmount }),
 });
 

@@ -72,9 +72,14 @@ app/            routes and BFF handlers. Composes features, owns no logic.
 features/       vertical slices. Never import a sibling's internals.
    |  may import
 components/ui/  design system primitives. Know nothing about any feature.
+hooks/          cross-cutting React hooks. Same rule, same layer.
    |  may import
 lib/            pure cross-cutting: api client, money, format, brand.
 ```
+
+`components/ui/` and `hooks/` are siblings on the shared layer: one holds
+presentation primitives, the other behaviour every feature needs. `lib/` sits
+below both and stays framework-free, so a hook cannot live there.
 
 Reusable building blocks live in `components/ui/` and `lib/`. They are shared by
 everyone precisely because they sit below the feature line and depend on nothing
@@ -88,6 +93,11 @@ Three consequences worth stating plainly:
 2. **`lib/` is for what two or more features need.** If only RWA uses it, it
    belongs in `features/rwa/lib/`.
 3. **One transport.** One `apiFetch`, one envelope unwrapper, one `ApiError`.
+4. **A hook used by three or more features is shared,** and belongs in `hooks/`.
+   `usePortfolio` is the clearest case: 34 importers across funds, trade,
+   casino, rwa, sell, remit and meme. It is the app's balance source, not a
+   feature's, and putting it inside `features/portfolio/` would have forced
+   every other slice to import through that feature's index.
 
 ### Deciding where a component belongs
 
@@ -124,6 +134,8 @@ features/                       a feature owns its whole vertical
 components/
   ui/                           design system, used by three or more features
   layout/                       the shell itself: dashboard-shell, sidebar, topbar, nav-items
+
+hooks/                          cross-cutting hooks, e.g. usePortfolio
 
 lib/                            cross-cutting only
   api/                          client.ts, envelope.ts, error.ts, schemas/
@@ -326,7 +338,13 @@ the same commit, so `git` tracks renames and review stays readable.
 
 - [ ] **3.2 Add `eslint-plugin-boundaries`.** After the second slice exists, so
       the rule has something to catch. PR: _n/a_
-- [ ] **3.3 `features/portfolio/`** PR: _n/a_
+- [x] **3.3 `features/portfolio/`** the display layer only: balance card, donut,
+      wallet list, portfolio view, plus `holdings` and `breakdown`. `usePortfolio`
+      deliberately stayed in `hooks/`: 34 importers across every feature area make it
+      infrastructure, not a feature's, and burying it in this slice would have forced
+      every other slice to import through a portfolio index. That gap is now named in
+      section 2, `hooks/` is the shared behaviour layer beside `components/ui/`.
+      Branch: `refactor/architecture`
 - [ ] **3.4 `features/funds/`** PR: _n/a_
 - [ ] **3.5 `features/remit/`** PR: _n/a_
 - [ ] **3.6 `features/prediction/`** PR: _n/a_

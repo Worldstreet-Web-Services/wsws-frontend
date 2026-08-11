@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useLinkWithPasskey, useLogout, usePrivy } from "@privy-io/react-auth";
 import { Avatar } from "@/components/dashboard/avatar";
-import { WalletList } from "@/components/dashboard/wallet-list";
+import { WalletList } from "@/features/portfolio";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { deriveProfile } from "@/lib/user";
 import { toast } from "@/lib/toast";

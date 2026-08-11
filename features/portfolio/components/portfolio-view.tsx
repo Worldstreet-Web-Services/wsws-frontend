@@ -12,7 +12,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { toast } from "@/lib/toast";
-import { BalanceCard } from "@/components/dashboard/balance-card";
+import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/components/dashboard/kash/kash-banner";
 import { KashCard } from "@/components/dashboard/kash/kash-card";
 import { CrossBorderBanner } from "@/components/dashboard/remit/cross-border-banner";
@@ -25,7 +25,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { MemeTradeSheet } from "@/components/dashboard/meme/meme-trade-sheet";
-import { selectHoldings } from "@/lib/holdings";
+import { selectHoldings } from "@/features/portfolio/lib/holdings";
 import { canSellAsset } from "@/lib/sell";
 import type { MemeToken } from "@/lib/meme/api";
 import { coingeckoId } from "@/lib/coingecko";

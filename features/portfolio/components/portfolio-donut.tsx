@@ -3,7 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
-import { heldAssetCount, portfolioBreakdown, type BreakdownKey } from "@/lib/portfolio-breakdown";
+import {
+  heldAssetCount,
+  portfolioBreakdown,
+  type BreakdownKey,
+} from "@/features/portfolio/lib/breakdown";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 // Ark is monochrome, so the slices separate by lightness rather than hue —

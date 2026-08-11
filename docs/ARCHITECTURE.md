@@ -438,7 +438,15 @@ the same commit, so `git` tracks renames and review stays readable.
       lost its `legacy` escape hatch in the same commit: `components/layout/` is now
       its own type, and everything else under `components/` is `shared-ui`, which may
       not import upward. Branch: `refactor/architecture`
-- [ ] **3.11 Colocate tests.** Move `__tests__/*` beside their subjects. PR: _n/a_
+- [x] **3.11 Colocate tests.** 87 of 98 test files now sit beside their subject and
+      carry its name, so `presenter.ts` is covered by `presenter.test.ts` in the same
+      folder. The 11 left in `__tests__/` are the ones with no single subject: route
+      handlers, the two live-registry probes, and the smoke test. `vitest` needed no
+      change, since its include glob was already repository-wide. Colocation put the
+      boundary rules over the tests too, which immediately caught a schema test in
+      `lib/` reaching into `features/rwa` for `formatApy`. It was testing two layers
+      at once; the presenter half moved to the presenter's own test.
+      Branch: `refactor/architecture`
 
 ### Phase 4: confidence
 

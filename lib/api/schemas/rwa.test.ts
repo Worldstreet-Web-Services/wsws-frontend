@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkUpstream } from "@/lib/server/validate-upstream";
 import { buildSchema, quoteSchema, rwaSchemaFor } from "@/lib/api/schemas/rwa";
-import { formatApy } from "@/features/rwa/lib/presenter";
 
 const where = { service: "rwa", path: "assets" };
 const ok = (data: unknown) => ({ success: true, data });
@@ -64,19 +63,6 @@ describe("rwa asset schema", () => {
     const check = checkUpstream(rwaSchemaFor("assets"), ok([noSymbol]), where);
     expect(check.ok).toBe(false);
     expect(check.problem).toContain("symbol");
-  });
-});
-
-describe("formatApy", () => {
-  // The type said number | undefined while the gateway sends null. The runtime
-  // was already safe; this pins it so a future refactor cannot regress it.
-  it("renders nothing for a null APY", () => {
-    expect(formatApy(null)).toBeNull();
-    expect(formatApy(undefined)).toBeNull();
-  });
-
-  it("renders basis points as a percent", () => {
-    expect(formatApy(355)).toBe("3.55%");
   });
 });
 

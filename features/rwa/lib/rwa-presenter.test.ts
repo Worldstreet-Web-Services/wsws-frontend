@@ -612,3 +612,16 @@ describe("dedupeByChain", () => {
     expect(dedupeByChain([])).toEqual([]);
   });
 });
+
+describe("formatApy", () => {
+  // The type said number | undefined while the gateway sends null. The runtime
+  // was already safe; this pins it so a future refactor cannot regress it.
+  it("renders nothing for a null APY", () => {
+    expect(formatApy(null)).toBeNull();
+    expect(formatApy(undefined)).toBeNull();
+  });
+
+  it("renders basis points as a percent", () => {
+    expect(formatApy(355)).toBe("3.55%");
+  });
+});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findReturnable, isReturnable, winningSide } from "@/lib/prediction/lp-return";
-import type { LpPosition, Market, MarketStatus, Outcome } from "@/lib/prediction/types";
+import { findReturnable, isReturnable, winningSide } from "@/features/prediction/lib/lp-return";
+import type { LpPosition, Market, MarketStatus, Outcome } from "@/features/prediction/lib/types";
 
 function market(id: bigint, status: MarketStatus, outcome: Outcome): Market {
   return {

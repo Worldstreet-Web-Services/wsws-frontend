@@ -10,7 +10,7 @@ import {
   priceYesFromReserves,
   quoteBuy,
   quoteSell,
-} from "@/lib/prediction/math";
+} from "@/features/prediction/lib/math";
 
 const M = 1_000_000n; // 1 unit in 6-dec base units
 

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { buildNav } from "@/components/dashboard/nav-items";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { PredictionView } from "@/components/dashboard/views/prediction-view";
+import { PredictionView } from "@/features/prediction";
 import { loadInterest } from "@/lib/preferences";
 
 // Prediction markets as their own page, like Earn and Casino: the same app

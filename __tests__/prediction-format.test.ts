@@ -4,7 +4,7 @@ import {
   formatCloseDateTime,
   formatReserve,
   timeUntil,
-} from "@/lib/prediction/format";
+} from "@/features/prediction/lib/format";
 
 // USDC/share reserves are 6-decimal base units.
 const usdc = (whole: number) => BigInt(Math.round(whole * 1_000_000));

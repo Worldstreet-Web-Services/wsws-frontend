@@ -6,12 +6,12 @@ import { getWalletAddress } from "@/lib/user";
 import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { publicClientForChain } from "@/lib/trade/receipt";
 import { awaitReceipt } from "@/lib/trade/receipt";
-import { PREDICTION_CHAIN_ID } from "@/lib/prediction/logic";
 import {
+  PREDICTION_CHAIN_ID,
   readLegacyClaimState,
   buildLegacyClaimCalls,
   type LegacyClaimState,
-} from "@/lib/prediction/legacy-claim";
+} from "@/features/prediction";
 
 // Reclaim page for winnings stranded on the SUPERSEDED prediction contract
 // (0xF9A870…). Those markets never show in the normal app (the indexer only

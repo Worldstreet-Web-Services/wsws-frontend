@@ -5,9 +5,9 @@ import {
   normalizeGroup,
   normalizeHolders,
   normalizeQuote,
-} from "@/lib/prediction/normalize";
-import { commentMessage, likeMessage } from "@/lib/prediction/comment-signing";
-import { PRICE_SCALE } from "@/lib/prediction/types";
+} from "@/features/prediction/lib/normalize";
+import { commentMessage, likeMessage } from "@/features/prediction/lib/comment-signing";
+import { PRICE_SCALE } from "@/features/prediction/lib/types";
 
 // Normalizers + comment-signing parity for the Polymarket-style detail surfaces.
 // The signing messages MUST match the backend CommentService strings exactly or

@@ -9,7 +9,7 @@ import {
   isClaimable,
   priceCents,
   resolutionInfo,
-} from "@/lib/prediction";
+} from "@/features/prediction/lib/positions";
 
 describe("betSlip", () => {
   it("reads the provider's own initial/current/pnl values", () => {

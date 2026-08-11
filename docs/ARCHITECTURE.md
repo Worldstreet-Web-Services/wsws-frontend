@@ -387,7 +387,16 @@ the same commit, so `git` tracks renames and review stays readable.
       banner into this slice exposed a portfolio-to-remit import, which the 3.2 rules
       caught. Resolved with a slot prop rather than a relaxed rule. Branch:
       `refactor/architecture`
-- [ ] **3.6 `features/prediction/`** PR: _n/a_
+- [x] **3.6 `features/prediction/`** the largest slice: 29 components, 21 hooks
+      and 16 lib files. The first consumer sweep looked alarming, until it turned out
+      almost every "external" importer was prediction code shelved elsewhere: the two
+      views under `components/dashboard/views/`, and `use-bet`, `use-settle`,
+      `use-create-event`, `use-lp-auto-return` sitting in the flat hooks folder. Once
+      the boundary was drawn correctly, exactly one true leak remained. Three files
+      stayed behind for the server: `lib/prediction-image` (read by
+      `lib/server/polymarket`) and `lib/polymarket/config` and `restricted`, both read
+      by API routes, which must not pull a client barrel into a route handler.
+      `lib/prediction.ts` became `lib/positions.ts`. Branch: `refactor/architecture`
 - [ ] **3.7 `features/trade/`** PR: _n/a_
 - [ ] **3.8 `features/earn/`** PR: _n/a_
 - [ ] **3.9 `features/casino/`** last. 39 components, and the two files over

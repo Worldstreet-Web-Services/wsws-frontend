@@ -7,7 +7,7 @@ import {
   normalizeMarkets,
   normalizePositions,
   normalizeTrade,
-} from "@/lib/prediction/normalize";
+} from "@/features/prediction/lib/normalize";
 
 const RAW_MARKET = {
   marketId: "101",

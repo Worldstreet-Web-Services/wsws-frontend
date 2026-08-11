@@ -256,8 +256,30 @@ Independent of the restructure. Pure subtraction and CI hardening.
 - [x] **1.3 Add `tsc --noEmit` to CI.** Added `pnpm typecheck` and a CI step
       after ESLint. `next build` only typechecks what the build graph reaches.
       Branch: `refactor/architecture`
-- [ ] **1.4 Add `knip` to CI as a warning.** Finds unused files, exports, and
-      dependencies. It would have found 1.1 on its own. PR: _n/a_
+- [x] **1.4 Run `knip`, delete what it proves is dead.** `npx knip`, with the
+      committed `knip.json`. The first run reported 28 unused files; 11 were genuinely
+      dead and are deleted. The largest was the Jupiter swap path, `lib/trade/jupiter`
+      plus `use-swap-execute` and `use-trade-quote`, which the holdings buy and sell
+      flow superseded in PR #33 and nothing has imported since. Alongside it,
+      `use-polymarket-withdraw` with its only dependency `use-evm-swap-execute`, the
+      Polymarket `public-client`, four retired funds screens, and a confetti component
+      that the round overlay replaced with the `canvas-confetti` package. The other 17
+      are not dead, which is why the tool is configured rather than trusted blindly.
+      Three are referenced by string and so invisible to static analysis:
+      `public/sw.js` is passed to `navigator.serviceWorker.register` in
+      `use-push-notifications`, the Stockfish build is a `workerUrl`, and
+      `vitest.server-only-stub` is a `vitest.config` alias. Deleting the first would
+      have silently killed push notifications. The other 14 were the in-house voice
+      pipeline, and chasing them down showed the assistant is not gone: `app/layout.tsx`
+      loads an external Vivid widget script, and `VividWidgetDock` renders `null` and
+      only positions it. The in-house recorder, orb, transcript panel, wake word and
+      ElevenLabs proxy were that widget's predecessor, left commented out in
+      `app/providers.tsx` rather than removed. All 19 files went, along with
+      `app/api/tts` and five environment variables that nothing read any more.
+      `lib/voice/{intent,prefill,chain-match,dock}` stayed: they carry the deposit and
+      trade prefill types that funds, trade and rwa still use, which is why the folder
+      survives its own feature. `knip.json` now ignores only the three string-referenced
+      entries. Branch: `refactor/architecture`
 - [ ] **1.5 Prune stale branches.** 35 remote branches are superseded by squash
       merges and will never show as merged. Enable "Automatically delete head
       branches" in repository settings, then delete the existing set. PR: _n/a_

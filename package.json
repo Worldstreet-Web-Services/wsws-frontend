@@ -63,6 +63,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "eslint-plugin-boundaries": "^7.2.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",

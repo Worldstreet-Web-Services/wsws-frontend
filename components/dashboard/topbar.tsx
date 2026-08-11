@@ -10,7 +10,7 @@ import { LanguageSelect } from "@/components/ui/language-select";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Avatar } from "@/components/dashboard/avatar";
-import { useGlobalSearch, type SearchResult } from "@/hooks/use-global-search";
+import { useGlobalSearch, type SearchResult } from "@/components/dashboard/use-global-search";
 import { deriveProfile } from "@/lib/user";
 
 interface TopbarProps {

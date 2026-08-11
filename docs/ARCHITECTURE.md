@@ -336,8 +336,29 @@ the same commit, so `git` tracks renames and review stays readable.
       looks like feature code is often cross-cutting code that arrived with the first
       feature to need it. Branch: `refactor/architecture`
 
-- [ ] **3.2 Add `eslint-plugin-boundaries`.** After the second slice exists, so
-      the rule has something to catch. PR: _n/a_
+- [x] **3.2 `eslint-plugin-boundaries`.** Two policies on
+      `boundaries/dependencies`: a feature may not import another feature, and
+      `lib`, `components/ui` and `hooks` may not import upward into `features`,
+      `app` or the unmigrated shell. `components/**` is typed `legacy` and may still
+      reach anything until its slice moves, so the rule guards what is migrated
+      without blocking the rest. Verified by planting each violation type and
+      confirming the right message fires, then reverting.
+
+  Two things the plugin's v7 API cost us, worth knowing before editing this
+  config: element patterns match partially by default, so `lib/**` also matched
+  the `lib/` folder inside a slice and misattributed errors until every
+  descriptor got `partialMatch: false`. And `internalPath` inside a `to` selector
+  is silently ignored, so the "import a feature through its index" rule could not
+  be expressed; it is convention, currently true, and visible as zero deep
+  imports from outside either slice.
+
+  The rule immediately caught one real violation: `use-global-search` sat in the
+  shared `hooks/` layer while importing `@/features/rwa`. It aggregates
+  portfolio, market tokens and RWA for one consumer, the topbar, which makes it
+  shell composition rather than shared infrastructure. Moved beside its consumer;
+  it travels to `components/layout/` with task 3.10.
+  Branch: `refactor/architecture`
+
 - [x] **3.3 `features/portfolio/`** the display layer only: balance card, donut,
       wallet list, portfolio view, plus `holdings` and `breakdown`. `usePortfolio`
       deliberately stayed in `hooks/`: 34 importers across every feature area make it

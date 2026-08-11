@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { NetworkTabs } from "@/components/dashboard/funds/network-tabs";
-import { TokenList } from "@/components/dashboard/funds/token-list";
-import { AddressPanel } from "@/components/dashboard/funds/address-panel";
+import { NetworkTabs } from "@/features/funds/components/network-tabs";
+import { TokenList } from "@/features/funds/components/token-list";
+import { AddressPanel } from "@/features/funds/components/address-panel";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { friendlyError } from "@/lib/errors";
 import {

@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/icons";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { OtpInput } from "@/components/auth/otp-input";
-import { KycForm } from "@/components/dashboard/funds/kyc/kyc-form";
-import { useKycInitiate, useKycStatus, useKycVerify } from "@/hooks/use-pouch-kyc";
+import { KycForm } from "@/features/funds/components/kyc/kyc-form";
+import { useKycInitiate, useKycStatus, useKycVerify } from "@/features/funds/hooks/use-pouch-kyc";
 import { friendlyError } from "@/lib/errors";
 import {
   fallbackKycFields,
@@ -21,7 +21,7 @@ import {
   KYC_COUNTRY_CODE,
   type KycField,
   type KycState,
-} from "@/lib/pouch/kyc";
+} from "@/features/funds/lib/kyc";
 
 interface KycOnboardingProps {
   defaultEmail?: string;

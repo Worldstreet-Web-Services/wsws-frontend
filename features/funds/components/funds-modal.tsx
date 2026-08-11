@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MethodTile } from "@/components/dashboard/funds/method-tile";
-import { CryptoDepositScreen } from "@/components/dashboard/funds/crypto-deposit-screen";
-import { BankTransferScreen } from "@/components/dashboard/funds/bank-transfer-screen";
+import { MethodTile } from "@/features/funds/components/method-tile";
+import { CryptoDepositScreen } from "@/features/funds/components/crypto-deposit-screen";
+import { BankTransferScreen } from "@/features/funds/components/bank-transfer-screen";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { ArrowRightIcon, BankIcon } from "@/components/ui/icons";
 import type { DepositPrefill } from "@/lib/voice/intent";

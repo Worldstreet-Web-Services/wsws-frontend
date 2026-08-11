@@ -12,8 +12,8 @@ import {
   normalizeKycState,
   validateKycValue,
   type KycField,
-} from "@/lib/pouch/kyc";
-import { isReusableSession, isSessionActive, type KycSession } from "@/lib/pouch/session";
+} from "@/features/funds/lib/kyc";
+import { isReusableSession, isSessionActive, type KycSession } from "@/features/funds/lib/session";
 
 const field = (over: Partial<KycField> = {}): KycField => ({
   key: "FULL_NAME",

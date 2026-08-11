@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { DateField } from "@/components/dashboard/funds/kyc/date-field";
-import { kycMaxLength, type KycField as KycFieldType } from "@/lib/pouch/kyc";
+import { DateField } from "@/features/funds/components/kyc/date-field";
+import { kycMaxLength, type KycField as KycFieldType } from "@/features/funds/lib/kyc";
 
 interface KycFieldProps {
   field: KycFieldType;

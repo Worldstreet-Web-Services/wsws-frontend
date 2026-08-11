@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { KycField } from "@/components/dashboard/funds/kyc/kyc-field";
-import { useKycSubmit } from "@/hooks/use-pouch-kyc";
+import { KycField } from "@/features/funds/components/kyc/kyc-field";
+import { useKycSubmit } from "@/features/funds/hooks/use-pouch-kyc";
 import { friendlyError } from "@/lib/errors";
 import {
   buildKycDocuments,
@@ -13,7 +13,7 @@ import {
   type KycField as KycFieldType,
   type KycFieldError,
   type KycState,
-} from "@/lib/pouch/kyc";
+} from "@/features/funds/lib/kyc";
 
 interface KycFormProps {
   token: string;

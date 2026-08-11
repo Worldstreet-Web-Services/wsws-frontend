@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MethodTile } from "@/components/dashboard/funds/method-tile";
-import { CryptoWithdrawScreen } from "@/components/dashboard/funds/crypto-withdraw-screen";
-import { BankWithdrawScreen } from "@/components/dashboard/funds/bank-withdraw-screen";
+import { MethodTile } from "@/features/funds/components/method-tile";
+import { CryptoWithdrawScreen } from "@/features/funds/components/crypto-withdraw-screen";
+import { BankWithdrawScreen } from "@/features/funds/components/bank-withdraw-screen";
 import { SwapIcon, BankIcon } from "@/components/ui/icons";
 
 type Step = "chooser" | "crypto" | "bank";

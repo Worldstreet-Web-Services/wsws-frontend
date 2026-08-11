@@ -4,20 +4,24 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { KycOnboarding } from "@/components/dashboard/funds/kyc/kyc-onboarding";
+import { KycOnboarding } from "@/features/funds/components/kyc/kyc-onboarding";
 import { ArrowUpRightIcon, CheckIcon, SearchIcon, SwapIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { useCreateOfframp, useOfframpRate, useVerifyBank } from "@/hooks/use-pouch-offramp";
+import {
+  useCreateOfframp,
+  useOfframpRate,
+  useVerifyBank,
+} from "@/features/funds/hooks/use-pouch-offramp";
 import { useOnrampStatus } from "@/hooks/use-pouch-onramp";
-import { NG_BANKS } from "@/lib/pouch/banks";
+import { NG_BANKS } from "@/features/funds/lib/banks";
 import { friendlyError } from "@/lib/errors";
 import { deriveProfile } from "@/lib/user";
 import { formatAmount, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { SETTLE_CHAINS } from "@/lib/deposit";
-import { KYC_COUNTRY_CODE } from "@/lib/pouch/kyc";
-import { isReusableSession, loadKycSession, saveKycSession } from "@/lib/pouch/session";
+import { KYC_COUNTRY_CODE } from "@/features/funds/lib/kyc";
+import { isReusableSession, loadKycSession, saveKycSession } from "@/features/funds/lib/session";
 import {
   estimatedPayoutNgn,
   isValidOfframpAmount,

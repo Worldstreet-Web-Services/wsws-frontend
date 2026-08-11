@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sameChainDestination } from "@/components/dashboard/funds/crypto-withdraw-screen";
+import { sameChainDestination } from "@/features/funds/components/crypto-withdraw-screen";
 import { SETTLE_CHAINS } from "@/lib/deposit";
 
 describe("withdrawal source chains", () => {

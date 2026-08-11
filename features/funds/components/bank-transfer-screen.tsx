@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { KycOnboarding } from "@/components/dashboard/funds/kyc/kyc-onboarding";
+import { KycOnboarding } from "@/features/funds/components/kyc/kyc-onboarding";
 import { ArrowUpRightIcon, BankIcon, CheckIcon, CopyIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useNgnRate } from "@/hooks/use-ngn-rate";
@@ -13,14 +13,14 @@ import { copyText } from "@/lib/clipboard";
 import { friendlyError } from "@/lib/errors";
 import { getWalletAddress, deriveProfile } from "@/lib/user";
 import { formatAmount } from "@/lib/trade/math";
-import { KYC_COUNTRY_CODE } from "@/lib/pouch/kyc";
+import { KYC_COUNTRY_CODE } from "@/features/funds/lib/kyc";
 import { clearPendingOnramp, savePendingOnramp } from "@/lib/pouch/pending";
 import {
   clearKycSession,
   isReusableSession,
   loadKycSession,
   saveKycSession,
-} from "@/lib/pouch/session";
+} from "@/features/funds/lib/session";
 import {
   estimatedUsd,
   isTerminalOnrampStatus,

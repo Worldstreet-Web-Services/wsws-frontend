@@ -6,7 +6,7 @@ import {
   normalizeKycState,
   type KycInitiation,
   type KycState,
-} from "@/lib/pouch/kyc";
+} from "@/features/funds/lib/kyc";
 
 // Client hooks over the Shared KYC proxy routes. Each returns normalized domain
 // objects; raw provider shapes stay behind the /api/pouch boundary. The user's

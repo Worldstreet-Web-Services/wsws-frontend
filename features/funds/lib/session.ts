@@ -5,7 +5,7 @@
 // mirroring lib/preferences.ts. The token authorizes only this user's KYC and
 // ramps, never anything app-wide.
 
-import type { KycState } from "@/lib/pouch/kyc";
+import type { KycState } from "@/features/funds/lib/kyc";
 
 const KEY = "ws.pouch.kyc.v1";
 

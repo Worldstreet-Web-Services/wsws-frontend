@@ -371,7 +371,14 @@ the same commit, so `git` tracks renames and review stays readable.
       every other slice to import through a portfolio index. That gap is now named in
       section 2, `hooks/` is the shared behaviour layer beside `components/ui/`.
       Branch: `refactor/architecture`
-- [ ] **3.4 `features/funds/`** PR: _n/a_
+- [x] **3.4 `features/funds/`** deposit and withdraw: 17 screens, the KYC
+      onboarding, and the two modals that mount them. The modals came along because
+      `app/dashboard` was their only consumer, which makes them the slice's entry
+      points rather than shell chrome. `lib/pouch/` split three to three:
+      `banks`, `kyc` and `session` proved funds-only and moved; `offramp`, `onramp`
+      and `pending` stayed, since the API routes and the portfolio balance card read
+      them. `lib/deposit` and `use-deposit` stayed too, at 27 and 8 importers.
+      Branch: `refactor/architecture`
 - [x] **3.5 `features/remit/`** the cross-border corridor: 9 components,
       `use-offramp`, `cross-border`, and the payment-service `offramp` and `pending`
       helpers. `lib/pouch/*` and `use-pouch-offramp` stayed shared. They read like

@@ -283,8 +283,9 @@ Independent of the restructure. Pure subtraction and CI hardening.
 - [ ] **1.5 Prune stale branches.** 35 remote branches are superseded by squash
       merges and will never show as merged. Enable "Automatically delete head
       branches" in repository settings, then delete the existing set. PR: _n/a_
-- [ ] **1.6 Fix the PR template.** It still tells contributors to target `dev`,
-      which was removed on 2026-07-29. PR: _n/a_
+- [x] **1.6 Fix the PR template.** It told contributors to target `dev`, removed
+      on 2026-07-29, so every checklist run started with a wrong instruction. It now
+      says `main`. Branch: `refactor/architecture`
 - [x] **1.7 Retire `PREDICTION_INTEGRATION_TODO.md`.** Deleted. It was the
       v1.2.0 integration guide from the backend team, and every step in it shipped in
       PR #183. It carried no open items, and each path it named had since moved, so
@@ -480,8 +481,10 @@ the same commit, so `git` tracks renames and review stays readable.
 - [ ] **4.2 Split the files over 1,000 lines.** `play-section.tsx`,
       `last-standing-section.tsx`. Extract server state into hooks and derivation
       into tested `lib/` functions. PR: _n/a_
-- [ ] **4.3 `CODEOWNERS`.** Route `lib/trade`, `lib/payment`, `app/api/**` to a
-      reviewer by default. PR: _n/a_
+- [ ] **4.3 `CODEOWNERS`.** Route `lib/trade`, `lib/server`, `app/api/**` and
+      `features/*/lib` to a reviewer by default. The money paths, not the folder that
+      happened to hold them: `lib/payment` no longer exists, its contents are in
+      `features/remit/lib`. PR: _n/a_
 
 ---
 

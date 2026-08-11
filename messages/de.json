@@ -540,11 +540,6 @@
     "helpSupport": "Hilfe & Support",
     "signOut": "Abmelden"
   },
-  "dashFooter": {
-    "tagline": "Selbstverwahrte Märkte für alle. Ihre Schlüssel, Ihr Geld, Ihre Entscheidung.",
-    "rights": "© {year} {brand}. Alle Rechte vorbehalten.",
-    "disclaimer": "Krypto, tokenisierte Vermögenswerte und Prognosemärkte bergen Risiken, einschließlich Kapitalverlust. Nichts hier ist Finanzberatung."
-  },
   "common": {
     "addressCopied": "Adresse kopiert",
     "copied": "Kopiert",

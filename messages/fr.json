@@ -540,11 +540,6 @@
     "helpSupport": "Aide et assistance",
     "signOut": "Se déconnecter"
   },
-  "dashFooter": {
-    "tagline": "Des marchés en auto-conservation pour tous. Vos clés, votre argent, votre décision.",
-    "rights": "© {year} {brand}. Tous droits réservés.",
-    "disclaimer": "La crypto, les actifs tokenisés et les marchés de prédiction comportent des risques, y compris la perte du capital. Rien ici n'est un conseil financier."
-  },
   "common": {
     "addressCopied": "Adresse copiée",
     "copied": "Copié",

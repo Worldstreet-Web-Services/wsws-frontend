@@ -540,11 +540,6 @@
     "helpSupport": "Help & support",
     "signOut": "Sign out"
   },
-  "dashFooter": {
-    "tagline": "Self-custody markets for everyone. Your keys, your money, your call.",
-    "rights": "© {year} {brand}. All rights reserved.",
-    "disclaimer": "Crypto, tokenized assets, and prediction markets carry risk, including loss of principal. Nothing here is financial advice."
-  },
   "common": {
     "addressCopied": "Address copied",
     "copied": "Copied",

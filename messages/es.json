@@ -540,11 +540,6 @@
     "helpSupport": "Ayuda y soporte",
     "signOut": "Cerrar sesión"
   },
-  "dashFooter": {
-    "tagline": "Mercados en autocustodia para todos. Tus llaves, tu dinero, tu decisión.",
-    "rights": "© {year} {brand}. Todos los derechos reservados.",
-    "disclaimer": "La cripto, los activos tokenizados y los mercados de predicción conllevan riesgo, incluida la pérdida del capital. Nada aquí es asesoramiento financiero."
-  },
   "common": {
     "addressCopied": "Dirección copiada",
     "copied": "Copiado",

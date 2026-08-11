@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { markKnownUser } from "@/lib/known-user";
 import { Topbar } from "@/components/layout/topbar";
 import { SectionChips } from "@/components/layout/section-chips";
-import { DashboardFooter } from "@/components/layout/dashboard-footer";
 import { AccountModal } from "@/components/layout/modals/account-modal";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
@@ -17,13 +16,10 @@ interface DashboardShellProps {
   nav: NavItem[];
   activeSection: SectionId;
   children: React.ReactNode;
-  // Full-viewport screens like the chess lobby pin their layout to the screen,
-  // so a footer below would only add a dead scroll region.
-  hideFooter?: boolean;
 }
 
 // The persistent chrome around every top-level app screen: sidebar, topbar,
-// mobile section chips, footer, and the account modal. Shared by /dashboard
+// mobile section chips, and the account modal. Shared by /dashboard
 // (the scroll-spy sections) and any standalone section page like /casino, so
 // moving between them feels like one app, not a different shell per page.
 //
@@ -31,12 +27,7 @@ interface DashboardShellProps {
 // route, so it always navigates there; everything else is a scroll-spy
 // anchor that only exists on /dashboard, so it scrolls in-page when already
 // there and otherwise navigates to /dashboard#id first.
-export function DashboardShell({
-  nav,
-  activeSection,
-  children,
-  hideFooter = false,
-}: DashboardShellProps) {
+export function DashboardShell({ nav, activeSection, children }: DashboardShellProps) {
   const [accountOpen, setAccountOpen] = useState(false);
 
   // Anyone rendering the shell has an account, including sessions that
@@ -69,8 +60,6 @@ export function DashboardShell({
         </div>
 
         {children}
-
-        {hideFooter ? null : <DashboardFooter sections={nav} onSelect={navigate} />}
       </main>
 
       <ModalShell open={accountOpen} onClose={() => setAccountOpen(false)}>

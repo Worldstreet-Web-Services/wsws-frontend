@@ -63,11 +63,9 @@ function BackLink({ pathname }: { pathname: string }) {
 // since the sidebar only points at the hub itself.
 export function CasinoPage({
   children,
-  hideFooter,
   hideBackLink,
 }: {
   children: React.ReactNode;
-  hideFooter?: boolean;
   // The chess lobby pins its layout to the viewport and the sidebar already
   // points at Arkade, so the back link there is dead height.
   hideBackLink?: boolean;
@@ -79,7 +77,7 @@ export function CasinoPage({
 
   return (
     <AuthGuard>
-      <DashboardShell nav={nav} activeSection="casino" hideFooter={hideFooter}>
+      <DashboardShell nav={nav} activeSection="casino">
         <CasinoNavGuardProvider>
           {isHub || hideBackLink || !pathname ? null : <BackLink pathname={pathname} />}
           {children}

@@ -194,6 +194,32 @@ reading.
 
 ---
 
+## The one thing every gate missed
+
+Creating `features/` broke the entire dashboard's styling, and nothing caught it.
+
+`app/globals.css` imports Tailwind with `source(none)`, which turns off
+automatic content detection, and then lists the directories to scan. The list
+was `app`, `components`, `lib`, `hooks`. Moving 320 files into `features/` put
+the whole product UI in a directory Tailwind never read, so every class used
+only inside a slice was dropped from the stylesheet.
+
+Typecheck passed. ESLint passed. 1,001 tests passed. The production build
+succeeded. The integrity audit below, blob hashes and exported symbols and
+routes and locales, was clean, because not one byte of TypeScript was wrong. The
+markup was correct and the stylesheet was incomplete, and no tool in the
+pipeline compares those two things.
+
+It surfaced when a screen recording of the dashboard was put next to one taken
+before the work: the holdings table had lost the columns from
+`grid-cols-[2fr_1fr_1fr_1fr_1fr]`, the Kash banner had lost its height
+constraint, the perps amount button had lost its padding. One line fixed it.
+
+Two lessons, both now in `ARCHITECTURE.md`. A new top-level directory has to be
+added to `globals.css`, because the failure is silent. And a green pipeline says
+the code compiles, not that the product renders, which is the gap Playwright is
+meant to close.
+
 ## Verification
 
 The whole branch was checked for lost code by blob hash and exported symbol,

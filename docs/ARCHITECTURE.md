@@ -68,7 +68,7 @@ app/                    routes and BFF only
   api/                  44 route handlers, one folder per upstream service
   layout.tsx  providers.tsx  globals.css
 
-features/               9 slices, 320 files. Each owns its whole vertical.
+features/               9 slices, 329 files. Each owns its whole vertical.
   <slice>/
     components/
     hooks/
@@ -250,9 +250,6 @@ cross-feature imports, boundaries enforced. None of the following blocks work.
 - [ ] **Split the two files over 1,000 lines.** `play-section.tsx` at 1,530 and
       `last-standing-section.tsx` at 1,177. Extract server state into hooks and
       derivation into tested `lib/` functions.
-- [ ] **Remove the unused `stockfish` dependency.** Nothing imports it; the
-      engine is the vendored GPLv3 build in `public/stockfish/`. Needs a lockfile
-      change, so it belongs in its own PR.
 
 ---
 
@@ -260,7 +257,7 @@ cross-feature imports, boundaries enforced. None of the following blocks work.
 
 Recorded so they are chosen rather than defaulted into.
 
-1. **Client versus server components.** 229 of 264 components are client
+1. **Client versus server components.** 228 of 263 components are client
    components, with no server-side data fetching. That is a legitimate
    architecture, the App Router as a client router over a proxy layer, but it
    should be a decision. Current position: new read-heavy pages fetch on the
@@ -275,9 +272,9 @@ Recorded so they are chosen rather than defaulted into.
    the thing that would make it worth doing, because the shell cannot move into a
    shared layout as it stands. `DashboardShell` takes `activeSection`, and on
    `/dashboard` that is scroll-spy state rather than a route fact, so a layout
-   has no way to derive it from the URL. Casino also passes `hideFooter` for its
-   full-viewport screens. Sharing the shell would mean lifting both into context,
-   which is a real change to how the sidebar highlight works, not a folder move.
+   has no way to derive it from the URL. Sharing the shell would mean lifting
+   that into context, which is a real change to how the sidebar highlight works,
+   not a folder move.
 
 3. **The casino hub.** `/casino` is a live route whose live-data path was
    deleted with the dead service. It degrades by design and stays, but the tiles

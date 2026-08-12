@@ -540,11 +540,6 @@
     "helpSupport": "Aide et assistance",
     "signOut": "Se déconnecter"
   },
-  "dashFooter": {
-    "tagline": "Des marchés en auto-conservation pour tous. Vos clés, votre argent, votre décision.",
-    "rights": "© {year} {brand}. Tous droits réservés.",
-    "disclaimer": "La crypto, les actifs tokenisés et les marchés de prédiction comportent des risques, y compris la perte du capital. Rien ici n'est un conseil financier."
-  },
   "common": {
     "addressCopied": "Adresse copiée",
     "copied": "Copié",
@@ -1002,7 +997,20 @@
     "positionConnect": "Connect a wallet to see your position.",
     "noEarlyExitNote": "Pas de sortie anticipée. Vous pourrez récupérer une fois le marché résolu.",
     "viewOutcomes": "Voir les issues",
-    "moreOutcomes": "+{count} de plus"
+    "moreOutcomes": "+{count} de plus",
+    "resolveEventNoteGrouped": "En tant que créateur, choisissez le seul résultat qui s'est produit. Les autres sont réglés sur Non dans la même transaction.",
+    "resolveEventCta": "Résoudre · {winner} gagne",
+    "resolveEventPick": "Choisissez le résultat gagnant",
+    "resolveEventWarning": "Cela règle l'ensemble de l'événement et est irréversible.",
+    "partOfEvent": "Fait partie de : {title}",
+    "claimableIn": "Réclamable dans {time}",
+    "claimableSoon": "Réclamable sous peu",
+    "closesAt": "Clôture {when}",
+    "lpReturning": "Restitution de votre liquidité…",
+    "lpReturned": "Votre liquidité est de retour dans votre portefeuille.",
+    "lpReturnFailed": "Impossible de restituer votre liquidité. Nous réessaierons à votre prochaine visite.",
+    "lpAutoReturnNote": "Votre liquidité vous est restituée automatiquement dès que ce marché est résolu.",
+    "toastRedeemSuccess": "Gains récupérés. Ils sont dans votre solde à réclamer."
   },
   "perps": {
     "eyebrow": "Perpétuels",
@@ -1478,34 +1486,6 @@
       "errorQuote": "Impossible pour le moment. Réessayez.",
       "errorSend": "Ça n'est pas passé. Veuillez réessayer."
     },
-    "draw": {
-      "subject": "le tirage",
-      "loading": "Chargement du tirage",
-      "jackpot": "Jackpot",
-      "nextDrawIn": "Prochain tirage dans",
-      "drawingNow": "Tirage en cours…",
-      "roundClosedNote": "Cette manche est terminée",
-      "pickNumbers": "Choisissez {count} numéros (1–{max})",
-      "quickPick": "Sélection rapide",
-      "bonusNumber": "Numéro bonus (1–{max})",
-      "entries": "Participations",
-      "balance": "Solde {amount}",
-      "entryCount": "{count, plural, one {# participation} other {# participations}}",
-      "buying": "Achat…",
-      "roundClosed": "Manche terminée",
-      "pickMore": "Choisissez-en {count} de plus",
-      "pickBonus": "Choisissez un numéro bonus",
-      "notEnoughBalance": "Solde insuffisant",
-      "confirmEntry": "Confirmer la participation",
-      "myEntries": "Mes participations",
-      "prizeTiers": "Paliers de gains",
-      "pastDraws": "Tirages passés",
-      "noDrawsSettled": "Aucun tirage réglé pour l'instant.",
-      "toastConnect": "Connectez votre portefeuille pour participer au tirage.",
-      "toastBuying": "Achat de vos participations…",
-      "toastIn": "Vous participez à ce tirage. Bonne chance.",
-      "toastBuyFailed": "Impossible d'acheter ces participations."
-    },
     "entries": {
       "title": "Mes participations",
       "subject": "vos participations",
@@ -1519,7 +1499,8 @@
       "claimPrize": "Réclamer le gain",
       "toastClaiming": "Réclamation de votre gain…",
       "toastClaimed": "Gain réclamé — ajouté à votre solde.",
-      "toastClaimFailed": "Impossible de réclamer ce gain."
+      "toastClaimFailed": "Impossible de réclamer ce gain.",
+      "claimedLabel": "Prix réclamé"
     },
     "chess": {
       "common": {
@@ -2000,5 +1981,24 @@
     "moved": "{symbol} transféré",
     "notifications": "Notifications",
     "newCount": "{count} nouvelles"
+  },
+  "launchGate": {
+    "title": "Bientôt disponible",
+    "body": "Nous apportons les dernières touches à {brand}. Revenez bientôt — cela en vaudra la peine.",
+    "close": "Compris"
+  },
+  "waitlist": {
+    "eyebrow": "Bientôt disponible",
+    "title": "Tout le marché, <accent>presque ouvert.</accent>",
+    "subtitle": "Actions, or, crypto et prédictions dans une seule app, et votre argent reste le vôtre. Laissez votre e-mail : nous vous préviendrons dès l'ouverture.",
+    "placeholder": "Saisissez votre e-mail",
+    "join": "Rejoindre la liste",
+    "joining": "Inscription…",
+    "privacyNote": "Un e-mail au lancement. Rien d'autre, jamais.",
+    "invalidEmail": "Saisissez une adresse e-mail valide.",
+    "failed": "Impossible d'enregistrer pour le moment. Réessayez.",
+    "doneTitle": "Vous êtes sur la liste.",
+    "doneBody": "Nous vous écrirons dès que nous ouvrirons.",
+    "alreadyTitle": "Vous êtes déjà sur la liste."
   }
 }

@@ -51,3 +51,10 @@ next-env.d.ts
 
 # Design handoff reference bundles (not shipped)
 design_handoff_*/
+
+# One-shot helper scripts handed to the developer, never part of the tree.
+# Root level only, so scripts/ is unaffected.
+/*.sh
+
+# Screen recordings shared for debugging, never part of the tree.
+*.mov

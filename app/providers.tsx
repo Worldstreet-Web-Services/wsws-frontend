@@ -20,7 +20,7 @@ import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { MiniTimerHost } from "@/features/casino";
 
 // Well-formed placeholder lets the app build before env vars are set.
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cl0123456789abcdefghijklm";
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 
 type SolanaRpcs = NonNullable<NonNullable<PrivyClientConfig["solana"]>["rpcs"]>;
 type SolanaRpcEntry = NonNullable<SolanaRpcs[keyof SolanaRpcs]>;

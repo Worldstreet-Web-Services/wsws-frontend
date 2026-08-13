@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { pageNameForPath, pageNameForSection } from "@/lib/analytics/page-name";
 
 // A hand-rolled mock, not vi.fn() defaults, so every assertion below reads
 // straight off calls the module actually made.
@@ -7,6 +8,7 @@ const identify = vi.fn();
 const peopleSet = vi.fn();
 const reset = vi.fn();
 const track = vi.fn();
+const register = vi.fn();
 
 vi.mock("mixpanel-browser", () => ({
   default: {
@@ -15,6 +17,7 @@ vi.mock("mixpanel-browser", () => ({
     people: { set: peopleSet },
     reset,
     track,
+    register,
   },
 }));
 
@@ -32,6 +35,7 @@ beforeEach(() => {
   peopleSet.mockClear();
   reset.mockClear();
   track.mockClear();
+  register.mockClear();
 });
 
 afterEach(() => {
@@ -40,52 +44,73 @@ afterEach(() => {
 
 describe("without a configured token", () => {
   it("never reaches the SDK", async () => {
-    const { initAnalytics, identifyUser, resetAnalytics, trackEvent } =
-      await loadWithToken(undefined);
+    const {
+      initAnalytics,
+      identifyUser,
+      resetAnalytics,
+      track: send,
+      setSuper,
+    } = await loadWithToken(undefined);
     initAnalytics();
-    identifyUser("user_1");
+    identifyUser("0xabc");
     resetAnalytics();
-    trackEvent("withdraw_submitted");
+    setSuper({ platform: "web" });
+    send("withdraw_opened");
     expect(init).not.toHaveBeenCalled();
     expect(identify).not.toHaveBeenCalled();
     expect(reset).not.toHaveBeenCalled();
     expect(track).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
   });
 });
 
 describe("with a configured token", () => {
-  it("initializes once with the token", async () => {
+  it("initializes once, with autocapture and DNT honoured", async () => {
     const { initAnalytics } = await loadWithToken("test_token");
     initAnalytics();
     initAnalytics();
     expect(init).toHaveBeenCalledTimes(1);
     expect(init).toHaveBeenCalledWith(
       "test_token",
-      expect.objectContaining({ autocapture: false })
+      expect.objectContaining({ autocapture: true, ignore_dnt: false })
     );
   });
 
-  it("identifies with the given id and profile properties", async () => {
+  it("identifies by the EVM wallet address", async () => {
     const { initAnalytics, identifyUser } = await loadWithToken("test_token");
     initAnalytics();
-    identifyUser("user_1", { $email: "a@b.com" });
-    expect(identify).toHaveBeenCalledWith("user_1");
+    identifyUser("0x1111111111111111111111111111111111111111", { $email: "a@b.com" });
+    expect(identify).toHaveBeenCalledWith("0x1111111111111111111111111111111111111111");
     expect(peopleSet).toHaveBeenCalledWith({ $email: "a@b.com" });
   });
 
+  it("ignores an identify with no address, so anonymous events stay mergeable", async () => {
+    const { initAnalytics, identifyUser } = await loadWithToken("test_token");
+    initAnalytics();
+    identifyUser("");
+    expect(identify).not.toHaveBeenCalled();
+  });
+
   it("does nothing before initAnalytics has run", async () => {
-    const { identifyUser, trackEvent } = await loadWithToken("test_token");
-    identifyUser("user_1");
-    trackEvent("withdraw_submitted");
+    const { identifyUser, track: send } = await loadWithToken("test_token");
+    identifyUser("0xabc");
+    send("withdraw_opened");
     expect(identify).not.toHaveBeenCalled();
     expect(track).not.toHaveBeenCalled();
   });
 
   it("tracks an event with its properties", async () => {
-    const { initAnalytics, trackEvent } = await loadWithToken("test_token");
+    const { initAnalytics, track: send } = await loadWithToken("test_token");
     initAnalytics();
-    trackEvent("withdraw_submitted", { chain: "base" });
-    expect(track).toHaveBeenCalledWith("withdraw_submitted", { chain: "base" });
+    send("fund_method_selected", { method: "bank" });
+    expect(track).toHaveBeenCalledWith("fund_method_selected", { method: "bank" });
+  });
+
+  it("registers super properties", async () => {
+    const { initAnalytics, setSuper } = await loadWithToken("test_token");
+    initAnalytics();
+    setSuper({ platform: "web", has_deposited: false });
+    expect(register).toHaveBeenCalledWith({ platform: "web", has_deposited: false });
   });
 
   it("resets the local identity", async () => {
@@ -93,5 +118,67 @@ describe("with a configured token", () => {
     initAnalytics();
     resetAnalytics();
     expect(reset).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("property compaction", () => {
+  it("drops values that carry no information, but keeps false and zero", async () => {
+    // A missing figure must be absent, not null or "N/A": those become values
+    // in the reports and have to be filtered out of every query afterwards.
+    // false and 0 are real answers and have to survive.
+    const { __compactForTests: compact } = await loadWithToken("test_token");
+    expect(
+      compact({
+        amount_usd: 0,
+        has_tp: false,
+        fee_usd: null,
+        network: "",
+        issuer: undefined,
+        apy: Number.NaN,
+        asset: "USDC",
+      })
+    ).toEqual({ amount_usd: 0, has_tp: false, asset: "USDC" });
+  });
+
+  it("strips empty properties off a tracked event", async () => {
+    const { initAnalytics, track: send } = await loadWithToken("test_token");
+    initAnalytics();
+    send("withdraw_completed", {
+      method: "bank",
+      asset: "USDC",
+      amount_usd: 25,
+      network: undefined,
+    });
+    expect(track).toHaveBeenCalledWith("withdraw_completed", {
+      method: "bank",
+      asset: "USDC",
+      amount_usd: 25,
+    });
+  });
+});
+
+describe("page names", () => {
+  it("maps every nav section to its reported name", () => {
+    expect(pageNameForSection("portfolio")).toBe("portfolio");
+    // The app and the catalog use different words for these three, which is
+    // the whole reason the mapping exists.
+    expect(pageNameForSection("perps")).toBe("perpetuals");
+    expect(pageNameForSection("meme")).toBe("memecoins");
+    expect(pageNameForSection("casino")).toBe("arkade");
+    expect(pageNameForSection("activity")).toBe("arktivity");
+  });
+
+  it("resolves a nested route to its section", () => {
+    expect(pageNameForPath("/casino/checkers/play")).toBe("arkade");
+    expect(pageNameForPath("/prediction/event/abc")).toBe("prediction");
+    expect(pageNameForPath("/earn/sponsor/new")).toBe("earn");
+  });
+
+  it("reports nothing for a route that is not a nav section", () => {
+    // Better a missing page_view than one naming a page the catalog has no
+    // word for.
+    expect(pageNameForPath("/auth")).toBeNull();
+    expect(pageNameForPath("/interests")).toBeNull();
+    expect(pageNameForPath("/")).toBeNull();
   });
 });

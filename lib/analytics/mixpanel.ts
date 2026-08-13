@@ -3,10 +3,16 @@
 // swapping providers later (or adding a second one) touches one module, not
 // every screen that tracks an event.
 //
-// Event and property names should stay snake_case (Mixpanel's convention);
-// omit properties that don't apply rather than sending null or "".
+// The event catalog lives in ./events and is enforced by the signature of
+// `track`, so a screen cannot invent or misspell a name.
 
-import mixpanel, { type Dict } from "mixpanel-browser";
+import mixpanel from "mixpanel-browser";
+import type {
+  AnalyticsEventName,
+  AnalyticsEvents,
+  SuperProperties,
+  UserProfile,
+} from "@/lib/analytics/events";
 
 const TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
 
@@ -14,6 +20,25 @@ let initialized = false;
 
 function ready(): boolean {
   return initialized && typeof window !== "undefined";
+}
+
+/**
+ * Drops properties that carry no value.
+ *
+ * A missing property is an absent one: sending null, an empty string or "N/A"
+ * turns "we have no figure" into a value that shows up in reports and has to
+ * be filtered out of every query afterwards. `false` and `0` are real values
+ * and are kept.
+ */
+function compact(properties: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    if (typeof value === "number" && !Number.isFinite(value)) continue;
+    out[key] = value;
+  }
+  return out;
 }
 
 // Call once, before any other export here. A no-op on the server, and a
@@ -27,19 +52,28 @@ export function initAnalytics(): void {
   }
   mixpanel.init(TOKEN, {
     persistence: "localStorage",
-    // We send our own named events at the point of the action; Mixpanel's
-    // generic DOM-click autocapture would otherwise double up on those.
-    autocapture: false,
+    // Pageviews and clicks come for free; the named events in ./events are the
+    // ones we actually report on.
+    autocapture: true,
+    // Honour the browser's Do Not Track signal.
+    ignore_dnt: false,
   });
   initialized = true;
 }
 
-// Ties Mixpanel's distinct_id to our own user id (call after the user is
-// authenticated, never before), and records the profile properties passed in.
-export function identifyUser(id: string, properties?: Dict): void {
-  if (!ready()) return;
-  mixpanel.identify(id);
-  if (properties) mixpanel.people.set(properties);
+/**
+ * Ties Mixpanel's distinct_id to the account's canonical EVM wallet address.
+ *
+ * That address is assigned server-side at signup and is the same on every
+ * device, which is what merges a user's laptop and phone sessions into one
+ * person. It is public on-chain, stable per account, and doubles as the join
+ * key to on-chain data. Never identify by email, and never switch to the
+ * Solana address: an id that changes is two users as far as reports go.
+ */
+export function identifyUser(walletEvm: string, profile?: UserProfile): void {
+  if (!ready() || !walletEvm) return;
+  mixpanel.identify(walletEvm);
+  if (profile) mixpanel.people.set(compact(profile as Record<string, unknown>));
 }
 
 // Call on logout: detaches Mixpanel's local identity so the next session on
@@ -49,7 +83,34 @@ export function resetAnalytics(): void {
   mixpanel.reset();
 }
 
-export function trackEvent(name: string, properties?: Dict): void {
+/**
+ * Records one event. The overloads make the properties argument required for
+ * events that take properties and forbidden for the ones that do not, so the
+ * catalog in ./events is the single source of truth at every call site.
+ */
+export function track<E extends EventsWithoutProps>(name: E): void;
+export function track<E extends EventsWithProps>(name: E, properties: AnalyticsEvents[E]): void;
+export function track(name: AnalyticsEventName, properties?: unknown): void {
   if (!ready()) return;
-  mixpanel.track(name, properties);
+  mixpanel.track(name, properties ? compact(properties as Record<string, unknown>) : undefined);
 }
+
+type EventsWithoutProps = {
+  [K in AnalyticsEventName]: AnalyticsEvents[K] extends void ? K : never;
+}[AnalyticsEventName];
+
+type EventsWithProps = Exclude<AnalyticsEventName, EventsWithoutProps>;
+
+/**
+ * Registers super properties, which Mixpanel attaches to every subsequent
+ * event. Call again whenever one of them changes, for instance after KYC is
+ * verified or the first deposit lands, so later events carry the new value.
+ */
+export function setSuper(properties: Partial<SuperProperties>): void {
+  if (!ready()) return;
+  mixpanel.register(compact(properties as Record<string, unknown>));
+}
+
+// Exported for the tests: lets them assert the stripping rules without
+// standing up the SDK.
+export const __compactForTests = compact;

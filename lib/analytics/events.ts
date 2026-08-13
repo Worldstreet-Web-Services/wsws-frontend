@@ -148,7 +148,9 @@ export interface AnalyticsEvents {
   game_result: {
     game: Game;
     result: "win" | "loss" | "draw";
-    reason: "checkmate" | "resign" | "timeout" | "draw";
+    // "no_moves" covers a draughts side that is blocked or wiped out, which is
+    // the game's equivalent of checkmate and has no chess name.
+    reason: "checkmate" | "no_moves" | "resign" | "timeout" | "abandoned" | "draw";
     stake_usd: number;
     payout_usd: number;
     fee_usd: number;

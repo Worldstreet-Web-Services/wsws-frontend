@@ -17,6 +17,7 @@
 // once on identify, never event properties.
 
 export type Vertical = "spot" | "memecoin" | "real_asset";
+export type SignupMethod = "google" | "x" | "email" | "passkey" | "kingschat";
 export type Side = "buy" | "sell";
 export type Game = "chess" | "last_man" | "checkers";
 export type KycStatus = "none" | "pending" | "verified";
@@ -46,7 +47,7 @@ export type PageName =
 export interface AnalyticsEvents {
   // Auth and onboarding
   auth_started: void;
-  signup_completed: { method: "google" | "x" | "email" | "passkey" | "kingschat" };
+  signup_completed: { method: SignupMethod };
   login_completed: { method: string };
   passkey_added: void;
   passkey_skipped: void;

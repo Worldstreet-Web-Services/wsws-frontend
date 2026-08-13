@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { identifyUser, resetAnalytics, setSuper } from "@/lib/analytics/mixpanel";
+import { useLogin, usePrivy } from "@privy-io/react-auth";
+import { identifyUser, resetAnalytics, setSuper, track } from "@/lib/analytics/mixpanel";
+import type { SignupMethod } from "@/lib/analytics/events";
 import { identifyClarity, tagClaritySession } from "@/lib/analytics/clarity";
 import { deriveProfile, getWalletAddress } from "@/lib/user";
 
@@ -19,8 +20,33 @@ import { deriveProfile, getWalletAddress } from "@/lib/user";
  *
  * Renders nothing. Mounted once, so no screen has to wire this up itself.
  */
+// Privy's own login method names, mapped to the ones the catalog uses. Twitter
+// is reported as "x". Anything unrecognised passes through as-is rather than
+// being forced into one of the known values.
+function authMethod(method: string | null): SignupMethod {
+  if (!method) return "email";
+  if (method === "twitter") return "x";
+  if (method === "google" || method === "email" || method === "passkey") return method;
+  if (method.includes("kingschat")) return "kingschat";
+  return "email";
+}
+
 export function AnalyticsIdentity(): null {
   const { ready, authenticated, user } = usePrivy();
+
+  // One callback for both cases, rather than instrumenting each of the auth
+  // components separately: Privy tells us here whether this was a first login
+  // and which method was used.
+  useLogin({
+    onComplete: ({ isNewUser, loginMethod, wasAlreadyAuthenticated }) => {
+      // Entering the app with a live session is not a login: counting it would
+      // turn every page refresh into a sign-in.
+      if (wasAlreadyAuthenticated) return;
+      const method = authMethod(loginMethod);
+      if (isNewUser) track("signup_completed", { method });
+      else track("login_completed", { method });
+    },
+  });
   // Identity is set once per signed-in account. Privy re-renders this on token
   // refreshes and wallet updates, and re-identifying on each would restate the
   // profile for no gain.

@@ -52,9 +52,13 @@ export function initAnalytics(): void {
   }
   mixpanel.init(TOKEN, {
     persistence: "localStorage",
-    // Pageviews and clicks come for free; the named events in ./events are the
-    // ones we actually report on.
-    autocapture: true,
+    // Off deliberately. Autocapture reports raw DOM activity as generic
+    // "element clicked" rows, which crowds out the named events in ./events and
+    // double-counts the actions that already send one. It also captures clicks
+    // on screens we mask in session replay, which is the last place to be
+    // recording anything automatically. Every event we report on is sent
+    // explicitly at the point of the action instead.
+    autocapture: false,
     // Honour the browser's Do Not Track signal.
     ignore_dnt: false,
   });

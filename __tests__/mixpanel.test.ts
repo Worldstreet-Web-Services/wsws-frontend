@@ -65,14 +65,14 @@ describe("without a configured token", () => {
 });
 
 describe("with a configured token", () => {
-  it("initializes once, with autocapture and DNT honoured", async () => {
+  it("initializes once, with autocapture off and DNT honoured", async () => {
     const { initAnalytics } = await loadWithToken("test_token");
     initAnalytics();
     initAnalytics();
     expect(init).toHaveBeenCalledTimes(1);
     expect(init).toHaveBeenCalledWith(
       "test_token",
-      expect.objectContaining({ autocapture: true, ignore_dnt: false })
+      expect.objectContaining({ autocapture: false, ignore_dnt: false })
     );
   });
 

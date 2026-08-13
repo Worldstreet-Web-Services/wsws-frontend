@@ -7,10 +7,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { useCreateComputerMatch } from "@/features/casino/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
-import {
-  exceedsUsdcBalance,
-  normalizeUsdcAmount,
-} from "@/features/casino/lib/api/cashier";
+import { exceedsUsdcBalance, normalizeUsdcAmount } from "@/features/casino/lib/api/cashier";
 import { WagerSummary } from "@/features/casino/components/chess/wager-summary";
 import {
   CHESS_MODAL_CLOSE_BUTTON_CLASS,
@@ -412,7 +409,9 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                   />
                   <span className="text-[11px] font-semibold text-white/44">USDC</span>
                 </div>
-                <span className={`mt-1 block text-[10.5px] ${stakeOverBalance ? "text-down" : "text-white/36"}`}>
+                <span
+                  className={`mt-1 block text-[10.5px] ${stakeOverBalance ? "text-down" : "text-white/36"}`}
+                >
                   Balance {cashier.available} USDC
                 </span>
               </label>
@@ -424,7 +423,8 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                     feeBps={800}
                   />
                   <p className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                    You and the house each fund the stake. A win pays the pot minus 8%; a draw refunds both sides.
+                    You and the house each fund the stake. A win pays the pot minus 8%; a draw
+                    refunds both sides.
                   </p>
                 </div>
               ) : (

@@ -22,10 +22,7 @@ describe("Swiss betting api", () => {
     await fetchSwissMarketOdds("swiss/id");
     await fetchSwissBets("swiss/id", "0xbettor");
 
-    expect(chessClient.chessGet).toHaveBeenNthCalledWith(
-      1,
-      "/betting/swiss/swiss%2Fid/odds"
-    );
+    expect(chessClient.chessGet).toHaveBeenNthCalledWith(1, "/betting/swiss/swiss%2Fid/odds");
     expect(chessClient.chessGet).toHaveBeenNthCalledWith(
       2,
       "/betting/swiss/swiss%2Fid/bets",
@@ -45,14 +42,11 @@ describe("Swiss betting api", () => {
       idempotencyKey: "swiss-bet-key-1",
     });
 
-    expect(chessClient.chessPost).toHaveBeenCalledWith(
-      "/betting/swiss/swiss-1/bets",
-      {
-        bettor: "0xbettor",
-        predictedPlayerId: "player-1",
-        stakeUsdc: "2",
-        idempotencyKey: "swiss-bet-key-1",
-      }
-    );
+    expect(chessClient.chessPost).toHaveBeenCalledWith("/betting/swiss/swiss-1/bets", {
+      bettor: "0xbettor",
+      predictedPlayerId: "player-1",
+      stakeUsdc: "2",
+      idempotencyKey: "swiss-bet-key-1",
+    });
   });
 });

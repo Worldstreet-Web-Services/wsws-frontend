@@ -110,9 +110,7 @@ export function withChessReadIdentity(
   wallet: string
 ): URLSearchParams {
   const params = new URLSearchParams(searchParams);
-  if (
-    /^betting\/(?:markets|swiss)\/[^/]+\/bets$/u.test(joined)
-  ) {
+  if (/^betting\/(?:markets|swiss)\/[^/]+\/bets$/u.test(joined)) {
     params.set("bettor", wallet);
     return params;
   }

@@ -127,9 +127,7 @@ describe("chess identity helper", () => {
         JSON.stringify({ organizer: "spoofed", name: "Friday Swiss" }),
         wallet
       )
-    ).toBe(
-      JSON.stringify({ organizer: "0xDD0737-6C2E", name: "Friday Swiss" })
-    );
+    ).toBe(JSON.stringify({ organizer: "0xDD0737-6C2E", name: "Friday Swiss" }));
     expect(
       withChessIdentity(
         "swiss/123/rounds/next",

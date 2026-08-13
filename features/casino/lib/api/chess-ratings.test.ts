@@ -18,10 +18,7 @@ describe("chess ratings api", () => {
     await fetchChessPlayerRatings("player/name");
     await fetchChessRatingHistory("player/name", "blitz", 25);
 
-    expect(chessClient.chessGet).toHaveBeenNthCalledWith(
-      1,
-      "/players/player%2Fname/ratings"
-    );
+    expect(chessClient.chessGet).toHaveBeenNthCalledWith(1, "/players/player%2Fname/ratings");
     expect(chessClient.chessGet).toHaveBeenNthCalledWith(
       2,
       "/players/player%2Fname/ratings/blitz/history",

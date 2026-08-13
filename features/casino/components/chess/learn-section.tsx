@@ -344,7 +344,9 @@ export function LearnSection() {
     return (
       <div className="mx-auto w-full max-w-[560px] px-4 py-16 text-center">
         <CoachPortrait />
-        <h1 className="mt-5 text-3xl font-semibold text-white">Sign in to start your chess course</h1>
+        <h1 className="mt-5 text-3xl font-semibold text-white">
+          Sign in to start your chess course
+        </h1>
         <p className="mt-2 text-sm leading-6 text-white/52">
           Your lessons, mistakes, and progress follow your account across devices.
         </p>
@@ -376,7 +378,8 @@ export function LearnSection() {
               How should your coach begin?
             </h1>
             <p className="mt-3 max-w-md text-[14px] leading-6 text-white/55">
-              Start with guided lessons or go directly to a coached game. You can switch modes at any time.
+              Start with guided lessons or go directly to a coached game. You can switch modes at
+              any time.
             </p>
             <div className="mt-7 grid w-full gap-3">
               <button
@@ -444,7 +447,9 @@ export function LearnSection() {
             <div className="flex items-center gap-3 border-b border-white/7 p-4">
               <CoachPortrait small />
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-white">{exercise.chapter.title}</div>
+                <div className="truncate text-sm font-semibold text-white">
+                  {exercise.chapter.title}
+                </div>
                 <div className="truncate text-[11px] text-white/38">{exercise.lessonTitle}</div>
               </div>
             </div>
@@ -499,26 +504,38 @@ export function LearnSection() {
   return (
     <main className="mx-auto w-full max-w-[760px] px-3 py-4 sm:px-5">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <Link href="/casino/chess" className="inline-flex items-center gap-1.5 text-xs text-white/45 hover:text-white">
+        <Link
+          href="/casino/chess"
+          className="inline-flex items-center gap-1.5 text-xs text-white/45 hover:text-white"
+        >
           <ChevronLeftIcon size={13} /> Chess
         </Link>
         <div className="text-right">
-          <div className="text-[10px] font-bold tracking-[0.1em] text-white/30 uppercase">Points</div>
+          <div className="text-[10px] font-bold tracking-[0.1em] text-white/30 uppercase">
+            Points
+          </div>
           <div className="text-lg font-semibold text-[#d8b36a]">
-            {home.earnedPoints}<span className="text-xs text-white/28">/{home.maximumPoints}</span>
+            {home.earnedPoints}
+            <span className="text-xs text-white/28">/{home.maximumPoints}</span>
           </div>
         </div>
       </div>
 
       {mode === "home" ? (
-        <section className="overflow-hidden rounded-2xl border border-white/8" style={{ background: CHESS_SURFACE_BG }}>
+        <section
+          className="overflow-hidden rounded-2xl border border-white/8"
+          style={{ background: CHESS_SURFACE_BG }}
+        >
           <div className="flex items-center gap-4 border-b border-white/7 p-5">
             <CoachPortrait />
             <div>
-              <div className="text-[10px] font-bold tracking-[0.1em] text-[#d8b36a] uppercase">Your coach</div>
+              <div className="text-[10px] font-bold tracking-[0.1em] text-[#d8b36a] uppercase">
+                Your coach
+              </div>
               <h1 className="mt-1 font-serif text-3xl text-white">Ready for the next position?</h1>
               <p className="mt-2 text-sm leading-6 text-white/48">
-                Continue the course, repair a mistake from your games, or start a coached Stockfish match.
+                Continue the course, repair a mistake from your games, or start a coached Stockfish
+                match.
               </p>
             </div>
           </div>
@@ -548,26 +565,34 @@ export function LearnSection() {
               className="rounded-xl border border-white/8 bg-white/[0.035] p-4 text-left hover:border-[#d8b36a]/35"
             >
               <span className="text-sm font-semibold text-white">Play with coach</span>
-              <span className="mt-1 block text-xs leading-5 text-white/38">Choose Stockfish level and color.</span>
+              <span className="mt-1 block text-xs leading-5 text-white/38">
+                Choose Stockfish level and color.
+              </span>
             </Link>
           </div>
         </section>
       ) : null}
 
       {mode === "train" ? (
-        <section className="rounded-2xl border border-white/8 p-4" style={{ background: CHESS_SURFACE_BG }}>
+        <section
+          className="rounded-2xl border border-white/8 p-4"
+          style={{ background: CHESS_SURFACE_BG }}
+        >
           <div className="flex items-center gap-3">
             <CoachPortrait small />
             <div>
               <h1 className="font-serif text-2xl text-white">Train your mistakes</h1>
-              <p className="mt-0.5 text-xs text-white/40">Positions from completed game analysis.</p>
+              <p className="mt-0.5 text-xs text-white/40">
+                Positions from completed game analysis.
+              </p>
             </div>
           </div>
           {training.length === 0 ? (
             <div className="py-14 text-center">
               <p className="text-sm text-white/58">No training positions yet.</p>
               <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/35">
-                Finish a game and request analysis. Mistakes with a stronger continuation will appear here.
+                Finish a game and request analysis. Mistakes with a stronger continuation will
+                appear here.
               </p>
             </div>
           ) : (
@@ -579,7 +604,9 @@ export function LearnSection() {
                   onClick={() => openTraining(item)}
                   className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.03] p-3.5 text-left hover:border-[#d8b36a]/35"
                 >
-                  <span className="text-xs font-semibold text-white/78 capitalize">{item.classification}</span>
+                  <span className="text-xs font-semibold text-white/78 capitalize">
+                    {item.classification}
+                  </span>
                   <span className="mt-1 block text-[11px] text-white/38">
                     Move {item.ply}: {item.playedSan} · {item.phase}
                   </span>
@@ -591,10 +618,15 @@ export function LearnSection() {
       ) : null}
 
       {mode === "lessons" ? (
-        <section className="rounded-2xl border border-white/8 p-4 sm:p-5" style={{ background: CHESS_SURFACE_BG }}>
+        <section
+          className="rounded-2xl border border-white/8 p-4 sm:p-5"
+          style={{ background: CHESS_SURFACE_BG }}
+        >
           <div className="mb-5">
             <h1 className="font-serif text-3xl text-white">Lessons</h1>
-            <p className="mt-1 text-xs text-white/40">Complete each node to unlock the next skill.</p>
+            <p className="mt-1 text-xs text-white/40">
+              Complete each node to unlock the next skill.
+            </p>
           </div>
           <div className="space-y-8">
             {catalog.sections.map((section) => (
@@ -627,7 +659,9 @@ export function LearnSection() {
                         >
                           {done ? <CheckIcon size={18} /> : locked ? "·" : lesson.difficulty}
                         </span>
-                        <span className={`mt-2 text-[11px] font-semibold ${locked ? "text-white/22" : "text-white/72"}`}>
+                        <span
+                          className={`mt-2 text-[11px] font-semibold ${locked ? "text-white/22" : "text-white/72"}`}
+                        >
                           {lesson.title}
                         </span>
                         <span className="mt-0.5 text-[9px] text-white/28">

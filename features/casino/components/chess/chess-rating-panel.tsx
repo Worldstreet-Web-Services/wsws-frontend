@@ -73,7 +73,7 @@ export function ChessRatingPanel() {
               className="tnum shrink-0 rounded-full border border-white/9 px-2.5 py-1 text-[11px] text-white/62 transition-colors hover:border-white/25 hover:text-white"
             >
               {entry.ratingAfter}
-              <span className={entry.ratingDiff >= 0 ? "ml-1 text-up" : "ml-1 text-down"}>
+              <span className={entry.ratingDiff >= 0 ? "text-up ml-1" : "text-down ml-1"}>
                 {entry.ratingDiff >= 0 ? "+" : ""}
                 {entry.ratingDiff}
               </span>

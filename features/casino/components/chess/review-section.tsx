@@ -31,10 +31,7 @@ import type {
 } from "@/features/casino/lib/api/types";
 import { useChessMatchSocial, CHESS_KEYS } from "@/features/casino/hooks/use-casino-chess";
 import { useChessEngine } from "@/features/casino/hooks/use-chess-engine";
-import {
-  CHESS_PRODUCT_KEYS,
-  useChessProducts,
-} from "@/features/casino/hooks/use-chess-products";
+import { CHESS_PRODUCT_KEYS, useChessProducts } from "@/features/casino/hooks/use-chess-products";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { newChessIdempotencyKey } from "@/features/casino/lib/api/chess-idempotency";
 import { useBoardTheme } from "@/features/casino/lib/chess/board-theme";
@@ -754,7 +751,8 @@ export function ReviewSection({ matchId }: { matchId: string | null }) {
   const premiumReviewCredits = products.access?.premiumReviewCredits ?? 0;
   const topLesson = topMistakes[0] ?? null;
   const topLessonChapter = topLesson ? `${match.id}:${topLesson.ply}` : null;
-  const topLessonSaved = !!topLessonChapter &&
+  const topLessonSaved =
+    !!topLessonChapter &&
     !!coachProgressQuery.data?.items.some((item) => item.chapterKey === topLessonChapter);
 
   const onPostChat = async () => {
@@ -1235,7 +1233,9 @@ export function ReviewSection({ matchId }: { matchId: string | null }) {
             {analysis?.status === "completed" && analysis.tier === "standard" ? (
               <div className="border-b border-white/8 bg-white/[0.025] px-4 py-3 text-[0.76rem]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-white/48">Deeper Stockfish review and expanded coaching.</span>
+                  <span className="text-white/48">
+                    Deeper Stockfish review and expanded coaching.
+                  </span>
                   {premiumReviewCredits > 0 ? (
                     <button
                       type="button"

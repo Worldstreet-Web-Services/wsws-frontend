@@ -350,10 +350,9 @@ export async function fetchComputerCoachState(
   matchId: string,
   player: string
 ): Promise<ChessComputerCoachState> {
-  return chessGet<ChessComputerCoachState>(
-    `/computer/matches/${requireMatchId(matchId)}/coach`,
-    { player }
-  );
+  return chessGet<ChessComputerCoachState>(`/computer/matches/${requireMatchId(matchId)}/coach`, {
+    player,
+  });
 }
 
 export async function requestComputerCoachMove(
@@ -402,10 +401,11 @@ export async function requestComputerCoachHint(
   expectedPly: number,
   idempotencyKey: string
 ): Promise<ChessCoachHint> {
-  return chessPost<ChessCoachHint>(
-    `/computer/matches/${requireMatchId(matchId)}/coach/hint`,
-    { player, expectedPly, idempotencyKey }
-  );
+  return chessPost<ChessCoachHint>(`/computer/matches/${requireMatchId(matchId)}/coach/hint`, {
+    player,
+    expectedPly,
+    idempotencyKey,
+  });
 }
 
 export async function extendMatchTime(
@@ -628,10 +628,7 @@ export async function updateCoachProfile(
   );
 }
 
-export async function fetchCoachTraining(
-  player: string,
-  limit = 20
-): Promise<ChessCoachTraining> {
+export async function fetchCoachTraining(player: string, limit = 20): Promise<ChessCoachTraining> {
   return chessGet<ChessCoachTraining>(`/players/${encodeURIComponent(player)}/coach/training`, {
     limit,
   });

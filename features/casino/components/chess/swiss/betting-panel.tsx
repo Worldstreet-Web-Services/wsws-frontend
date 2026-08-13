@@ -73,16 +73,10 @@ export function SwissBettingPanel({
     !market.placingBet;
   const estimated =
     selected && stakeUsdc && market.odds
-      ? estimateReturn(
-          stakeUsdc,
-          selected.poolUsdc,
-          market.odds.totalPoolUsdc,
-          market.odds.rakeBps
-        )
+      ? estimateReturn(stakeUsdc, selected.poolUsdc, market.odds.totalPoolUsdc, market.odds.rakeBps)
       : 0;
   const nameFor = (playerId: string) =>
-    market.odds?.outcomes.find((outcome) => outcome.playerId === playerId)?.playerName ??
-    "Player";
+    market.odds?.outcomes.find((outcome) => outcome.playerId === playerId)?.playerName ?? "Player";
 
   const resetRetryKey = () => {
     retryKey.current = null;

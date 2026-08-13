@@ -883,12 +883,7 @@ describe("a drawn game", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: "+1m" }))[0]);
 
     await waitFor(() =>
-      expect(chessApi.extendMatchTime).toHaveBeenCalledWith(
-        "m1",
-        "0xabc",
-        60,
-        expect.any(String)
-      )
+      expect(chessApi.extendMatchTime).toHaveBeenCalledWith("m1", "0xabc", 60, expect.any(String))
     );
   });
 

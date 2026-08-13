@@ -156,10 +156,9 @@ describe("match", () => {
 
   it("prefers the backend clock anchor over browser-local history", () => {
     expect(
-      toChessMatch(
-        wire({ clockUpdatedAt: "2026-07-30T09:01:12.345Z" }),
-        { clockUpdatedAt: "2026-07-30T09:01:20.000Z" }
-      ).clockUpdatedAt
+      toChessMatch(wire({ clockUpdatedAt: "2026-07-30T09:01:12.345Z" }), {
+        clockUpdatedAt: "2026-07-30T09:01:20.000Z",
+      }).clockUpdatedAt
     ).toBe("2026-07-30T09:01:12.345Z");
   });
 
@@ -262,9 +261,7 @@ describe("live game frames", () => {
   });
 
   it("never lets a late waiting snapshot overwrite an accepted challenge", () => {
-    const waiting = toChessMatch(
-      wire({ status: "waiting", black: null, startedAt: null })
-    );
+    const waiting = toChessMatch(wire({ status: "waiting", black: null, startedAt: null }));
     const active = toChessMatch(wire({ status: "active" }));
     const finished = toChessMatch(
       wire({

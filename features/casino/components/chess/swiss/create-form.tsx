@@ -6,10 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCreateSwiss } from "@/features/casino/hooks/use-casino-swiss";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
-import {
-  normalizeUsdcAmount,
-  parseUsdcAmount,
-} from "@/features/casino/lib/api/cashier";
+import { normalizeUsdcAmount, parseUsdcAmount } from "@/features/casino/lib/api/cashier";
 import { CHESS_PRIMARY_BUTTON_CLASS } from "@/features/casino/lib/chess/ui";
 import {
   HIGH_STAKES_ENTRY_MIN_USDC,
@@ -74,8 +71,7 @@ export function SwissCreateForm({
   const entryFeeUnits = parseUsdcAmount(entryFee);
   const minimumEntryUnits = parseUsdcAmount(HIGH_STAKES_ENTRY_MIN_USDC) as bigint;
   const normalizedEntryFee = normalizeUsdcAmount(entryFee);
-  const badEntryFee = highStakes &&
-    (entryFeeUnits === null || entryFeeUnits < minimumEntryUnits);
+  const badEntryFee = highStakes && (entryFeeUnits === null || entryFeeUnits < minimumEntryUnits);
   const badMaxPlayers =
     highStakes &&
     (!Number.isInteger(maxPlayers) ||
@@ -155,8 +151,8 @@ export function SwissCreateForm({
           <div>
             <div className="text-[13px] font-semibold text-white">Prize tournament</div>
             <div className="mt-1 text-[11.5px] leading-5 text-white/48">
-              Each entrant locks the same USDC fee. The winner receives 50% of the final pool;
-              the platform keeps 50%.
+              Each entrant locks the same USDC fee. The winner receives 50% of the final pool; the
+              platform keeps 50%.
             </div>
           </div>
           <button
@@ -197,7 +193,9 @@ export function SwissCreateForm({
                 />
                 <span className="text-[10.5px] font-semibold text-white/42">USDC</span>
               </div>
-              <span className={`mt-1.5 block text-[11px] ${badEntryFee ? "text-down" : "text-white/40"}`}>
+              <span
+                className={`mt-1.5 block text-[11px] ${badEntryFee ? "text-down" : "text-white/40"}`}
+              >
                 Minimum {HIGH_STAKES_ENTRY_MIN_USDC} USDC
               </span>
             </label>
@@ -211,14 +209,16 @@ export function SwissCreateForm({
                 onChange={(event) => setMaxPlayers(event.target.valueAsNumber)}
                 className={inputClass}
               />
-              <span className={`mt-1.5 block text-[11px] ${badMaxPlayers ? "text-down" : "text-white/40"}`}>
-                {HIGH_STAKES_PLAYERS_MIN}–{HIGH_STAKES_PLAYERS_MAX} players; at least 4 must
-                join before round 1.
+              <span
+                className={`mt-1.5 block text-[11px] ${badMaxPlayers ? "text-down" : "text-white/40"}`}
+              >
+                {HIGH_STAKES_PLAYERS_MIN}–{HIGH_STAKES_PLAYERS_MAX} players; at least 4 must join
+                before round 1.
               </span>
             </label>
-            <div className="sm:col-span-2 rounded-lg border border-white/7 bg-white/[0.025] px-3 py-2.5 text-[11.5px] leading-5 text-white/52">
-              Creating is free. The entry is locked only when a player joins, and withdrawing
-              before the tournament starts refunds it automatically.
+            <div className="rounded-lg border border-white/7 bg-white/[0.025] px-3 py-2.5 text-[11.5px] leading-5 text-white/52 sm:col-span-2">
+              Creating is free. The entry is locked only when a player joins, and withdrawing before
+              the tournament starts refunds it automatically.
             </div>
           </div>
         ) : null}

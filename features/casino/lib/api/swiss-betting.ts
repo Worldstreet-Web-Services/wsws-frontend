@@ -42,9 +42,7 @@ export interface PlaceSwissBetInput {
 }
 
 export function fetchSwissMarketOdds(swissId: string): Promise<SwissMarketOdds> {
-  return chessGet<SwissMarketOdds>(
-    `/betting/swiss/${encodeURIComponent(swissId)}/odds`
-  );
+  return chessGet<SwissMarketOdds>(`/betting/swiss/${encodeURIComponent(swissId)}/odds`);
 }
 
 export function fetchSwissBets(swissId: string, bettor: string): Promise<SwissBet[]> {
@@ -56,13 +54,10 @@ export function fetchSwissBets(swissId: string, bettor: string): Promise<SwissBe
 }
 
 export function placeSwissBet(input: PlaceSwissBetInput): Promise<SwissBet> {
-  return chessPost<SwissBet>(
-    `/betting/swiss/${encodeURIComponent(input.swissId)}/bets`,
-    {
-      bettor: input.bettor,
-      predictedPlayerId: input.predictedPlayerId,
-      stakeUsdc: input.stakeUsdc,
-      idempotencyKey: input.idempotencyKey,
-    }
-  );
+  return chessPost<SwissBet>(`/betting/swiss/${encodeURIComponent(input.swissId)}/bets`, {
+    bettor: input.bettor,
+    predictedPlayerId: input.predictedPlayerId,
+    stakeUsdc: input.stakeUsdc,
+    idempotencyKey: input.idempotencyKey,
+  });
 }

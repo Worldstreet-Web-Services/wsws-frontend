@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyMove, legalMovesForSquare } from "@/features/casino/lib/chess/engine";
-import {
-  CHESS_LEARN_LESSONS,
-  createChessLessonBoard,
-} from "@/features/casino/lib/chess/learn";
+import { CHESS_LEARN_LESSONS, createChessLessonBoard } from "@/features/casino/lib/chess/learn";
 
 describe("chess learn lessons", () => {
   it("keeps every prescribed lesson move legal from the position before it", () => {

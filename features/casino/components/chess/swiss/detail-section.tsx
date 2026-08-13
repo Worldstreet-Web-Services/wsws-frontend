@@ -436,9 +436,9 @@ function InfoPanel({
           </div>
           {hasPositiveUsdc(detail.entryFeeUsdc) ? (
             <div className="rounded-[10px] border border-white/8 bg-black/12 px-3 py-2.5">
-              <strong className="tnum text-white/82">{detail.entryFeeUsdc} USDC</strong> per
-              entrant · {detail.prizePoolBps / 100}% winner pool · {detail.platformShareBps / 100}%
-              platform · minimum {detail.minimumPlayers} players.
+              <strong className="tnum text-white/82">{detail.entryFeeUsdc} USDC</strong> per entrant
+              · {detail.prizePoolBps / 100}% winner pool · {detail.platformShareBps / 100}% platform
+              · minimum {detail.minimumPlayers} players.
             </div>
           ) : null}
         </div>
@@ -702,9 +702,7 @@ export function SwissDetailSection({
                 <SummaryStat
                   label="Entry"
                   value={
-                    hasPositiveUsdc(detail.entryFeeUsdc)
-                      ? `${detail.entryFeeUsdc} USDC`
-                      : "Free"
+                    hasPositiveUsdc(detail.entryFeeUsdc) ? `${detail.entryFeeUsdc} USDC` : "Free"
                   }
                 />
               </div>
@@ -718,11 +716,7 @@ export function SwissDetailSection({
 
             <div className="mt-4 space-y-4">
               {detail.state === "open" && !joined ? (
-                <JoinPanel
-                  join={join}
-                  joining={joining}
-                  entryFeeUsdc={detail.entryFeeUsdc}
-                />
+                <JoinPanel join={join} joining={joining} entryFeeUsdc={detail.entryFeeUsdc} />
               ) : null}
 
               {detail.state === "open" && joined && !isOrganizer ? (

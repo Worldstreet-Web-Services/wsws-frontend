@@ -61,14 +61,6 @@ export function useChessEngine(fen: string | null, enabled = true) {
   useEffect(() => {
     if (!enabled || !canUseEngine()) return;
 
-    setState({
-      ...EMPTY_ENGINE_INFO,
-      bestMove: null,
-      label: ENGINE_CANDIDATES[0].label,
-      status: "loading",
-      error: null,
-    });
-
     const startWorker = (index: number) => {
       const candidate = ENGINE_CANDIDATES[index];
       fallbackRef.current = index;

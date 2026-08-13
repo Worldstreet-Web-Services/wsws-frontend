@@ -12,13 +12,19 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { toast } from "@/lib/toast";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
 import { KashCard } from "@/features/portfolio/components/kash-card";
+import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
+import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
+import { KashHistoryModal } from "@/features/portfolio/components/kash-history-modal";
+import { KashUpgradeModal } from "@/features/portfolio/components/kash-upgrade-modal";
+import { KashSendModal } from "@/features/portfolio/components/kash-send-modal";
+import { useKashAccount, useKashClaim } from "@/features/portfolio/hooks/use-kash";
 import { Switch } from "@/components/ui/switch";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
+import { track } from "@/lib/analytics/mixpanel";
 import { NetworkIcon } from "@/components/ui/network-icon";
 import { useMoney } from "@/components/ui/currency-select";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -127,7 +133,11 @@ export function PortfolioView({
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
   const t = useTranslations("portfolio");
-  const tKash = useTranslations("kash");
+  const { wallet: kashWallet } = useKashAccount();
+  const claimPoints = useKashClaim();
+  const [kashModal, setKashModal] = useState<
+    "buy" | "send" | "convert" | "history" | "upgrade" | null
+  >(null);
   // Distinguish "we couldn't load it" from "you have nothing". A failed request
   // with no cached tokens is an error, not an empty wallet; if a cached balance
   // survives (persisted), keep showing it rather than an error.
@@ -265,19 +275,47 @@ export function PortfolioView({
     });
   };
 
-  const comingSoon = () => toast.info(tKash("comingSoon"));
-
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <div className="mb-4">
-        <KashBanner onBuy={comingSoon} />
+        <KashBanner onBuy={() => setKashModal("buy")} />
       </div>
+      <KashBuyModal
+        open={kashModal === "buy"}
+        wallet={kashWallet}
+        onClose={() => setKashModal(null)}
+      />
+      <KashConvertModal open={kashModal === "convert"} onClose={() => setKashModal(null)} />
+      <KashHistoryModal open={kashModal === "history"} onClose={() => setKashModal(null)} />
+      <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
+      <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
 
       <Eyebrow>{t("eyebrow")}</Eyebrow>
 
       <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
-        <KashCard />
+        <KashCard
+          onBuy={() => setKashModal("buy")}
+          onClaim={
+            kashWallet
+              ? () =>
+                  claimPoints.mutate(
+                    { wallet: kashWallet },
+                    {
+                      // Reported on settlement, so the figure is what the engine
+                      // actually minted rather than what was claimable.
+                      onSuccess: (result) =>
+                        track("kash_earned", { kash_amount: Number(result.kashMinted) }),
+                    }
+                  )
+              : undefined
+          }
+          claiming={claimPoints.isPending}
+          onSend={() => setKashModal("send")}
+          onConvert={() => setKashModal("convert")}
+          onHistory={() => setKashModal("history")}
+          onUpgrade={() => setKashModal("upgrade")}
+        />
       </div>
 
       <div className="mt-3">{crossBorderSlot}</div>

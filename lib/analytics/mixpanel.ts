@@ -142,8 +142,10 @@ function accumulateProfile(name: AnalyticsEventName, props: Record<string, unkno
       });
       return;
     }
+    // lifetime_kash_earned is not derived here: the Kash engine reports the
+    // authoritative lifetime figure, and adding to it as well would count the
+    // same points twice.
     case "kash_earned":
-      incrementProfile({ lifetime_kash_earned: num("kash_amount") });
       setProfile({ kash_active: true });
       return;
     case "kash_bought":

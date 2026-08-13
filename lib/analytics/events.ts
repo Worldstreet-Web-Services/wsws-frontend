@@ -114,7 +114,10 @@ export interface AnalyticsEvents {
   // Kash
   kash_bought: { amount_usd: number; kash_amount: number };
   kash_sold: { kash_amount: number; amount_usd: number };
-  kash_earned: { source: "trading" | "games" | "referral"; kash_amount: number };
+  // `source` is omitted when points are settled in bulk: a weekly claim mixes
+  // trading, games and referral activity, and the engine does not break the
+  // total down, so naming one would be a guess.
+  kash_earned: { source?: "trading" | "games" | "referral"; kash_amount: number };
 
   // Earn marketplace. `earn_company_created` deliberately carries nothing: the
   // form it fires from collects a legal entity name, which must not be sent.

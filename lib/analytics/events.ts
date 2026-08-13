@@ -236,6 +236,16 @@ export interface PerpTradeOpened {
 
 export type AnalyticsEventName = keyof AnalyticsEvents;
 
+// Profile fields Mixpanel keeps a running total of. The client sends the
+// delta and the server holds the sum, so two devices cannot race each other
+// into a wrong figure.
+export type ProfileCounter =
+  | "total_deposit_usd"
+  | "total_volume_usd"
+  | "trade_count"
+  | "lifetime_kash_earned"
+  | "referral_count";
+
 // Attached to every event, so any of them can be sliced by who sent it without
 // each call site having to pass these through.
 export interface SuperProperties {

@@ -171,7 +171,21 @@ export interface AnalyticsEvents {
   // Cross-border
   send_money_opened: void;
   send_destination_selected: { country: string; currency: string };
-  send_completed: { corridor: string; amount_usd: number; amount_local: number; fee_usd: number };
+  send_completed: {
+    corridor: string;
+    amount_usd: number;
+    amount_local: number;
+    /**
+     * The rail quotes its fee in the currency being received, not in dollars,
+     * and only quotes one at all some of the time. `fee_local` carries that
+     * figure with `fee_currency` to say what it is denominated in; `fee_usd`
+     * stays for a rail that does quote in dollars. All three are omitted when
+     * no fee was quoted, rather than reported as a zero the user did not pay.
+     */
+    fee_usd?: number;
+    fee_local?: number;
+    fee_currency?: string;
+  };
 
   // Withdraw
   withdraw_opened: void;

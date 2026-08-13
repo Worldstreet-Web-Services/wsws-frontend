@@ -273,6 +273,12 @@ describe("chess lobby", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Set up a computer game" }));
     expect(screen.getByRole("heading", { name: "Game setup" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Unlimited" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("computer-game-setup-scroll-region")).toHaveClass(
+      "min-h-0",
+      "flex-1",
+      "overflow-y-auto"
+    );
+    expect(screen.getByTestId("computer-game-setup-actions")).toHaveClass("shrink-0");
     fireEvent.click(screen.getByRole("button", { name: "Play against computer" }));
 
     await waitFor(() =>

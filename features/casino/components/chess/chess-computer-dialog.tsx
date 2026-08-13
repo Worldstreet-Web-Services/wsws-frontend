@@ -194,12 +194,18 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
       open={open}
       onClose={onClose}
       contentKey="computer-game-setup"
-      panelClassName={`${CHESS_MODAL_PANEL_CLASS} md:!w-[min(672px,calc(100vw-32px))] !overflow-hidden !rounded-[4px] !px-0 !pt-0 !pb-0`}
+      panelClassName={`${CHESS_MODAL_PANEL_CLASS} !flex !flex-col !overflow-hidden !rounded-[4px] !px-0 !pt-0 !pb-0 md:!w-[min(672px,calc(100vw-32px))]`}
+      contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       closeButtonClassName={CHESS_MODAL_CLOSE_BUTTON_CLASS}
     >
-      <h2 className="px-6 py-5 text-center text-[21px] font-normal text-white/88">Game setup</h2>
+      <h2 className="shrink-0 px-6 py-5 text-center text-[21px] font-normal text-white/88">
+        Game setup
+      </h2>
 
-      <div className="space-y-6 border-y border-white/10 bg-[#211f1c] px-5 py-6 sm:px-7">
+      <div
+        data-testid="computer-game-setup-scroll-region"
+        className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain border-y border-white/10 bg-[#211f1c] px-5 py-6 sm:px-7"
+      >
         <div>
           <div className="mb-2 text-[14px] font-semibold text-white/86">Variant</div>
           <div className="flex items-center gap-3 rounded-[3px] border border-white/10 bg-[#262421] px-4 py-3">
@@ -431,7 +437,10 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
         ) : null}
       </div>
 
-      <div className="flex justify-center px-6 py-5">
+      <div
+        data-testid="computer-game-setup-actions"
+        className="flex shrink-0 justify-center px-6 py-5"
+      >
         <button
           type="button"
           onClick={() => void onPlay()}

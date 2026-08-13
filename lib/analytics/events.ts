@@ -178,6 +178,17 @@ export interface AnalyticsEvents {
     asset: string;
     amount_usd: number;
     network?: string;
+    /**
+     * Where a crypto withdrawal was sent. An on-chain address is public by
+     * construction, the same class of value as the wallet address we already
+     * use as the distinct_id, and it is what makes a withdrawal traceable to
+     * the chain.
+     *
+     * Only ever set for `method: "wallet"`. A bank withdrawal's recipient is an
+     * account number, which is on the never-send list, so that rail sends no
+     * recipient at all.
+     */
+    recipient_address?: string;
   };
 
   // Engagement

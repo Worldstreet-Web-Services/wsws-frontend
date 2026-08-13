@@ -140,6 +140,8 @@ export function ReviewStep({ form, onBack, onDone }: ReviewStepProps) {
       setPhase("tracking");
       // The corridor, the amounts, and the fee. Never the recipient's name,
       // phone or account number, all of which are on this form.
+      // Corridor and amounts only. The recipient of a cross-border send is a
+      // mobile money number or a bank account, both of which stay in the app.
       track("send_completed", {
         corridor: `US-${country.code.toUpperCase()}`,
         amount_usd: Number(form.amountUsd),

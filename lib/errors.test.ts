@@ -105,8 +105,7 @@ describe("contract reverts never reach the user as hex", () => {
   });
 
   it("never leaks calldata for a bare panic code", () => {
-    const panic =
-      "0x4e487b710000000000000000000000000000000000000000000000000000000000000011";
+    const panic = "0x4e487b710000000000000000000000000000000000000000000000000000000000000011";
     expect(friendlyError(new Error(panic))).not.toContain("0x");
   });
 

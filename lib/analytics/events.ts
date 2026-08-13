@@ -75,7 +75,7 @@ export interface AnalyticsEvents {
   trade_failed: { vertical: Vertical; asset: string; reason: string };
 
   // Perpetuals
-  perp_market_viewed: { market: string; market_type: MarketType };
+  perp_market_viewed: { market: string; market_type?: MarketType };
   perp_trade_opened: PerpTradeOpened;
   perp_trade_closed: {
     market: string;
@@ -106,7 +106,10 @@ export interface AnalyticsEvents {
   };
   prediction_liquidity_provided: { market_id: string; amount_usd: number };
   prediction_market_resolved: { market_id: string; outcome: "yes" | "no"; num_outcomes: number };
-  prediction_payout_claimed: { market_id: string; scope: PredictionScope; amount_usd: number };
+  // The contract pays every settled position in one call, so a claim cannot
+  // always name a single market or amount. Both are omitted rather than
+  // reported as an empty string and a zero, which would read as a real $0 claim.
+  prediction_payout_claimed: { market_id?: string; scope: PredictionScope; amount_usd?: number };
 
   // Kash
   kash_bought: { amount_usd: number; kash_amount: number };
@@ -115,9 +118,9 @@ export interface AnalyticsEvents {
 
   // Earn marketplace. `earn_company_created` deliberately carries nothing: the
   // form it fires from collects a legal entity name, which must not be sent.
-  earn_listing_viewed: { listing_id: string; type: EarnListingType };
-  earn_application_started: { listing_id: string; type: EarnListingType };
-  earn_application_submitted: { listing_id: string; type: EarnListingType };
+  earn_listing_viewed: { listing_id: string; type?: EarnListingType };
+  earn_application_started: { listing_id: string; type?: EarnListingType };
+  earn_application_submitted: { listing_id: string; type?: EarnListingType };
   earn_company_created: void;
   earn_listing_published: {
     type: EarnListingType;
@@ -220,7 +223,7 @@ export type TradeCompleted =
 
 export interface PerpTradeOpened {
   market: string;
-  market_type: MarketType;
+  market_type?: MarketType;
   side: "long" | "short";
   leverage: number;
   collateral_usd: number;

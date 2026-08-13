@@ -182,3 +182,31 @@ describe("page names", () => {
     expect(pageNameForPath("/")).toBeNull();
   });
 });
+
+describe("failure containment", () => {
+  it("never lets an SDK failure escape into the caller", async () => {
+    // Several of these calls sit inside mutation success handlers. A throw
+    // there would take the navigation or the toast with it, so a broken SDK
+    // has to stay contained.
+    const {
+      initAnalytics,
+      track: send,
+      setSuper,
+      identifyUser,
+    } = await loadWithToken("test_token");
+    initAnalytics();
+    track.mockImplementationOnce(() => {
+      throw new Error("sdk exploded");
+    });
+    register.mockImplementationOnce(() => {
+      throw new Error("sdk exploded");
+    });
+    identify.mockImplementationOnce(() => {
+      throw new Error("sdk exploded");
+    });
+
+    expect(() => send("withdraw_opened")).not.toThrow();
+    expect(() => setSuper({ platform: "web" })).not.toThrow();
+    expect(() => identifyUser("0xabc")).not.toThrow();
+  });
+});

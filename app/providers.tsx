@@ -17,6 +17,7 @@ import {
 import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusProvider } from "@/components/providers/network-status";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
+import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { MiniTimerHost } from "@/features/casino";
 
@@ -104,6 +105,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             {/* Syncs Mixpanel's identity to Privy auth state; needs to sit
                 inside PrivyProvider to read it. Renders nothing. */}
             <AnalyticsIdentity />
+            <AnalyticsSegments />
             {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
                 the app; it only subscribes to game data while open. */}

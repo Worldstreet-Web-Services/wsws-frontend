@@ -72,8 +72,12 @@ export function initAnalytics(): void {
  */
 export function identifyUser(walletEvm: string, profile?: UserProfile): void {
   if (!ready() || !walletEvm) return;
-  mixpanel.identify(walletEvm);
-  if (profile) mixpanel.people.set(compact(profile as Record<string, unknown>));
+  try {
+    mixpanel.identify(walletEvm);
+    if (profile) mixpanel.people.set(compact(profile as Record<string, unknown>));
+  } catch (error) {
+    console.warn("[analytics] failed to identify", error);
+  }
 }
 
 // Call on logout: detaches Mixpanel's local identity so the next session on
@@ -92,7 +96,14 @@ export function track<E extends EventsWithoutProps>(name: E): void;
 export function track<E extends EventsWithProps>(name: E, properties: AnalyticsEvents[E]): void;
 export function track(name: AnalyticsEventName, properties?: unknown): void {
   if (!ready()) return;
-  mixpanel.track(name, properties ? compact(properties as Record<string, unknown>) : undefined);
+  // Analytics must never be the reason a user flow breaks. Several of these
+  // calls sit inside mutation success handlers, where a throw would take the
+  // navigation or the toast with it, so nothing here is allowed to escape.
+  try {
+    mixpanel.track(name, properties ? compact(properties as Record<string, unknown>) : undefined);
+  } catch (error) {
+    console.warn("[analytics] failed to track", name, error);
+  }
 }
 
 type EventsWithoutProps = {
@@ -108,7 +119,11 @@ type EventsWithProps = Exclude<AnalyticsEventName, EventsWithoutProps>;
  */
 export function setSuper(properties: Partial<SuperProperties>): void {
   if (!ready()) return;
-  mixpanel.register(compact(properties as Record<string, unknown>));
+  try {
+    mixpanel.register(compact(properties as Record<string, unknown>));
+  } catch (error) {
+    console.warn("[analytics] failed to register super properties", error);
+  }
 }
 
 // Exported for the tests: lets them assert the stripping rules without

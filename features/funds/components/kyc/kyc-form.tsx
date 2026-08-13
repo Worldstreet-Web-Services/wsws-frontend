@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { KycField } from "@/features/funds/components/kyc/kyc-field";
 import { useKycSubmit } from "@/features/funds/hooks/use-pouch-kyc";
 import { friendlyError } from "@/lib/errors";
-import { MASK_ATTRIBUTE } from "@/lib/analytics/clarity";
-import { track } from "@/lib/analytics/mixpanel";
+import { MASK_ATTRIBUTE, tagClaritySession } from "@/lib/analytics/clarity";
+import { setSuper, track } from "@/lib/analytics/mixpanel";
 import {
   buildKycDocuments,
   isFormSubmittable,
@@ -104,8 +104,15 @@ export function KycForm({
 
       // "approved" is the only outcome that is a pass. Pending is still in
       // review, so it is neither completed nor failed yet.
-      if (result.state === "approved") track("kyc_completed");
-      else if (result.state === "rejected") {
+      if (result.state === "approved") {
+        track("kyc_completed");
+        // Later events carry the new status, so a funnel can be split by it.
+        setSuper({ kyc_status: "verified" });
+        void tagClaritySession({ kyc_status: "verified" });
+      } else if (result.state === "pending") {
+        setSuper({ kyc_status: "pending" });
+        void tagClaritySession({ kyc_status: "pending" });
+      } else if (result.state === "rejected") {
         track("kyc_failed", { reason: "rejected" });
       }
       onSubmitted(result.state, result.message);

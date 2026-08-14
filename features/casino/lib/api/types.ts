@@ -644,6 +644,9 @@ export interface MarketOdds {
   status: MarketStatus;
   total: string;
   outcomes: Record<BetSelection, MarketOutcome>;
+  // Some game modules expose their configured rake with the market. Older
+  // chess responses do not, so callers retain their service-config fallback.
+  rakeBps?: number;
   winningOutcome: BetSelection | null;
   voidReason: string | null;
 }

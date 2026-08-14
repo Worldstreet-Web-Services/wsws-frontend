@@ -54,14 +54,15 @@ describe("match ids", () => {
 });
 
 describe("variants", () => {
-  it("keeps the two the engine actually implements", () => {
+  it("keeps every supported draughts variant", () => {
     expect(toVariant("standard")).toBe("standard");
     expect(toVariant("from_position")).toBe("from_position");
+    expect(toVariant("frisian")).toBe("frisian");
+    expect(toVariant("russian")).toBe("russian");
   });
 
-  it("reads an unimplemented variant as standard rather than inventing a mode", () => {
-    expect(toVariant("frisian")).toBe("standard");
-    expect(toVariant("russian")).toBe("standard");
+  it("reads an unknown variant as standard", () => {
+    expect(toVariant("unknown")).toBe("standard");
   });
 });
 
@@ -122,6 +123,16 @@ describe("normalizing a match", () => {
       perfKey: "bullet",
       white: { rating: 1_500, provisional: true, diff: null },
       black: { rating: 1_625, provisional: false, diff: null },
+    });
+  });
+
+  it("keeps matches created before ratings playable", () => {
+    const match = toDraughtsMatch(wire({ rating: undefined }));
+    expect(match.rating).toEqual({
+      rated: false,
+      perfKey: null,
+      white: { rating: null, provisional: null, diff: null },
+      black: { rating: null, provisional: null, diff: null },
     });
   });
 

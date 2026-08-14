@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MarketLogo } from "@/components/ui/market-logo";
 import styles from "@/features/casino/components/draughts/draughts-site-header.module.css";
 
 interface MenuEntry {
@@ -56,8 +57,8 @@ export function DraughtsSiteHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.identity}>
-        <Link href="/casino/checkers" className={styles.brand}>
-          mARKet<span>.draughts</span>
+        <Link href="/casino/checkers" className={styles.brand} aria-label="Market checkers">
+          <MarketLogo className={styles.logo} />
         </Link>
         <nav className={styles.nav} aria-label="Draughts">
           {SECTIONS.map((section) => (

@@ -1,7 +1,4 @@
-import {
-  startingFenForVariant,
-  type DraughtsVariant,
-} from "@/features/casino/lib/draughts/engine";
+import { startingFenForVariant, type DraughtsVariant } from "@/features/casino/lib/draughts/engine";
 
 export type PlayableDraughtsVariant = Exclude<DraughtsVariant, "from_position">;
 
@@ -75,7 +72,6 @@ export const DRAUGHTS_VARIANT_OPTIONS: readonly DraughtsVariantOption[] = [
 
 export function variantOption(variant: DraughtsVariant): DraughtsVariantOption {
   return (
-    DRAUGHTS_VARIANT_OPTIONS.find((option) => option.id === variant) ??
-    DRAUGHTS_VARIANT_OPTIONS[0]
+    DRAUGHTS_VARIANT_OPTIONS.find((option) => option.id === variant) ?? DRAUGHTS_VARIANT_OPTIONS[0]
   );
 }

@@ -128,10 +128,6 @@ function fieldsPerRow(size: 8 | 10): number {
   return size / 2;
 }
 
-function maxField(size: 8 | 10): number {
-  return size * fieldsPerRow(size);
-}
-
 export function isDraughtsVariant(value: unknown): value is DraughtsVariant {
   return typeof value === "string" && DRAUGHTS_VARIANTS.includes(value as DraughtsVariant);
 }

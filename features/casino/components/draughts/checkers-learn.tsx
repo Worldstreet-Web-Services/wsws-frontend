@@ -339,9 +339,7 @@ export function CheckersLearn() {
                 {variantLabel(exercise.chapter.variant)} training
               </p>
               <h1 className="mt-2 text-xl font-semibold text-white">{exercise.chapter.title}</h1>
-              <p className="mt-1.5 text-[13px] leading-5 text-white/48">
-                {exercise.lessonSummary}
-              </p>
+              <p className="mt-1.5 text-[13px] leading-5 text-white/48">{exercise.lessonSummary}</p>
               <div className="mt-4 border-t border-white/8 pt-4 text-[12px] text-white/40">
                 <p>Difficulty {activeLesson?.difficulty ?? 1}</p>
                 <p className="mt-1">Attempt {Math.max(1, attempts + (complete ? 0 : 1))}</p>
@@ -364,7 +362,9 @@ export function CheckersLearn() {
             <div className={DRAUGHTS_PANEL_HEADER_CLASS}>
               <div>
                 <p className="text-[12px] font-semibold text-white/72">Moves</p>
-                <p className="text-[10px] text-white/30">{variantLabel(exercise.chapter.variant)}</p>
+                <p className="text-[10px] text-white/30">
+                  {variantLabel(exercise.chapter.variant)}
+                </p>
               </div>
             </div>
             <DraughtsMoveTable moves={transcript} marks={marks} />
@@ -372,7 +372,11 @@ export function CheckersLearn() {
               <div className="flex items-center gap-4">
                 <span
                   className={`text-5xl leading-none ${
-                    complete ? "text-emerald-400" : lastCorrect === false ? "text-red-400" : "text-white/30"
+                    complete
+                      ? "text-emerald-400"
+                      : lastCorrect === false
+                        ? "text-red-400"
+                        : "text-white/30"
                   }`}
                   aria-hidden
                 >
@@ -380,7 +384,11 @@ export function CheckersLearn() {
                 </span>
                 <div>
                   <strong className="block text-xl text-white">
-                    {complete ? "Puzzle complete!" : lastCorrect === false ? "Try again" : "Your turn"}
+                    {complete
+                      ? "Puzzle complete!"
+                      : lastCorrect === false
+                        ? "Try again"
+                        : "Your turn"}
                   </strong>
                   <span className="mt-1 block text-[13px] leading-5 text-white/48">{feedback}</span>
                 </div>
@@ -441,7 +449,9 @@ export function CheckersLearn() {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold tracking-[0.1em] text-white/30 uppercase">Points</p>
+          <p className="text-[10px] font-semibold tracking-[0.1em] text-white/30 uppercase">
+            Points
+          </p>
           <p className="text-xl font-semibold text-amber-200">
             {home.earnedPoints}
             <span className="text-xs text-white/25">/{home.maximumPoints}</span>
@@ -485,7 +495,11 @@ export function CheckersLearn() {
                       className="cursor-pointer rounded border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-white/22 hover:bg-white/[0.055] disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       <span className="text-[10px] font-semibold tracking-[0.08em] text-white/28 uppercase">
-                        {locked ? "Locked" : state?.status === "completed" ? "Completed" : "Available"}
+                        {locked
+                          ? "Locked"
+                          : state?.status === "completed"
+                            ? "Completed"
+                            : "Available"}
                       </span>
                       <span className="mt-2 block text-[15px] font-semibold text-white/82">
                         {lesson.title}

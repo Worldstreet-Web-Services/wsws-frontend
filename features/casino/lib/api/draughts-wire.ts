@@ -17,6 +17,7 @@ import type {
   DraughtsMatch,
   DraughtsMatchComment,
   DraughtsMatchNote,
+  DraughtsMatchRating,
   DraughtsMatchState,
   DraughtsPlayer,
   DraughtsRematchState,
@@ -64,6 +65,19 @@ export interface DraughtsRematchWire {
   nextMatchId: string | null;
 }
 
+export interface DraughtsPlayerRatingWire {
+  rating: number | null;
+  provisional: boolean | null;
+  diff: number | null;
+}
+
+export interface DraughtsMatchRatingWire {
+  rated: boolean;
+  perfKey: DraughtsMatchRating["perfKey"];
+  white: DraughtsPlayerRatingWire;
+  black: DraughtsPlayerRatingWire;
+}
+
 export interface DraughtsMatchWire {
   id: string;
   inviteCode?: string;
@@ -86,6 +100,7 @@ export interface DraughtsMatchWire {
   takeback?: DraughtsTakebackWire;
   rematch?: DraughtsRematchWire;
   wager?: DraughtsWagerWire | null;
+  rating: DraughtsMatchRatingWire;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -291,6 +306,7 @@ export function toDraughtsMatch(
     takeback: { ...EMPTY_TAKEBACK, ...(wire.takeback ?? {}) },
     rematch: { ...EMPTY_REMATCH, ...(wire.rematch ?? {}) },
     wager: toWager(wire.wager),
+    rating: wire.rating,
     // Take the topic from the response; the fallback only covers an older
     // service that predates the field.
     liveTopic: wire.liveTopic ?? `draughts:match:${wire.id}`,

@@ -32,6 +32,12 @@ function wire(overrides: Partial<DraughtsMatchWire> = {}): DraughtsMatchWire {
     timeControl: { initialSeconds: 30, incrementSeconds: 30 },
     clocks: { whiteMs: 30_000, blackMs: 30_000 },
     drawOfferBy: null,
+    rating: {
+      rated: true,
+      perfKey: "bullet",
+      white: { rating: 1_500, provisional: true, diff: null },
+      black: { rating: 1_625, provisional: false, diff: null },
+    },
     createdAt: "2026-08-10T10:00:00.000Z",
     startedAt: "2026-08-10T10:00:05.000Z",
     finishedAt: null,
@@ -106,6 +112,17 @@ describe("normalizing a match", () => {
     expect(match.state).toBe("in_progress");
     expect(match.white?.username).toMatch(/^0x1111/u);
     expect(match.white?.walletAddress).toBe("0x1111111111111111111111111111111111111111");
+  });
+
+  it("carries the service rating packet independently of a wager", () => {
+    const match = toDraughtsMatch(wire());
+    expect(match.wager).toBeNull();
+    expect(match.rating).toEqual({
+      rated: true,
+      perfKey: "bullet",
+      white: { rating: 1_500, provisional: true, diff: null },
+      black: { rating: 1_625, provisional: false, diff: null },
+    });
   });
 
   it("shows an equal base and increment as one per-move budget", () => {

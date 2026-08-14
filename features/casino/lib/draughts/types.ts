@@ -41,6 +41,33 @@ export interface DraughtsWager {
   winnerPlayer: string | null;
 }
 
+export type DraughtsPerfKey =
+  | "ultraBullet"
+  | "bullet"
+  | "blitz"
+  | "rapid"
+  | "classical"
+  | "standard"
+  | "frisian"
+  | "frysk"
+  | "antidraughts"
+  | "breakthrough"
+  | "russian"
+  | "brazilian";
+
+export interface DraughtsPlayerRating {
+  rating: number | null;
+  provisional: boolean | null;
+  diff: number | null;
+}
+
+export interface DraughtsMatchRating {
+  rated: boolean;
+  perfKey: DraughtsPerfKey | null;
+  white: DraughtsPlayerRating;
+  black: DraughtsPlayerRating;
+}
+
 export interface DraughtsMatch {
   id: string;
   inviteCode: string;
@@ -66,6 +93,7 @@ export interface DraughtsMatch {
   takeback: DraughtsTakebackState;
   rematch: DraughtsRematchState;
   wager: DraughtsWager | null;
+  rating: DraughtsMatchRating;
   // WS-gateway topic carrying this match's live frames.
   liveTopic: string;
   createdAt: string;

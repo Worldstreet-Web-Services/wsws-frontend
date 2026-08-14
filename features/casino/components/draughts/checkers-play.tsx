@@ -44,7 +44,7 @@ import {
   type DraughtsMove,
   type DraughtsSide,
 } from "@/features/casino/lib/draughts/engine";
-import type { DraughtsMatch } from "@/features/casino/lib/draughts/types";
+import type { DraughtsMatch, DraughtsPlayerRating } from "@/features/casino/lib/draughts/types";
 import { friendlyError } from "@/lib/errors";
 import { copyText } from "@/lib/clipboard";
 import { toast } from "@/lib/toast";
@@ -90,12 +90,13 @@ interface SeatBarProps {
   label: string;
   side: DraughtsSide;
   captured: number;
+  rating: DraughtsPlayerRating;
   clock: number;
   active: boolean;
   low: boolean;
 }
 
-function SeatBar({ label, side, captured, clock, active, low }: SeatBarProps) {
+function SeatBar({ label, side, captured, rating, clock, active, low }: SeatBarProps) {
   return (
     <div
       className={`flex items-center justify-between rounded-xl border px-3 py-2 transition-colors ${
@@ -114,6 +115,22 @@ function SeatBar({ label, side, captured, clock, active, low }: SeatBarProps) {
           }}
         />
         <span className="truncate font-sans text-[14px] text-white/85">{label}</span>
+        {rating.rating !== null ? (
+          <span className="shrink-0 font-sans text-[12px] text-white/45 tabular-nums">
+            {rating.rating}
+            {rating.provisional ? "?" : ""}
+          </span>
+        ) : null}
+        {rating.diff !== null ? (
+          <span
+            className={`shrink-0 font-sans text-[11px] tabular-nums ${
+              rating.diff >= 0 ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {rating.diff >= 0 ? "+" : ""}
+            {rating.diff}
+          </span>
+        ) : null}
         {captured > 0 ? (
           <span className="shrink-0 font-sans text-[12px] text-white/45 tabular-nums">
             +{captured}
@@ -340,6 +357,7 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
               className={`h-1.5 w-1.5 rounded-full ${live ? "bg-emerald-400" : "bg-white/25"}`}
             />
             {match.timeControl}
+            {` · ${match.rating.rated ? "Rated" : "Casual"}`}
             {match.wager ? ` · ${match.wager.stakeUsdc} USDC` : ""}
           </span>
         </div>
@@ -348,6 +366,7 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
           label={nameOf(opponent)}
           side={opponent}
           captured={captured[OTHER[opponent]]}
+          rating={match.rating[opponent]}
           clock={topClock}
           active={match.state === "in_progress" && match.turn === opponent}
           low={topClock <= 10}
@@ -371,6 +390,7 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
           label={seat ? "You" : nameOf(orientation)}
           side={orientation}
           captured={captured[OTHER[orientation]]}
+          rating={match.rating[orientation]}
           clock={bottomClock}
           active={match.state === "in_progress" && match.turn === orientation}
           low={bottomClock <= 10}

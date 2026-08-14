@@ -195,7 +195,8 @@ export interface CreateChessChallengeInput {
   timeControl: ChessTimeControl;
   // "invite" produces a shareable link; "auto" pairs with whoever is waiting.
   mode: "invite" | "auto";
-  rated?: boolean;
+  // Human PvP is always rated. Computer and coaching flows use separate APIs.
+  rated?: true;
   allowTimeExtensions?: boolean;
 }
 

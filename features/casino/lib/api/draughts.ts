@@ -145,6 +145,8 @@ export async function createMatch(
     ...(input.startingFen ? { startingFen: input.startingFen } : {}),
     initialSeconds,
     incrementSeconds,
+    // Every human PvP match is rated; stake only controls escrow.
+    rated: true,
     ...(input.stakeUsdc ? { stakeUsdc: input.stakeUsdc } : {}),
   });
   return toDraughtsMatch(wire);

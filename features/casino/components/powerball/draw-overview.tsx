@@ -4,13 +4,22 @@ import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import type { LotteryDraw } from "@/features/casino/lib/api/lottery";
 import { LotteryBall } from "@/features/casino/components/powerball/lottery-ball";
-import { formatLotteryUsdc, lotteryCountdown } from "@/features/casino/lib/lottery";
+import {
+  formatLotteryUsdc,
+  LOTTERY_TIME_ZONE,
+  lotteryCountdown,
+} from "@/features/casino/lib/lottery";
 
 function DrawDate({ timestamp }: { timestamp: string }) {
   const format = useFormatter();
   return (
     <>
-      {format.dateTime(new Date(timestamp), { weekday: "short", month: "short", day: "numeric" })}
+      {format.dateTime(new Date(timestamp), {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: LOTTERY_TIME_ZONE,
+      })}
     </>
   );
 }

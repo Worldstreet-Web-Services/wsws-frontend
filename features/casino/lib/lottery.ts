@@ -3,6 +3,7 @@ import type { LotterySelection } from "@/features/casino/lib/api/lottery";
 export const WHITE_BALL_COUNT = 5;
 export const WHITE_BALL_MAX = 69;
 export const POWER_BALL_MAX = 26;
+export const LOTTERY_TIME_ZONE = "UTC";
 
 export function toggleWhiteBall(selected: readonly number[], number: number): number[] {
   if (!Number.isInteger(number) || number < 1 || number > WHITE_BALL_MAX) return [...selected];

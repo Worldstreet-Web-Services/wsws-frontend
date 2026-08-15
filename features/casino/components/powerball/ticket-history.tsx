@@ -3,7 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { LotteryBall } from "@/features/casino/components/powerball/lottery-ball";
 import type { LotteryDraw, LotteryTicket } from "@/features/casino/lib/api/lottery";
-import { formatLotteryUsdc } from "@/features/casino/lib/lottery";
+import { formatLotteryUsdc, LOTTERY_TIME_ZONE } from "@/features/casino/lib/lottery";
 
 interface TicketHistoryProps {
   tickets: LotteryTicket[];
@@ -65,6 +65,7 @@ export function TicketHistory({ tickets, results, loading }: TicketHistoryProps)
                       day: "numeric",
                       hour: "numeric",
                       minute: "2-digit",
+                      timeZone: LOTTERY_TIME_ZONE,
                     })}
                   </div>
                 </div>
@@ -114,6 +115,7 @@ export function TicketHistory({ tickets, results, loading }: TicketHistoryProps)
                       weekday: "short",
                       month: "short",
                       day: "numeric",
+                      timeZone: LOTTERY_TIME_ZONE,
                     })}
                   </div>
                   <div className="text-[10px] text-white/35">

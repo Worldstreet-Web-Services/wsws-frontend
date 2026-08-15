@@ -51,6 +51,6 @@ describe("lottery ticket rules", () => {
 
   it("formats USDC decimal strings without floating-point conversion", () => {
     expect(formatLotteryUsdc("0001234567.120000", 6)).toBe("1,234,567.12");
-    expect(formatLotteryUsdc("2")).toBe("2");
+    expect(formatLotteryUsdc("0.370000")).toBe("0.37");
   });
 });

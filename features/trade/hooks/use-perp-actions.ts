@@ -74,7 +74,6 @@ export function usePerpActions(live = true) {
   // same cached query the screens already read, so this costs no extra request.
   const marketName = useCallback((pairIndex: number) => perpMarketName(pairs, pairIndex), [pairs]);
 
-
   const openTrade = useCallback(
     async (
       req: Omit<OpenTradeRequest, "trader">,

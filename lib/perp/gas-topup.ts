@@ -16,7 +16,13 @@ import {
   SETTLE_CHAINS,
   type DepositStatusResult,
 } from "@/lib/deposit";
-import { PERP_CHAIN_ID, USDC_ADDRESS, USDC_DECIMALS, WETH_ADDRESS, WETH_DECIMALS } from "@/lib/perp/logic";
+import {
+  PERP_CHAIN_ID,
+  USDC_ADDRESS,
+  USDC_DECIMALS,
+  WETH_ADDRESS,
+  WETH_DECIMALS,
+} from "@/lib/perp/logic";
 import { stepsTotalValueWei } from "@/lib/perp/steps";
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import type { BuildResult } from "@/lib/perp/types";

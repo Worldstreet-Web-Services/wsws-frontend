@@ -2,9 +2,8 @@
 
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { fetchPerpOrders, isPerpUnavailable } from "@/lib/perp/api";
-import { getWalletAddress } from "@/lib/user";
 import type { PerpOrder } from "@/lib/perp/types";
 
 // The trader's pending (unfilled) limit and stop orders. They change on two
@@ -19,9 +18,8 @@ const SETTLE_MAX_ATTEMPTS = 12;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function usePerpOrders(enabled = true) {
-  const { user } = usePrivy();
+  const { evmAddress: trader } = useAuthSession();
   const queryClient = useQueryClient();
-  const trader = getWalletAddress(user, "ethereum");
 
   const query = useQuery<PerpOrder[]>({
     queryKey: ["perp-orders", trader],

@@ -2,9 +2,8 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { apiFetch } from "@/lib/api";
-import { getWalletAddress } from "@/lib/user";
 import { buildActivityEntries, type ActivityEntry } from "@/lib/activity/entries";
 import type { ActivityItem } from "@/lib/server/activity";
 
@@ -18,9 +17,7 @@ const EMPTY: ActivityItem[] = [];
 const EMPTY_ENTRIES: ActivityEntry[] = [];
 
 export function useActivity() {
-  const { user, ready, authenticated } = usePrivy();
-  const evm = getWalletAddress(user, "ethereum");
-  const solana = getWalletAddress(user, "solana");
+  const { ready, authenticated, evmAddress: evm, solanaAddress: solana } = useAuthSession();
   const enabled = ready && authenticated && Boolean(evm || solana);
 
   const query = useQuery<{ items: ActivityItem[] }>({

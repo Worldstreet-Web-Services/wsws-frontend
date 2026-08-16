@@ -1,19 +1,13 @@
 "use client";
 
-import type { User } from "@privy-io/react-auth";
 import { Avatar } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { truncateAddress } from "@/lib/format";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 
 // The profile hands out the user's own embedded wallets: one EVM address and
-// one Solana address. They come off the Privy user object, so there is nothing
-// to fetch and nothing to mint.
-
-const WALLETS = [
-  { chainType: "ethereum", label: "EVM" },
-  { chainType: "solana", label: "Solana" },
-] as const;
+// one Solana address. They come off the auth session, so there is nothing to
+// fetch and nothing to mint.
 
 interface AddressRowProps {
   label: string;
@@ -35,17 +29,14 @@ function AddressRow({ label, address }: AddressRowProps) {
   );
 }
 
-interface WalletListProps {
-  user: User | null;
-}
-
-export function WalletList({ user }: WalletListProps) {
-  // A family whose wallet Privy has not provisioned yet is dropped rather than
-  // shown empty, which is what the "being set up" case below covers.
-  const wallets = WALLETS.flatMap((w) => {
-    const address = getWalletAddress(user, w.chainType);
-    return address ? [{ ...w, address }] : [];
-  });
+export function WalletList() {
+  const { evmAddress, solanaAddress } = useAuthSession();
+  // A family whose wallet is not provisioned yet is dropped rather than shown
+  // empty, which is what the "being set up" case below covers.
+  const wallets = [
+    { label: "EVM", address: evmAddress },
+    { label: "Solana", address: solanaAddress },
+  ].filter((w): w is { label: string; address: string } => Boolean(w.address));
 
   return (
     <div className="mt-[18px]">
@@ -59,7 +50,7 @@ export function WalletList({ user }: WalletListProps) {
       ) : (
         <div className="mt-2 flex flex-col gap-1.5">
           {wallets.map((w) => (
-            <AddressRow key={w.chainType} label={w.label} address={w.address} />
+            <AddressRow key={w.label} label={w.label} address={w.address} />
           ))}
         </div>
       )}

@@ -2,10 +2,11 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { usePrivy, useSignMessage } from "@privy-io/react-auth";
+import { useSocialWallet } from "decane-connect-kit";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useEvmSend } from "@/hooks/use-evm-send";
 import { readBaseTokenBalance } from "@/hooks/use-base-block";
-import { getWalletAddress } from "@/lib/user";
+import { ensureUnlocked } from "@/lib/decane";
 import {
   TradeApiError,
   createWalletChallenge,
@@ -25,7 +26,9 @@ import {
 export type TradePhase =
   "idle" | "linking" | "quoting" | "signing" | "confirming" | "confirmed" | "failed";
 
-const LINKED_KEY = "wsws.meme-linked.v1";
+// v2: entries went from "userId:wallet" to the wallet alone when auth moved
+// off Privy, which had the only user id.
+const LINKED_KEY = "wsws.meme-linked.v2";
 const STATUS_POLL_MS = 4_000;
 const TERMINAL: SwapStatus[] = ["CONFIRMED", "FAILED", "REVERTED", "EXPIRED", "CANCELLED"];
 
@@ -48,10 +51,9 @@ function markLinked(key: string) {
 }
 
 export function useMemeTrade() {
-  const { user } = usePrivy();
-  const { signMessage } = useSignMessage();
+  const { evmAddress: wallet } = useAuthSession();
+  const socialWallet = useSocialWallet();
   const evmSend = useEvmSend();
-  const wallet = getWalletAddress(user, "ethereum");
 
   const [phase, setPhase] = useState<TradePhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -61,19 +63,21 @@ export function useMemeTrade() {
   const [received, setReceived] = useState<{ amount: string; symbol: string } | null>(null);
   const activeRef = useRef(false);
 
-  // Challenge → exact-message signature → verify, cached per (user, wallet) so
-  // repeat trades skip the signature. The backend stays authoritative: an
-  // ownership mismatch clears the cache and relinks once.
+  // Challenge → exact-message signature → verify, cached per wallet so repeat
+  // trades skip the signature. The backend stays authoritative: an ownership
+  // mismatch clears the cache and relinks once.
   const ensureLinked = useCallback(async () => {
-    if (!wallet || !user) throw new Error("Sign in first.");
-    const key = `${user.id}:${wallet.toLowerCase()}`;
+    if (!wallet) throw new Error("Sign in first.");
+    const key = wallet.toLowerCase();
     if (linkedCache().has(key)) return;
     setPhase("linking");
     const challenge = await createWalletChallenge(wallet);
-    const { signature } = await signMessage({ message: challenge.message }, { address: wallet });
+    // Meme trades run on Base, so the ownership proof signs there too.
+    await ensureUnlocked(socialWallet);
+    const signature = await socialWallet.signMessage("evm:8453", challenge.message);
     await verifyWallet(challenge.challengeId, signature);
     markLinked(key);
-  }, [wallet, user, signMessage]);
+  }, [wallet, socialWallet]);
 
   // Standalone linking for the preview path: the backend requires the wallet
   // to be linked before /swaps/preview too, so a never-linked wallet 403s on
@@ -109,7 +113,7 @@ export function useMemeTrade() {
           quote = await runQuote();
         } catch (e) {
           // A stale linked-cache entry: relink once, then quote again.
-          if (e instanceof TradeApiError && e.code === "WALLET_OWNERSHIP_MISMATCH" && user) {
+          if (e instanceof TradeApiError && e.code === "WALLET_OWNERSHIP_MISMATCH") {
             try {
               window.localStorage.removeItem(LINKED_KEY);
             } catch {
@@ -195,7 +199,7 @@ export function useMemeTrade() {
         activeRef.current = false;
       }
     },
-    [wallet, user, ensureLinked, evmSend]
+    [wallet, ensureLinked, evmSend]
   );
 
   const reset = useCallback(() => {

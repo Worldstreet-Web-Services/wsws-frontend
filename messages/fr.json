@@ -2289,6 +2289,9 @@
     "statusFailed": "Échoué",
     "retryFailed": "Réessayer {failed, plural, one {# transfert échoué} other {# transferts échoués}}",
     "backToDashboard": "Retour au tableau de bord",
-    "viewTransaction": "Voir la transaction"
+    "viewTransaction": "Voir la transaction",
+    "legacyTitle": "Connectez-vous à votre ancien compte",
+    "legacyBody": "Utilisez le même Google, X, e-mail ou passkey que d'habitude. Cela déverrouille vos anciens portefeuilles pour en transférer les soldes.",
+    "legacySignIn": "Se connecter à l'ancien compte"
   }
 }

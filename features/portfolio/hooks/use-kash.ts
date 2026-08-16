@@ -1,8 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { markKashSyncing } from "@/features/portfolio/hooks/use-kash-sync";
 import {
@@ -47,8 +46,7 @@ export function useKashStatus() {
 // The caller's Kash account, keyed on their embedded EVM wallet. Disabled until
 // the wallet exists, so signed-out visitors never fire an authed call.
 export function useKashAccount() {
-  const { user, ready, authenticated } = usePrivy();
-  const wallet = getWalletAddress(user, "ethereum");
+  const { ready, authenticated, evmAddress: wallet } = useAuthSession();
 
   const query = useQuery({
     queryKey: ["kash", "account", wallet],
@@ -78,8 +76,7 @@ export function useKashSubscriptionTiers(enabled: boolean) {
 // The caller's subscription tier. Drives the tier chip on the card, so it
 // loads with the account rather than waiting for the upgrade sheet to open.
 export function useKashSubscription() {
-  const { user, ready, authenticated } = usePrivy();
-  const wallet = getWalletAddress(user, "ethereum");
+  const { ready, authenticated, evmAddress: wallet } = useAuthSession();
 
   return useQuery({
     queryKey: ["kash", "subscription", wallet],
@@ -93,8 +90,7 @@ export function useKashSubscription() {
 // open. Mutations invalidate the whole ["kash"] tree, so a fresh purchase or
 // conversion appears without extra wiring.
 export function useKashLedger(enabled: boolean) {
-  const { user, ready, authenticated } = usePrivy();
-  const wallet = getWalletAddress(user, "ethereum");
+  const { ready, authenticated, evmAddress: wallet } = useAuthSession();
 
   return useQuery({
     queryKey: ["kash", "ledger", wallet],

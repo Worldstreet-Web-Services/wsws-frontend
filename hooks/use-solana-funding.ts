@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -17,7 +17,6 @@ import {
   type FundingPlan,
 } from "@/lib/trade/funding";
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
-import { getWalletAddress } from "@/lib/user";
 
 export type FundingPhase = "idle" | "quoting" | "signing" | "settling" | "done" | "failed";
 export type StepStatus = "pending" | "active" | "done" | "failed";
@@ -44,7 +43,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // a fast native-SOL hop for the network fee, then the purchase funds. Every
 // leg's transaction is on Base, so the user's sponsored send pays no gas.
 export function useSolanaFunding() {
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const evmSendBatch = useEvmSendBatch();
   const portfolio = usePortfolio();
   const [phase, setPhase] = useState<FundingPhase>("idle");
@@ -67,8 +66,8 @@ export function useSolanaFunding() {
 
   const fund = useCallback(
     async (plan: FundingPlan): Promise<boolean> => {
-      const from = getWalletAddress(user, "ethereum");
-      const to = getWalletAddress(user, "solana");
+      const from = evmAddress;
+      const to = solanaAddress;
       if (!from || !to) {
         setError("No wallet");
         setPhase("failed");
@@ -176,7 +175,7 @@ export function useSolanaFunding() {
         void portfolio.refetchUntilChanged();
       }
     },
-    [user, evmSendBatch, portfolio]
+    [evmAddress, solanaAddress, evmSendBatch, portfolio]
   );
 
   return {

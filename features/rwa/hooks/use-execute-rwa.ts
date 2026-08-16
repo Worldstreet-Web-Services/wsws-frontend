@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWallets } from "@privy-io/react-auth/solana";
 import { awaitReceipt, isReceiptChain, publicClientForChain } from "@/lib/trade/receipt";
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
 import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 import { useEvmSend } from "@/hooks/use-evm-send";
 import type { RwaAction, RwaChain, RwaStep } from "@/features/rwa/lib/api";
 
-// EVM chain ids per RWA chain. Without an explicit chainId, Privy defaults to
-// Ethereum mainnet (1), so a non-Ethereum RWA buy would be signed on the wrong
-// chain and fail with "insufficient funds for gas".
+// EVM chain ids per RWA chain. Every step names its chain explicitly so a
+// non-Ethereum RWA buy is never signed against a default chain and left to
+// fail with "insufficient funds for gas".
 const EVM_CHAIN_ID: Partial<Record<RwaChain, number>> = {
   ethereum: 1,
   base: 8453,
@@ -26,7 +25,6 @@ const EVM_CHAIN_ID: Partial<Record<RwaChain, number>> = {
 export function useExecuteRwa() {
   const evmSend = useEvmSend();
   const sendSponsored = useSponsoredSolanaSend();
-  const { wallets: solanaWallets } = useWallets();
 
   return useCallback(
     async (
@@ -60,10 +58,8 @@ export function useExecuteRwa() {
         }
 
         if (action.chain === "solana") {
-          const wallet = solanaWallets[0];
-          if (!wallet) throw new Error("No Solana wallet is connected.");
           if (!step.tx.base64) throw new Error("The transaction is missing.");
-          lastSolanaSig = await sendSponsored({ transaction: step.tx.base64, wallet });
+          lastSolanaSig = await sendSponsored({ transaction: step.tx.base64 });
         } else {
           if (!step.tx.to) throw new Error("The transaction is missing.");
           const chainId = EVM_CHAIN_ID[step.chain];
@@ -92,6 +88,6 @@ export function useExecuteRwa() {
         await confirmSolanaSignature(lastSolanaSig);
       }
     },
-    [evmSend, sendSponsored, solanaWallets]
+    [evmSend, sendSponsored]
   );
 }

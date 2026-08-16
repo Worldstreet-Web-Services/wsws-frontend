@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useEvmSendBatch, type EvmBatchCall } from "@/hooks/use-evm-send";
-import { useSendToken } from "@/hooks/use-withdraw";
+import type { EvmBatchCall } from "@/hooks/use-evm-send";
+import {
+  useLegacyEvmSendBatch,
+  useLegacySendToken,
+} from "@/features/migrate/hooks/use-legacy-send";
 import { chainIdForNetwork, encodeErc20Transfer } from "@/lib/deposit";
 import type { ChainSweep } from "@/features/migrate/lib/plan";
 import {
@@ -25,10 +28,11 @@ function errorMessage(error: unknown): string {
 // transfers plus the full native balance, gas paid by the sponsor), and on
 // Solana one sponsored transaction per asset. A failure marks its items and
 // moves on, so one bad asset never strands the rest; retryFailed() re-sends
-// only what did not land.
+// only what did not land. Signing goes through the LEGACY Privy hooks: the
+// sweep spends from the old wallets, which only the Privy session can sign for.
 export function useSweep() {
-  const sendBatch = useEvmSendBatch();
-  const { sendToken } = useSendToken();
+  const sendBatch = useLegacyEvmSendBatch();
+  const sendToken = useLegacySendToken();
   const [items, setItems] = useState<SweepItem[]>([]);
   const [running, setRunning] = useState(false);
   // The full original plan and destinations, kept so a retry can rebuild a

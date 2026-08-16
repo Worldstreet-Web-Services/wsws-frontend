@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import { friendlyError } from "@/lib/errors";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
 import {
   readCollateralUsd,
   readUnsettledUsdcUsd,
 } from "@/features/prediction/lib/polymarket/collateral";
-import { getWalletAddress } from "@/lib/user";
 import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
 
 type PositionsPage = Awaited<ReturnType<ReturnType<SecureClient["listPositions"]>["firstPage"]>>;
@@ -21,7 +20,7 @@ export type PolymarketPosition = PositionsPage["items"][number];
 // position.
 export function usePolymarketPositions() {
   const { ensureReady } = usePolymarketSession();
-  const { user } = usePrivy();
+  const { evmAddress } = useAuthSession();
   const [positions, setPositions] = useState<PolymarketPosition[]>([]);
   const [available, setAvailable] = useState<number | null>(null);
   const [cashable, setCashable] = useState<number | null>(null);
@@ -34,11 +33,10 @@ export function usePolymarketPositions() {
     setError(null);
     try {
       const client = await ensureReady();
-      const eoa = getWalletAddress(user, "ethereum");
       const [page, collateral, unsettled] = await Promise.all([
         client.listPositions().firstPage(),
         readCollateralUsd(client).catch(() => 0),
-        eoa ? readUnsettledUsdcUsd(eoa) : Promise.resolve(0),
+        evmAddress ? readUnsettledUsdcUsd(evmAddress) : Promise.resolve(0),
       ]);
       setPositions(page.items);
       setAvailable(collateral);
@@ -51,7 +49,7 @@ export function usePolymarketPositions() {
     } finally {
       setLoading(false);
     }
-  }, [ensureReady, user]);
+  }, [ensureReady, evmAddress]);
 
   return { positions, available, cashable, loading, loaded, error, refresh };
 }

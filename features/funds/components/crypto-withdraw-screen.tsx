@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { DepositStatus } from "@/components/ui/deposit-status";
 import { NetworkTabs } from "@/features/funds/components/network-tabs";
@@ -21,7 +21,6 @@ import {
   type WithdrawQuoteInput,
 } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { getWalletAddress } from "@/lib/user";
 import {
   SETTLE_CHAINS,
   txExplorerUrl,
@@ -137,7 +136,7 @@ interface CryptoWithdrawScreenProps {
 // hood, auto-refunding to the wallet if it can't complete.
 export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
   const t = useTranslations("fundsFlow");
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const { tokens } = usePortfolio();
   const { sendToken } = useSendToken();
   const allChains = useDepositChains();
@@ -171,7 +170,7 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
   );
   const balance = usdcHolding?.balance ?? 0;
   // Dextopus validates the refund address against the ORIGIN chain family.
-  const refundTo = getWalletAddress(user, source.chainType);
+  const refundTo = source.chainType === "solana" ? solanaAddress : evmAddress;
 
   // Where the USDC can go, per Dextopus's solver for USDC on the chosen source.
   const destinations = useWithdrawDestinations({

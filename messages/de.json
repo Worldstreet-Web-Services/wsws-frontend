@@ -2289,6 +2289,9 @@
     "statusFailed": "Fehlgeschlagen",
     "retryFailed": "{failed, plural, one {# fehlgeschlagenen Transfer} other {# fehlgeschlagene Transfers}} wiederholen",
     "backToDashboard": "Zurück zum Dashboard",
-    "viewTransaction": "Transaktion ansehen"
+    "viewTransaction": "Transaktion ansehen",
+    "legacyTitle": "Melde dich bei deinem alten Konto an",
+    "legacyBody": "Nutze dasselbe Google-Konto, X, E-Mail oder Passkey wie bisher. Das entsperrt deine alten Wallets, damit ihre Guthaben übertragen werden können.",
+    "legacySignIn": "Beim alten Konto anmelden"
   }
 }

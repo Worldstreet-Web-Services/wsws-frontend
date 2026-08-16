@@ -49,8 +49,9 @@ function unauthorized() {
   );
 }
 
-// The caller's raw Privy access token, which is what earn verifies. Read from
-// the same two places the rest of the app puts it.
+// The caller's raw access token, which earn verifies upstream (Privy today,
+// Decane once earn accepts its tokens). Read from the same two places the
+// rest of the app puts it; the cookie fallback only exists for Privy sessions.
 function accessToken(req: NextRequest): string | null {
   const header = req.headers.get("authorization");
   if (header?.startsWith("Bearer ")) return header.slice("Bearer ".length);

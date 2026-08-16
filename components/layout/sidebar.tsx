@@ -1,12 +1,11 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import Link from "next/link";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { Avatar } from "@/components/ui/avatar";
 import type { NavItem } from "@/components/layout/nav-items";
 import type { DashboardSection } from "@/lib/modal-types";
-import { deriveProfile } from "@/lib/user";
 
 interface SidebarProps {
   items: NavItem[];
@@ -16,8 +15,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ items, activeSection, onNavigate, onOpenAccount }: SidebarProps) {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
+  const { profile } = useAuthSession();
   return (
     <aside className="bg-panel fixed top-0 bottom-0 left-0 z-100 hidden w-[248px] flex-col border-r border-white/8 px-4 py-5 md:flex">
       <div className="px-2 pb-5">

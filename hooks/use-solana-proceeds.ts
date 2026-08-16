@@ -1,15 +1,13 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { useWallets } from "@privy-io/react-auth/solana";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
 import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 import { fetchLifiStatus, fetchSolanaBridgeQuote } from "@/lib/trade/lifi";
 import { LIFI_BASE_CHAIN, BASE_USDC } from "@/lib/trade/funding";
 import { USDC_BY_CHAIN } from "@/lib/trade/usdc";
-import { getWalletAddress } from "@/lib/user";
 
 export type ProceedsPhase = "idle" | "quoting" | "signing" | "settling" | "done" | "failed";
 
@@ -29,9 +27,8 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // send. That keeps the return leg gasless too, instead of burning the user's
 // leftover SOL from the funding hop.
 export function useSolanaProceeds() {
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const sendSponsored = useSponsoredSolanaSend();
-  const { wallets: solanaWallets } = useWallets();
   const portfolio = usePortfolio();
   const [phase, setPhase] = useState<ProceedsPhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +47,9 @@ export function useSolanaProceeds() {
   // float rounds half-up and can ask for more than the wallet holds.
   const bringHome = useCallback(
     async (rawUsdc: string): Promise<boolean> => {
-      const from = getWalletAddress(user, "solana");
-      const to = getWalletAddress(user, "ethereum");
-      const wallet = solanaWallets[0];
-      if (!from || !to || !wallet || BigInt(rawUsdc || "0") <= 0n) {
+      const from = solanaAddress;
+      const to = evmAddress;
+      if (!from || !to || BigInt(rawUsdc || "0") <= 0n) {
         setError("No wallet");
         setPhase("failed");
         return false;
@@ -74,7 +70,7 @@ export function useSolanaProceeds() {
         });
 
         setPhase("signing");
-        const sig = await sendSponsored({ transaction: quote.transaction, wallet });
+        const sig = await sendSponsored({ transaction: quote.transaction });
         sentRef.current = true;
         await confirmSolanaSignature(sig).catch(() => {
           // The bridge poll below is the real settlement signal.
@@ -99,7 +95,7 @@ export function useSolanaProceeds() {
         return false;
       }
     },
-    [user, solanaWallets, sendSponsored, portfolio]
+    [evmAddress, solanaAddress, sendSponsored, portfolio]
   );
 
   return {

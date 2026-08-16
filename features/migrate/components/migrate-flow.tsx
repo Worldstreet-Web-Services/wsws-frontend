@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { usePrivy } from "@privy-io/react-auth";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { getWalletAddress } from "@/lib/user";
 import { DecaneSignIn } from "@/features/migrate/components/decane-sign-in";
 import { AssetReview } from "@/features/migrate/components/asset-review";
 import { SweepProgress } from "@/features/migrate/components/sweep-progress";
@@ -11,14 +13,20 @@ import { useDecaneDestinations } from "@/features/migrate/hooks/use-decane-desti
 import { useSweep } from "@/features/migrate/hooks/use-sweep";
 import { buildSweepPlan, type ChainSweep } from "@/features/migrate/lib/plan";
 
-// The whole migration flow: sign in to Decane (mints the new wallets), review
-// every balance that will move, sweep, then a summary with per-item retry.
-// The old Privy session signs the actual transfers; this page assumes it is
-// mounted behind AuthGuard so that session is already live.
+// The whole migration flow: sign in to the OLD Privy account (whose wallets
+// sign the transfers), sign in to Decane (mints the new wallets), review every
+// balance that will move, sweep, then a summary with per-item retry. Runs
+// inside app/migrate/layout.tsx, the app's only remaining PrivyProvider.
 export function MigrateFlow() {
   const t = useTranslations("migrate");
   const router = useRouter();
-  const portfolio = usePortfolio();
+  const privy = usePrivy();
+  // The balances on review are the OLD wallets', not the app session's.
+  const oldWallets = {
+    evm: getWalletAddress(privy.user, "ethereum"),
+    solana: getWalletAddress(privy.user, "solana"),
+  };
+  const portfolio = usePortfolio(oldWallets);
   const decane = useDecaneDestinations();
   const sweep = useSweep();
   // "prepare" covers both sign-in and review: which one shows is derived from
@@ -63,6 +71,27 @@ export function MigrateFlow() {
         onRetry={retryFailed}
         onBackToDashboard={() => router.push("/dashboard")}
       />
+    );
+  } else if (!privy.ready) {
+    content = (
+      <div className="ws-card px-6 py-10 text-center text-[13.5px] text-white/55">
+        {t("loadingBalances")}
+      </div>
+    );
+  } else if (!privy.authenticated) {
+    content = (
+      <div className="ws-card flex flex-col gap-4 px-6 py-6">
+        <div>
+          <div className="ws-display text-[20px]">{t("legacyTitle")}</div>
+          <p className="mt-1.5 text-[13.5px] leading-[1.5] text-white/55">{t("legacyBody")}</p>
+        </div>
+        <button
+          onClick={() => privy.login()}
+          className="h-12 w-full cursor-pointer rounded-[14px] bg-white text-[14.5px] font-medium text-black transition-opacity hover:opacity-90"
+        >
+          {t("legacySignIn")}
+        </button>
+      </div>
     );
   } else if (!decane.ready) {
     content = <DecaneSignIn />;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { RwaIssuerCard } from "@/features/rwa/components/rwa-issuer-card";
@@ -19,7 +19,6 @@ import {
   type RwaQuote,
   type RwaQuoteRequest,
 } from "@/features/rwa/lib/api";
-import { getWalletAddress } from "@/lib/user";
 import { useSolanaFunding } from "@/hooks/use-solana-funding";
 import { planAffordable, planBaseFunding, planSolanaFunding } from "@/lib/trade/funding";
 import { useSolanaProceeds } from "@/hooks/use-solana-proceeds";
@@ -130,8 +129,8 @@ interface RwaTradePanelProps {
 // moves it under the hood and the whole run is sponsored, so no network or gas
 // ever surfaces); a sell is sized in the held token and settles to USDC. Both
 // directions run a live debounced quote, then on confirm move any funds that
-// need moving, build the action, sign every step through Privy, and refresh
-// the portfolio.
+// need moving, build the action, sign every step with the embedded wallet, and
+// refresh the portfolio.
 export function RwaTradePanel({
   asset,
   bare = false,
@@ -141,7 +140,7 @@ export function RwaTradePanel({
 }: RwaTradePanelProps) {
   const t = useTranslations("rwa");
   const tBuySell = useTranslations("buySell");
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const portfolio = usePortfolio();
   const { mutateAsync: quoteAsync } = useRwaQuote();
   const { mutateAsync: buildAsync } = useRwaBuild();
@@ -444,7 +443,7 @@ export function RwaTradePanel({
       return;
     }
 
-    const taker = getWalletAddress(user, asset.chain === "solana" ? "solana" : "ethereum");
+    const taker = asset.chain === "solana" ? solanaAddress : evmAddress;
     if (!taker) {
       setNotice({ kind: "error", message: t("connectWallet") });
       return;

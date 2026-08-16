@@ -94,9 +94,117 @@ export async function verifyRequest(req: NextRequest): Promise<AccessClaims | nu
   return (await verifyWithPrivy(token)) ?? verifyWithDecane(token);
 }
 
+// The caller's proven identity: who they are and which embedded wallets the
+// session owns. This is what money-moving routes key on; it deliberately
+// carries no profile data.
+export interface RequestIdentity {
+  userId: string;
+  evmAddress: string | null;
+  solanaAddress: string | null;
+}
+
+const identityCache = new Map<string, { identity: RequestIdentity; expiresAt: number }>();
+const identityLoads = new Map<string, Promise<RequestIdentity | null>>();
+
+function cachedIdentity(key: string): RequestIdentity | null {
+  const cached = identityCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    identityCache.delete(key);
+    return null;
+  }
+  identityCache.delete(key);
+  identityCache.set(key, cached);
+  return cached.identity;
+}
+
+function cacheIdentity(key: string, identity: RequestIdentity): void {
+  if (identityCache.size >= REQUEST_USER_CACHE_MAX_ENTRIES) {
+    const oldest = identityCache.keys().next().value;
+    if (oldest) identityCache.delete(oldest);
+  }
+  identityCache.set(key, { identity, expiresAt: Date.now() + REQUEST_USER_CACHE_TTL_MS });
+}
+
+function privyWalletAddress(user: User, chainType: "ethereum" | "solana"): string | null {
+  // The embedded Privy wallet, never a linked external one: the client
+  // identifies by the embedded address, and stamping an external one would
+  // post actions under an identity the client never matches.
+  const wallets = user.linked_accounts.filter(
+    (account) =>
+      account.type === "wallet" &&
+      "chain_type" in account &&
+      account.chain_type === chainType &&
+      "address" in account
+  );
+  const embedded = wallets.find(
+    (account) => "wallet_client_type" in account && account.wallet_client_type === "privy"
+  );
+  const wallet = embedded ?? wallets[0];
+  return wallet && "address" in wallet ? wallet.address : null;
+}
+
+// Resolves the verified caller's identity and wallet addresses, from either
+// issuer: a Decane token resolves through Decane's address endpoint, a Privy
+// token through the Privy user object. Cached per session for the same TTL as
+// the user cache, since money routes call this on every request.
+export async function getRequestIdentity(
+  req: NextRequest,
+  claims: AccessClaims | null = null
+): Promise<RequestIdentity | null> {
+  const token = extractAccessToken(req);
+  if (!token) return null;
+
+  const key = claims ? requestUserCacheKey(claims) : null;
+  if (key) {
+    const cached = cachedIdentity(key);
+    if (cached) return cached;
+    const pending = identityLoads.get(key);
+    if (pending) return pending;
+  }
+
+  const load = async (): Promise<RequestIdentity | null> => {
+    if (decaneConfigured()) {
+      try {
+        const decaneClaims = await getDecaneClient().safeVerifyAccessToken(token);
+        if (decaneClaims) {
+          const addresses = await getDecaneClient().getAddresses(token);
+          return {
+            userId: decaneClaims.userId,
+            evmAddress: addresses.evm,
+            solanaAddress: addresses.solana,
+          };
+        }
+      } catch {
+        // Address fetch failed; fall through to the Privy path, which will
+        // return null for a Decane token and leave the caller unauthenticated
+        // rather than half-identified.
+      }
+    }
+    const user = await getRequestUser(req, claims);
+    if (!user) return null;
+    return {
+      userId: user.id,
+      evmAddress: privyWalletAddress(user, "ethereum"),
+      solanaAddress: privyWalletAddress(user, "solana"),
+    };
+  };
+
+  if (!key) return load();
+  const request = load()
+    .then((identity) => {
+      if (identity) cacheIdentity(key, identity);
+      return identity;
+    })
+    .finally(() => identityLoads.delete(key));
+  identityLoads.set(key, request);
+  return request;
+}
+
 // Resolves the full Privy user from an identity token, when the client sent
 // one. When the identity token is missing or cold, fall back to the verified
-// user id so money-moving routes can still prove which wallet the session owns.
+// user id so money-moving routes can still prove which wallet the session
+// owns. Privy sessions only; Decane callers resolve via getRequestIdentity.
 export async function getRequestUser(
   req: NextRequest,
   claims: AccessClaims | null = null

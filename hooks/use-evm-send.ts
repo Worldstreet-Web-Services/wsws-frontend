@@ -1,15 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import {
-  getAccessToken,
-  useSendTransaction,
-  useSign7702Authorization,
-  useWallets,
-} from "@privy-io/react-auth";
-import type { EIP1193Provider } from "viem";
+import { useSocialWallet } from "decane-connect-kit";
+import type { EIP1193Provider, SignedAuthorization } from "viem";
 import { recordSelfInitiated } from "@/lib/analytics/self-initiated";
-import { sendSponsoredEvmCalls } from "@/lib/trade/sponsor";
+import { ensureUnlocked } from "@/lib/decane";
+import { sendSponsoredEvmCalls, type SignAuthorization } from "@/lib/trade/sponsor";
 import { getSponsoredEvmChainById, isSponsoredEvmChainId } from "@/lib/trade/sponsored-evm";
 
 export interface EvmSendInput {
@@ -19,22 +15,44 @@ export interface EvmSendInput {
   // here still comes from the user's own balance.
   value?: bigint;
   chainId: number;
-  // Which embedded wallet to send from (non-Base path). Defaults to the account
-  // Privy picks; Base always uses the embedded Privy wallet.
+  // Which wallet the caller expects to send from. There is exactly one Decane
+  // EVM wallet, so this is a guard against a stale address, not a selector.
   address?: string;
   // Optional gas-limit hint for the non-sponsored path (e.g. from a LI.FI
   // quote). The sponsored path ignores it, the bundler estimates its own userOp gas.
   gasLimit?: bigint;
 }
 
+type SocialWallet = ReturnType<typeof useSocialWallet>;
+
+// Bridges Decane's 7702 authorization signer to the shape the sponsor flow
+// expects. Decane needs the nonce and chain id it is signing for; the sponsor
+// flow always supplies them, so absence is a programming error, not a state.
+function toSignAuthorization(wallet: SocialWallet): SignAuthorization {
+  return async ({ contractAddress, chainId, nonce }) => {
+    if (chainId === undefined || nonce === undefined) {
+      throw new Error("7702 authorization needs an explicit chainId and nonce.");
+    }
+    const signed = await wallet.signAuthorization({ contractAddress, chainId, nonce });
+    return signed as SignedAuthorization<number>;
+  };
+}
+
+function connectedEvmAddress(wallet: SocialWallet, expected?: string): `0x${string}` {
+  const address = wallet.addresses?.evm;
+  if (!address) throw new Error("No EVM wallet is connected.");
+  if (expected && expected.toLowerCase() !== address.toLowerCase()) {
+    throw new Error("Sends must use your connected embedded wallet.");
+  }
+  return address as `0x${string}`;
+}
+
 // The single EVM send path for the app. Supported sponsored chains route
 // through the 7702 + bundler flow; unsupported chains keep the normal EOA send
-// path. The sponsored path already waits for the userOp receipt, so callers can
-// treat its returned transaction hash as confirmed.
+// path via Decane. The sponsored path already waits for the userOp receipt, so
+// callers can treat its returned transaction hash as confirmed.
 export function useEvmSend() {
-  const { sendTransaction } = useSendTransaction();
-  const { signAuthorization } = useSign7702Authorization();
-  const { wallets } = useWallets();
+  const wallet = useSocialWallet();
 
   return useCallback(
     async ({
@@ -45,37 +63,35 @@ export function useEvmSend() {
       address,
       gasLimit,
     }: EvmSendInput): Promise<`0x${string}`> => {
+      const from = connectedEvmAddress(wallet, address);
+      await ensureUnlocked(wallet);
       const sponsored = getSponsoredEvmChainById(chainId);
       if (sponsored) {
-        const wallet = wallets.find((w) => w.walletClientType === "privy");
-        if (!wallet) throw new Error("No EVM wallet is connected.");
-        if (address && address.toLowerCase() !== wallet.address.toLowerCase()) {
-          throw new Error(
-            `Sponsored ${sponsored.chain.name} sends must use your connected embedded wallet.`
-          );
-        }
-        const accessToken = await getAccessToken();
+        const accessToken = wallet.getAccessToken();
         if (!accessToken) throw new Error("Your session expired. Sign in again.");
-        const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
+        const provider = wallet.getEthereumProvider({ chainId }) as unknown as EIP1193Provider;
         const sponsoredHash = await sendSponsoredEvmCalls({
           chainId,
-          address: wallet.address as `0x${string}`,
+          address: from,
           provider,
-          signAuthorization,
+          signAuthorization: toSignAuthorization(wallet),
           accessToken,
           calls: [{ to, data, value }],
         });
         recordSelfInitiated([sponsoredHash]);
         return sponsoredHash;
       }
-      const { hash } = await sendTransaction(
-        { to, data, value, chainId, gasLimit },
-        address ? { address } : undefined
-      );
+      const hash = await wallet.sendTransaction({
+        chain: `evm:${chainId}`,
+        to,
+        data,
+        value,
+        gasLimit,
+      });
       recordSelfInitiated([hash]);
       return hash as `0x${string}`;
     },
-    [sendTransaction, signAuthorization, wallets]
+    [wallet]
   );
 }
 
@@ -90,8 +106,7 @@ export interface EvmBatchCall {
 // transactions (approve, then consume the allowance): batching removes the
 // in-between state and keeps the user to one signature.
 export function useEvmSendBatch() {
-  const { signAuthorization } = useSign7702Authorization();
-  const { wallets } = useWallets();
+  const wallet = useSocialWallet();
 
   return useCallback(
     async (calls: EvmBatchCall[], chainId: number): Promise<`0x${string}`> => {
@@ -99,16 +114,16 @@ export function useEvmSendBatch() {
         throw new Error("Batched transactions are only supported on sponsored EVM chains.");
       }
       if (calls.length === 0) throw new Error("Nothing to send.");
-      const wallet = wallets.find((w) => w.walletClientType === "privy");
-      if (!wallet) throw new Error("No EVM wallet is connected.");
-      const accessToken = await getAccessToken();
+      const from = connectedEvmAddress(wallet);
+      await ensureUnlocked(wallet);
+      const accessToken = wallet.getAccessToken();
       if (!accessToken) throw new Error("Your session expired. Sign in again.");
-      const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
+      const provider = wallet.getEthereumProvider({ chainId }) as unknown as EIP1193Provider;
       const hash = await sendSponsoredEvmCalls({
         chainId,
-        address: wallet.address as `0x${string}`,
+        address: from,
         provider,
-        signAuthorization,
+        signAuthorization: toSignAuthorization(wallet),
         accessToken,
         calls,
       });
@@ -119,6 +134,6 @@ export function useEvmSendBatch() {
       recordSelfInitiated([hash]);
       return hash;
     },
-    [signAuthorization, wallets]
+    [wallet]
   );
 }

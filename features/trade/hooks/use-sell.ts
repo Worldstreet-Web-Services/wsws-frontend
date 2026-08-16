@@ -1,10 +1,8 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
-import { useWallets } from "@privy-io/react-auth/solana";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { getWalletAddress } from "@/lib/user";
 import { fetchSellQuote } from "@/lib/sell";
 import { fetchSolanaBridgeQuote } from "@/lib/trade/lifi";
 import { confirmSolanaSignature } from "@/lib/trade/solana-confirm";
@@ -44,10 +42,9 @@ export interface SellExecuteResult {
 // settlement is polled by the transaction signature. One rail, one signature,
 // no SOL required.
 export function useSell() {
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const { sendToken } = useSendToken();
   const sendSponsored = useSponsoredSolanaSend();
-  const { wallets: solanaWallets } = useWallets();
 
   return useMutation<SellExecuteResult, Error, SellExecuteInput>({
     onError: (error) => {
@@ -58,15 +55,12 @@ export function useSell() {
     mutationFn: async ({ network, asset, decimals, amount, slippageBps }) => {
       // Proceeds settle as USDC on Base, an EVM asset, so the recipient is the
       // EVM wallet. Refunds go back to the wallet on the asset's own chain.
-      const recipient = getWalletAddress(user, "ethereum");
-      const originChainType = network === "solana-mainnet" ? "solana" : "ethereum";
-      const refundTo = getWalletAddress(user, originChainType);
+      const recipient = evmAddress;
+      const refundTo = network === "solana-mainnet" ? solanaAddress : evmAddress;
       if (!recipient) throw new Error("No Base wallet is connected.");
       if (!refundTo) throw new Error("No wallet for this asset's network.");
 
       if (network === "solana-mainnet") {
-        const wallet = solanaWallets[0];
-        if (!wallet) throw new Error("No Solana wallet is connected.");
         const quote = await fetchSolanaBridgeQuote({
           fromToken: asset ?? LIFI_NATIVE_SOL,
           toChain: LIFI_BASE_CHAIN,
@@ -76,7 +70,7 @@ export function useSell() {
           toAddress: recipient,
           slippage: slippageBps / 10_000,
         });
-        const sig = await sendSponsored({ transaction: quote.transaction, wallet });
+        const sig = await sendSponsored({ transaction: quote.transaction });
         await confirmSolanaSignature(sig).catch(() => {
           // The LI.FI settlement poll is the real signal; a slow RPC
           // confirmation must not fail a sale that is already in flight.

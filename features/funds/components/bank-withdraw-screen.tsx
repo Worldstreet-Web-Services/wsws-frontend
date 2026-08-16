@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { MASK_ATTRIBUTE, NO_AUTOCAPTURE_CLASS } from "@/lib/analytics/clarity";
 import { track } from "@/lib/analytics/mixpanel";
@@ -19,7 +19,6 @@ import {
 import { useOnrampStatus } from "@/hooks/use-pouch-onramp";
 import { NG_BANKS } from "@/features/funds/lib/banks";
 import { friendlyError } from "@/lib/errors";
-import { deriveProfile } from "@/lib/user";
 import { formatAmount, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { SETTLE_CHAINS } from "@/lib/deposit";
 import { KYC_COUNTRY_CODE } from "@/features/funds/lib/kyc";
@@ -149,7 +148,7 @@ function BankAvatar({
 // pays the Naira to the bank.
 export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
   const t = useTranslations("bankWithdraw");
-  const { user } = usePrivy();
+  const { profile } = useAuthSession();
   const { tokens, refetch: refetchPortfolio } = usePortfolio();
   const { sendToken } = useSendToken();
 
@@ -157,7 +156,7 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
     const session = loadKycSession();
     return isReusableSession(session) ? session.token : "";
   });
-  const email = deriveProfile(user).email;
+  const email = profile.email;
 
   const rate = useOfframpRate();
   const verify = useVerifyBank();

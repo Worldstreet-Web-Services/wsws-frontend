@@ -2,8 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useCurrency } from "@/components/ui/currency-select";
@@ -21,8 +20,7 @@ import { DEFAULT_ENTRY_USD } from "@/features/casino/lib/last-standing/stake";
 // player shares.
 export function LastStandingLobby() {
   const t = useTranslations("casino.lastStanding");
-  const { user } = usePrivy();
-  const address = getWalletAddress(user, "ethereum");
+  const { evmAddress: address } = useAuthSession();
   const { games, gamesLoading, gamesError, refetchGames, connected, resync } = useVaultLobby();
 
   const [startOpen, setStartOpen] = useState(false);

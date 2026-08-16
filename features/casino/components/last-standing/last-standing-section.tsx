@@ -7,7 +7,7 @@ import type { SellPayload } from "@/lib/modal-types";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { parseEther } from "viem";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { formatEther } from "viem";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -48,7 +48,6 @@ import { useVaultPendingWinnings } from "@/features/casino/hooks/use-vault-winni
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePaged } from "@/hooks/use-paged";
-import { getWalletAddress } from "@/lib/user";
 import { timeAgo, truncateAddress } from "@/lib/format";
 import { friendlyError, isAlreadySettledError } from "@/lib/errors";
 import {
@@ -173,7 +172,7 @@ interface LastStandingSectionProps {
 
 export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandingSectionProps) {
   const t = useTranslations("casino.lastStanding");
-  const { user } = usePrivy();
+  const { evmAddress: address } = useAuthSession();
   const money = useMoney();
   const { mask } = useBalanceVisibility();
   const { tokens, refetch: refetchPortfolio } = usePortfolio();
@@ -234,7 +233,6 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
   const [recentWinUsd, setRecentWinUsd] = useState<number | null>(null);
 
   const reduce = useReducedMotion();
-  const address = getWalletAddress(user, "ethereum");
 
   // Leaving the arena stops the track — background music must not follow the
   // user to the portfolio.
@@ -627,9 +625,9 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
         (COIN_FLIGHT_SECONDS + 0.3) * 1000
       );
     }
-    // One processing toast that resolves in place. Signing is headless (no Privy
-    // modal), so this toast plus the button's "Placing your play…" state is the
-    // only feedback the player sees while the gasless wager settles.
+    // One processing toast that resolves in place. Decane signs headlessly (no
+    // wallet modal), so this toast plus the button's "Placing your play…" state
+    // is the only feedback the player sees while the gasless wager settles.
     const toastId = toast.loading(t("ctaPlacing"));
     try {
       // That game's minimum, not a global fee: the starter set it when they

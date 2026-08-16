@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MarketLogo } from "@/components/ui/market-logo";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useTranslations } from "next-intl";
 import { SearchIcon } from "@/components/ui/icons";
 import { LanguageSelect } from "@/components/ui/language-select";
@@ -11,7 +11,6 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Avatar } from "@/components/ui/avatar";
 import { useGlobalSearch, type SearchResult } from "@/components/layout/use-global-search";
-import { deriveProfile } from "@/lib/user";
 
 interface TopbarProps {
   onOpenAccount: () => void;
@@ -85,8 +84,7 @@ function SearchResults({
 }
 
 export function Topbar({ onOpenAccount, onSelectSection }: TopbarProps) {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
+  const { profile } = useAuthSession();
   const t = useTranslations("topbar");
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);

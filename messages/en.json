@@ -2289,6 +2289,9 @@
     "statusFailed": "Failed",
     "retryFailed": "Retry {failed, plural, one {# failed transfer} other {# failed transfers}}",
     "backToDashboard": "Back to dashboard",
-    "viewTransaction": "View transaction"
+    "viewTransaction": "View transaction",
+    "legacyTitle": "Sign in to your old account",
+    "legacyBody": "Use the same Google, X, email, or passkey you always signed in with. This unlocks your old wallets so their balances can be moved out.",
+    "legacySignIn": "Sign in to old account"
   }
 }

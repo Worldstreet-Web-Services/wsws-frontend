@@ -2,9 +2,8 @@
 
 import { useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { apiFetch } from "@/lib/api";
-import { getWalletAddress } from "@/lib/user";
 import type { Portfolio } from "@/lib/server/alchemy";
 
 import type { TokenBalance } from "@/lib/server/alchemy";
@@ -43,12 +42,18 @@ function balancesSignature(p: Portfolio | undefined): string {
     .join("|");
 }
 
-export function usePortfolio() {
-  const { user, ready, authenticated } = usePrivy();
+// By default the balances belong to the signed-in session's wallets. The
+// migration flow passes `wallets` to read the OLD Privy wallets instead: it
+// runs while the app session is (or becomes) Decane, and must show what still
+// sits at the legacy addresses.
+export function usePortfolio(wallets?: { evm: string | null; solana: string | null }) {
+  const session = useAuthSession();
   const queryClient = useQueryClient();
-  const evm = getWalletAddress(user, "ethereum");
-  const solana = getWalletAddress(user, "solana");
-  const enabled = ready && authenticated && Boolean(evm || solana);
+  const evm = wallets ? wallets.evm : session.evmAddress;
+  const solana = wallets ? wallets.solana : session.solanaAddress;
+  const enabled = wallets
+    ? Boolean(evm || solana)
+    : session.ready && session.authenticated && Boolean(evm || solana);
 
   // Set while waiting for a just-made trade to show up, so those reads skip the
   // server's shared cache. A ref because the queryFn must see the current value

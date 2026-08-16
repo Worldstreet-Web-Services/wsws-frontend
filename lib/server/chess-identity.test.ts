@@ -1,69 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { User } from "@privy-io/node";
 import {
   chessReadNeedsSession,
-  walletOfUser,
   withChessReadIdentity,
   withChessIdentity,
 } from "@/lib/server/chess-identity";
 
-function userWithWallet(address: string): User {
-  return {
-    id: "user_1",
-    created_at: 0,
-    is_guest: false,
-    linked_accounts: [
-      { type: "email", address: "player@example.com", verified_at: 0, first_verified_at: 0 },
-      {
-        type: "wallet",
-        chain_type: "ethereum",
-        wallet_client_type: "privy",
-        connector_type: "embedded",
-        address,
-        delegated: false,
-        imported: false,
-        first_verified_at: 0,
-        latest_verified_at: 0,
-        recovery_method: "privy",
-        id: "wallet_1",
-      },
-    ],
-    has_accepted_terms: true,
-    mfa_methods: [],
-  } as unknown as User;
-}
-
 describe("chess identity helper", () => {
-  it("finds the caller's ethereum wallet on the verified Privy user", () => {
-    expect(walletOfUser(userWithWallet("0xabc"))).toBe("0xabc");
-    expect(walletOfUser(null)).toBeNull();
-  });
-
-  it("prefers the embedded Privy wallet over an external wallet listed first", () => {
-    const user = userWithWallet("0xembedded");
-    (user as unknown as { linked_accounts: unknown[] }).linked_accounts.unshift({
-      type: "wallet",
-      chain_type: "ethereum",
-      wallet_client_type: "metamask",
-      connector_type: "injected",
-      address: "0xexternal",
-      first_verified_at: 0,
-      latest_verified_at: 0,
-      id: "wallet_ext",
-    });
-    expect(walletOfUser(user)).toBe("0xembedded");
-  });
-
-  it("falls back to any ethereum wallet when no embedded wallet exists", () => {
-    const user = userWithWallet("0xembedded");
-    const record = user as unknown as {
-      linked_accounts: { type: string; wallet_client_type?: string }[];
-    };
-    const wallet = record.linked_accounts.find((a) => a.type === "wallet");
-    if (wallet) wallet.wallet_client_type = "metamask";
-    expect(walletOfUser(user)).toBe("0xembedded");
-  });
-
   it("marks per-caller chess reads as session-bound", () => {
     expect(chessReadNeedsSession("cashier/players/0xabc/balance")).toBe(true);
     expect(chessReadNeedsSession("cashier/config")).toBe(false);

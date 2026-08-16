@@ -2289,6 +2289,9 @@
     "statusFailed": "Falhou",
     "retryFailed": "Repetir {failed, plural, one {# transferência com falha} other {# transferências com falha}}",
     "backToDashboard": "Voltar ao painel",
-    "viewTransaction": "Ver transação"
+    "viewTransaction": "Ver transação",
+    "legacyTitle": "Entre na sua conta antiga",
+    "legacyBody": "Use o mesmo Google, X, e-mail ou passkey de sempre. Isso desbloqueia suas carteiras antigas para mover os saldos.",
+    "legacySignIn": "Entrar na conta antiga"
   }
 }

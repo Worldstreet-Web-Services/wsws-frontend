@@ -1,5 +1,3 @@
-import type { User } from "@privy-io/node";
-
 const PRIVATE_READ_PATTERNS = [
   /^cashier\/players\/[^/]+\/balance$/u,
   /^betting\/markets\/[^/]+\/bets$/u,
@@ -56,27 +54,6 @@ function parseBody(raw: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
-}
-
-// The identity the chess service knows a player by must be the same wallet the
-// client identifies as (lib/user.ts getWalletAddress): the embedded Privy
-// wallet. A user who signed in with or linked an external EVM wallet can have
-// it listed first, and stamping that address would post moves and chat under
-// an identity the client never matches — their own lines would render as
-// someone else's.
-export function walletOfUser(user: User | null): string | null {
-  const wallets = (user?.linked_accounts ?? []).filter(
-    (account) =>
-      account.type === "wallet" &&
-      "chain_type" in account &&
-      account.chain_type === "ethereum" &&
-      "address" in account
-  );
-  const embedded = wallets.find(
-    (account) => "wallet_client_type" in account && account.wallet_client_type === "privy"
-  );
-  const wallet = embedded ?? wallets[0];
-  return wallet && "address" in wallet ? wallet.address : null;
 }
 
 export function chessReadNeedsSession(joined: string, searchParams?: URLSearchParams): boolean {

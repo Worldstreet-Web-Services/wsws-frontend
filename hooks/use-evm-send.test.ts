@@ -4,24 +4,21 @@ import { renderHook } from "@testing-library/react";
 // Hoisted so the vi.mock factories (which run before top-level consts) can see them.
 const { sendSponsoredEvmCalls, sendTransaction, signAuthorization } = vi.hoisted(() => ({
   sendSponsoredEvmCalls: vi.fn(async () => "0xsponsoredhash"),
-  sendTransaction: vi.fn(async () => ({ hash: "0xnormalhash" })),
+  sendTransaction: vi.fn(async () => "0xnormalhash"),
   signAuthorization: vi.fn(),
 }));
 
 vi.mock("@/lib/trade/sponsor", () => ({ sendSponsoredEvmCalls }));
-vi.mock("@privy-io/react-auth", () => ({
-  useSendTransaction: () => ({ sendTransaction }),
-  useSign7702Authorization: () => ({ signAuthorization }),
-  useWallets: () => ({
-    wallets: [
-      {
-        walletClientType: "privy",
-        address: "0xUser",
-        getEthereumProvider: async () => ({}),
-      },
-    ],
+vi.mock("decane-connect-kit", () => ({
+  useSocialWallet: () => ({
+    addresses: { evm: "0xUser", solana: "SoUser" },
+    isUnlocked: true,
+    unlock: async () => {},
+    getAccessToken: () => "access-token",
+    getEthereumProvider: () => ({}),
+    signAuthorization,
+    sendTransaction,
   }),
-  getAccessToken: async () => "access-token",
 }));
 
 import { useEvmSend } from "@/hooks/use-evm-send";
@@ -81,8 +78,7 @@ describe("useEvmSend routing", () => {
     const { result } = renderHook(() => useEvmSend());
     await result.current({ to: "0xrouter", chainId: ZKSYNC, gasLimit: 21000n });
     expect(sendTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ gasLimit: 21000n, chainId: ZKSYNC }),
-      undefined
+      expect.objectContaining({ gasLimit: 21000n, chain: `evm:${ZKSYNC}` })
     );
   });
 });

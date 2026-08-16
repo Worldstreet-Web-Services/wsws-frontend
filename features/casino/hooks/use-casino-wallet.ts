@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useMoney } from "@/components/ui/currency-select";
-import { deriveProfile, getWalletAddress } from "@/lib/user";
 import { weiToUnits } from "@/features/casino/lib/money";
 
 // The casino spends the same balance as the rest of the platform: the
@@ -13,12 +12,9 @@ import { weiToUnits } from "@/features/casino/lib/money";
 // the dashboard is immediately playable and winnings show up in the same
 // balance everywhere.
 export function useCasinoWallet() {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
+  const { evmAddress: address, profile } = useAuthSession();
   const money = useMoney();
   const { tokens, loading, refetch } = usePortfolio();
-
-  const address = getWalletAddress(user, "ethereum");
 
   const holding = useMemo(
     () => tokens.find((t) => t.network === "base-mainnet" && t.symbol.toUpperCase() === "ETH"),

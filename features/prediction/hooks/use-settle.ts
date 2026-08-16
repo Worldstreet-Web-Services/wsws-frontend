@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { useEvmSend } from "@/hooks/use-evm-send";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { getWalletAddress } from "@/lib/user";
 import { CONTRACTS, POLYGON_CHAIN_ID } from "@/lib/polymarket/config";
 import { SETTLE_CHAINS } from "@/lib/deposit";
 import { fetchSellQuote } from "@/lib/sell";
@@ -52,9 +52,8 @@ function readErc20(client: ChainReadClient, token: string, owner: string): Promi
 }
 
 export function useSettleToBase() {
-  const { user } = usePrivy();
-  const { sendTransaction } = useSendTransaction();
-  const { wallets } = useWallets();
+  const { evmAddress } = useAuthSession();
+  const send = useEvmSend();
   const { ensureReady } = usePolymarketSession();
   const { sendToken } = useSendToken();
   const [phase, setPhase] = useState<SettlePhase>("idle");
@@ -64,10 +63,8 @@ export function useSettleToBase() {
     setError(null);
     setPhase("unwrapping");
     try {
-      const eoa = getWalletAddress(user, "ethereum");
+      const eoa = evmAddress;
       if (!eoa) throw new SettleError("No wallet connected.");
-      const wallet = wallets.find((w) => w.address.toLowerCase() === eoa.toLowerCase());
-      if (!wallet) throw new SettleError("Wallet is not ready. Try again.");
 
       const polygon = publicClientForChain(POLYGON_CHAIN_ID);
 
@@ -95,33 +92,29 @@ export function useSettleToBase() {
         });
         await transfer.wait();
 
-        const approve = await sendTransaction(
-          {
-            to: CONTRACTS.pusd,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: "approve",
-              args: [CONTRACTS.collateralOfframp as `0x${string}`, pusd],
-            }),
-            chainId: POLYGON_CHAIN_ID,
-          },
-          { address: eoa }
-        );
-        await awaitReceipt(polygon, approve.hash, "The approval");
+        const approveHash = await send({
+          to: CONTRACTS.pusd,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [CONTRACTS.collateralOfframp as `0x${string}`, pusd],
+          }),
+          chainId: POLYGON_CHAIN_ID,
+          address: eoa,
+        });
+        await awaitReceipt(polygon, approveHash, "The approval");
 
-        const unwrap = await sendTransaction(
-          {
-            to: CONTRACTS.collateralOfframp,
-            data: encodeFunctionData({
-              abi: OFFRAMP_ABI,
-              functionName: "unwrap",
-              args: [CONTRACTS.usdcE as `0x${string}`, eoa as `0x${string}`, pusd],
-            }),
-            chainId: POLYGON_CHAIN_ID,
-          },
-          { address: eoa }
-        );
-        await awaitReceipt(polygon, unwrap.hash, "The unwrap");
+        const unwrapHash = await send({
+          to: CONTRACTS.collateralOfframp,
+          data: encodeFunctionData({
+            abi: OFFRAMP_ABI,
+            functionName: "unwrap",
+            args: [CONTRACTS.usdcE as `0x${string}`, eoa as `0x${string}`, pusd],
+          }),
+          chainId: POLYGON_CHAIN_ID,
+          address: eoa,
+        });
+        await awaitReceipt(polygon, unwrapHash, "The unwrap");
       }
 
       // 2) Bridge all the USDC.e the wallet holds to USDC on Base (Dextopus takes
@@ -154,7 +147,7 @@ export function useSettleToBase() {
     } finally {
       setPhase("idle");
     }
-  }, [user, wallets, sendTransaction, ensureReady, sendToken]);
+  }, [evmAddress, send, ensureReady, sendToken]);
 
   return { settleToBase, phase, error };
 }

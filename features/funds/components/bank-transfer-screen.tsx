@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { KycOnboarding } from "@/features/funds/components/kyc/kyc-onboarding";
 import { ArrowUpRightIcon, BankIcon, CheckIcon, CopyIcon } from "@/components/ui/icons";
@@ -13,7 +13,6 @@ import { copyText } from "@/lib/clipboard";
 import { MASK_ATTRIBUTE, NO_AUTOCAPTURE_CLASS } from "@/lib/analytics/clarity";
 import { track } from "@/lib/analytics/mixpanel";
 import { friendlyError } from "@/lib/errors";
-import { getWalletAddress, deriveProfile } from "@/lib/user";
 import { formatAmount } from "@/lib/trade/math";
 import { KYC_COUNTRY_CODE } from "@/features/funds/lib/kyc";
 import { clearPendingOnramp, savePendingOnramp } from "@/lib/pouch/pending";
@@ -93,7 +92,7 @@ function compactNgn(amount: number): string {
 // automatically once the payment clears.
 export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps) {
   const t = useTranslations("bankTransfer");
-  const { user } = usePrivy();
+  const { evmAddress, profile } = useAuthSession();
   const { refetch } = usePortfolio();
   // Prefer Pouch's live onramp rate so the USD estimate matches what the transfer
   // actually costs; fall back to the app FX rate only until the provider rate
@@ -102,8 +101,8 @@ export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps)
   const { data: pouchRate } = usePouchOnrampRate();
   const ngnRate = pouchRate?.rate && pouchRate.rate > 0 ? pouchRate.rate : appNgnRate;
 
-  const walletAddress = getWalletAddress(user, "ethereum");
-  const email = deriveProfile(user).email;
+  const walletAddress = evmAddress;
+  const email = profile.email;
 
   // Reuse an existing verification: a live, approved session lets the user skip
   // straight to the amount step.

@@ -16,6 +16,7 @@ import { DetailModal } from "@/components/layout/modals/detail-modal";
 import { ConfirmModal } from "@/components/layout/modals/confirm-modal";
 import { FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
+import { MigrateCta } from "@/features/migrate";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -111,6 +112,7 @@ export default function DashboardPage() {
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
+        migrateSlot={<MigrateCta />}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}

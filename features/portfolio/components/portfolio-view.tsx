@@ -41,6 +41,9 @@ interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
   crossBorderSlot: ReactNode;
+  // Entry point to the wallet migration, shown above the cross-border banner
+  // while the migration window is open.
+  migrateSlot?: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -124,6 +127,7 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   crossBorderSlot,
+  migrateSlot,
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
@@ -317,6 +321,8 @@ export function PortfolioView({
           onUpgrade={() => setKashModal("upgrade")}
         />
       </div>
+
+      {migrateSlot ? <div className="mt-3">{migrateSlot}</div> : null}
 
       <div className="mt-3">{crossBorderSlot}</div>
 

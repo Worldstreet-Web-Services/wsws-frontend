@@ -273,9 +273,7 @@ export function TicketBuilder({
               {whiteNumbers.map((number) => (
                 <LotteryBall key={number} number={number} size="sm" />
               ))}
-              {powerNumber !== null ? (
-                <LotteryBall number={powerNumber} arkball size="sm" />
-              ) : null}
+              {powerNumber !== null ? <LotteryBall number={powerNumber} arkball size="sm" /> : null}
             </div>
           )}
         </div>

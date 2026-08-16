@@ -1,35 +1,14 @@
 import type { User } from "@privy-io/react-auth";
 
+// What is left of the Privy user helpers after the Decane migration. Profile
+// is provider-neutral and lives on via useAuthSession; the wallet accessors
+// only serve the legacy routes that still read the OLD Privy wallets
+// (/migrate and /prediction/reclaim). Delete them with the migration window.
+
 export interface Profile {
   name: string;
   email: string;
   avatarSeed: string;
-}
-
-export function deriveProfile(user: User | null): Profile {
-  if (!user) {
-    return { name: "Account", email: "", avatarSeed: "worldstreet" };
-  }
-  const email = user.google?.email ?? user.email?.address ?? "";
-  const name =
-    user.google?.name ??
-    user.twitter?.name ??
-    user.twitter?.username ??
-    (email ? email.split("@")[0] : "World Street user");
-  return {
-    name,
-    email: email || (user.twitter?.username ? `@${user.twitter.username}` : ""),
-    avatarSeed: user.wallet?.address ?? user.id,
-  };
-}
-
-export function hasEmbeddedWallet(user: User, chainType: "ethereum" | "solana"): boolean {
-  return user.linkedAccounts.some(
-    (account) =>
-      account.type === "wallet" &&
-      account.walletClientType === "privy" &&
-      account.chainType === chainType
-  );
 }
 
 export interface EmbeddedWallet {

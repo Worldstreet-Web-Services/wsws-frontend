@@ -117,9 +117,9 @@ component -> hook (TanStack Query) -> lib client -> app/api/<service> -> gateway
   `verifyRequest` accepts tokens from both issuers during the migration window
   (Decane, with Privy as fallback) and `getRequestIdentity` resolves the
   caller's wallet addresses. Privy itself is mounted only by
-  `components/providers/legacy-privy-provider.tsx` on the two legacy routes
-  (`/migrate`, `/prediction/reclaim`) that still sign with the old wallets;
-  nothing else may import `@privy-io/*`.
+  `components/providers/legacy-privy-provider.tsx` on the two legacy surfaces
+  that still sign with the old wallets (the Update Balance migration button
+  and `/prediction/reclaim`); nothing else may import `@privy-io/*`.
 - Every service URL derives from `WSAPI_BASE_URL` via `wsapiService("<service>")`.
   Per-service environment variables exist only as local overrides.
 - One transport. `createServiceClient(basePath, fallbackMessage)` in

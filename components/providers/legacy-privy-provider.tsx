@@ -6,9 +6,10 @@ import { createSolanaRpcSubscriptions } from "@solana/kit";
 import { createAppSolanaRpc } from "@/lib/solana-rpc";
 
 // Privy's last mounts. The app runs on Decane; this provider wraps only the
-// routes that must still sign with the OLD Privy embedded wallets: /migrate
-// (the asset sweep out of them) and /prediction/reclaim (claims owed to
-// them). All four historical login methods stay enabled so twitter and
+// surfaces that must still sign with the OLD Privy embedded wallets: the
+// one-click Update Balance button (the asset sweep out of them) and
+// /prediction/reclaim (claims owed to them).
+// All four historical login methods stay enabled so twitter and
 // passkey accounts can still get in. No wallets are created on login: an
 // account that never had one has nothing legacy to touch. This file goes away
 // when the migration window closes.

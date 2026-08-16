@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
@@ -18,15 +19,31 @@ import { OFFRAMP_MIN_USDC } from "@/lib/pouch/offramp";
 const PORTFOLIO_KEY = [["portfolio"]] as const;
 const PORTFOLIO_REFRESH_MIN_MS = 10_000;
 
+// The masked placeholder, matching what the eye toggle shows.
+const LOCKED_MASK = "••••••";
+
 interface BalanceCardProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  // Rendered between Add funds and Withdraw; the dashboard passes the
+  // one-click wallet-migration button here while the migration window is open.
+  updateBalanceSlot?: ReactNode;
+  // Forces the figures to the masked placeholder regardless of the eye
+  // toggle. Set while the user's money still sits in their old wallets, where
+  // showing this (new, empty) wallet's zero would read as "your funds are gone".
+  balanceLocked?: boolean;
 }
 
-export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
+export function BalanceCard({
+  onOpenFunds,
+  onOpenWithdraw,
+  updateBalanceSlot,
+  balanceLocked,
+}: BalanceCardProps) {
   const { totalUsd, tokens, loading, refreshing, error } = usePortfolio();
   const money = useMoney();
-  const { hidden, toggle, mask } = useBalanceVisibility();
+  const { hidden, toggle, mask: maskVisible } = useBalanceVisibility();
+  const mask = balanceLocked ? () => LOCKED_MASK : maskVisible;
   const t = useTranslations("balance");
   useInvalidateOnBlock(PORTFOLIO_KEY, true, PORTFOLIO_REFRESH_MIN_MS);
   // A confirmed bank deposit that has not settled yet holds the withdraw
@@ -97,6 +114,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
           >
             {t("addFunds")}
           </button>
+          {updateBalanceSlot}
           <button
             onClick={onOpenWithdraw}
             disabled={withdrawHeld}

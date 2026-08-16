@@ -16,7 +16,7 @@ import { DetailModal } from "@/components/layout/modals/detail-modal";
 import { ConfirmModal } from "@/components/layout/modals/confirm-modal";
 import { FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
-import { MigrateCta } from "@/features/migrate";
+import { UpdateBalanceButton, useOfferMigration } from "@/features/migrate";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -65,6 +65,9 @@ export default function DashboardPage() {
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
   const scrollSectionIds = useMemo(() => nav.map((n) => n.id).filter(isScrollSection), [nav]);
   const activeSection = useScrollSpy(scrollSectionIds);
+  // True while this device's money still sits in the old Privy wallets: the
+  // balance card masks its figures and offers the one-click update instead.
+  const offerMigration = useOfferMigration();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
   // the funds modal on the crypto screen with the chain/token pre-selected. The
@@ -112,7 +115,8 @@ export default function DashboardPage() {
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
-        migrateSlot={<MigrateCta />}
+        updateBalanceSlot={<UpdateBalanceButton />}
+        balanceLocked={offerMigration}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}

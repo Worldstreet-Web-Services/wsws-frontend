@@ -41,9 +41,12 @@ interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
   crossBorderSlot: ReactNode;
-  // Entry point to the wallet migration, shown above the cross-border banner
-  // while the migration window is open.
-  migrateSlot?: ReactNode;
+  // The one-click wallet-migration button, rendered inside the balance card
+  // between Add funds and Withdraw while the migration window is open.
+  updateBalanceSlot?: ReactNode;
+  // Masks the balance figures while the user's money still sits in their old
+  // wallets; see BalanceCard.
+  balanceLocked?: boolean;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -127,7 +130,8 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   crossBorderSlot,
-  migrateSlot,
+  updateBalanceSlot,
+  balanceLocked,
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
@@ -297,7 +301,12 @@ export function PortfolioView({
       <Eyebrow>{t("eyebrow")}</Eyebrow>
 
       <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+        <BalanceCard
+          onOpenFunds={onOpenFunds}
+          onOpenWithdraw={onOpenWithdraw}
+          updateBalanceSlot={updateBalanceSlot}
+          balanceLocked={balanceLocked}
+        />
         <KashCard
           onBuy={() => setKashModal("buy")}
           onClaim={
@@ -321,8 +330,6 @@ export function PortfolioView({
           onUpgrade={() => setKashModal("upgrade")}
         />
       </div>
-
-      {migrateSlot ? <div className="mt-3">{migrateSlot}</div> : null}
 
       <div className="mt-3">{crossBorderSlot}</div>
 

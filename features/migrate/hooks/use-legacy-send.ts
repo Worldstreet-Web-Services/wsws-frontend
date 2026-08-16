@@ -1,10 +1,11 @@
 "use client";
 
 // The Privy-signed send paths, preserved verbatim for the migration sweep
-// after the rest of the app moved to Decane. The sweep moves assets OUT of the
-// old Privy embedded wallets, so it must keep signing with them. Everything
-// here dies with the migration window; only /migrate (which mounts
-// PrivyProvider in its layout) may use these hooks.
+// after the rest of the app moved to Decane. The sweep moves assets OUT of
+// the old Privy embedded wallets, so it must keep signing with them.
+// Everything here dies with the migration window; only surfaces wrapped in
+// LegacyPrivyProvider (the Update Balance button, the prediction reclaim
+// page) may use these hooks.
 
 import { useCallback } from "react";
 import {

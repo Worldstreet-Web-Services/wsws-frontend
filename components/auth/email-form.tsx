@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import { OtpInput } from "@/components/auth/otp-input";
 import { recordAuthMethod } from "@/lib/analytics/auth-method";
+import { rememberDisplayProfile } from "@/lib/display-profile";
 
 const PRIMARY =
   "flex w-full cursor-pointer items-center justify-center gap-2 rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60";
@@ -40,6 +41,9 @@ export function EmailForm() {
     try {
       recordAuthMethod("email");
       await confirmEmailCode(email, value);
+      // Email sign-in returns no profile from Decane, but we hold the one
+      // fact it proves: the address. Greetings use its local part.
+      rememberDisplayProfile({ email });
     } catch (err) {
       console.error("Code verification failed:", err);
       setCode("");

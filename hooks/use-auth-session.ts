@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSocialAuth } from "decane-connect-kit";
+import { clearDisplayProfile, useDisplayProfile } from "@/lib/display-profile";
 import type { Profile } from "@/lib/user";
 
 // The app's one auth seam. Everything that used to read Privy's usePrivy()
@@ -63,19 +64,28 @@ export function useAuthSession(): AuthSession {
   const solanaAddress = social.addresses?.solana ?? null;
   const authenticated = social.addresses !== null && Boolean(evmAddress);
 
+  // What sign-in told us about the user, persisted device-side because Decane
+  // keeps no profile to re-fetch (see lib/display-profile). Google gives a
+  // name; an email sign-in gives only the address, whose local part still
+  // beats a generic label.
+  const display = useDisplayProfile();
+  const name =
+    display?.name ?? (display?.email ? display.email.split("@")[0] : "World Street user");
+
   return {
     ready: mounted && (authenticated || graceOver || !hasPersistedIdentity()),
     authenticated,
     evmAddress,
     solanaAddress,
-    // Decane exposes no email or display name, only addresses, so the profile
-    // is address-derived. Screens that showed the Privy email now show the
-    // wallet identity.
     profile: {
-      name: "World Street user",
-      email: "",
+      name,
+      email: display?.email ?? "",
       avatarSeed: evmAddress ?? "worldstreet",
     },
-    logout: social.disconnect,
+    logout: async () => {
+      // Before disconnect, so an interrupted sign-out still forgets the name.
+      clearDisplayProfile();
+      await social.disconnect();
+    },
   };
 }

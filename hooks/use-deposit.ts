@@ -87,7 +87,7 @@ function purposedPath(path: string, purpose: DextopusPurpose): string {
   return purpose === "withdrawal" ? `withdraw/${path}` : path;
 }
 
-async function dextopusGet<T>(
+export async function dextopusGet<T>(
   path: string,
   fallback: string,
   purpose: DextopusPurpose = "deposit"

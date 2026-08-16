@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "@privy-io/react-auth",
       "@privy-io/node",
+      "decane-connect-kit",
+      "decane-node",
       "@tanstack/react-query",
       "@tanstack/react-table",
       "@solana/kit",

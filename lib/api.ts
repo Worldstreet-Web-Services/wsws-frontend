@@ -1,17 +1,18 @@
 "use client";
 
-import { resolveAuthTokens } from "@/lib/privy-token";
+import { resolveAuthTokens } from "@/lib/auth-token";
 
-// Fetch wrapper for our API routes. Attaches the Privy access token so the
-// server can verify the caller, plus the identity token when available so
+// Fetch wrapper for our API routes. Attaches the caller's access token so the
+// server can verify them, plus the Privy identity token when available so
 // routes can resolve the full user without an extra Privy API call.
 //
-// Both tokens come from resolveAuthTokens, which caches the identity token so a
-// burst of authed requests on mount makes one Privy /users/me call instead of
-// one per request (see lib/privy-token for why that matters).
+// Tokens come from lib/auth-token, which prefers a live Privy session and
+// falls back to the Decane session during the auth migration window, and
+// caches the Privy identity token so a burst of authed requests on mount makes
+// one Privy /users/me call instead of one per request (see lib/privy-token).
 //
-// On a cold first load Privy can report "authenticated" a moment before the
-// access token is warm, so the access token is briefly null. Callers of
+// On a cold first load the provider can report "authenticated" a moment before
+// the access token is warm, so the access token is briefly null. Callers of
 // auth-gated routes pass `requireAuth` so that, instead of firing a token-less
 // request that 401s, we throw a retryable error and let the caller's query
 // retry once the token lands.

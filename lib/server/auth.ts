@@ -3,6 +3,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import type { User } from "@privy-io/node";
 import { getPrivyClient } from "@/lib/server/privy";
+import { decaneConfigured, getDecaneClient } from "@/lib/server/decane";
 
 export interface AccessClaims {
   userId: string;
@@ -52,11 +53,7 @@ function extractAccessToken(req: NextRequest): string | null {
   return req.cookies.get("privy-token")?.value ?? null;
 }
 
-// Verifies the caller's Privy access token. Returns null when the request
-// carries no token or the token fails verification.
-export async function verifyRequest(req: NextRequest): Promise<AccessClaims | null> {
-  const token = extractAccessToken(req);
-  if (!token) return null;
+async function verifyWithPrivy(token: string): Promise<AccessClaims | null> {
   try {
     const claims = await getPrivyClient().utils().auth().verifyAccessToken(token);
     return {
@@ -68,6 +65,33 @@ export async function verifyRequest(req: NextRequest): Promise<AccessClaims | nu
   } catch {
     return null;
   }
+}
+
+async function verifyWithDecane(token: string): Promise<AccessClaims | null> {
+  if (!decaneConfigured()) return null;
+  try {
+    const claims = await getDecaneClient().verifyAccessToken(token);
+    return {
+      userId: claims.userId,
+      // Decane has no session id. The token id is unique per issued token and
+      // only keys the short-lived request-user cache, so it is close enough.
+      sessionId: claims.tokenId ?? claims.subject,
+      issuedAt: claims.issuedAt ?? 0,
+      expiration: claims.expiresAt ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Verifies the caller's access token. During the Privy to Decane migration
+// window both issuers are trusted: Privy is tried first because it still
+// carries all pre-cutover traffic, then Decane. Returns null when the request
+// carries no token or neither issuer verifies it.
+export async function verifyRequest(req: NextRequest): Promise<AccessClaims | null> {
+  const token = extractAccessToken(req);
+  if (!token) return null;
+  return (await verifyWithPrivy(token)) ?? verifyWithDecane(token);
 }
 
 // Resolves the full Privy user from an identity token, when the client sent

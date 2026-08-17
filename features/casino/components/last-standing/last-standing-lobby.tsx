@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/currencies";
 import { useVaultLobby } from "@/features/casino/hooks/use-vault-lobby";
 import { GameCard } from "@/features/casino/components/last-standing/game-card";
 import { StartGameSheet } from "@/features/casino/components/last-standing/start-game-sheet";
+import { LAST_MAN_START_LIVE } from "@/features/casino/lib/last-standing/start-gate";
 import { FundSheet } from "@/features/casino/components/last-standing/fund-sheet";
 import { GameBalanceCard } from "@/features/casino/components/last-standing/game-balance-card";
 import { DEFAULT_ENTRY_USD } from "@/features/casino/lib/last-standing/stake";
@@ -78,7 +79,10 @@ export function LastStandingLobby({ renderWithdrawSheet }: LastStandingLobbyProp
       </div>
 
       {/* Opening a game is the only way to earn the starter's 10%, so it is
-          sold rather than tucked away as a secondary button. */}
+          sold rather than tucked away as a secondary button — but only once
+          the start gate is open; until then the deployed app keeps the room
+          count where ops put it. */}
+      {LAST_MAN_START_LIVE && (
       <div className="ws-inset mt-5 px-4 py-4">
         <div className="ws-display text-[17px] tracking-[-0.01em]">{t("starterPitchTitle")}</div>
         <p className="mt-1.5 text-[13px] leading-relaxed font-normal text-white/60">
@@ -92,6 +96,7 @@ export function LastStandingLobby({ renderWithdrawSheet }: LastStandingLobbyProp
           {t("startCtaShort", { amount: defaultEntry })}
         </button>
       </div>
+      )}
 
       <div className="mt-3">
         <GameBalanceCard

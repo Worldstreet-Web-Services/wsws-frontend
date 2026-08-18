@@ -39,11 +39,13 @@ const RPC_URL = "http://127.0.0.1:1";
 const BLOCKHASH = "11111111111111111111111111111111" as Blockhash;
 const SYSTEM_PROGRAM = "11111111111111111111111111111112";
 const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const COMPUTE_BUDGET_PROGRAM = "ComputeBudget111111111111111111111111111111";
 
 async function transactionWithFeePayer(
   feePayer: string,
   userAddress: string,
-  includeTokenAccountCreation = false
+  includeTokenAccountCreation = false,
+  includeExpensivePriorityFee = false
 ): Promise<string> {
   const message = pipe(
     createTransactionMessage({ version: 0 }),
@@ -53,6 +55,27 @@ async function transactionWithFeePayer(
         { blockhash: BLOCKHASH, lastValidBlockHeight: 1n },
         m
       ),
+    (m) =>
+      includeExpensivePriorityFee
+        ? appendTransactionMessageInstruction(
+            {
+              programAddress: COMPUTE_BUDGET_PROGRAM as never,
+              data: new Uint8Array([2, 192, 92, 21, 0]),
+            },
+            m
+          )
+        : m,
+    (m) =>
+      includeExpensivePriorityFee
+        ? appendTransactionMessageInstruction(
+            {
+              programAddress: COMPUTE_BUDGET_PROGRAM as never,
+              // 71,428 micro-lamports * 1.4m units = ~100k lamports.
+              data: new Uint8Array([3, 4, 23, 1, 0, 0, 0, 0, 0]),
+            },
+            m
+          )
+        : m,
     (m) =>
       appendTransactionMessageInstruction(
         {
@@ -147,6 +170,26 @@ describe("rewriteFeePayerWithRpc", () => {
       sponsorAddress
     );
     expect(compiled.staticAccounts).toContain(userAddress);
+  });
+
+  it("caps provider priority fees near the Solana network average", async () => {
+    const { sponsorAddress, userAddress } = await keyAddresses();
+    const wire = await transactionWithFeePayer(userAddress, userAddress, false, true);
+
+    const result = await rewriteFeePayerWithRpc(wire, sponsorAddress, RPC_URL);
+    const tx = getTransactionDecoder().decode(
+      Uint8Array.from(Buffer.from(result.transaction, "base64"))
+    );
+    const compiled = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
+    if (!("instructions" in compiled)) throw new Error("Expected a legacy or v0 transaction");
+    const priceInstruction = compiled.instructions.find(
+      (instruction) =>
+        compiled.staticAccounts[instruction.programAddressIndex] === COMPUTE_BUDGET_PROGRAM &&
+        instruction.data?.[0] === 3
+    );
+
+    // 7,142 micro-lamports * 1.4m units is 9,998.8 lamports of priority fee.
+    expect(Array.from(priceInstruction?.data ?? [])).toEqual([3, 230, 27, 0, 0, 0, 0, 0, 0]);
   });
 });
 

@@ -96,8 +96,7 @@ export async function prepareSponsoredSolanaTransaction(
 }
 
 async function requestSolanaSponsorship(
-  transaction: string | Uint8Array,
-  opts: { prefundRent?: boolean } = {}
+  transaction: string | Uint8Array
 ): Promise<SponsoredSolanaTransactionResult> {
   const serializedTransaction =
     typeof transaction === "string" ? transaction : bytesToBase64(transaction);
@@ -107,10 +106,7 @@ async function requestSolanaSponsorship(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serializedTransaction,
-          ...(opts.prefundRent ? { prefundRent: true } : {}),
-        }),
+        body: JSON.stringify({ serializedTransaction }),
       },
       { requireAuth: true }
     );
@@ -139,8 +135,7 @@ async function requestSolanaSponsorship(
 // Step two: the user-signed transaction goes to the sponsor, which adds its
 // fee-payer signature and submits. The result carries submittedSignature.
 export async function sponsorAndSubmitSolanaTransaction(
-  transaction: string | Uint8Array,
-  opts: { prefundRent?: boolean } = {}
+  transaction: string | Uint8Array
 ): Promise<SponsoredSolanaTransactionResult> {
-  return requestSolanaSponsorship(transaction, opts);
+  return requestSolanaSponsorship(transaction);
 }

@@ -45,8 +45,12 @@ const KEY_ENV: Record<DextopusPurpose, string> = {
 
 function apiKeyFor(purpose: DextopusPurpose): string {
   const name = KEY_ENV[purpose];
-  const key = process.env[name];
-  if (!key) throw new Error(`${name} is not set`);
+  // Existing environments predate the purpose-specific integrations and only
+  // have DEXTOPUS_API_KEY. Keep those deployments working while allowing a
+  // dedicated key to take precedence whenever one is configured.
+  const key =
+    process.env[name] ?? (purpose === "deposit" ? undefined : process.env.DEXTOPUS_API_KEY);
+  if (!key) throw new Error(`${name} or DEXTOPUS_API_KEY is not set`);
   return key;
 }
 

@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dextopusRequest, isAllowedPath, splitPurpose } from "@/lib/server/dextopus";
 
 const originalApiKey = process.env.DEXTOPUS_API_KEY;
+const originalTradeApiKey = process.env.DEXTOPUS_TRADE_API_KEY;
+const originalWithdrawApiKey = process.env.DEXTOPUS_WITHDRAW_API_KEY;
 
 beforeEach(() => {
   process.env.DEXTOPUS_API_KEY = "test-key";
+  delete process.env.DEXTOPUS_TRADE_API_KEY;
+  delete process.env.DEXTOPUS_WITHDRAW_API_KEY;
 });
 
 afterEach(() => {
@@ -13,6 +17,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   if (originalApiKey === undefined) delete process.env.DEXTOPUS_API_KEY;
   else process.env.DEXTOPUS_API_KEY = originalApiKey;
+  if (originalTradeApiKey === undefined) delete process.env.DEXTOPUS_TRADE_API_KEY;
+  else process.env.DEXTOPUS_TRADE_API_KEY = originalTradeApiKey;
+  if (originalWithdrawApiKey === undefined) delete process.env.DEXTOPUS_WITHDRAW_API_KEY;
+  else process.env.DEXTOPUS_WITHDRAW_API_KEY = originalWithdrawApiKey;
 });
 
 describe("splitPurpose", () => {
@@ -46,6 +54,39 @@ describe("splitPurpose", () => {
 });
 
 describe("dextopusRequest retries", () => {
+  it("falls back to the existing key for a trade integration", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await dextopusRequest("deposit/quote", {
+      method: "POST",
+      purpose: "trade",
+      body: { amount: "1000000" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ headers: expect.objectContaining({ "x-api-key": "test-key" }) })
+    );
+  });
+
+  it("prefers a purpose-specific trade key when configured", async () => {
+    process.env.DEXTOPUS_TRADE_API_KEY = "trade-key";
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await dextopusRequest("deposit/quote", {
+      method: "POST",
+      purpose: "trade",
+      body: { amount: "1000000" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ headers: expect.objectContaining({ "x-api-key": "trade-key" }) })
+    );
+  });
+
   it("retries one transient quote transport failure", async () => {
     vi.useFakeTimers();
     vi.spyOn(console, "warn").mockImplementation(() => undefined);

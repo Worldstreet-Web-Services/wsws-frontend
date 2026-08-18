@@ -38,6 +38,39 @@ const RPC_URLS = () => {
   ].filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index);
 };
 const ASSOCIATED_TOKEN_PROGRAM_ADDRESS = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const COMPUTE_BUDGET_PROGRAM_ADDRESS = "ComputeBudget111111111111111111111111111111";
+const DEFAULT_COMPUTE_UNIT_LIMIT = 1_400_000n;
+// Keep sponsored priority spend close to the normal Solana fee instead of
+// accepting a provider-built 0.0001 SOL priority fee for every small trade.
+const MAX_PRIORITY_FEE_LAMPORTS = 10_000n;
+
+interface ReadonlyBytes {
+  readonly length: number;
+  readonly [index: number]: number;
+}
+
+function readU32Le(data: ReadonlyBytes): bigint {
+  return (
+    BigInt(data[1]) | (BigInt(data[2]) << 8n) | (BigInt(data[3]) << 16n) | (BigInt(data[4]) << 24n)
+  );
+}
+
+function readU64Le(data: ReadonlyBytes): bigint {
+  let value = 0n;
+  for (let index = 8; index >= 1; index -= 1) value = (value << 8n) | BigInt(data[index]);
+  return value;
+}
+
+function computeUnitPriceData(microLamports: bigint): Uint8Array {
+  const data = new Uint8Array(9);
+  data[0] = 3;
+  let remaining = microLamports;
+  for (let index = 1; index <= 8; index += 1) {
+    data[index] = Number(remaining & 0xffn);
+    remaining >>= 8n;
+  }
+  return data;
+}
 
 export function localSponsorConfigured(): boolean {
   return (
@@ -102,30 +135,55 @@ export async function rewriteFeePayerWithRpc(
   if (!message) throw lastError ?? new Error("No Solana RPC is configured");
   const sponsored = setTransactionMessageFeePayer(address(sponsorAddress), message);
   const originalFeePayer = compiled.staticAccounts[0];
+  let computeUnitLimit: ReadonlyBytes | null = null;
+  for (const instruction of sponsored.instructions) {
+    if (
+      instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
+      instruction.data?.length === 5 &&
+      instruction.data[0] === 2
+    ) {
+      computeUnitLimit = instruction.data;
+      break;
+    }
+  }
+  const requestedUnits = computeUnitLimit
+    ? readU32Le(computeUnitLimit)
+    : DEFAULT_COMPUTE_UNIT_LIMIT;
+  const maxUnitPrice = (MAX_PRIORITY_FEE_LAMPORTS * 1_000_000n) / requestedUnits;
   // Token-account creation names its rent payer inside the instruction; merely
   // changing the transaction fee payer does not change it. Seat the sponsor in
   // that payer account directly instead of transferring a fixed SOL reserve to
   // the user. The user's other signer roles (token authority/owner) are untouched.
-  const prepared = prefundRent
-    ? {
-        ...sponsored,
-        instructions: Array.from(sponsored.instructions, (instruction) => {
-          if (
-            instruction.programAddress !== ASSOCIATED_TOKEN_PROGRAM_ADDRESS ||
-            instruction.accounts?.[0]?.address !== originalFeePayer
-          ) {
-            return instruction;
-          }
-          return {
-            ...instruction,
-            accounts: [
-              { ...instruction.accounts[0], address: address(sponsorAddress) },
-              ...instruction.accounts.slice(1),
-            ],
-          };
-        }),
+  const prepared = {
+    ...sponsored,
+    instructions: Array.from(sponsored.instructions, (instruction) => {
+      let next = instruction;
+      if (
+        instruction.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS &&
+        instruction.data?.length === 9 &&
+        instruction.data[0] === 3
+      ) {
+        const requestedPrice = readU64Le(instruction.data);
+        if (requestedPrice > maxUnitPrice) {
+          next = { ...next, data: computeUnitPriceData(maxUnitPrice) };
+        }
       }
-    : sponsored;
+      if (
+        prefundRent &&
+        instruction.programAddress === ASSOCIATED_TOKEN_PROGRAM_ADDRESS &&
+        instruction.accounts?.[0]?.address === originalFeePayer
+      ) {
+        next = {
+          ...next,
+          accounts: [
+            { ...instruction.accounts[0], address: address(sponsorAddress) },
+            ...instruction.accounts.slice(1),
+          ],
+        };
+      }
+      return next;
+    }),
+  };
   const recompiled = compileTransaction(prepared);
   return {
     transaction: getBase64EncodedWireTransaction(recompiled),

@@ -177,10 +177,10 @@ export async function forwardSolanaSponsorRequest(req: NextRequest) {
     const res = await fetch(`${GAS_SPONSOR_BASE}/solana/sponsor`, {
       method: "POST",
       headers: forwardHeaders(req),
-      body: JSON.stringify({
-        serializedTransaction: body.serializedTransaction,
-        ...(body.prefundRent ? { prefundRent: true } : {}),
-      }),
+      // Rent was handled when /prepare rewrote the transaction. Forwarding
+      // prefundRent here makes the remote service transfer the same reserve to
+      // the user as well, charging the sponsor twice.
+      body: JSON.stringify({ serializedTransaction: body.serializedTransaction }),
       cache: "no-store",
       signal: AbortSignal.timeout(30_000),
     });
@@ -209,7 +209,7 @@ export async function forwardSolanaSponsorRequest(req: NextRequest) {
       usesDurableNonce: false,
       lastValidBlockHeight: null,
       submittedSignature: data.submittedSignature ?? null,
-      prefundRent: data.prefundRent ?? body.prefundRent ?? false,
+      prefundRent: false,
       signer: data.signer ?? null,
       sponsorPublicKey: data.sponsorPublicKey ?? null,
       previewOnly: data.previewOnly ?? null,

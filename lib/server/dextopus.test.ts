@@ -1,5 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { isAllowedPath, splitPurpose } from "@/lib/server/dextopus";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { dextopusRequest, isAllowedPath, splitPurpose } from "@/lib/server/dextopus";
+
+const originalApiKey = process.env.DEXTOPUS_API_KEY;
+
+beforeEach(() => {
+  process.env.DEXTOPUS_API_KEY = "test-key";
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  if (originalApiKey === undefined) delete process.env.DEXTOPUS_API_KEY;
+  else process.env.DEXTOPUS_API_KEY = originalApiKey;
+});
 
 describe("splitPurpose", () => {
   it("signs a plain Dextopus path with the deposit key", () => {
@@ -28,5 +42,41 @@ describe("splitPurpose", () => {
     expect(isAllowedPath(splitPurpose("withdraw/admin/keys").path)).toBe(false);
     // The prefix alone does not open a door: "withdraw/" is not a Dextopus path.
     expect(isAllowedPath(splitPurpose("withdraw/").path)).toBe(false);
+  });
+});
+
+describe("dextopusRequest retries", () => {
+  it("retries one transient quote transport failure", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("socket closed"))
+      .mockResolvedValueOnce(Response.json({ success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const responsePromise = dextopusRequest("deposit/quote", {
+      method: "POST",
+      purpose: "deposit",
+      body: { amount: "1000000" },
+    });
+    await vi.advanceTimersByTimeAsync(300);
+
+    await expect(responsePromise).resolves.toMatchObject({ status: 200 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("never retries transaction submission", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("socket closed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      dextopusRequest("deposit/submit", {
+        method: "POST",
+        purpose: "deposit",
+        body: { depositRequestId: "request-1", txHash: "hash-1" },
+      })
+    ).rejects.toThrow("socket closed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

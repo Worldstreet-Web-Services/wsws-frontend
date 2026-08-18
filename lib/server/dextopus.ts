@@ -4,6 +4,7 @@ import "server-only";
 // pk_ prefix. Base path is confirmed against the live API when wiring the
 // flows; flip DEXTOPUS_BASE if their docs settle on a different prefix.
 const DEXTOPUS_BASE = "https://swap-api.dextopus.com/api";
+const DEXTOPUS_TIMEOUT_MS = 20_000;
 
 // Only deposit-scoped paths may be proxied. Withdrawal reuses /deposit/quote.
 const ALLOWED_PREFIXES = ["deposit/"];
@@ -64,17 +65,45 @@ export async function dextopusRequest(
   const url = new URL(`${DEXTOPUS_BASE}/${path}`);
   if (init.query) url.search = init.query.toString();
 
-  return fetch(url, {
-    method: init.method,
-    headers: {
-      "x-api-key": key,
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: init.body ? JSON.stringify(init.body) : undefined,
-    ...(init.revalidate != null
-      ? { next: { revalidate: init.revalidate } }
-      : { cache: "no-store" }),
-  });
+  const request = () =>
+    fetch(url, {
+      method: init.method,
+      headers: {
+        Accept: "application/json",
+        "x-api-key": key,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: init.body ? JSON.stringify(init.body) : undefined,
+      signal: AbortSignal.timeout(DEXTOPUS_TIMEOUT_MS),
+      ...(init.revalidate != null
+        ? { next: { revalidate: init.revalidate } }
+        : { cache: "no-store" }),
+    });
+
+  // A quote has no funds attached, so retrying one transient transport failure
+  // can only leave an unused address behind. Never retry submit or another
+  // money-moving command here: those are reconciled by transaction hash.
+  const retryStatus = init.method === "GET" && path === "deposit/status";
+  const retryQuote = init.method === "POST" && path === "deposit/quote";
+  const delays = retryStatus ? [200, 600, 1_200] : retryQuote ? [300] : [];
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response;
+    try {
+      response = await request();
+    } catch (error) {
+      if (attempt >= delays.length) throw error;
+      console.warn("Dextopus request transport retry", {
+        method: init.method,
+        path,
+        attempt: attempt + 1,
+        error: error instanceof Error ? error.message : "unknown transport failure",
+      });
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+      continue;
+    }
+    if (response.status < 500 || attempt >= delays.length) return response;
+    await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+  }
 }
 
 // The chain and token catalogs barely change, so we cache them server-side to
@@ -82,5 +111,9 @@ export async function dextopusRequest(
 // status and quote are never cached.
 export function cacheSecondsFor(path: string): number | undefined {
   if (/^deposit\/(chains|tokens|sources|destinations)/.test(path)) return 600;
+  // One request can be observed by the trade sheet, dashboard reconciler and
+  // another browser tab. A short shared cache coalesces those reads without
+  // making a visible settlement meaningfully stale.
+  if (path === "deposit/status") return 5;
   return undefined;
 }

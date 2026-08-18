@@ -55,7 +55,8 @@ const RETRY_DELAY_MS = 900;
 // fee-payer seat and returns the still-unsigned transaction for the user to
 // sign. Sponsoring and submitting happen in sponsorAndSubmitSolanaTransaction.
 export async function prepareSponsoredSolanaTransaction(
-  transaction: string | Uint8Array
+  transaction: string | Uint8Array,
+  opts: { prefundRent?: boolean } = {}
 ): Promise<Uint8Array> {
   const serializedTransaction =
     typeof transaction === "string" ? transaction : bytesToBase64(transaction);
@@ -65,7 +66,10 @@ export async function prepareSponsoredSolanaTransaction(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serializedTransaction }),
+        body: JSON.stringify({
+          serializedTransaction,
+          ...(opts.prefundRent ? { prefundRent: true } : {}),
+        }),
       },
       { requireAuth: true }
     );

@@ -17,8 +17,16 @@ import { wsapiService } from "@/lib/wsapi-base";
 const GAS_SPONSOR_BASE = process.env.GAS_SPONSOR_API_URL ?? wsapiService("gas-sponsor");
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 
-const RPC_URL = () =>
-  `https://solana-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY ?? ""}`;
+const PUBLIC_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const RPC_URLS = () => {
+  const configured = process.env.SOLANA_RPC_URL;
+  const key = process.env.ALCHEMY_API_KEY;
+  return [
+    configured,
+    key ? `https://solana-mainnet.g.alchemy.com/v2/${key}` : undefined,
+    PUBLIC_SOLANA_RPC,
+  ].filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index);
+};
 
 interface SponsorBody {
   serializedTransaction: string;
@@ -113,11 +121,12 @@ export async function prepareSolanaSponsorRequest(req: NextRequest) {
 
   try {
     const prepared = localSponsorConfigured()
-      ? await prepareWithLocalSponsor(body.serializedTransaction)
+      ? await prepareWithLocalSponsor(body.serializedTransaction, body.prefundRent)
       : await rewriteFeePayerWithRpc(
           body.serializedTransaction,
           await serviceSponsorPublicKey(req),
-          RPC_URL()
+          RPC_URLS(),
+          body.prefundRent
         );
     return NextResponse.json({
       serializedTransaction: prepared.transaction,
@@ -151,7 +160,7 @@ export async function forwardSolanaSponsorRequest(req: NextRequest) {
         usesDurableNonce: false,
         lastValidBlockHeight: null,
         submittedSignature: result.submittedSignature,
-        prefundRent: false,
+        prefundRent: body.prefundRent ?? false,
         signer: "local-key",
         sponsorPublicKey: result.sponsorPublicKey,
         previewOnly: false,

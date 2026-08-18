@@ -26,7 +26,7 @@ export function useSponsoredSolanaSend() {
 
   return useCallback(
     async ({ transaction, wallet, prefundRent }: SponsoredSolanaSendInput): Promise<string> => {
-      const prepared = await prepareSponsoredSolanaTransaction(transaction);
+      const prepared = await prepareSponsoredSolanaTransaction(transaction, { prefundRent });
       const { signedTransaction } = await signTransaction({ transaction: prepared, wallet });
       const result = await sponsorAndSubmitSolanaTransaction(signedTransaction, { prefundRent });
       if (!result.submittedSignature) {

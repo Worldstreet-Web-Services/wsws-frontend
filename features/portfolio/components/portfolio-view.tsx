@@ -21,7 +21,6 @@ import { KashHistoryModal } from "@/features/portfolio/components/kash-history-m
 import { KashUpgradeModal } from "@/features/portfolio/components/kash-upgrade-modal";
 import { KashSendModal } from "@/features/portfolio/components/kash-send-modal";
 import { useKashAccount, useKashClaim } from "@/features/portfolio/hooks/use-kash";
-import { KASH_LIVE } from "@/features/portfolio/lib/kash-launch";
 import { Switch } from "@/components/ui/switch";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
@@ -278,14 +277,9 @@ export function PortfolioView({
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      {/* Until launch the Kash surfaces are hidden entirely — a teaser that
-          cannot be used reads as broken, not upcoming. Flipping
-          NEXT_PUBLIC_KASH_LIVE=true restores banner and card in one deploy. */}
-      {KASH_LIVE && (
-        <div className="mb-4">
-          <KashBanner onBuy={() => setKashModal("buy")} />
-        </div>
-      )}
+      <div className="mb-4">
+        <KashBanner onBuy={() => setKashModal("buy")} />
+      </div>
       <KashBuyModal
         open={kashModal === "buy"}
         wallet={kashWallet}
@@ -298,38 +292,30 @@ export function PortfolioView({
 
       <Eyebrow>{t("eyebrow")}</Eyebrow>
 
-      <div
-        className={`mt-3.5 grid gap-3 ${
-          KASH_LIVE
-            ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
-            : ""
-        }`}
-      >
+      <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
-        {KASH_LIVE && (
-          <KashCard
-            onBuy={() => setKashModal("buy")}
-            onClaim={
-              kashWallet
-                ? () =>
-                    claimPoints.mutate(
-                      { wallet: kashWallet },
-                      {
-                        // Reported on settlement, so the figure is what the engine
-                        // actually minted rather than what was claimable.
-                        onSuccess: (result) =>
-                          track("kash_earned", { kash_amount: Number(result.kashMinted) }),
-                      }
-                    )
-                : undefined
-            }
-            claiming={claimPoints.isPending}
-            onSend={() => setKashModal("send")}
-            onConvert={() => setKashModal("convert")}
-            onHistory={() => setKashModal("history")}
-            onUpgrade={() => setKashModal("upgrade")}
-          />
-        )}
+        <KashCard
+          onBuy={() => setKashModal("buy")}
+          onClaim={
+            kashWallet
+              ? () =>
+                  claimPoints.mutate(
+                    { wallet: kashWallet },
+                    {
+                      // Reported on settlement, so the figure is what the engine
+                      // actually minted rather than what was claimable.
+                      onSuccess: (result) =>
+                        track("kash_earned", { kash_amount: Number(result.kashMinted) }),
+                    }
+                  )
+              : undefined
+          }
+          claiming={claimPoints.isPending}
+          onSend={() => setKashModal("send")}
+          onConvert={() => setKashModal("convert")}
+          onHistory={() => setKashModal("history")}
+          onUpgrade={() => setKashModal("upgrade")}
+        />
       </div>
 
       <div className="mt-3">{crossBorderSlot}</div>

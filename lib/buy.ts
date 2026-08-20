@@ -143,6 +143,7 @@ export function isOfferable(route: BuyRoute): boolean {
 // BTC (cbBTC) on Base. Keys and values are compared uppercased.
 const SYMBOL_ALIAS: Record<string, string> = {
   BTC: "CBBTC",
+  DOGE: "CBDOGE",
 };
 
 // Catalog symbol -> display symbol, derived so the alias has one source. Lets the

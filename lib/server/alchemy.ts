@@ -196,7 +196,10 @@ const TRACKED_CHAINS = new Set(Object.keys(NATIVE_TOKEN));
 // Non-stablecoin assets we still recognize (e.g. swappable cbBTC on Base),
 // lowercased address per network.
 const ALLOWED_EXTRA: Record<string, string[]> = {
-  "base-mainnet": ["0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"], // cbBTC
+  "base-mainnet": [
+    "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf", // cbBTC
+    "0xcbd06e5a2b0c65597161de254aa074e489deb510", // cbDOGE, verified on-chain: symbol "cbDOGE", 8 decimals
+  ],
 };
 
 function isTrackedStable(network: string, address: string | null): boolean {

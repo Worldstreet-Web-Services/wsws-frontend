@@ -34,6 +34,7 @@ import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { selectHoldings } from "@/features/portfolio/lib/holdings";
 import { canSellAsset } from "@/lib/sell";
+import { displayNetwork } from "@/lib/buy";
 import type { MemeToken } from "@/lib/meme/api";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
@@ -61,6 +62,15 @@ const NETWORK_LABELS: Record<string, string> = {
 
 function networkLabel(network: string): string {
   return NETWORK_LABELS[network] ?? network;
+}
+
+function displayNetworkLabel(t: TokenBalance): string {
+  const net = displayNetwork(t.symbol, t.network);
+  return net === "Bitcoin" ? net : networkLabel(net);
+}
+
+function displayNetworkIconKey(t: TokenBalance): string {
+  return displayNetwork(t.symbol, t.network);
 }
 
 // A held meme balance as the trade sheet's listing shape; the sheet re-fetches
@@ -267,7 +277,7 @@ export function PortfolioView({
       stats: [
         { k: t("holdings"), v: `${formatQty(token.balance)} ${token.symbol}` },
         { k: t("marketPrice"), v: money.format(token.priceUsd) },
-        { k: t("network"), v: networkLabel(token.network) },
+        { k: t("network"), v: displayNetworkLabel(token) },
         { k: t("positionValue"), v: money.format(token.valueUsd) },
       ],
       cta: t("buyMore", { name: token.name }),
@@ -429,7 +439,7 @@ export function PortfolioView({
                           fallback="gradient"
                         />
                         <span className="absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-[#0d0d0f] p-[1.5px]">
-                          <NetworkIcon network={t.network} size={14} />
+                          <NetworkIcon network={displayNetworkIconKey(t)} size={14} />
                         </span>
                       </span>
                       <span className="min-w-0">
@@ -442,7 +452,7 @@ export function PortfolioView({
                           </span>
                         </span>
                         <span className="block truncate text-xs font-normal text-white/50">
-                          {formatQty(t.balance)} · {networkLabel(t.network)}
+                          {formatQty(t.balance)} · {displayNetworkLabel(t)}
                         </span>
                       </span>
                     </span>
@@ -453,8 +463,8 @@ export function PortfolioView({
                       {money.format(t.priceUsd)}
                     </span>
                     <span className="hidden items-center justify-end gap-1.5 text-[13px] font-normal text-white/60 min-[560px]:flex">
-                      <NetworkIcon network={t.network} size={16} />
-                      {networkLabel(t.network)}
+                      <NetworkIcon network={displayNetworkIconKey(t)} size={16} />
+                      {displayNetworkLabel(t)}
                     </span>
                     <span className="tnum text-right font-sans text-sm font-medium">
                       {money.format(t.valueUsd)}

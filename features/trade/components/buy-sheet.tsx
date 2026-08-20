@@ -128,9 +128,13 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     [status.data]
   );
   // A swap market reports its own phase from useMemeTrade directly, since it
-  // never goes through Dextopus's deposit-status polling.
+  // never goes through Dextopus's deposit-status polling. `received` is an
+  // on-chain-verified balanceOf delta that lands before the backend's own
+  // slower confirmation — treated as settled immediately, so this screen
+  // never sits on "still buying" for a trade that has already landed in the
+  // wallet.
   const swapStage: DepositStage =
-    memeTrade.phase === "confirmed"
+    memeTrade.phase === "confirmed" || memeTrade.received != null
       ? "settled"
       : memeTrade.phase === "failed"
         ? "failed"
@@ -147,7 +151,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     failed: 0,
   };
   const progress = isSwapMarket
-    ? { stage: swapStage, pct: swapPct[memeTrade.phase] }
+    ? { stage: swapStage, pct: memeTrade.received != null ? 100 : swapPct[memeTrade.phase] }
     : dextopusProgress;
   const stage = progress.stage;
   // Shows the order-tracking view: requestId once a Dextopus buy is placed,
@@ -179,12 +183,21 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     } else if (stage === "failed" || stage === "refunded") {
       settledRef.current = true;
       track("trade_failed", { vertical: "spot", asset: payload.symbol, reason: stage });
-      toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
-      toastRef.current = undefined;
+      // A swap-market failure is already toasted, with the real reason, from
+      // confirm()'s own catch below — trade() only resolves or rejects once
+      // the whole flow (including confirmation polling) is done, so there is
+      // no later, separate failure for this effect to catch. The Dextopus
+      // path is different: buy.mutateAsync resolves as soon as the order is
+      // placed, and settlement (or its failure) is detected later, here.
+      if (!isSwapMarket) {
+        toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
+        toastRef.current = undefined;
+      }
     }
   }, [
     showTracking,
     stage,
+    isSwapMarket,
     payload.name,
     payload.symbol,
     route?.chainName,
@@ -232,10 +245,15 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
         });
         toast.dismiss(toastRef.current);
         toastRef.current = undefined;
-      } catch {
-        // useMemeTrade already records phase "failed" and its own error
-        // message, surfaced in the tracking view.
-        toast.error(t("buyFailedToast", { name: payload.name }), { id: toastRef.current });
+      } catch (e) {
+        // useMemeTrade already records phase "failed" for the tracking view
+        // below; the toast leads with its actual reason (a stale quote, a
+        // reverted swap, a rejected signature) instead of a generic line that
+        // hides what happened. friendlyError strips raw wallet/RPC dumps
+        // (calldata, signatures, gas fields) down to plain English.
+        toast.error(friendlyError(e, t("buyFailedToast", { name: payload.name })), {
+          id: toastRef.current,
+        });
         toastRef.current = undefined;
       }
       return;
@@ -283,9 +301,16 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
                 : t("assetInAccount", { name: payload.name })}
             </p>
           ) : failed ? (
-            <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
-              {t("orderFailedBody")}
-            </p>
+            <>
+              <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
+                {t("orderFailedBody")}
+              </p>
+              {isSwapMarket && memeTrade.error ? (
+                <p className="mt-1 text-[11px] leading-[1.4] font-normal text-white/40">
+                  {friendlyError(memeTrade.error, t("orderFailedBody"))}
+                </p>
+              ) : null}
+            </>
           ) : (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
               {t("takesAMoment")}

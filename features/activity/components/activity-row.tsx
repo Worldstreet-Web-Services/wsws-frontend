@@ -7,6 +7,7 @@ import { useMoney } from "@/components/ui/currency-select";
 import type { ActivityEntry } from "@/lib/activity/entries";
 import { track } from "@/lib/analytics/mixpanel";
 import { tokenBg } from "@/lib/trade/assets";
+import { displayNetwork, displaySymbol } from "@/lib/buy";
 import { formatQty, truncateAddress } from "@/lib/format";
 
 // Explorer per chain, so a row links to the transaction it describes.
@@ -71,12 +72,15 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
   const incoming = item.direction === "in";
   const explorer = EXPLORER[item.network];
   const value = priceUsd > 0 ? priceUsd * item.amount : 0;
+  const sym = displaySymbol(item.symbol);
+  const network = displayNetwork(item.symbol, item.network);
   // What the user did, named. A trade also carries what it cost or fetched,
   // which is more use on the row than the dollar value of one leg.
-  const title = t(item.kind, { symbol: item.symbol });
+  const title = t(item.kind, { symbol: sym });
+  const counterSym = item.counterSymbol ? displaySymbol(item.counterSymbol) : null;
   const counter =
-    item.counterSymbol && item.counterAmount != null
-      ? `${item.kind === "sold" ? "+" : "\u2212"}${formatQty(item.counterAmount)} ${item.counterSymbol}`
+    counterSym && item.counterAmount != null
+      ? `${item.kind === "sold" ? "+" : "\u2212"}${formatQty(item.counterAmount)} ${counterSym}`
       : null;
 
   return (
@@ -93,20 +97,15 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className="relative shrink-0">
-          <AssetIcon
-            sym={item.symbol}
-            bg={tokenBg(item.symbol)}
-            logo={item.logo}
-            fallback="gradient"
-          />
+          <AssetIcon sym={sym} bg={tokenBg(sym)} logo={item.logo} fallback="gradient" />
           <span className="absolute -right-1 -bottom-1 grid h-[18px] w-[18px] place-items-center rounded-full bg-black">
-            <NetworkIcon network={item.network} size={13} />
+            <NetworkIcon network={network} size={13} />
           </span>
         </span>
         <div className="min-w-0">
           <div className="truncate font-sans text-[14.5px] font-medium">{title}</div>
           <div className="truncate text-xs font-normal text-white/50">
-            {clockTime(item.timestamp)} · {NETWORK_LABEL[item.network] ?? item.network}
+            {clockTime(item.timestamp)} · {network === "Bitcoin" ? network : (NETWORK_LABEL[network] ?? network)}
             {item.counterparty
               ? ` · ${incoming ? t("from") : t("to")} ${truncateAddress(item.counterparty)}`
               : ""}
@@ -117,7 +116,7 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
       <div className="text-right">
         <div className={`tnum text-sm font-semibold ${incoming ? "text-up" : "text-white/85"}`}>
           {incoming ? "+" : "−"}
-          {formatQty(item.amount)} {item.symbol}
+          {formatQty(item.amount)} {sym}
         </div>
         <div className="tnum text-[12px] font-normal text-white/45">
           {counter ?? (value > 0 ? money.format(value) : relativeTime(item.timestamp, t))}

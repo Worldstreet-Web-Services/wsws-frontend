@@ -5,6 +5,7 @@ import {
   type BuyableRegistry,
   type MemeRegistry,
 } from "@/lib/server/buyable-registry";
+import { displaySymbol } from "@/lib/buy";
 
 // Alchemy Portfolio API. One call returns native + ERC-20 + SPL balances with
 // USD prices across every requested network. Key stays server-side.
@@ -257,16 +258,28 @@ function normalize(
     // (Polygon USDC has done this). They are dollar-pegged, so value a held
     // balance at $1 rather than $0, which would hide a real holding.
     if (priceUsd === 0 && isTrackedStable(network, address)) priceUsd = 1;
-    const kind: AssetKind = isNative
+    // A wrapped representation (cbBTC, cbDOGE) displays as the coin it
+    // represents, not its own contract ticker or on-chain name — the raw
+    // resolved symbol above still governs identity checks (isTrackedStable,
+    // the network value, sell/send routing), and the contract's own
+    // name/symbol/network are unchanged on-chain; only what is shown to the
+    // user changes. kind is display-only everywhere it is read (the type
+    // pill, the balance breakdown bucket) so aliasing it directly is safe —
+    // unlike network, nothing downstream needs it to stay "token".
+    const shownSymbol = displaySymbol(symbol);
+    const aliased = shownSymbol !== symbol;
+    const kind: AssetKind = aliased
       ? "coin"
-      : rwaInfo
-        ? "rwa"
-        : isTrackedStable(network, address)
-          ? "stablecoin"
-          : "token";
+      : isNative
+        ? "coin"
+        : rwaInfo
+          ? "rwa"
+          : isTrackedStable(network, address)
+            ? "stablecoin"
+            : "token";
     out.push({
-      symbol,
-      name: native?.name ?? t.tokenMetadata?.name ?? symbol,
+      symbol: shownSymbol,
+      name: aliased ? shownSymbol : (native?.name ?? t.tokenMetadata?.name ?? symbol),
       network,
       address,
       decimals,
@@ -496,22 +509,41 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+// The API paginates: a wallet queried across many networks at once easily
+// exceeds one page (100 tokens here — this wallet alone has accumulated
+// far more than that in spam/airdrop tokens across the now-larger network
+// list), and a real holding can land on any page, not just the first. A
+// response can also carry both `data.tokens` (whatever it did resolve) and
+// a top-level `error` for the networks it could not (verified live: one
+// specific network failing this way did not fail the whole batch) — neither
+// case is an HTTP failure, so alchemyFetch's ok check does not see either of
+// them; both are handled here instead.
+const MAX_PAGES = 10;
+
 async function fetchTokensByAddress(
   addresses: { address: string; networks: string[] }[]
 ): Promise<AlchemyToken[]> {
-  const body = JSON.stringify({
-    addresses,
-    withMetadata: true,
-    withPrices: true,
-    includeNativeTokens: true,
-    includeErc20Tokens: true,
-  });
-  const res = await alchemyFetch(
-    (key) => `https://api.g.alchemy.com/data/v1/${key}/assets/tokens/by-address`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body }
-  );
-  const data = await res.json();
-  return data?.data?.tokens ?? [];
+  const out: AlchemyToken[] = [];
+  let pageKey: string | undefined;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const body = JSON.stringify({
+      addresses,
+      withMetadata: true,
+      withPrices: true,
+      includeNativeTokens: true,
+      includeErc20Tokens: true,
+      ...(pageKey ? { pageKey } : {}),
+    });
+    const res = await alchemyFetch(
+      (key) => `https://api.g.alchemy.com/data/v1/${key}/assets/tokens/by-address`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body }
+    );
+    const data = await res.json();
+    out.push(...(data?.data?.tokens ?? []));
+    pageKey = data?.data?.pageKey ?? undefined;
+    if (!pageKey) break;
+  }
+  return out;
 }
 
 export async function fetchPortfolio(

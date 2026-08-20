@@ -149,6 +149,26 @@ const DISPLAY_ALIAS: Record<string, string> = Object.fromEntries(
   Object.entries(SYMBOL_ALIAS).map(([display, catalog]) => [catalog, display])
 );
 
+// The display symbol for a held token's own on-chain symbol, e.g. "cbDOGE" ->
+// "DOGE". Used wherever a portfolio holding is shown, so a wrapped
+// representation reads as the coin it represents rather than its contract
+// ticker. Anything not in the alias (almost every token) passes through
+// unchanged.
+export function displaySymbol(symbol: string): string {
+  return DISPLAY_ALIAS[symbol.trim().toUpperCase()] ?? symbol;
+}
+
+// Display only: cbBTC actually settles on Base (the real network id is what
+// every functional use — selling, sending, gas checks — keys off), but
+// showing that next to a coin the user bought and sees as plain "BTC" reads
+// as a mismatch. "Bitcoin" doubles as both the label and the network-icon
+// key (see NETWORK_ICONS in components/ui/network-icon.tsx). DOGE has no
+// equivalent: the icon set's only Dogecoin-adjacent entry is NetworkDogechain,
+// an unrelated sidechain project, so it keeps showing its real network.
+export function displayNetwork(symbol: string, network: string): string {
+  return displaySymbol(symbol) === "BTC" ? "Bitcoin" : network;
+}
+
 // The Dextopus catalog symbol a market/display symbol resolves to, uppercased.
 function catalogSymbol(symbol: string): string {
   const up = symbol.trim().toUpperCase();

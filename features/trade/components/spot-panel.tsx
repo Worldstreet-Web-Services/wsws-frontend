@@ -200,14 +200,18 @@ export function SpotPanel({
   const dextopusProgress = status.data
     ? depositProgress(status.data.status, status.data.executionStatus)
     : depositProgress("", "");
-  const swapStage: DepositStage =
-    memeTrade.phase === "confirmed"
-      ? "settled"
-      : memeTrade.phase === "failed"
-        ? "failed"
-        : memeTrade.phase === "signing" || memeTrade.phase === "confirming"
-          ? "processing"
-          : "waiting";
+  // received is an on-chain-verified balanceOf delta that lands before the
+  // backend's own slower confirmation — treated as settled immediately, so
+  // this screen never sits on "working" for a trade that has already landed
+  // in the wallet.
+  const swapSettled = memeTrade.phase === "confirmed" || memeTrade.received != null;
+  const swapStage: DepositStage = swapSettled
+    ? "settled"
+    : memeTrade.phase === "failed"
+      ? "failed"
+      : memeTrade.phase === "signing" || memeTrade.phase === "confirming"
+        ? "processing"
+        : "waiting";
   const swapPct: Record<TradePhase, number> = {
     idle: 0,
     linking: 10,
@@ -218,11 +222,13 @@ export function SpotPanel({
     failed: 0,
   };
   const progress = isSwapMarket
-    ? { stage: swapStage, pct: swapPct[memeTrade.phase] }
+    ? { stage: swapStage, pct: swapSettled ? 100 : swapPct[memeTrade.phase] }
     : dextopusProgress;
   const stage = progress.stage;
   const phase: SpotOrderPhase = isSwapMarket
-    ? swapOrderPhase(memeTrade.phase)
+    ? swapSettled
+      ? "settled"
+      : swapOrderPhase(memeTrade.phase)
     : !requestId
       ? "confirm"
       : stage === "settled"

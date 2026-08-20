@@ -8,6 +8,7 @@ import { NetworkIcon } from "@/components/ui/network-icon";
 import { BellIcon } from "@/components/ui/icons";
 import { useActivity, type ActivityEntry } from "@/features/activity/hooks/use-activity";
 import { tokenBg } from "@/lib/trade/assets";
+import { displayNetwork, displaySymbol } from "@/lib/buy";
 import { formatQty } from "@/lib/format";
 import {
   lastReadSnapshot,
@@ -34,23 +35,18 @@ function ago(ms: number, t: ReturnType<typeof useTranslations>): string {
 function Row({ item, unread }: { item: ActivityEntry; unread: boolean }) {
   const t = useTranslations("activity");
   const incoming = item.direction === "in";
+  const sym = displaySymbol(item.symbol);
   return (
     <div className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 hover:bg-white/5">
       <span className="relative shrink-0">
-        <AssetIcon
-          sym={item.symbol}
-          bg={tokenBg(item.symbol)}
-          logo={item.logo}
-          size={30}
-          fallback="gradient"
-        />
+        <AssetIcon sym={sym} bg={tokenBg(sym)} logo={item.logo} size={30} fallback="gradient" />
         <span className="absolute -right-1 -bottom-1 grid h-[15px] w-[15px] place-items-center rounded-full bg-black">
-          <NetworkIcon network={item.network} size={11} />
+          <NetworkIcon network={displayNetwork(item.symbol, item.network)} size={11} />
         </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-sans text-[13px] font-medium">
-          {t(item.kind, { symbol: item.symbol })}
+          {t(item.kind, { symbol: sym })}
         </span>
         <span className="block truncate text-[11.5px] font-normal text-white/45">
           {ago(item.timestamp, t)}

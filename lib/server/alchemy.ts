@@ -11,13 +11,51 @@ import {
 
 // The chains we read holdings on: the networks a buy can settle to, so a bought
 // asset shows on the chain it landed on. Keep in sync with SUPPORTED_CHAINS in
-// lib/buy.ts.
+// lib/buy.ts. Every network past the original five was confirmed the same way:
+// an eth_chainId call against Alchemy's own RPC returned the chain ID Dextopus
+// reports for the same blockchain label.
 export const EVM_NETWORKS = [
   "base-mainnet",
   "eth-mainnet",
   "arb-mainnet",
   "opt-mainnet",
   "polygon-mainnet",
+  "apechain-mainnet",
+  "berachain-mainnet",
+  "bnb-mainnet",
+  "celo-mainnet",
+  "cronos-mainnet",
+  "gensyn-mainnet",
+  "hyperliquid-mainnet",
+  "ink-mainnet",
+  "monad-mainnet",
+  "plasma-mainnet",
+  "robinhood-mainnet",
+  "shape-mainnet",
+  "soneium-mainnet",
+  "stable-mainnet",
+  "unichain-mainnet",
+  "worldchain-mainnet",
+  "gnosis-mainnet",
+  "linea-mainnet",
+  "mantle-mainnet",
+  "zksync-mainnet",
+  "scroll-mainnet",
+  "avax-mainnet",
+  "blast-mainnet",
+  "mode-mainnet",
+  "metis-mainnet",
+  "sei-mainnet",
+  "zora-mainnet",
+  "ronin-mainnet",
+  "boba-mainnet",
+  "flow-mainnet",
+  "degen-mainnet",
+  "abstract-mainnet",
+  "katana-mainnet",
+  "sonic-mainnet",
+  "superseed-mainnet",
+  "mythos-mainnet",
 ];
 export const SOLANA_NETWORK = "solana-mainnet";
 
@@ -72,6 +110,15 @@ function toNumber(raw: bigint, decimals: number): number {
 // resolve their identity per network. Without this, native ETH/POL/SOL shows as
 // an "unknown token" AND the gas check (which matches on symbol) fails, which is
 // why funded gas still read as "no gas".
+//
+// Symbol, name, and decimals for the networks past the original six came from
+// viem's chain registry (already a dependency here), looked up by chain ID.
+// One override: viem's entry for chain ID 999 is a stale "Zora Goerli Testnet"
+// left over from a retired network, not hyperliquid-mainnet, which now also
+// uses that chain ID. HYPE/18 came from Hyperliquid's own docs instead.
+// mythos-mainnet has no entry: it is not in viem's registry and no other
+// source was confirmed, so its native balance is not resolved. ERC-20 tokens
+// bought there still work, since that path does not depend on this map.
 const NATIVE_TOKEN: Record<string, { symbol: string; name: string; decimals: number }> = {
   "eth-mainnet": { symbol: "ETH", name: "Ethereum", decimals: 18 },
   "base-mainnet": { symbol: "ETH", name: "Ethereum", decimals: 18 },
@@ -79,6 +126,41 @@ const NATIVE_TOKEN: Record<string, { symbol: string; name: string; decimals: num
   "opt-mainnet": { symbol: "ETH", name: "Ethereum", decimals: 18 },
   "polygon-mainnet": { symbol: "POL", name: "Polygon", decimals: 18 },
   "solana-mainnet": { symbol: "SOL", name: "Solana", decimals: 9 },
+  "apechain-mainnet": { symbol: "APE", name: "ApeCoin", decimals: 18 },
+  "berachain-mainnet": { symbol: "BERA", name: "BERA Token", decimals: 18 },
+  "bnb-mainnet": { symbol: "BNB", name: "BNB", decimals: 18 },
+  "celo-mainnet": { symbol: "CELO", name: "CELO", decimals: 18 },
+  "cronos-mainnet": { symbol: "CRO", name: "Cronos", decimals: 18 },
+  "gensyn-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "hyperliquid-mainnet": { symbol: "HYPE", name: "Hyperliquid", decimals: 18 },
+  "ink-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "monad-mainnet": { symbol: "MON", name: "Monad", decimals: 18 },
+  "plasma-mainnet": { symbol: "XPL", name: "Plasma", decimals: 18 },
+  "robinhood-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "shape-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "soneium-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "stable-mainnet": { symbol: "USDT0", name: "USDT0", decimals: 18 },
+  "unichain-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "worldchain-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "gnosis-mainnet": { symbol: "XDAI", name: "xDAI", decimals: 18 },
+  "linea-mainnet": { symbol: "ETH", name: "Linea Ether", decimals: 18 },
+  "mantle-mainnet": { symbol: "MNT", name: "MNT", decimals: 18 },
+  "zksync-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "scroll-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "avax-mainnet": { symbol: "AVAX", name: "Avalanche", decimals: 18 },
+  "blast-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "mode-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "metis-mainnet": { symbol: "METIS", name: "Metis", decimals: 18 },
+  "sei-mainnet": { symbol: "SEI", name: "Sei", decimals: 18 },
+  "zora-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "ronin-mainnet": { symbol: "RON", name: "RON", decimals: 18 },
+  "boba-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "flow-mainnet": { symbol: "FLOW", name: "Flow", decimals: 18 },
+  "degen-mainnet": { symbol: "DEGEN", name: "Degen", decimals: 18 },
+  "abstract-mainnet": { symbol: "ETH", name: "ETH", decimals: 18 },
+  "katana-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
+  "sonic-mainnet": { symbol: "S", name: "Sonic", decimals: 18 },
+  "superseed-mainnet": { symbol: "ETH", name: "Ether", decimals: 18 },
 };
 
 // The stablecoins we always surface per chain. Balances come from Alchemy; a
@@ -105,15 +187,11 @@ const TRACKED_STABLES: Record<string, { symbol: "USDC" | "USDT"; address: string
 
 const STABLE_NAME: Record<string, string> = { USDC: "USD Coin", USDT: "Tether" };
 
-// The chains we track. Native gas tokens are only shown on these.
-const TRACKED_CHAINS = new Set([
-  "base-mainnet",
-  "eth-mainnet",
-  "arb-mainnet",
-  "opt-mainnet",
-  "polygon-mainnet",
-  "solana-mainnet",
-]);
+// The chains we track. Native gas tokens are only shown on these. Kept as
+// exactly the keys of NATIVE_TOKEN: a chain here without an entry there would
+// let a native balance past the allowlist and then drop it anyway for having
+// no resolvable symbol, which is why mythos-mainnet stays out of both.
+const TRACKED_CHAINS = new Set(Object.keys(NATIVE_TOKEN));
 
 // Non-stablecoin assets we still recognize (e.g. swappable cbBTC on Base),
 // lowercased address per network.

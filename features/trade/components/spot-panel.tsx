@@ -466,7 +466,7 @@ export function SpotPanel({
           <span>{buying ? t("youPay") : t("youSell")}</span>
           <span className="flex items-center gap-2">
             <span className="tnum">
-              {t("balance", { amount: formatAmount(balance), symbol: buying ? "USDC" : base })}
+              {t("balance", { amount: formatAmount(balance), symbol: buying ? "USD" : base })}
             </span>
             {balance > 0 ? (
               <button
@@ -487,7 +487,7 @@ export function SpotPanel({
             className="ws-display tnum min-w-0 flex-1 bg-transparent text-[30px] text-white outline-none placeholder:text-white/30"
           />
           <span className="shrink-0 font-sans text-sm font-medium text-white/70">
-            {buying ? "USDC" : base}
+            {buying ? "USD" : base}
           </span>
         </div>
       </div>

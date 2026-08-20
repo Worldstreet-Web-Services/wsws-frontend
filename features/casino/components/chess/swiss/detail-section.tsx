@@ -210,7 +210,7 @@ function JoinPanel({
           your {game === "draughts" ? "checkers" : "chess"} balance. It is refunded if you leave
           before round 1 starts.
           <div className={`mt-1 ${insufficient ? "text-down" : "text-white/42"}`}>
-            Available: {cashier.available} USDC
+            Available: {cashier.available} USD
           </div>
         </div>
       ) : null}
@@ -553,7 +553,7 @@ export function SwissDetailSection({
   const onCopyShare = async () => {
     const copied = await copyText(shareUrl);
     if (copied) toast.success("Link copied.");
-    else toast.error("Couldn't copy — copy the link from the address bar.");
+    else toast.error("Couldn't copy. Copy the link from the address bar.");
   };
 
   const closeShare = () => {

@@ -516,7 +516,7 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
                 size={13}
                 className="group-hover:text-accent text-white/45 transition-colors duration-200"
               />
-              {entry === "ngn" ? "NGN" : "USDC"}
+              {entry === "ngn" ? "NGN" : "USD"}
             </button>
           </div>
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/8 pt-2 text-[13px] font-normal text-white/55">

@@ -10,6 +10,7 @@ import { useActivity, type ActivityEntry } from "@/features/activity/hooks/use-a
 import { tokenBg } from "@/lib/trade/assets";
 import { displayNetwork, displaySymbol } from "@/lib/buy";
 import { formatQty } from "@/lib/format";
+import { isStable } from "@/lib/activity/entries";
 import {
   lastReadSnapshot,
   markRead,
@@ -36,6 +37,8 @@ function Row({ item, unread }: { item: ActivityEntry; unread: boolean }) {
   const t = useTranslations("activity");
   const incoming = item.direction === "in";
   const sym = displaySymbol(item.symbol);
+  // Stablecoins are the product's cash: dollars, never a token symbol.
+  const cash = isStable(item.symbol);
   return (
     <div className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 hover:bg-white/5">
       <span className="relative shrink-0">
@@ -46,7 +49,7 @@ function Row({ item, unread }: { item: ActivityEntry; unread: boolean }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-sans text-[13px] font-medium">
-          {t(item.kind, { symbol: sym })}
+          {t(item.kind, { symbol: cash ? "USD" : sym })}
         </span>
         <span className="block truncate text-[11.5px] font-normal text-white/45">
           {ago(item.timestamp, t)}
@@ -56,7 +59,7 @@ function Row({ item, unread }: { item: ActivityEntry; unread: boolean }) {
         className={`tnum shrink-0 text-[12.5px] font-semibold ${incoming ? "text-up" : "text-white/80"}`}
       >
         {incoming ? "+" : "−"}
-        {formatQty(item.amount)}
+        {cash ? `$${item.amount.toFixed(2)}` : formatQty(item.amount)}
       </span>
       {unread ? <span className="bg-accent size-1.5 shrink-0 rounded-full" /> : null}
     </div>

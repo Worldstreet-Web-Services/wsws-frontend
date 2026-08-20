@@ -425,11 +425,13 @@ export function MemeTradeSheet({
               <div className="mt-3 flex flex-col gap-1">
                 {/* Warning codes can repeat or arrive empty, so the key needs
                     the index. */}
-                {token.warnings.slice(0, 3).map((w, i) => (
-                  <div key={`${w.code}-${i}`} className="text-down/90 text-[11.5px] font-normal">
-                    {w.message}
-                  </div>
-                ))}
+                {visibleWarnings(token.warnings)
+                  .slice(0, 3)
+                  .map((w, i) => (
+                    <div key={`${w.code}-${i}`} className="text-down/90 text-[11.5px] font-normal">
+                      {w.message}
+                    </div>
+                  ))}
               </div>
             ) : null}
             {showRisk ? (

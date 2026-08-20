@@ -38,16 +38,25 @@ export interface BuyRoute {
 // is never offered. Classified by the Dextopus blockchain label, which is always
 // present (addressKind is not).
 //
-// Every entry past the original six was confirmed live: an eth_chainId call
-// against Alchemy's own RPC for that network returned a chain ID matching what
-// Dextopus reports for the same blockchain label. A handful of Dextopus labels
-// were checked and left out because Alchemy did not confirm them the same way:
-// arbitrum-nova, lisk, morph, zircuit, plume, manta-pacific, somnia, b3,
-// animechain, doma, ethereal, gunz, data, lighter, megaeth. Non-EVM chains
-// (bitcoin, tron, xrp, ton, eclipse) stay out because our embedded wallets do
-// not hold keys on them. Dextopus also lists a second "hyperliquid" label with
-// chain ID 1337, separate from "hyperevm" (chain ID 999); only "hyperevm" is
-// included, since 1337 did not match anything Alchemy serves.
+// Every entry past the original six went through two checks: an eth_chainId
+// call against Alchemy's own RPC confirmed the chain ID Dextopus reports for
+// that blockchain label, AND a real request to Alchemy's Portfolio Data API
+// (assets/tokens/by-address, what lib/server/alchemy.ts actually calls for
+// holdings) accepted the network rather than returning "Unsupported
+// network." The two do not agree on the same set: cronos, plasma, stable,
+// mantle, mode, metis, sei, boba, flow-evm, degen, katana, sonic, and
+// superseed all have working RPC endpoints but are rejected by the Portfolio
+// API, so a buy there could never be shown as a holding — left out for that
+// reason, not because Dextopus or the RPC itself rejected them. A handful of
+// other Dextopus labels were checked and left out because Alchemy's RPC did
+// not confirm them at all: arbitrum-nova, lisk, morph, zircuit, plume,
+// manta-pacific, somnia, b3, animechain, doma, ethereal, gunz, data, lighter,
+// megaeth. Non-EVM chains (bitcoin, tron, xrp, ton, eclipse) stay out because
+// our embedded wallets do not hold keys on them. Dextopus also lists a second
+// "hyperliquid" label with chain ID 1337, separate from "hyperevm" (chain ID
+// 999); only "hyperevm" is included, since 1337 did not match anything
+// Alchemy serves. Keep in sync with EVM_NETWORKS in lib/server/alchemy.ts and
+// CHAIN_TO_NETWORK in lib/server/buyable-registry.ts.
 const SUPPORTED_CHAINS = new Set([
   "base",
   "ethereum",
@@ -59,37 +68,24 @@ const SUPPORTED_CHAINS = new Set([
   "berachain",
   "bsc",
   "celo",
-  "cronos",
   "gensyn",
   "hyperevm",
   "ink",
   "monad",
-  "plasma",
   "robinhood",
   "shape",
   "soneium",
-  "stable",
   "unichain",
   "world-chain",
   "gnosis",
   "linea",
-  "mantle",
   "zksync",
   "scroll",
   "avalanche",
   "blast",
-  "mode",
-  "metis",
-  "sei",
   "zora",
   "ronin",
-  "boba",
-  "flow-evm",
-  "degen",
   "abstract",
-  "katana",
-  "sonic",
-  "superseed",
   "mythos",
 ]);
 

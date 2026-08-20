@@ -18,8 +18,11 @@ export interface MemeTokenInfo {
 }
 export type MemeRegistry = Record<string, Map<string, MemeTokenInfo>>;
 
-// Alchemy network id per Dextopus chain id, limited to the chains we display in
-// holdings. Keep in sync with SUPPORTED_CHAINS in lib/buy.ts.
+// Alchemy network id per Dextopus chain id, limited to the chains we display
+// in holdings. Keep in sync with SUPPORTED_CHAINS in lib/buy.ts and
+// EVM_NETWORKS in lib/server/alchemy.ts — a chain id here with no matching
+// EVM_NETWORKS entry would build a route the portfolio Alchemy call itself
+// rejects.
 const CHAIN_TO_NETWORK: Record<number, string> = {
   1: "eth-mainnet",
   8453: "base-mainnet",
@@ -31,37 +34,24 @@ const CHAIN_TO_NETWORK: Record<number, string> = {
   80094: "berachain-mainnet",
   56: "bnb-mainnet",
   42220: "celo-mainnet",
-  25: "cronos-mainnet",
   685689: "gensyn-mainnet",
   999: "hyperliquid-mainnet",
   57073: "ink-mainnet",
   143: "monad-mainnet",
-  9745: "plasma-mainnet",
   4663: "robinhood-mainnet",
   360: "shape-mainnet",
   1868: "soneium-mainnet",
-  988: "stable-mainnet",
   130: "unichain-mainnet",
   480: "worldchain-mainnet",
   100: "gnosis-mainnet",
   59144: "linea-mainnet",
-  5000: "mantle-mainnet",
   324: "zksync-mainnet",
   534352: "scroll-mainnet",
   43114: "avax-mainnet",
   81457: "blast-mainnet",
-  34443: "mode-mainnet",
-  1088: "metis-mainnet",
-  1329: "sei-mainnet",
   7777777: "zora-mainnet",
   2020: "ronin-mainnet",
-  288: "boba-mainnet",
-  747: "flow-mainnet",
-  666666666: "degen-mainnet",
   2741: "abstract-mainnet",
-  747474: "katana-mainnet",
-  146: "sonic-mainnet",
-  5330: "superseed-mainnet",
   42018: "mythos-mainnet",
 };
 

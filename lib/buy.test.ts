@@ -79,16 +79,27 @@ describe("isOfferable", () => {
     ).toBe(true);
   });
 
-  it("rejects unsupported chains and ones we hold no wallet for", () => {
+  it("allows the chains added after live verification against Alchemy", () => {
     expect(isOfferable(route({ symbol: "BNB", chainName: "bsc", destinationChainId: 56 }))).toBe(
-      false
+      true
     );
+    expect(
+      isOfferable(route({ symbol: "USDC", chainName: "berachain", destinationChainId: 80094 }))
+    ).toBe(true);
+  });
+
+  it("rejects unsupported chains and ones we hold no wallet for", () => {
     expect(
       isOfferable(route({ symbol: "BTC", chainName: "bitcoin", destinationChainId: BITCOIN }))
     ).toBe(false);
     expect(isOfferable(route({ symbol: "XRP", chainName: "xrp", destinationChainId: XRP }))).toBe(
       false
     );
+    // Not confirmed live against Alchemy, so left out along with the other
+    // unconfirmed Dextopus labels (see the comment above SUPPORTED_CHAINS).
+    expect(
+      isOfferable(route({ symbol: "ETH", chainName: "morph", destinationChainId: 2818 }))
+    ).toBe(false);
   });
 
   it("offers SOL on Solana but not the Base wrapper", () => {

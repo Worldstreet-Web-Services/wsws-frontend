@@ -37,7 +37,61 @@ export interface BuyRoute {
 // else (obscure L2s, or chains we hold no wallet for like bitcoin/tron/xrp/ton)
 // is never offered. Classified by the Dextopus blockchain label, which is always
 // present (addressKind is not).
-const SUPPORTED_CHAINS = new Set(["base", "ethereum", "arbitrum", "optimism", "polygon", "solana"]);
+//
+// Every entry past the original six was confirmed live: an eth_chainId call
+// against Alchemy's own RPC for that network returned a chain ID matching what
+// Dextopus reports for the same blockchain label. A handful of Dextopus labels
+// were checked and left out because Alchemy did not confirm them the same way:
+// arbitrum-nova, lisk, morph, zircuit, plume, manta-pacific, somnia, b3,
+// animechain, doma, ethereal, gunz, data, lighter, megaeth. Non-EVM chains
+// (bitcoin, tron, xrp, ton, eclipse) stay out because our embedded wallets do
+// not hold keys on them. Dextopus also lists a second "hyperliquid" label with
+// chain ID 1337, separate from "hyperevm" (chain ID 999); only "hyperevm" is
+// included, since 1337 did not match anything Alchemy serves.
+const SUPPORTED_CHAINS = new Set([
+  "base",
+  "ethereum",
+  "arbitrum",
+  "optimism",
+  "polygon",
+  "solana",
+  "apechain",
+  "berachain",
+  "bsc",
+  "celo",
+  "cronos",
+  "gensyn",
+  "hyperevm",
+  "ink",
+  "monad",
+  "plasma",
+  "robinhood",
+  "shape",
+  "soneium",
+  "stable",
+  "unichain",
+  "world-chain",
+  "gnosis",
+  "linea",
+  "mantle",
+  "zksync",
+  "scroll",
+  "avalanche",
+  "blast",
+  "mode",
+  "metis",
+  "sei",
+  "zora",
+  "ronin",
+  "boba",
+  "flow-evm",
+  "degen",
+  "abstract",
+  "katana",
+  "sonic",
+  "superseed",
+  "mythos",
+]);
 
 // Some coins are native to one ecosystem and appear on other chains only as
 // wrapped representations that would mislead a buyer: an ERC-20 "SOL" on Base is

@@ -7,11 +7,15 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { MemeCoin, PctChange, RiskBadge, priceLabel } from "@/features/trade/components/meme-bits";
 import { useMemeToken } from "@/features/trade/hooks/use-meme-tokens";
-import { useMemePreview, useMemeTrade, type TradePhase } from "@/features/trade/hooks/use-meme-trade";
+import {
+  useMemePreview,
+  useMemeTrade,
+  type TradePhase,
+} from "@/features/trade/hooks/use-meme-trade";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { displaySymbol } from "@/lib/buy";
 import { friendlyError } from "@/lib/errors";
-import { TradeApiError, isValidTradeAmount, type MemeToken } from "@/lib/meme/api";
+import { TradeApiError, isValidTradeAmount, visibleWarnings, type MemeToken } from "@/lib/meme/api";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 
@@ -177,9 +181,7 @@ export function MemeTradeSheet({
       amount_usd: Number(debouncedAmount),
     });
     toastRef.current = toast.loading(
-      buying
-        ? t("buyingToast", { symbol: displaySym })
-        : t("sellingToast", { symbol: displaySym })
+      buying ? t("buyingToast", { symbol: displaySym }) : t("sellingToast", { symbol: displaySym })
     );
     try {
       await trade({ side, tokenAddress: token.address, amount: debouncedAmount });
@@ -294,7 +296,10 @@ export function MemeTradeSheet({
                       })
                     : phaseLabel[phase]}
               </div>
-              <ProgressBar pct={settled ? 100 : PHASE_PCT[phase]} color={settled ? "#7ce7b0" : "#e6e6e6"} />
+              <ProgressBar
+                pct={settled ? 100 : PHASE_PCT[phase]}
+                color={settled ? "#7ce7b0" : "#e6e6e6"}
+              />
               <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
                 {phase === "confirmed"
                   ? t("confirmedBody")
@@ -421,7 +426,7 @@ export function MemeTradeSheet({
               </div>
             ) : null}
 
-            {showRisk && token.warnings.length > 0 ? (
+            {showRisk && visibleWarnings(token.warnings).length > 0 ? (
               <div className="mt-3 flex flex-col gap-1">
                 {/* Warning codes can repeat or arrive empty, so the key needs
                     the index. */}

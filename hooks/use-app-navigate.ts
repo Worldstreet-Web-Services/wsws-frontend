@@ -12,6 +12,7 @@ const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
   casino: "/casino",
   earn: "/earn",
   prediction: "/prediction",
+  rwa: "/rwa",
   activity: "/activity",
 };
 

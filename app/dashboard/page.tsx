@@ -19,7 +19,7 @@ import { FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
-import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
+import { RwasCctpRecoveryCard } from "@/features/rwas/components/rwas-cctp-recovery-card";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -115,6 +115,7 @@ export default function DashboardPage() {
       <Portfolio
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
+        recoverySlot={<RwasCctpRecoveryCard />}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
@@ -126,13 +127,19 @@ export default function DashboardPage() {
     spot: <Spot onOpenDetail={openDetail} onOpenBuy={openBuy} />,
     perps: <Perps />,
     meme: <Meme />,
-    rwa: <Rwa onOpenDetail={openDetail} onOpenConfirm={openConfirm} onAddFunds={openFunds} />,
+    rwa: (
+      <Rwa
+        onOpenDetail={openDetail}
+        onOpenConfirm={openConfirm}
+        onAddFunds={openFunds}
+        showExploreLink
+      />
+    ),
   };
 
   return (
     <AuthGuard>
       <DashboardShell nav={nav} activeSection={activeSection}>
-        <RwaSettlementTracker />
         {scrollSectionIds.map((id) => (
           <section key={id} id={id} className={SECTION_CLASS}>
             {sections[id]}

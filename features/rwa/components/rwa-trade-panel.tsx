@@ -122,6 +122,8 @@ interface RwaTradePanelProps {
   // Drop the card chrome when rendered inside a modal, which already provides
   // its own sheet surface and padding.
   bare?: boolean;
+  // The host already renders the asset identity and Buy/Sell tabs.
+  hideHeader?: boolean;
   // Which side to open on. Defaults to buy; holdings open it on sell.
   initialMode?: Mode;
   // Pre-fill the amount, e.g. from a spoken "buy $10 of Ondo". The user still
@@ -142,6 +144,7 @@ interface RwaTradePanelProps {
 export function RwaTradePanel({
   asset,
   bare = false,
+  hideHeader = false,
   initialMode = "buy",
   initialAmount = "",
   onAddFunds,
@@ -678,7 +681,7 @@ export function RwaTradePanel({
           : "ws-card p-[18px] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_30px_70px_-30px_rgba(0,0,0,0.85)] sm:p-[22px]"
       }
     >
-      {header}
+      {hideHeader ? null : header}
 
       {sellBlocked ? (
         <div className="ws-inset mt-4 p-[18px] text-center">

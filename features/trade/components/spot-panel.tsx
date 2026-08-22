@@ -242,12 +242,14 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
           slippageBps: SLIPPAGE_BPS,
           maxRequested,
         });
-        savePendingRwaSettlement({
-          requestId: result.requestId,
-          direction: "solana-to-base",
-          assetSymbol: base,
-          createdAt: Date.now(),
-        });
+        if (result.rail === "dextopus") {
+          savePendingRwaSettlement({
+            requestId: result.requestId,
+            direction: "solana-to-base",
+            assetSymbol: base,
+            createdAt: Date.now(),
+          });
+        }
         setConfirmOpen(false);
         setAmount("");
         setMaxRequested(false);

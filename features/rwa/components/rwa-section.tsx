@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FC } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { ArrowRightIcon } from "@/components/ui/icons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { RwaAssetList } from "@/features/rwa/components/rwa-asset-list";
 import { RwaTradePanel } from "@/features/rwa/components/rwa-trade-panel";
@@ -22,9 +24,10 @@ export interface RwaSectionProps {
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenConfirm: (confirm: ConfirmPayload) => void;
   onAddFunds?: () => void;
+  showExploreLink?: boolean;
 }
 
-export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds }) => {
+export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds, showExploreLink = false }) => {
   const t = useTranslations("rwa");
   const { assets, loading, error } = useListedRwaAssets();
 
@@ -95,10 +98,21 @@ export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds }) => {
             {t("subheading")}
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3 py-1.5 text-xs font-medium text-white/60">
-          <span className="bg-up h-1.5 w-1.5 rounded-full" />
-          {t("liveRegistry")}
-        </span>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3 py-1.5 text-xs font-medium text-white/60">
+            <span className="bg-up h-1.5 w-1.5 rounded-full" />
+            {t("liveRegistry")}
+          </span>
+          {showExploreLink ? (
+            <Link
+              href="/rwa"
+              className="border-accent/30 bg-accent/14 text-accent hover:bg-accent/20 inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans text-[12.5px] font-semibold transition-colors"
+            >
+              {t("exploreMarkets")}
+              <ArrowRightIcon size={14} />
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-5">

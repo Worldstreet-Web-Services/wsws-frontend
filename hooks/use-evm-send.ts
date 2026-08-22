@@ -85,6 +85,10 @@ export interface EvmBatchCall {
   value?: bigint;
 }
 
+export interface EvmBatchOptions {
+  onUserOperationSubmitted?: (hash: `0x${string}`) => void;
+}
+
 // Sends several calls as one atomic sponsored operation on a supported EVM
 // chain. Used where a flow would otherwise need sequential dependent
 // transactions (approve, then consume the allowance): batching removes the
@@ -94,7 +98,11 @@ export function useEvmSendBatch() {
   const { wallets } = useWallets();
 
   return useCallback(
-    async (calls: EvmBatchCall[], chainId: number): Promise<`0x${string}`> => {
+    async (
+      calls: EvmBatchCall[],
+      chainId: number,
+      options: EvmBatchOptions = {}
+    ): Promise<`0x${string}`> => {
       if (!isSponsoredEvmChainId(chainId)) {
         throw new Error("Batched transactions are only supported on sponsored EVM chains.");
       }
@@ -111,6 +119,7 @@ export function useEvmSendBatch() {
         signAuthorization,
         accessToken,
         calls,
+        onUserOperationHash: options.onUserOperationSubmitted,
       });
       // Anything this transaction pays back to the wallet, a closed perp's
       // collateral, a game balance being cashed out, a claimed payout, arrives

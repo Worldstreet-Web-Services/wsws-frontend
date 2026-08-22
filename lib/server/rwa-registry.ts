@@ -1,14 +1,27 @@
 import "server-only";
 import { wsapiRwaRequest } from "@/lib/server/wsapi";
+import { requestRwas } from "@/lib/server/rwas";
 import { fetchRwaPrices } from "@/lib/server/rwa-prices";
 
 // RWA chain id -> Alchemy network id, for the chains the portfolio queries.
 const RWA_CHAIN_TO_NETWORK: Record<string, string> = {
   base: "base-mainnet",
+  ethereum: "eth-mainnet",
   arbitrum: "arb-mainnet",
   polygon: "polygon-mainnet",
   solana: "solana-mainnet",
 };
+
+const XSTOCKS_CHAIN_TO_NETWORK: Record<number, string> = {
+  1: "eth-mainnet",
+  10: "opt-mainnet",
+  101: "solana-mainnet",
+  137: "polygon-mainnet",
+  8453: "base-mainnet",
+  42161: "arb-mainnet",
+};
+
+const XSTOCKS_CACHE_MS = 5 * 60_000;
 
 export interface RwaTokenInfo {
   symbol: string;
@@ -22,6 +35,54 @@ interface RwaAssetRow {
   address?: string;
   symbol?: string;
   priceUsd?: string | null;
+}
+
+interface XstocksNetworkRow {
+  chainId?: number;
+  address?: string;
+}
+
+interface XstocksAssetRow {
+  symbol?: string;
+  iconUrl?: string;
+  primaryMarket?: { priceUsd?: string };
+  networks?: XstocksNetworkRow[];
+}
+
+interface XstocksPage {
+  items?: XstocksAssetRow[];
+  totalPages?: number;
+}
+
+let xstocksCache: { expiresAt: number; rows: XstocksAssetRow[] } | null = null;
+let xstocksLoad: Promise<XstocksAssetRow[]> | null = null;
+
+async function requestXstocksPage(page: number): Promise<XstocksPage> {
+  const query = new URLSearchParams({ page: String(page), pageSize: "200" });
+  const response = await requestRwas("market-assets", query, crypto.randomUUID());
+  if (!response.ok) throw new Error(`xStocks registry returned ${response.status}`);
+  const body = (await response.json()) as { data?: XstocksPage };
+  return body.data ?? {};
+}
+
+async function fetchXstocksRows(): Promise<XstocksAssetRow[]> {
+  if (xstocksCache && xstocksCache.expiresAt > Date.now()) return xstocksCache.rows;
+  if (xstocksLoad) return xstocksLoad;
+
+  xstocksLoad = (async () => {
+    const first = await requestXstocksPage(1);
+    const totalPages = Math.max(1, first.totalPages ?? 1);
+    const remaining = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) => requestXstocksPage(index + 2))
+    );
+    const rows = [...(first.items ?? []), ...remaining.flatMap((page) => page.items ?? [])];
+    xstocksCache = { expiresAt: Date.now() + XSTOCKS_CACHE_MS, rows };
+    return rows;
+  })().finally(() => {
+    xstocksLoad = null;
+  });
+
+  return xstocksLoad;
 }
 
 // Recognized RWA tokens keyed by Alchemy network -> lowercased address, so a
@@ -39,7 +100,7 @@ export async function fetchRwaRegistry(): Promise<Record<string, Map<string, Rwa
       // Silence here would delete every RWA holding from the portfolio and
       // with it the only path to sell one, so say so.
       console.error("RWA registry fetch failed:", res.status);
-      return out;
+      throw new Error(`Legacy RWA registry returned ${res.status}`);
     }
     const body = (await res.json().catch(() => ({}))) as { data?: RwaAssetRow[] };
     const rows = (body.data ?? []).filter((a) => a.chain && a.address);
@@ -75,6 +136,29 @@ export async function fetchRwaRegistry(): Promise<Record<string, Map<string, Rwa
     }
   } catch (error) {
     console.error("RWA registry fetch failed:", error);
+  }
+
+  try {
+    const rows = await fetchXstocksRows();
+    for (const asset of rows) {
+      const symbol = asset.symbol ?? "RWA";
+      const parsedPrice = Number.parseFloat(asset.primaryMarket?.priceUsd ?? "0");
+      const priceUsd = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : 0;
+
+      for (const deployment of asset.networks ?? []) {
+        const network = deployment.chainId
+          ? XSTOCKS_CHAIN_TO_NETWORK[deployment.chainId]
+          : undefined;
+        if (!network || !deployment.address) continue;
+        (out[network] ??= new Map()).set(deployment.address.toLowerCase(), {
+          symbol,
+          priceUsd,
+          logo: asset.iconUrl ?? "",
+        });
+      }
+    }
+  } catch (error) {
+    console.error("xStocks registry fetch failed:", error);
   }
   return out;
 }

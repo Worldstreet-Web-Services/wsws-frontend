@@ -51,6 +51,7 @@ export async function sendSponsoredEvmCalls({
   signAuthorization,
   accessToken,
   calls,
+  onUserOperationHash,
 }: {
   chainId: number;
   address: `0x${string}`;
@@ -58,6 +59,7 @@ export async function sendSponsoredEvmCalls({
   signAuthorization: SignAuthorization;
   accessToken: string;
   calls: SponsoredCall[];
+  onUserOperationHash?: (hash: `0x${string}`) => void;
 }): Promise<`0x${string}`> {
   const target = getSponsoredEvmChainById(chainId);
   if (!target) {
@@ -124,6 +126,7 @@ export async function sendSponsoredEvmCalls({
     maxPriorityFeePerGas: 0n,
     preVerificationGas: 0n,
   });
+  onUserOperationHash?.(hash);
 
   const receipt = await bundlerClient.waitForUserOperationReceipt({ hash });
   return receipt.receipt.transactionHash;

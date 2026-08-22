@@ -387,7 +387,7 @@ describe("isSellableChain", () => {
     expect(isSellableChain("arbitrum")).toBe(true);
     expect(isSellableChain("polygon")).toBe(true);
     expect(isSellableChain("solana")).toBe(true);
-    expect(isSellableChain("ethereum")).toBe(false);
+    expect(isSellableChain("ethereum")).toBe(true);
     expect(isSellableChain("bsc")).toBe(false);
   });
 });
@@ -397,6 +397,7 @@ describe("networkToRwaChain", () => {
     expect(networkToRwaChain("base-mainnet")).toBe("base");
     expect(networkToRwaChain("polygon-mainnet")).toBe("polygon");
     expect(networkToRwaChain("arb-mainnet")).toBe("arbitrum");
+    expect(networkToRwaChain("eth-mainnet")).toBe("ethereum");
     expect(networkToRwaChain("solana-mainnet")).toBe("solana");
   });
 
@@ -450,9 +451,11 @@ describe("findRwaHolding", () => {
     expect(findRwaHolding(tokens, held)).toBeNull();
   });
 
-  it("returns null on a chain the portfolio does not index", () => {
+  it("matches Ethereum holdings now indexed by the portfolio", () => {
     const tokens = [token({ network: "eth-mainnet", address: "0xrwa", balance: 9 })];
-    expect(findRwaHolding(tokens, asset({ chain: "ethereum", address: "0xRWA" }))).toBeNull();
+    expect(
+      findRwaHolding(tokens, asset({ chain: "ethereum", address: "0xRWA" }))?.balance
+    ).toBe(9);
   });
 });
 

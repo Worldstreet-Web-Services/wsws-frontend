@@ -29,6 +29,24 @@ class InertWebSocket {
 
 globalThis.WebSocket = InertWebSocket as unknown as typeof WebSocket;
 
+// Motion's in-view features use IntersectionObserver. jsdom does not implement
+// it, and component tests only need a stable viewport rather than layout math.
+class InertIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = "0px";
+  readonly thresholds = [0];
+
+  disconnect(): void {}
+  observe(): void {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+  unobserve(): void {}
+}
+
+globalThis.IntersectionObserver =
+  InertIntersectionObserver as unknown as typeof IntersectionObserver;
+
 // jsdom does not expose localStorage under this Node build, so every suite that
 // touches a stored preference (interests, perp mode, the voice dock) failed on
 // `window.localStorage` being undefined rather than on anything it asserted.

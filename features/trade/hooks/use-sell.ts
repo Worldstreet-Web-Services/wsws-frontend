@@ -4,8 +4,15 @@ import { useMutation } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
 import { useSolanaToBase } from "@/hooks/use-solana-to-base";
 import { useSendToken } from "@/hooks/use-withdraw";
+import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { getWalletAddress } from "@/lib/user";
 import { fetchSellQuote } from "@/lib/sell";
+import {
+  buildEthereumUsdcToBaseCalls,
+  ETHEREUM_CHAIN_ID,
+  fetchEthereumUsdcToBaseQuote,
+  isEthereumUsdcToBase,
+} from "@/lib/trade/across-usdc";
 
 export interface SellExecuteInput {
   // Alchemy network id of the held asset.
@@ -21,7 +28,7 @@ export interface SellExecuteInput {
 }
 
 export interface SellExecuteResult {
-  rail: "dextopus";
+  rail: "dextopus" | "across";
   requestId: string;
   txHash: string;
   // Expected USDC proceeds, in base units (6 decimals).
@@ -30,17 +37,18 @@ export interface SellExecuteResult {
 
 // Executes a sell into USDC on Base.
 //
-// EVM assets go through Dextopus: quote the asset, send it to the returned
-// deposit address on its own chain, and Dextopus settles USDC to the user's
-// Base wallet.
+// EVM assets go through Dextopus except canonical Ethereum USDC, which uses
+// Across directly to consolidate into Base USDC. Both EVM paths are sponsored.
 //
 // Solana assets use the same Dextopus route: a sponsored direct transfer funds
 // its deposit address and Dextopus settles Base USDC. Quote or preflight
-// failures stop before funds move; they are never rerouted to another provider.
+// failures stop before funds move; ordinary asset sales are never silently
+// rerouted to another provider.
 export function useSell() {
   const { user } = usePrivy();
   const { sendToken } = useSendToken();
   const settleSolana = useSolanaToBase();
+  const sendBatch = useEvmSendBatch();
 
   return useMutation<SellExecuteResult, Error, SellExecuteInput>({
     onError: (error) => {
@@ -56,6 +64,23 @@ export function useSell() {
       const refundTo = getWalletAddress(user, originChainType);
       if (!recipient) throw new Error("No Base wallet is connected.");
       if (!refundTo) throw new Error("No wallet for this asset's network.");
+
+      if (isEthereumUsdcToBase(network, asset)) {
+        const quote = await fetchEthereumUsdcToBaseQuote({
+          amount,
+          depositor: recipient as `0x${string}`,
+        });
+        const txHash = await sendBatch(
+          buildEthereumUsdcToBaseCalls(quote),
+          ETHEREUM_CHAIN_ID
+        );
+        return {
+          rail: "across",
+          requestId: quote.id,
+          txHash,
+          estimatedOutput: BigInt(quote.expectedOutputAmount),
+        };
+      }
 
       if (network === "solana-mainnet") {
         return settleSolana({ asset, decimals, amount, slippageBps, maxRequested });

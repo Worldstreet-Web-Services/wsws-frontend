@@ -3,6 +3,7 @@
 // for status and no wallet secret or transaction payload is stored here.
 
 const KEY = "wsws.rwa.pending-settlements.v1";
+const EMPTY: readonly PendingRwaSettlement[] = [];
 export const PENDING_RWA_SETTLEMENT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type RwaSettlementDirection = "base-to-solana" | "solana-to-base";
@@ -130,14 +131,14 @@ let cached: readonly PendingRwaSettlement[] | undefined;
 const listeners = new Set<() => void>();
 
 function read(): readonly PendingRwaSettlement[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
+    if (!raw) return EMPTY;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isPendingRwaSettlement) : [];
+    return Array.isArray(parsed) ? parsed.filter(isPendingRwaSettlement) : EMPTY;
   } catch {
-    return [];
+    return EMPTY;
   }
 }
 
@@ -166,7 +167,7 @@ export function pendingRwaSettlementsSnapshot(): readonly PendingRwaSettlement[]
 }
 
 export function serverPendingRwaSettlementsSnapshot(): readonly PendingRwaSettlement[] {
-  return [];
+  return EMPTY;
 }
 
 function write(next: readonly PendingRwaSettlement[]): void {

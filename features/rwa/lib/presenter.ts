@@ -175,6 +175,7 @@ export function gasMinimumForChain(chain: RwaChain): number {
 // The four chains the portfolio source now indexes.
 const PORTFOLIO_NETWORKS = new Set([
   "base-mainnet",
+  "eth-mainnet",
   "arb-mainnet",
   "polygon-mainnet",
   "solana-mainnet",

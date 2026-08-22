@@ -17,6 +17,7 @@ export const PERSISTED_PREFIXES = new Set([
   "buy-destinations",
   "rwa-assets",
   "rwa-categories",
+  "rwas-market-assets",
   "fx-rates",
   "predictions",
 ]);

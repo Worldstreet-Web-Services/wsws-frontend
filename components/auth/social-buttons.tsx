@@ -1,6 +1,7 @@
 "use client";
 
-import { useLoginWithOAuth, type OAuthProviderType } from "@privy-io/react-auth";
+import { useRef, useState } from "react";
+import { useLoginWithOAuth, usePrivy, type OAuthProviderType } from "@privy-io/react-auth";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
 
@@ -45,23 +46,47 @@ const BUTTON =
 export function SocialButtons() {
   const t = useTranslations("auth");
   const { initOAuth, loading } = useLoginWithOAuth();
+  const { ready } = usePrivy();
+  const pendingRef = useRef(false);
+  const [pendingProvider, setPendingProvider] = useState<OAuthProviderType | null>(null);
 
   const signIn = async (provider: OAuthProviderType) => {
+    if (!ready || pendingRef.current) return;
+
+    pendingRef.current = true;
+    setPendingProvider(provider);
     try {
       await initOAuth({ provider });
     } catch (err) {
       console.error("OAuth login failed:", err);
       toast.error(t("oauthError"));
+    } finally {
+      pendingRef.current = false;
+      setPendingProvider(null);
     }
   };
 
+  const disabled = !ready || loading || pendingProvider !== null;
+
   return (
     <div className="flex flex-col gap-[11px]">
-      <button className={BUTTON} disabled={loading} onClick={() => signIn("google")}>
+      <button
+        type="button"
+        className={BUTTON}
+        disabled={disabled}
+        aria-busy={pendingProvider === "google"}
+        onClick={() => signIn("google")}
+      >
         <GoogleLogo />
         {t("continueGoogle")}
       </button>
-      <button className={BUTTON} disabled={loading} onClick={() => signIn("twitter")}>
+      <button
+        type="button"
+        className={BUTTON}
+        disabled={disabled}
+        aria-busy={pendingProvider === "twitter"}
+        onClick={() => signIn("twitter")}
+      >
         <XLogo />
         {t("continueX")}
       </button>
@@ -69,6 +94,7 @@ export function SocialButtons() {
           disabled with the tag rather than firing an OAuth flow that has no
           provider behind it. */}
       <button
+        type="button"
         className={`${BUTTON} cursor-default opacity-60 hover:border-white/14 hover:bg-white/6`}
         disabled
         aria-disabled

@@ -1,0 +1,402 @@
+.section {
+  width: min(1440px, calc(100% - 48px));
+  margin: 32px auto 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 42%);
+}
+
+.desktopHeading,
+.mobileHeading {
+  width: 100%;
+  height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-bottom: 1px solid #28282b;
+  background: transparent;
+  color: #f1f1f2;
+  text-align: left;
+}
+
+.desktopHeading {
+  display: flex;
+  margin: 0;
+  padding: 0 12px;
+}
+
+.mobileHeading {
+  display: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.headingCopy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-body), sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 105%;
+  letter-spacing: -0.24px;
+}
+
+.period {
+  display: inline-flex;
+  width: 35px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3a3a3e;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2a2a2e, #1a1a1d);
+  color: #b9b9bd;
+  font-family: var(--font-body), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 132%;
+  letter-spacing: 0;
+}
+
+.rowsViewport {
+  display: block;
+}
+
+.rows {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.assetRow {
+  display: flex;
+  height: 70px;
+  min-width: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #202023;
+  color: inherit;
+  padding: 0 24px 0 12px;
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.assetRow:last-child {
+  border-bottom: 0;
+}
+
+.assetRow:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.assetRow:focus-visible {
+  outline: 1px solid #77777d;
+  outline-offset: -1px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.assetIdentity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #343438;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 25%, #55555b, #1a1a1d 64%, #0c0c0d);
+  color: #d7d7da;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.assetIdentity h3 {
+  display: flex;
+  min-width: 0;
+  margin: 0 0 0 12px;
+  flex-direction: column;
+  gap: 0;
+  font: inherit;
+}
+
+.symbol,
+.price {
+  color: #f3f3f4;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 132%;
+  letter-spacing: -0.2px;
+}
+
+.assetName,
+.secondary {
+  overflow: hidden;
+  color: #77777c;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 132%;
+  letter-spacing: -0.14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assetName {
+  max-width: 190px;
+}
+
+.marketValue {
+  display: flex;
+  min-width: 0;
+  margin-left: 12px;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0;
+  text-align: right;
+}
+
+.secondary {
+  max-width: 150px;
+}
+
+.gain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1da66a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 132%;
+}
+
+.loss {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f26161;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 132%;
+}
+
+.gainArrow {
+  width: 12px;
+  height: 10px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.lossArrow {
+  transform: rotate(180deg);
+}
+
+.chevron {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+  transition: transform 180ms ease;
+}
+
+.chevronExpanded {
+  transform: rotate(180deg);
+}
+
+.emptyRow,
+.errorRow {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #77777c;
+  font-size: 11px;
+}
+
+.errorRow button {
+  cursor: pointer;
+  border: 1px solid #39393d;
+  border-radius: 999px;
+  background: #19191b;
+  color: #d5d5d8;
+  font: inherit;
+  padding: 6px 11px;
+}
+
+.errorRow button:hover {
+  background: #252528;
+}
+
+.skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(100deg, #18181b 18%, #2b2b2f 45%, #18181b 72%);
+  background-size: 220% 100%;
+  animation: market-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeletonAvatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.skeletonCopy {
+  display: flex;
+  margin-left: 12px;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assetIdentity .skeletonCopy {
+  align-items: flex-start;
+}
+
+.skeletonPrimary {
+  width: 92px;
+  height: 13px;
+}
+
+.skeletonSecondary {
+  width: 120px;
+  height: 9px;
+}
+
+.skeletonValue {
+  width: 68px;
+  height: 13px;
+}
+
+.skeletonMetric {
+  width: 54px;
+  height: 9px;
+}
+
+@keyframes market-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .panel {
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .desktopHeading {
+    display: none;
+  }
+
+  .mobileHeading {
+    display: flex;
+  }
+
+  .headingCopy {
+    font-size: 20px;
+    letter-spacing: -0.2px;
+  }
+
+  .symbol,
+  .price {
+    font-size: 18px;
+    letter-spacing: -0.18px;
+  }
+
+  .rowsViewport {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease;
+  }
+
+  .rowsCollapsed {
+    grid-template-rows: 0fr;
+  }
+
+  .rows {
+    min-height: 0;
+  }
+
+  .assetRow {
+    padding: 0 12px 0 8px;
+  }
+}
+
+@media (max-width: 580px) {
+  .section {
+    width: calc(100% - 24px);
+    margin-top: 22px;
+  }
+
+  .headingCopy {
+    font-size: 18px;
+    letter-spacing: -0.18px;
+  }
+
+  .symbol,
+  .price {
+    font-size: 16px;
+    letter-spacing: -0.16px;
+  }
+
+  .assetName {
+    max-width: 145px;
+  }
+
+  .secondary {
+    max-width: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowsViewport,
+  .chevron,
+  .assetRow {
+    transition: none;
+  }
+
+  .skeleton {
+    animation: none;
+  }
+}

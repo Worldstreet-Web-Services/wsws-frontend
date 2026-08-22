@@ -10,12 +10,14 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "alchemy:policy-check": "node scripts/alchemy-policy-check.mjs",
+    "rwas:oneinch:coverage": "node --env-file=.env scripts/rwas-oneinch-coverage.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@1inch/fusion-sdk": "^2.4.13",
     "@base-ui/react": "^1.6.0",
     "@microsoft/clarity": "^1.0.2",
     "@polymarket/client": "^0.1.0",

@@ -40,6 +40,7 @@ import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  recoverySlot: ReactNode;
   crossBorderSlot: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
@@ -123,6 +124,7 @@ const HOLDINGS_COLUMNS = [
 export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
+  recoverySlot,
   crossBorderSlot,
   onOpenDetail,
   onOpenBuy,
@@ -317,6 +319,8 @@ export function PortfolioView({
           onUpgrade={() => setKashModal("upgrade")}
         />
       </div>
+
+      {recoverySlot}
 
       <div className="mt-3">{crossBorderSlot}</div>
 

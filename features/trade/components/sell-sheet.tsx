@@ -11,6 +11,7 @@ import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade
 import { maxSellable } from "@/lib/trade/gas-buffer";
 import { SolanaBalanceChangedError } from "@/lib/trade/solana-balance";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
+import { isEthereumUsdcToBase } from "@/lib/trade/across-usdc";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 import { friendlyError } from "@/lib/errors";
@@ -53,6 +54,7 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
 
   const nativeSym = NATIVE_SYMBOL[payload.network] ?? "";
   const chainLabel = CHAIN_LABEL[payload.network] ?? payload.network;
+  const movingEthereumUsdc = isEthereumUsdcToBase(payload.network, payload.address);
 
   // Sending the asset needs a little of the chain's native token for the fee,
   // except where the send is sponsored: EVM networks behind the bundler, and
@@ -126,12 +128,14 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
         slippageBps: SLIPPAGE_BPS,
         maxRequested,
       });
-      savePendingRwaSettlement({
-        requestId: result.requestId,
-        direction: "solana-to-base",
-        assetSymbol: payload.symbol,
-        createdAt: Date.now(),
-      });
+      if (result.rail === "dextopus") {
+        savePendingRwaSettlement({
+          requestId: result.requestId,
+          direction: "solana-to-base",
+          assetSymbol: payload.symbol,
+          createdAt: Date.now(),
+        });
+      }
       toast.success(t("takesAMoment"), { id: toastRef.current });
       toastRef.current = undefined;
       void portfolio.refetchUntilChanged();
@@ -150,7 +154,7 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
 
   return (
     <div>
-      <Eyebrow>{t("sell")}</Eyebrow>
+      <Eyebrow>{movingEthereumUsdc ? "Move to Base" : t("sell")}</Eyebrow>
       <div className="mt-3 flex items-center gap-[13px]">
         <AssetIcon sym={payload.symbol} bg="#26262b" size={44} logo={payload.logo} />
         <div className="min-w-0 flex-1">
@@ -163,7 +167,7 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
 
       <div className="ws-inset mt-4 p-[15px]">
         <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
-          <span>{t("amountToSell")}</span>
+          <span>{movingEthereumUsdc ? "Amount to move" : t("amountToSell")}</span>
           <button
             onClick={() => {
               setAmount(fillAmount(maxSell));
@@ -218,7 +222,9 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
       </div>
 
       <p className="mt-2 text-[12px] leading-[1.5] font-normal text-white/45">
-        {t("settlesToUsdc")}
+        {movingEthereumUsdc
+          ? "Moves Ethereum USDC to your Base USDC balance. Gas is sponsored."
+          : t("settlesToUsdc")}
       </p>
 
       {noFee ? (
@@ -248,7 +254,9 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
             ? t("notEnoughBalance")
             : sell.isPending
               ? t("confirming")
-              : t("sellToken", { name: payload.name })}
+              : movingEthereumUsdc
+                ? "Move USDC to Base"
+                : t("sellToken", { name: payload.name })}
       </button>
     </div>
   );

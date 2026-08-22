@@ -19,6 +19,7 @@
     "@base-ui/react": "^1.6.0",
     "@livekit/components-react": "^2.9.24",
     "@microsoft/clarity": "^1.0.2",
+    "@nktkas/hyperliquid": "0.33.3",
     "@polymarket/client": "^0.1.0",
     "@privy-io/node": "^0.26.0",
     "@privy-io/react-auth": "^3.35.1",

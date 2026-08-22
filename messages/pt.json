@@ -662,6 +662,8 @@
     "network": "Rede",
     "chooseNetwork": "Escolha uma rede",
     "unavailable": "Indisponível",
+    "tradingPaused": "As negociações estão pausadas para este token",
+    "checkingTradability": "Verificando…",
     "enterAmount": "Introduza um montante",
     "minimumUsd": "Mínimo {amount} $",
     "notEnoughBalance": "Saldo insuficiente",

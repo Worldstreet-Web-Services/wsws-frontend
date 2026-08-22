@@ -662,6 +662,8 @@
     "network": "Network",
     "chooseNetwork": "Choose a network",
     "unavailable": "Unavailable",
+    "tradingPaused": "Trading is paused for this token",
+    "checkingTradability": "Checking…",
     "enterAmount": "Enter an amount",
     "minimumUsd": "Minimum ${amount}",
     "notEnoughBalance": "Not enough balance",

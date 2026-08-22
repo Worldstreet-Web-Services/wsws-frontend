@@ -55,6 +55,25 @@ export function openFee(size: number): number {
   return size > 0 ? size * OPEN_FEE_RATE : 0;
 }
 
+// Withdrawing from the perps wallet is two hops under the hood (HyperCore ->
+// Arbitrum -> Base) — this is a UI estimate of the combined cost, shown to
+// the user up front as one "platform fee" rather than the two-hop breakdown.
+// Hyperliquid's own flat withdrawal fee (verified against its docs this
+// session): $1, taken off the top before the second leg's conversion fee
+// applies to what's left.
+export const WITHDRAWAL_FLAT_FEE_USDC = 1;
+// The Arbitrum -> Base conversion leg's fee rate, applied to the balance
+// remaining after the flat fee above. The real amount is fixed by a live
+// quote at withdrawal time; this estimate just sets expectations beforehand.
+export const WITHDRAWAL_CONVERSION_FEE_RATE = 0.002;
+
+export function estimatedWithdrawalFee(amountUsdc: number): number {
+  if (amountUsdc <= 0) return 0;
+  const flatFee = Math.min(amountUsdc, WITHDRAWAL_FLAT_FEE_USDC);
+  const afterFlatFee = amountUsdc - flatFee;
+  return flatFee + afterFlatFee * WITHDRAWAL_CONVERSION_FEE_RATE;
+}
+
 // Amount of the receive asset you get by paying `amount` of the pay asset,
 // derived purely from live USD prices. Used when no on-chain route is available.
 export function receiveFromPrices(amount: number, payPrice: number, receivePrice: number): number {
@@ -78,4 +97,15 @@ export function formatAmount(value: number): string {
   const abs = Math.abs(value);
   const maxDigits = abs >= 1000 ? 2 : abs >= 1 ? 4 : 6;
   return value.toLocaleString(undefined, { maximumFractionDigits: maxDigits });
+}
+
+// Large dollar figures (volume, open interest) as "$1.2M" rather than every digit.
+export function formatCompactUsd(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
 }

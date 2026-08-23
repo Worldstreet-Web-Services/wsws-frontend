@@ -5,10 +5,10 @@ import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { BalanceCardDesktop } from "@/features/portfolio/components/balance-card-desktop";
 import { BalanceCardMobile } from "@/features/portfolio/components/balance-card-mobile";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { usePendingOnramp } from "@/hooks/use-pouch-onramp";
+import { usePendingBankDeposit } from "@/hooks/use-ramping";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { readyToSpendUsd } from "@/features/portfolio/lib/breakdown";
-import { OFFRAMP_MIN_USDC } from "@/lib/pouch/offramp";
+import { OFFRAMP_MIN_USDC } from "@/lib/ramping/orders";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
 // Refresh the portfolio on Base blocks, so a deposit, withdrawal or add-money
@@ -36,7 +36,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
   // A confirmed bank deposit that has not settled yet holds the withdraw
   // button, so an unchanged balance next to a live button doesn't read as
   // "withdraw your new money now" and invite repeated attempts.
-  const { pending: depositPending } = usePendingOnramp();
+  const { pending: depositPending } = usePendingBankDeposit();
 
   // What a purchase can actually draw on. A portfolio can be worth a lot and
   // still have nothing spendable, which the total alone never shows.

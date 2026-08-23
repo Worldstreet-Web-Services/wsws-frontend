@@ -7,9 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { SearchIcon } from "@/components/ui/icons";
 import { useMoney } from "@/components/ui/currency-select";
 import { TypeChip } from "@/features/portfolio/components/type-chip";
-import { networkLabel } from "@/features/portfolio/lib/network-label";
+import { displayNetworkIconKey, displayNetworkLabel } from "@/features/portfolio/lib/network-label";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatQty } from "@/lib/format";
+import { displaySymbol } from "@/lib/buy";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 interface HoldingsMobileProps {
@@ -98,26 +99,26 @@ export function HoldingsMobile({
             >
               <span className="relative shrink-0">
                 <AssetIcon
-                  sym={token.symbol}
+                  sym={displaySymbol(token.symbol)}
                   bg={tokenBg(token.symbol)}
                   logo={token.logo}
                   fallback="gradient"
                 />
                 <span className="absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-[#0d0d0f] p-[1.5px]">
-                  <NetworkIcon network={token.network} size={14} />
+                  <NetworkIcon network={displayNetworkIconKey(token)} size={14} />
                 </span>
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
                   <span className="truncate font-sans text-[14.5px] font-medium">
-                    {token.symbol}
+                    {displaySymbol(token.symbol)}
                   </span>
                   <span className="shrink-0">
                     <TypeChip kind={token.kind} />
                   </span>
                 </span>
                 <span className="mt-0.5 block truncate text-[12px] font-normal text-white/50">
-                  {formatQty(token.balance)} · {networkLabel(token.network)}
+                  {formatQty(token.balance)} · {displayNetworkLabel(token)}
                 </span>
               </span>
               <span className="tnum shrink-0 text-right font-sans text-[14.5px] font-medium">

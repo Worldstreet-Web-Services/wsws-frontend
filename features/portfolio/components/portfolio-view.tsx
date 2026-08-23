@@ -21,12 +21,10 @@ import { KashHistoryModal } from "@/features/portfolio/components/kash-history-m
 import { KashUpgradeModal } from "@/features/portfolio/components/kash-upgrade-modal";
 import { KashSendModal } from "@/features/portfolio/components/kash-send-modal";
 import { useKashAccount, useKashClaim } from "@/features/portfolio/hooks/use-kash";
-import { KASH_LIVE } from "@/features/portfolio/lib/kash-launch";
-import { toast } from "@/lib/toast";
+import { Switch } from "@/components/ui/switch";
 import { HoldingsMobile } from "@/features/portfolio/components/holdings-mobile";
 import { TypeChip } from "@/features/portfolio/components/type-chip";
-import { networkLabel } from "@/features/portfolio/lib/network-label";
-import { Switch } from "@/components/ui/switch";
+import { displayNetworkIconKey, displayNetworkLabel } from "@/features/portfolio/lib/network-label";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
 import { track } from "@/lib/analytics/mixpanel";
@@ -98,7 +96,6 @@ export function PortfolioView({
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
   const t = useTranslations("portfolio");
-  const tKash = useTranslations("kash");
   const { wallet: kashWallet } = useKashAccount();
   const claimPoints = useKashClaim();
   const [kashModal, setKashModal] = useState<
@@ -229,7 +226,7 @@ export function PortfolioView({
       stats: [
         { k: t("holdings"), v: `${formatQty(token.balance)} ${token.symbol}` },
         { k: t("marketPrice"), v: money.format(token.priceUsd) },
-        { k: t("network"), v: networkLabel(token.network) },
+        { k: t("network"), v: displayNetworkLabel(token) },
         { k: t("positionValue"), v: money.format(token.valueUsd) },
       ],
       cta: t("buyMore", { name: token.name }),
@@ -244,9 +241,7 @@ export function PortfolioView({
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <div className="mb-4">
-        <KashBanner
-          onBuy={KASH_LIVE ? () => setKashModal("buy") : () => toast.info(tKash("comingSoonToast"))}
-        />
+        <KashBanner onBuy={() => setKashModal("buy")} />
       </div>
       <KashBuyModal
         open={kashModal === "buy"}
@@ -263,8 +258,7 @@ export function PortfolioView({
       <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
         <KashCard
-          comingSoon={!KASH_LIVE}
-          onBuy={KASH_LIVE ? () => setKashModal("buy") : () => toast.info(tKash("comingSoonToast"))}
+          onBuy={() => setKashModal("buy")}
           onClaim={
             kashWallet
               ? () =>
@@ -280,12 +274,8 @@ export function PortfolioView({
               : undefined
           }
           claiming={claimPoints.isPending}
-          onSend={
-            KASH_LIVE ? () => setKashModal("send") : () => toast.info(tKash("comingSoonToast"))
-          }
-          onConvert={
-            KASH_LIVE ? () => setKashModal("convert") : () => toast.info(tKash("comingSoonToast"))
-          }
+          onSend={() => setKashModal("send")}
+          onConvert={() => setKashModal("convert")}
           onHistory={() => setKashModal("history")}
           onUpgrade={() => setKashModal("upgrade")}
         />
@@ -409,7 +399,7 @@ export function PortfolioView({
                             fallback="gradient"
                           />
                           <span className="absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-[#0d0d0f] p-[1.5px]">
-                            <NetworkIcon network={t.network} size={14} />
+                            <NetworkIcon network={displayNetworkIconKey(t)} size={14} />
                           </span>
                         </span>
                         <span className="min-w-0">
@@ -422,7 +412,7 @@ export function PortfolioView({
                             </span>
                           </span>
                           <span className="block truncate text-xs font-normal text-white/50">
-                            {formatQty(t.balance)} · {networkLabel(t.network)}
+                            {formatQty(t.balance)} · {displayNetworkLabel(t)}
                           </span>
                         </span>
                       </span>
@@ -433,8 +423,8 @@ export function PortfolioView({
                         {money.format(t.priceUsd)}
                       </span>
                       <span className="hidden items-center justify-end gap-1.5 text-[13px] font-normal text-white/60 min-[560px]:flex">
-                        <NetworkIcon network={t.network} size={16} />
-                        {networkLabel(t.network)}
+                        <NetworkIcon network={displayNetworkIconKey(t)} size={16} />
+                        {displayNetworkLabel(t)}
                       </span>
                       <span className="tnum text-right font-sans text-sm font-medium">
                         {money.format(t.valueUsd)}

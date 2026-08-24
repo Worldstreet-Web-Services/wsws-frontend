@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import type { SellPayload } from "@/lib/modal-types";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import { parseEther } from "viem";
-import { useAuthSession } from "@/hooks/use-auth-session";
 import { formatEther } from "viem";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -15,8 +15,14 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { Pager } from "@/components/ui/pager";
 import { MoneyTicker } from "@/features/casino/components/last-standing/money-ticker";
 import { useMoney } from "@/components/ui/currency-select";
-import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { FundSheet } from "@/features/casino/components/last-standing/fund-sheet";
+import { GameBalanceCard } from "@/features/casino/components/last-standing/game-balance-card";
+import { WinnersList } from "@/features/casino/components/last-standing/winners-list";
+import {
+  DEFAULT_SPLIT_BPS,
+  estimateWinnerPayout,
+  isSameAddress,
+} from "@/features/casino/lib/last-standing/split";
 import {
   MiniTimerLauncher,
   formatCountdown,
@@ -28,6 +34,7 @@ import {
 import { useVaultGame } from "@/features/casino/hooks/use-vault-game";
 import { useVaultFeeds } from "@/features/casino/hooks/use-vault-feeds";
 import { rememberRoundLength, secondsUntil } from "@/features/casino/lib/last-standing/clock";
+import { usdToWei } from "@/features/casino/lib/last-standing/stake";
 import { followGame } from "@/features/casino/lib/last-standing/followed-game";
 import { ShareGame, ShareGameButton } from "@/features/casino/components/last-standing/share-game";
 import type { TokenAmount } from "@/features/casino/lib/vault-api";
@@ -43,12 +50,13 @@ interface VaultGameStatus {
   timerDuration: number;
   gameActive: boolean;
 }
-import { useVaultActions } from "@/features/casino/hooks/use-vault-actions";
+import { useVaultActions, readSplitBps } from "@/features/casino/hooks/use-vault-actions";
 import { useVaultPendingWinnings } from "@/features/casino/hooks/use-vault-winnings";
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePaged } from "@/hooks/use-paged";
-import { timeAgo, truncateAddress } from "@/lib/format";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { truncateAddress } from "@/lib/format";
 import { friendlyError, isAlreadySettledError } from "@/lib/errors";
 import {
   isMusicPlaying,
@@ -69,7 +77,6 @@ import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 
 const EXPLORER_TX_URL = "https://basescan.org/tx/";
-const EXPLORER_ADDRESS_URL = "https://basescan.org/address/";
 // How long to keep re-checking after a win, and how often. The settle window
 // drives BOTH the game resync (status/winners/pot — so the table, pool and
 // timer converge seconds after the clock dies, not on the socket's ~10s
@@ -86,6 +93,10 @@ const CALCULATING_MS = 1_200;
 const BLOCK_WATCH_KEYS = [["portfolio"], ["vault-winnings"]] as const;
 // How many feed rows to show per page in the activity and winners cards.
 const FEED_PAGE_SIZE = 10;
+
+// The wall clock, read from inside event handlers. Through a function so the
+// compiler does not take a handler defined in the component for render work.
+const clockNow = () => Date.now();
 
 // Decorative sparkle field drifting behind the arena. Fixed positions/timings
 // keep the layout deterministic — no per-render randomness.
@@ -172,12 +183,14 @@ interface LastStandingSectionProps {
 
 export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandingSectionProps) {
   const t = useTranslations("casino.lastStanding");
-  const { evmAddress: address } = useAuthSession();
+  const tBuySell = useTranslations("buySell");
+  const tBuySellNotEnough = tBuySell("notEnoughBalance");
+  const { evmAddress } = useAuthSession();
   const money = useMoney();
-  const { mask } = useBalanceVisibility();
   const { tokens, refetch: refetchPortfolio } = usePortfolio();
   const { game, loading: statusLoading, connected, resync: resyncGame } = useVaultGame(gameId);
-  const { activities, winners, winnersLoading } = useVaultFeeds(connected);
+  // This game's plays and this game's result, not every game's.
+  const { activities, winners, winnersLoading } = useVaultFeeds(connected, gameId);
   const { wager, wagering, claim, claiming, settle, settling } = useVaultActions();
 
   // The round visuals below were written against v3's single-game status. v4
@@ -233,6 +246,7 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
   const [recentWinUsd, setRecentWinUsd] = useState<number | null>(null);
 
   const reduce = useReducedMotion();
+  const address = evmAddress;
 
   // Leaving the arena stops the track — background music must not follow the
   // user to the portfolio.
@@ -254,7 +268,6 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
 
   // Both feeds page 10 rows at a time so the cards don't grow unbounded.
   const pagedActivities = usePaged(activities, FEED_PAGE_SIZE);
-  const pagedWinners = usePaged(winners, FEED_PAGE_SIZE);
 
   // The balance the player spends from is their own money on the platform. We
   // present everything as plain dollars — the underlying asset (ETH on Base)
@@ -357,27 +370,47 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
   const seenWinnerIdRef = useRef<string | null>(null);
   const [pollUntil, setPollUntil] = useState(0);
 
+  // The contract's split, read once: the owner can retune it, and the number a
+  // winner sees before settlement has to match what settle() will pay.
+  const splitBps = useQuery({
+    queryKey: ["vault", "split-bps"],
+    queryFn: readSplitBps,
+    staleTime: Infinity,
+  });
+  const split = splitBps.data ?? DEFAULT_SPLIT_BPS;
+  const splitWinnerBps = split.winner;
+  const splitStarterBps = split.starter;
+  // The starter is paid a share too, and is often the winner as well.
+  const starter = game?.starter ?? null;
+  const winnerIsStarter = isSameAddress(revealWinner, starter);
+
   // Starts the end-of-round sequence: suspense now, winner reveal after it.
-  // Stable so the effects below can depend on their real inputs without
-  // re-arming on every render.
-  const beginRoundEnd = useCallback(
-    (winnerAddress: string | null, prizeUsd: number) => {
-      roundEndedRef.current = true;
-      winnerAtEndRef.current = winnerAddress;
-      setRoundPrizeUsd(prizeUsd);
-      setPhase("calculating");
-      // The arena falls silent for the verdict: the loop stops (the next wager
-      // restarts it) and the buzzer-plus-suspense carries the audio instead.
-      stopMusic();
-      playRoundEndSound();
-      setPollUntil(Date.now() + WIN_POLL_WINDOW_MS);
-      // Converge immediately: fresh status (pot/timer reset), winners table and
-      // feed, plus the balance — not whenever the next socket push arrives.
-      resyncGame();
-      void refetchPortfolio();
-    },
-    [resyncGame, refetchPortfolio]
-  );
+  // The effects below call it without listing it, so it is a plain function
+  // and the compiler memoises it; a manual useCallback here is what it could
+  // not reconcile.
+  const beginRoundEnd = (winnerAddress: string | null, potAtEndUsd: number) => {
+    roundEndedRef.current = true;
+    winnerAtEndRef.current = winnerAddress;
+    // The winner's share of the pot, not the pot: half, plus the starter's
+    // tenth when the same wallet opened the game. The exact figure lands
+    // with the settlement row and takes over as soon as it does.
+    setRoundPrizeUsd(
+      estimateWinnerPayout(potAtEndUsd, isSameAddress(winnerAddress, starter), {
+        winner: splitWinnerBps,
+        starter: splitStarterBps,
+      })
+    );
+    setPhase("calculating");
+    // The arena falls silent for the verdict: the loop stops (the next wager
+    // restarts it) and the buzzer-plus-suspense carries the audio instead.
+    stopMusic();
+    playRoundEndSound();
+    setPollUntil(clockNow() + WIN_POLL_WINDOW_MS);
+    // Converge immediately: fresh status (pot/timer reset), winners table and
+    // feed, plus the balance — not whenever the next socket push arrives.
+    resyncGame();
+    void refetchPortfolio();
+  };
 
   useEffect(() => {
     // Remember the pot while the round is live; it resets to 0 once paid out.
@@ -457,10 +490,12 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
     // Fire the reveal on the next tick rather than synchronously inside this
     // polled-data effect, matching the timed primary-reveal path above and
     // keeping the state updates out of the effect body.
+    // The winners row carries what was actually paid, so it is the amount.
+    const paidUsd = latest.toWinner.usdValue;
     const id = setTimeout(() => {
       setRevealWinner(winnerAddress);
-      setRoundPrizeUsd(lastPotRef.current);
-      setRecentWinUsd(lastPotRef.current);
+      setRoundPrizeUsd(paidUsd);
+      setRecentWinUsd(paidUsd);
       setPhase("won");
       setPollUntil(Date.now() + WIN_POLL_WINDOW_MS);
     }, 0);
@@ -525,10 +560,14 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
       wonPendingRef.current = true;
       if (!wonReportedRef.current) {
         wonReportedRef.current = true;
-        track("last_man_won", { pot_usd: lastPotRef.current || potUsd });
+        track("last_man_won", {
+          pot_usd: lastPotRef.current || potUsd,
+          winnings_usd: revealPrizeUsd,
+          started_it: winnerIsStarter,
+        });
       }
     }
-  }, [phase, youWon, potUsd]);
+  }, [phase, youWon, potUsd, revealPrizeUsd, winnerIsStarter]);
   useEffect(() => {
     if (wonPendingRef.current && pendingWei > 0n && !claiming) {
       wonPendingRef.current = false;
@@ -597,11 +636,12 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
     }
   };
 
-  const onPlay = async () => {
-    if (!canPlay) {
-      setFundOpen(true);
-      return;
-    }
+  // One wager, whatever the size: the minimum from the Play button, or more
+  // from the liquidity control. The contract's wager(gameId) takes any value
+  // at or above the game's minimum; either way the sender becomes last
+  // standing and the clock resets, so the two share every step after the
+  // amount.
+  const placeWager = async (amountWei: bigint, amountUsd: number, from: HTMLElement | null) => {
     // Entering the round starts the arena's audio, unconditionally — placing a
     // wager IS asking for the game, sound and all, and this click is the user
     // gesture autoplay policy wants. The mute button governs everything after;
@@ -611,11 +651,11 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
     // The wager visualised: coins leave the button and land in the pot. Fired
     // on the click rather than on confirmation so the money reads as leaving
     // the player's hand immediately; a failed wager costs only a cosmetic.
-    const btnRect = playBtnRef.current?.getBoundingClientRect();
+    const btnRect = from?.getBoundingClientRect();
     const potRect = potRef.current?.getBoundingClientRect();
     if (btnRect && potRect && !reduce) {
       setFlight({
-        id: Date.now(),
+        id: clockNow(),
         from: { x: btnRect.left + btnRect.width / 2, y: btnRect.top + 8 },
         to: { x: potRect.left + potRect.width / 2, y: potRect.top + potRect.height / 2 },
       });
@@ -625,20 +665,18 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
         (COIN_FLIGHT_SECONDS + 0.3) * 1000
       );
     }
-    // One processing toast that resolves in place. Decane signs headlessly (no
-    // wallet modal), so this toast plus the button's "Placing your play…" state
-    // is the only feedback the player sees while the gasless wager settles.
+    // One processing toast that resolves in place. Signing is headless (no Privy
+    // modal), so this toast plus the button's "Placing your play…" state is the
+    // only feedback the player sees while the gasless wager settles.
     const toastId = toast.loading(t("ctaPlacing"));
     try {
-      // That game's minimum, not a global fee: the starter set it when they
-      // opened the game, and the contract rejects anything under it.
-      await wager(gameId, parseEther(status?.entryFee.amount ?? "0"));
+      await wager(gameId, amountWei);
       followGame(gameId);
-      // The cost-to-play that just restarted the timer. `game_staked` is the
-      // generic "money went into a game" event the catalog uses across all of
-      // them, so it rides alongside the last-man-specific one.
-      track("last_man_played", { cost_usd: entryFeeUsd });
-      track("game_staked", { game: "last_man", amount_usd: entryFeeUsd });
+      // `game_staked` is the generic "money went into a game" event the
+      // catalog uses across all of them, so it rides alongside the
+      // last-man-specific one.
+      track("last_man_played", { cost_usd: amountUsd });
+      track("game_staked", { game: "last_man", amount_usd: amountUsd });
       toast.success(t("toastYoureIn"), { id: toastId });
       playWagerSound();
       // The wager just landed on-chain, but the backend indexes it a moment
@@ -646,11 +684,45 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
       // the pot, timer and last-player reflect this play within seconds
       // (the socket push alone can be ~10s away, or absent when offline).
       resyncGame();
-      setPollUntil(Date.now() + WIN_POLL_WINDOW_MS);
+      setPollUntil(clockNow() + WIN_POLL_WINDOW_MS);
       void refetchPortfolio();
+      return true;
     } catch (e) {
       toast.error(friendlyError(e, t("toastPlayFailed")), { id: toastId });
+      return false;
     }
+  };
+
+  const onPlay = async () => {
+    if (!canPlay) {
+      setFundOpen(true);
+      return;
+    }
+    // That game's minimum, not a global fee: the starter set it when they
+    // opened the game, and the contract rejects anything under it.
+    await placeWager(parseEther(status?.entryFee.amount ?? "0"), entryFeeUsd, playBtnRef.current);
+  };
+
+  // Adding liquidity: a play of the player's own size. Typed in dollars,
+  // priced at the same rate as the entry fee, never under the game's minimum
+  // and never over what the wallet holds.
+  const [liquidityUsd, setLiquidityUsd] = useState("");
+  const liquidityAmountUsd = Number.parseFloat(liquidityUsd) || 0;
+  const liquidityWei = unitUsd > 0 ? usdToWei(liquidityAmountUsd, unitUsd) : 0n;
+  const liquidityBelowMin = liquidityAmountUsd > 0 && liquidityAmountUsd < entryFeeUsd - 1e-9;
+  const liquidityOverBalance = liquidityAmountUsd > 0 && liquidityAmountUsd > balanceUsd + 1e-9;
+  const liquidityReady =
+    liquidityAmountUsd > 0 &&
+    !liquidityBelowMin &&
+    !liquidityOverBalance &&
+    liquidityWei > 0n &&
+    !wagering;
+  const liquidityBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const onAddLiquidity = async () => {
+    if (!liquidityReady) return;
+    const ok = await placeWager(liquidityWei, liquidityAmountUsd, liquidityBtnRef.current);
+    if (ok) setLiquidityUsd("");
   };
 
   return (
@@ -976,8 +1048,10 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
             </div>
 
             {/* Every player brought in grows the pot the starter takes 10% of,
-                so the link sits with the game rather than behind a menu. */}
-            <ShareGame gameId={gameId} />
+                so the invite sits with the game. On a laptop the same card
+                heads the side rail instead, where the QR is in view without
+                scrolling. */}
+            <ShareGame gameId={gameId} className="mt-4 min-[980px]:hidden" />
 
             {/* Play CTA — the primary action, silver whether you're playing or
                 being nudged to add money. The add-money state carries a coin and
@@ -1083,39 +1157,70 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
               )}
             </div>
 
-            {/* Balance */}
-            <div className="ws-inset mt-3 flex items-center justify-between gap-3 px-4 py-3.5">
-              <div className="min-w-0">
+            {/* Add liquidity: a play of any size above the minimum. The input
+                is dollars; the button says what it would send. */}
+            {roundOver || !gameActive ? null : (
+              <div className="ws-inset mt-3 px-4 py-3.5">
                 <div className="text-[11px] font-normal tracking-[0.04em] text-white/45 uppercase">
-                  {t("yourBalance")}
+                  {t("liquidityLabel")}
                 </div>
-                <div className="tnum mt-0.5 text-[16px] font-bold text-white/90">
-                  {mask(money.format(balanceUsd))}
+                <div className="mt-2 flex flex-wrap items-stretch gap-2">
+                  <label
+                    className={`flex min-w-0 flex-1 items-center gap-2 rounded-[12px] border bg-black/35 px-3.5 transition-colors ${
+                      liquidityBelowMin || liquidityOverBalance
+                        ? "border-[#e3a49a]/60"
+                        : "focus-within:border-accent/45 border-white/10"
+                    }`}
+                  >
+                    <span className="text-[14px] font-medium text-white/45">$</span>
+                    <input
+                      inputMode="decimal"
+                      value={liquidityUsd}
+                      onChange={(e) => {
+                        if (/^\d*\.?\d*$/.test(e.target.value)) setLiquidityUsd(e.target.value);
+                      }}
+                      placeholder={t("liquidityPlaceholder", { amount: money.format(entryFeeUsd) })}
+                      className="tnum w-full min-w-0 bg-transparent py-2.5 font-sans text-[14px] text-white outline-none placeholder:text-white/30"
+                    />
+                  </label>
+                  <button
+                    ref={liquidityBtnRef}
+                    type="button"
+                    onClick={() => void onAddLiquidity()}
+                    disabled={!liquidityReady}
+                    className="border-accent/40 bg-accent/14 text-accent hover:bg-accent/22 shrink-0 cursor-pointer rounded-[12px] border px-4 py-2.5 font-sans text-[13px] font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {wagering
+                      ? t("ctaPlacing")
+                      : liquidityReady
+                        ? t("liquidityCtaAmount", { amount: money.format(liquidityAmountUsd) })
+                        : t("liquidityCta")}
+                  </button>
+                </div>
+                <div
+                  className={`mt-2 text-[12px] leading-relaxed font-normal ${
+                    liquidityBelowMin || liquidityOverBalance ? "text-[#e3a49a]" : "text-white/45"
+                  }`}
+                >
+                  {liquidityBelowMin
+                    ? t("liquidityMin", { amount: money.format(entryFeeUsd) })
+                    : liquidityOverBalance
+                      ? tBuySellNotEnough
+                      : t("liquidityHint", { amount: money.format(entryFeeUsd) })}
                 </div>
               </div>
-              {/* Withdraw cashes the game balance back out to dollars (the
-                  portfolio's sell flow: ETH on Base -> USDC), because players
-                  don't know the game runs on their ETH balance and need a way
-                  to get their money back. Add money only shows when the play
-                  CTA isn't already saying it. */}
-              <div className="flex shrink-0 items-center gap-2">
-                {balanceEth > 0 ? (
-                  <button
-                    onClick={() => setWithdrawOpen(true)}
-                    className="shrink-0 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-semibold whitespace-nowrap text-white/85 transition-colors hover:bg-white/12"
-                  >
-                    {t("withdraw")}
-                  </button>
-                ) : null}
-                {canPlay ? (
-                  <button
-                    onClick={() => setFundOpen(true)}
-                    className="border-accent/40 bg-accent/14 text-accent hover:bg-accent/22 shrink-0 cursor-pointer rounded-xl border px-4 py-2.5 font-sans text-[13px] font-semibold whitespace-nowrap transition-colors"
-                  >
-                    {t("addMoney")}
-                  </button>
-                ) : null}
-              </div>
+            )}
+
+            {/* Balance. Add money only shows when the play CTA isn't already
+                saying it. */}
+            <div className="mt-3">
+              <GameBalanceCard
+                balanceUsd={balanceUsd}
+                canWithdraw={balanceEth > 0}
+                showAddMoney={canPlay}
+                onWithdraw={() => setWithdrawOpen(true)}
+                onAddMoney={() => setFundOpen(true)}
+              />
             </div>
 
             {/* You won — auto-credited, no claim needed. */}
@@ -1132,6 +1237,7 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
 
         {/* Side rail */}
         <div className="flex flex-col gap-4">
+          <ShareGame gameId={gameId} className="hidden min-[980px]:block" />
           <div className="ws-glass rounded-[22px] p-5">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-semibold text-white/80">{t("recentActivity")}</span>
@@ -1200,104 +1306,14 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
             <span className="text-[30px]">👑</span>
             <div>
               <div className="text-[14px] font-semibold text-white/90">{t("hallTitle")}</div>
-              <div className="text-[11.5px] font-normal text-white/45">{t("hallSubtitle")}</div>
+              <div className="text-[11.5px] font-normal text-white/45">
+                {t("hallSubtitleRound")}
+              </div>
             </div>
           </div>
-          {winners.length > 0 ? (
-            <span className="tnum rounded-full bg-[#d8d8dc]/12 px-2.5 py-1 text-[11px] font-semibold text-[#d8d8dc]/80 ring-1 ring-[#d8d8dc]/20">
-              {t("settledCount", { count: winners.length })}
-            </span>
-          ) : null}
         </div>
 
-        {winnersLoading ? (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-x-5">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-[52px] animate-pulse rounded-[14px] bg-white/6" />
-            ))}
-          </div>
-        ) : winners.length === 0 ? (
-          <div className="grid place-items-center py-12 text-center text-[13px] font-normal text-white/40">
-            {t("hallEmpty")}
-          </div>
-        ) : (
-          <>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-x-5">
-              {pagedWinners.pageItems.map((w, idx) => {
-                // Only the very newest settled round (page 1, first row) is the
-                // "latest" — everything else is just chronological history.
-                const isLatest = pagedWinners.page === 0 && idx === 0;
-                return (
-                  <motion.a
-                    key={w.settlementTx}
-                    initial={reduce ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(idx * 0.04, 0.3), duration: 0.28 }}
-                    href={`${EXPLORER_ADDRESS_URL}${w.winner}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`relative flex items-center gap-3 overflow-hidden rounded-[14px] px-3 py-2.5 transition-colors ${
-                      isLatest
-                        ? "bg-[linear-gradient(110deg,rgba(216, 216, 220, 0.14),rgba(216, 216, 220, 0.02))] ring-1 ring-[#d8d8dc]/25"
-                        : "bg-white/[0.03] hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    {/* A light sweeps across the most recent winner's row. */}
-                    {isLatest && !reduce ? (
-                      <motion.span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)]"
-                        animate={{ x: ["0%", "360%"] }}
-                        transition={{
-                          duration: 2.8,
-                          repeat: Infinity,
-                          repeatDelay: 1.8,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    ) : null}
-                    <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#d8d8dc]/12 text-[15px] ring-1 ring-[#d8d8dc]/20">
-                      🏆
-                    </span>
-                    <span className="relative min-w-0 flex-1">
-                      <span className="tnum block truncate text-[13.5px] font-semibold text-white/90">
-                        {truncateAddress(w.winner)}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11.5px] font-normal text-white/45">
-                        {/* The game number, which is what identifies a settlement now
-                            that many games run at once. */}
-                        {`#${w.gameId} · `}
-                        {timeAgo(w.settledAt)}
-                      </span>
-                    </span>
-                    <span className="relative shrink-0 text-right">
-                      <span className="tnum block text-[14px] font-bold text-[#d8d8dc]">
-                        {money.format(w.toWinner.usdValue)}
-                      </span>
-                      {isLatest ? (
-                        <span className="block text-[9.5px] font-semibold tracking-[0.12em] text-[#d8d8dc]/70 uppercase">
-                          {t("latest")}
-                        </span>
-                      ) : null}
-                    </span>
-                  </motion.a>
-                );
-              })}
-            </div>
-            {pagedWinners.total > FEED_PAGE_SIZE ? (
-              <Pager
-                from={pagedWinners.from}
-                to={pagedWinners.to}
-                total={pagedWinners.total}
-                canPrev={pagedWinners.canPrev}
-                canNext={pagedWinners.canNext}
-                onPrev={pagedWinners.goPrev}
-                onNext={pagedWinners.goNext}
-                label={t("pagerWinners")}
-              />
-            ) : null}
-          </>
-        )}
+        <WinnersList winners={winners} loading={winnersLoading} emptyLabel={t("hallEmpty")} />
       </div>
 
       <ModalShell open={fundOpen} onClose={() => setFundOpen(false)} contentKey="vault-fund">
@@ -1330,6 +1346,9 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
       <RoundOverlay
         phase={phase}
         youWon={youWon}
+        winnerIsStarter={winnerIsStarter}
+        winnerPct={split.winner / 100}
+        starterPct={split.starter / 100}
         winnerLabel={winnerLabel}
         prizeValue={revealPrizeUsd}
         prizeLabel={money.format(revealPrizeUsd)}

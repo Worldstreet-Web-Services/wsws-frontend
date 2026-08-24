@@ -75,6 +75,16 @@ body {
   overflow-x: hidden;
 }
 
+:root {
+  --chess-page-board-cap: 780px;
+}
+
+@media (min-width: 900px) and (min-height: 600px) {
+  :root {
+    --chess-page-board-cap: calc(100dvh - 300px);
+  }
+}
+
 ::selection {
   background: rgba(255, 255, 255, 0.35);
   color: #fff;
@@ -121,6 +131,20 @@ body {
   border-color: rgba(246, 165, 165, 0.55) !important;
 }
 
+/* The mobile design's primary action: a brushed-chrome pill rather than the
+   flat white button the desktop app uses. Declared as a background IMAGE, so it
+   layers over whatever background-color the button already carries and simply
+   is not there from md up, where the desktop treatment stands unchanged. */
+@media (max-width: 767px) {
+  .ws-chrome {
+    background-image: linear-gradient(177deg, #ffffff 0%, #ededf0 38%, #cbcbd1 63%, #f5f5f8 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 2px 8px rgba(0, 0, 0, 0.5);
+    border-radius: 9999px;
+  }
+}
+
 @utility ws-glass {
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
@@ -134,35 +158,72 @@ body {
 
 .ws-chess-round-shell {
   display: grid;
-  gap: 1.25rem;
+  gap: 15px;
 }
 
 .ws-chess-round-root {
   --ws-chess-body-font: var(--font-chess-body), "Noto Sans", var(--font-sans), sans-serif;
   --ws-chess-clock-font: var(--font-chess-clock), Roboto, var(--font-sans), sans-serif;
   font-family: var(--ws-chess-body-font);
+  font-size: clamp(12px, calc(12px + 2 * (100vw - 300px) / 900), 14px);
 }
 
 .ws-chess-round-root .ws-chess-lila-player {
-  font-size: 1.18rem;
-  line-height: 1.2;
+  font-size: 1.2em;
+  line-height: inherit;
 }
 
 .ws-chess-round-root .ws-chess-lila-meta {
-  font-size: 0.95rem;
+  font-size: 1em;
   color: rgb(255 255 255 / 0.58);
 }
 
 .ws-chess-round-root .ws-chess-lila-clock {
   font-family: var(--ws-chess-clock-font);
-  font-weight: 300;
-  letter-spacing: 0.08em;
-  line-height: 0.94;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.ws-chess-round-root .ws-chess-lila-clock-main {
+  min-width: 3em;
+  font-size: 2.8em;
+  line-height: 50px;
+}
+
+.ws-chess-round-root .ws-chess-lila-clock-compact {
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .ws-chess-round-root .ws-chess-lila-moves {
-  font-size: 1.1rem;
+  font-size: 1.1em;
   line-height: 1.7;
+}
+
+.ws-chess-round-rail {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto auto auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.ws-chess-round-rail-top {
+  grid-row: 2;
+}
+
+.ws-chess-round-rail-table {
+  grid-row: 3;
+  grid-template-rows: 2.5rem 7.4rem auto;
+}
+
+.ws-chess-round-rail-controls {
+  grid-row: 4;
+  max-height: min(15rem, 28dvh);
+}
+
+.ws-chess-round-rail-bottom {
+  grid-row: 5;
 }
 
 .ws-chess-round-desktop-left,
@@ -174,38 +235,43 @@ body {
   .ws-chess-round-root {
     --ws-chess-side-min: 250px;
     --ws-chess-table-min: 240px;
-    --ws-chess-table-max: 360px;
-    --ws-chess-board-scale: 0.8875;
-    --ws-chess-board-max-height: calc(100dvh - 112px - 16px);
+    --ws-chess-table-max: 400px;
+    --ws-chess-board-scale: 1;
+    --ws-chess-board-max-height: calc(100dvh - 52px - 16px - 1rem);
+    --ws-chess-col2-board-max-width: calc(
+      100vw - 15px - var(--ws-chess-table-min) - 2 * 1vw - 20px
+    );
     --ws-chess-col3-board-max-width: calc(
-      100vw - var(--ws-chess-side-min) - 1.25rem - var(--ws-chess-table-min) - 2 * 2rem - 20px
+      100vw - var(--ws-chess-side-min) - 2 * 15px - var(--ws-chess-table-min) - 2 * 1vw - 20px
     );
     --ws-chess-board-size: min(
-      var(--ws-chess-col3-board-max-width),
+      var(--ws-chess-col2-board-max-width),
       var(--ws-chess-board-max-height)
     );
+    padding-inline: 1vw !important;
     padding-bottom: 0 !important;
   }
 
   .ws-chess-round-shell {
-    height: calc(100dvh - 112px);
+    height: calc(100dvh - 52px - 16px);
     grid-template-columns:
-      minmax(var(--ws-chess-side-min), 350px)
-      minmax(500px, calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale)))
+      minmax(0, calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale)))
       minmax(var(--ws-chess-table-min), var(--ws-chess-table-max));
     justify-content: center;
     align-items: start;
     overflow: hidden;
   }
 
-  .ws-chess-round-desktop-left,
   .ws-chess-round-desktop-right {
     display: flex !important;
   }
 
   .ws-chess-round-desktop-left {
+    display: none !important;
     order: 1;
-    max-height: calc(100dvh - 112px);
+    width: 100%;
+    height: calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale));
+    max-height: var(--ws-chess-board-max-height);
   }
 
   .ws-chess-round-board-section {
@@ -232,13 +298,21 @@ body {
     box-shadow: none !important;
   }
 
+  .ws-chess-round-mobile-player,
   .ws-chess-round-mobile-stack {
     display: none !important;
   }
 
   .ws-chess-round-desktop-right {
     order: 3;
-    max-height: calc(100dvh - 112px);
+    width: 100%;
+    height: calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale));
+    max-height: var(--ws-chess-board-max-height);
+  }
+
+  .ws-chess-round-root .ws-chess-lila-clock-main {
+    align-items: flex-end;
+    line-height: 1.2em;
   }
 
   /* Lichess analysis keeps the board and tools aligned, then lets the graph
@@ -273,6 +347,33 @@ body {
     height: calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale));
     min-height: 500px !important;
     max-height: var(--ws-chess-board-max-height);
+  }
+}
+
+@media (min-width: 499.3px) and (min-height: 599.3px) {
+  .ws-chess-round-root .ws-chess-lila-clock-main {
+    font-size: 3.6em;
+    letter-spacing: 0.12em;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ws-chess-round-root:not(.ws-chess-analysis-root) {
+    --ws-chess-board-size: min(
+      var(--ws-chess-col3-board-max-width),
+      var(--ws-chess-board-max-height)
+    );
+  }
+
+  .ws-chess-round-shell:not(.ws-chess-analysis-shell) {
+    grid-template-columns:
+      minmax(var(--ws-chess-side-min), 350px)
+      minmax(0, calc(var(--ws-chess-board-size) * var(--ws-chess-board-scale)))
+      minmax(var(--ws-chess-table-min), var(--ws-chess-table-max));
+  }
+
+  .ws-chess-round-root:not(.ws-chess-analysis-root) .ws-chess-round-desktop-left {
+    display: flex !important;
   }
 }
 
@@ -325,6 +426,115 @@ body {
   }
 }
 
+/* Product tour (driver.js): the popover restyled to the app's dark sheet.
+   Applied through popoverClass, so the library's own defaults never leak
+   into the page. */
+.driver-popover.ws-tour {
+  background: #131316;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  padding: 18px;
+  max-width: 320px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 24px 80px -24px rgba(0, 0, 0, 0.9);
+}
+
+.driver-popover.ws-tour .driver-popover-title {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.driver-popover.ws-tour .driver-popover-description {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.driver-popover.ws-tour .driver-popover-progress-text {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 12px;
+}
+
+.driver-popover.ws-tour .driver-popover-navigation-btns {
+  gap: 8px;
+}
+
+.driver-popover.ws-tour button.driver-popover-prev-btn,
+.driver-popover.ws-tour button.driver-popover-next-btn {
+  border-radius: 9999px;
+  padding: 8px 16px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.driver-popover.ws-tour button.driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.driver-popover.ws-tour button.driver-popover-next-btn {
+  background: #fff;
+  border: 1px solid #fff;
+  color: #0a0a0a;
+}
+
+.driver-popover.ws-tour .driver-popover-close-btn {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.driver-popover.ws-tour .driver-popover-close-btn:hover {
+  color: #fff;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #131316;
+}
+
+/* Referrals: the Invite Friends sparkles blink like the designer's Figma.
+   One keyframe for every star; each staggers itself with an inline
+   animation-delay so they never blink in unison. */
+@keyframes ws-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scale(0.72);
+  }
+}
+
+.ws-twinkle {
+  animation: ws-twinkle 2.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-twinkle {
+    animation: none;
+  }
+}
+
 /* Prediction: the close-time badge in the last ten minutes. A heartbeat rather
    than a fade — the badge should read as pressure without the number ever
    dimming to the point of being hard to read mid-trade.
@@ -348,100 +558,30 @@ body {
   animation: ws-close-urgent-pulse 1.1s ease-in-out infinite;
 }
 
-/* Voice control: a slow breathing pulse while it waits to be tapped. Animates
-   the standalone `scale` property rather than `transform`, because Motion drives
-   `transform` on the same element to morph the circle into the listening pill,
-   and the two would fight over it. */
-@keyframes ws-voice-breathe {
+/* Last Man lobby: a live game's card breathes so the eye finds what is running.
+   Background and a soft green ring, slow, never a flash: it should read as a
+   pulse from across the room, not a warning. */
+@keyframes ws-live-card-pulse {
   0%,
   100% {
-    scale: 1;
+    background-color: rgba(124, 231, 176, 0.04);
+    box-shadow: 0 0 0 0 rgba(124, 231, 176, 0);
   }
   50% {
-    scale: 1.04;
+    background-color: rgba(124, 231, 176, 0.11);
+    box-shadow: 0 0 22px 2px rgba(124, 231, 176, 0.22);
   }
 }
 
-.ws-voice-breathe {
-  animation: ws-voice-breathe 2.4s ease-in-out infinite;
+@utility ws-live-card {
+  animation: ws-live-card-pulse 2.2s ease-in-out infinite;
 }
 
+/* Under reduced motion the live card holds the tint instead of pulsing. */
 @media (prefers-reduced-motion: reduce) {
-  .ws-voice-breathe {
+  .ws-live-card {
     animation: none;
-  }
-}
-
-/* Voice orb: the listening indicator. A soft sphere shading from blue at the
-   top to near-white at the bottom, with two blurred cloud layers drifting inside
-   it at different speeds so the surface keeps moving without ever repeating
-   obviously. Built from gradients rather than an image so it stays crisp at any
-   size and can be recoloured from one place. */
-.ws-orb {
-  position: relative;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: linear-gradient(180deg, #7b9bfb 0%, #a5bafd 36%, #dbe3ff 72%, #f5f7ff 100%);
-  /* The edge stays crisp, as in the reference: just enough outer light to read
-     as active against a dark page, with the inset shading doing the work of
-     making it look spherical rather than flat. */
-  box-shadow:
-    0 0 22px 2px rgba(123, 155, 251, 0.35),
-    inset 0 -8px 18px rgba(255, 255, 255, 0.65),
-    inset 0 6px 16px rgba(90, 125, 240, 0.35);
-}
-
-/* The clouds. Oversized and blurred so only their soft middles ever show
-   through the orb's circular clip. */
-.ws-orb::before,
-.ws-orb::after {
-  content: "";
-  position: absolute;
-  inset: -40%;
-  border-radius: 9999px;
-  will-change: transform;
-}
-
-.ws-orb::before {
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 70%);
-  filter: blur(6px);
-  animation: ws-orb-drift-a 9s ease-in-out infinite;
-}
-
-.ws-orb::after {
-  background: radial-gradient(closest-side, rgba(104, 138, 248, 0.9), rgba(104, 138, 248, 0) 70%);
-  filter: blur(8px);
-  animation: ws-orb-drift-b 13s ease-in-out infinite;
-}
-
-@keyframes ws-orb-drift-a {
-  0% {
-    transform: translate(-14%, -8%) rotate(0deg) scale(1.05);
-  }
-  50% {
-    transform: translate(12%, 10%) rotate(180deg) scale(1.3);
-  }
-  100% {
-    transform: translate(-14%, -8%) rotate(360deg) scale(1.05);
-  }
-}
-
-@keyframes ws-orb-drift-b {
-  0% {
-    transform: translate(10%, 12%) rotate(0deg) scale(1.25);
-  }
-  50% {
-    transform: translate(-12%, -10%) rotate(-180deg) scale(1);
-  }
-  100% {
-    transform: translate(10%, 12%) rotate(-360deg) scale(1.25);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ws-orb::before,
-  .ws-orb::after {
-    animation: none;
+    background-color: rgba(124, 231, 176, 0.08);
   }
 }
 
@@ -686,8 +826,7 @@ body {
   }
 }
 
-/* Kash: the promo banner's ad-style shine — a sheen sweeping across, sparkles
-   blinking, the coin bobbing, and a soft gold glow breathing. */
+/* The sweeping sheen on the cross-border banner. */
 @keyframes kash-sheen {
   0% {
     transform: translateX(-150%) skewX(-18deg);
@@ -695,44 +834,5 @@ body {
   60%,
   100% {
     transform: translateX(350%) skewX(-18deg);
-  }
-}
-
-@keyframes kash-blink {
-  0%,
-  100% {
-    opacity: 0;
-    transform: scale(0.4);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes kash-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-6deg);
-  }
-  50% {
-    transform: translateY(-7px) rotate(6deg);
-  }
-}
-
-@keyframes kash-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 18px rgba(255, 196, 0, 0.18);
-  }
-  50% {
-    box-shadow: 0 0 34px rgba(255, 196, 0, 0.42);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kash-banner,
-  .kash-banner * {
-    animation: none !important;
   }
 }

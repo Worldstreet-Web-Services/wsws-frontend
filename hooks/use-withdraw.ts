@@ -2,9 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
-import { useCreateQuote } from "@/hooks/use-deposit";
+import { useCreateQuote, type DextopusPurpose } from "@/hooks/use-deposit";
 import { useEvmSend } from "@/hooks/use-evm-send";
-import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 import { buildSolanaSolTransfer, buildSolanaTokenTransfer } from "@/lib/trade/solana-transfer";
 import {
   BASE_CHAIN_ID,
@@ -13,6 +12,7 @@ import {
   type SettleChain,
   type WalletChainType,
 } from "@/lib/deposit";
+import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 
 export interface SendUsdcParams {
   chainType: WalletChainType;
@@ -57,7 +57,7 @@ export function useSendUsdc() {
           settle?.usdc ?? solana.asset,
           settle?.decimals ?? solana.decimals
         );
-        return await sendSponsored({ transaction });
+        return await sendSponsored({ transaction, prefundRent: true });
       } finally {
         setSending(false);
       }
@@ -70,13 +70,43 @@ export function useSendUsdc() {
 
 // EVM chain ids by Alchemy network, for direct token/native sends.
 // Every EVM chain we hold balances on, so sends and sells work on all of them.
-// Keep in sync with the portfolio's supported chains (lib/server/alchemy).
+// Keep in sync with EVM_NETWORKS in lib/server/alchemy.ts and
+// NETWORK_TO_CHAIN in lib/sell.ts. A chain missing here is exactly the
+// "Unsupported network" error a sell or send throws — this list previously
+// lagged behind both when spot's buyable set grew, so a token bought (and
+// shown in holdings) on a chain missing here could never actually be sold or
+// sent. useEvmSend already degrades gracefully for a chain not in the gas
+// sponsorship registry (a plain, user-paid transaction instead of a
+// sponsored one), so nothing here needs to be held back for that reason.
 const EVM_CHAIN_ID: Record<string, number> = {
   "base-mainnet": 8453,
   "eth-mainnet": 1,
   "arb-mainnet": 42161,
   "opt-mainnet": 10,
   "polygon-mainnet": 137,
+  "apechain-mainnet": 33139,
+  "berachain-mainnet": 80094,
+  "bnb-mainnet": 56,
+  "celo-mainnet": 42220,
+  "gensyn-mainnet": 685689,
+  "hyperliquid-mainnet": 999,
+  "ink-mainnet": 57073,
+  "monad-mainnet": 143,
+  "robinhood-mainnet": 4663,
+  "shape-mainnet": 360,
+  "soneium-mainnet": 1868,
+  "unichain-mainnet": 130,
+  "worldchain-mainnet": 480,
+  "gnosis-mainnet": 100,
+  "linea-mainnet": 59144,
+  "zksync-mainnet": 324,
+  "scroll-mainnet": 534352,
+  "avax-mainnet": 43114,
+  "blast-mainnet": 81457,
+  "zora-mainnet": 7777777,
+  "ronin-mainnet": 2020,
+  "abstract-mainnet": 2741,
+  "mythos-mainnet": 42018,
 };
 
 export interface SendTokenParams {
@@ -124,7 +154,10 @@ export function useSendToken() {
           tokenAddress === null
             ? await buildSolanaSolTransfer(from, to, amount)
             : await buildSolanaTokenTransfer(from, to, amount, tokenAddress, decimals);
-        return await sendSponsored({ transaction });
+        return await sendSponsored({
+          transaction,
+          prefundRent: tokenAddress !== null,
+        });
       } finally {
         setSending(false);
       }
@@ -156,6 +189,8 @@ export interface ReroutedWithdrawParams {
 export interface ReroutedWithdrawResult {
   depositRequestId: string;
   txHash: string;
+  amountOut: string;
+  minAmountOut: string;
 }
 
 // Withdraws any held token to a different chain and/or asset by reusing the
@@ -163,8 +198,8 @@ export interface ReroutedWithdrawResult {
 // (strict, so a mismatch auto-refunds to our own wallet instead of getting
 // stuck), then send the origin token to the deposit address the quote
 // returns. Dextopus takes it from there and delivers to `to`.
-export function useReroutedWithdraw() {
-  const quote = useCreateQuote();
+export function useReroutedWithdraw(purpose: DextopusPurpose = "withdrawal") {
+  const quote = useCreateQuote(purpose);
   const { sendToken, sending } = useSendToken();
 
   const withdraw = useCallback(
@@ -196,7 +231,15 @@ export function useReroutedWithdraw() {
         to: result.depositAddress,
         amount,
       });
-      return { depositRequestId: result.depositRequestId, txHash };
+      // Dextopus observes its unique deposit address on-chain. Its current
+      // deposit integration does not expose a submit endpoint for these
+      // requests, so status reconciliation begins after the source transfer.
+      return {
+        depositRequestId: result.depositRequestId,
+        txHash,
+        amountOut: result.amountOut,
+        minAmountOut: result.minAmountOut,
+      };
     },
     [quote, sendToken]
   );

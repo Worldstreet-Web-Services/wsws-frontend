@@ -1,22 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { MarketLogo } from "@/components/ui/market-logo";
-import { useAuthSession } from "@/hooks/use-auth-session";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SearchIcon } from "@/components/ui/icons";
+import { CloseIcon, SearchIcon } from "@/components/ui/icons";
 import { LanguageSelect } from "@/components/ui/language-select";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Avatar } from "@/components/ui/avatar";
 import { useGlobalSearch, type SearchResult } from "@/components/layout/use-global-search";
+import { truncateAddress } from "@/lib/format";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { requestTourReplay, startDashboardTour } from "@/features/tour";
 
 interface TopbarProps {
   onOpenAccount: () => void;
   // Scrolls in-page on /dashboard, or navigates there first from any other
   // page (e.g. /casino) — same dispatcher the sidebar uses.
   onSelectSection: (id: string) => void;
+}
+
+function CompassIcon({ size = 17 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8 4.8-2.2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 const GROUPS: {
@@ -84,10 +99,17 @@ function SearchResults({
 }
 
 export function Topbar({ onOpenAccount, onSelectSection }: TopbarProps) {
-  const { profile } = useAuthSession();
+  const { profile, evmAddress: address } = useAuthSession();
   const t = useTranslations("topbar");
+  const tTour = useTranslations("tour");
+  const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  // A phone shows the account instead of the search field, and swaps to the
+  // field only once the search button is pressed. From `md` up the field is
+  // always there and this stays false.
+  const [searching, setSearching] = useState(false);
 
   const open = focused && query.trim().length > 0;
 
@@ -95,15 +117,58 @@ export function Topbar({ onOpenAccount, onSelectSection }: TopbarProps) {
     onSelectSection(r.sectionId);
     setQuery("");
     setFocused(false);
+    setSearching(false);
+  };
+
+  const closeSearch = () => {
+    setQuery("");
+    setFocused(false);
+    setSearching(false);
+  };
+
+  // Replays the walkthrough. The steps live on the dashboard, so any other
+  // page parks a replay request and routes there first.
+  const takeTour = () => {
+    if (pathname === "/dashboard") {
+      startDashboardTour(tTour);
+    } else {
+      requestTourReplay();
+      router.push("/dashboard");
+    }
   };
 
   return (
     <div className="relative z-[2] flex items-center gap-3 border-b border-white/7 bg-black/70 px-4 py-3.5 backdrop-blur-[14px] sm:px-5">
-      <Link href="/dashboard" className="flex items-center md:hidden">
-        <MarketLogo className="h-[15px] w-auto" />
-      </Link>
+      {/* Who you are signed in as, and the wallet that holds the money. Tapping
+          it opens the account modal, which is where the phone reaches settings
+          now that the drawer is opened from the tab bar. */}
+      {searching ? null : (
+        <button
+          type="button"
+          data-tour="profile"
+          onClick={onOpenAccount}
+          aria-label={t("account")}
+          className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left md:hidden"
+        >
+          <Avatar seed={profile.avatarSeed} size={38} />
+          <span className="min-w-0">
+            <span className="block truncate font-sans text-[14px] font-semibold text-white">
+              {profile.name}
+            </span>
+            {address ? (
+              <span className="tnum block truncate text-[11.5px] font-normal text-white/45">
+                {truncateAddress(address)}
+              </span>
+            ) : null}
+          </span>
+        </button>
+      )}
 
-      <div className="relative max-w-[230px] min-w-0 flex-1 md:max-w-[420px]">
+      <div
+        className={`relative min-w-0 flex-1 md:block md:max-w-[420px] ${
+          searching ? "block" : "hidden"
+        }`}
+      >
         <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
           <SearchIcon />
           <input
@@ -112,6 +177,7 @@ export function Topbar({ onOpenAccount, onSelectSection }: TopbarProps) {
             onFocus={() => setFocused(true)}
             onBlur={() => setTimeout(() => setFocused(false), 150)}
             placeholder={t("searchPlaceholder")}
+            autoFocus={searching}
             className="min-w-0 flex-1 border-none bg-transparent text-sm font-normal text-white outline-none"
           />
         </div>
@@ -119,20 +185,48 @@ export function Topbar({ onOpenAccount, onSelectSection }: TopbarProps) {
         {open ? <SearchResults query={query} onSelect={select} /> : null}
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
-        {/* Language is the least urgent control, so it yields first on a phone;
-            the bell stays at every width. */}
-        <span className="hidden min-[400px]:block">
-          <LanguageSelect />
-        </span>
-        <NotificationBell />
-        <button
-          onClick={onOpenAccount}
-          aria-label={t("account")}
-          className="cursor-pointer rounded-full border border-white/14 md:hidden"
-        >
-          <Avatar seed={profile.avatarSeed} size={34} />
-        </button>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {searching ? (
+          <button
+            type="button"
+            onClick={closeSearch}
+            aria-label={t("closeSearch")}
+            className="grid size-[38px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/75 transition-colors hover:bg-white/10 md:hidden"
+          >
+            <CloseIcon />
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setSearching(true)}
+              aria-label={t("search")}
+              className="grid size-[38px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/75 transition-colors hover:bg-white/10 md:hidden"
+            >
+              <SearchIcon />
+            </button>
+            {/* Replay of the first-visit walkthrough: a labelled pill from
+                sm up, just the compass on a phone. */}
+            <button
+              type="button"
+              onClick={takeTour}
+              aria-label={tTour("replayCta")}
+              className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/14 bg-white/5 px-[10px] text-white/75 transition-colors hover:bg-white/10 hover:text-white sm:px-3.5"
+            >
+              <CompassIcon />
+              <span className="hidden font-sans text-[12.5px] font-medium whitespace-nowrap sm:block">
+                {tTour("replayCta")}
+              </span>
+            </button>
+            {/* The phone header is the account, search and the bell, as the
+                mobile design has it. Language moves into the account modal
+                rather than competing for the row. */}
+            <span className="hidden md:block">
+              <LanguageSelect />
+            </span>
+            <NotificationBell />
+          </>
+        )}
       </div>
     </div>
   );

@@ -95,7 +95,7 @@ export function SpotConfirmSheet({
                         ? t("orderWorking")
                         : `${buying ? t("confirmBuy") : t("confirmSell")} · ${base}`}
                 </div>
-                <div className="text-xs font-normal text-white/50">{base}/USDC</div>
+                <div className="text-xs font-normal text-white/50">{base}/USD</div>
               </div>
             </div>
 
@@ -148,7 +148,7 @@ export function SpotConfirmSheet({
                 {!inProgress ? (
                   <button
                     onClick={onClose}
-                    className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90"
+                    className="ws-chrome text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold hover:opacity-90"
                   >
                     {t("done")}
                   </button>

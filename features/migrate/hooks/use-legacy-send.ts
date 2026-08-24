@@ -115,11 +115,11 @@ export function useLegacySendToken() {
         tokenAddress === null
           ? await buildSolanaSolTransfer(from, to, amount)
           : await buildSolanaTokenTransfer(from, to, amount, tokenAddress, decimals);
-      const prepared = await prepareSponsoredSolanaTransaction(transaction);
-      const { signedTransaction } = await signTransaction({ transaction: prepared, wallet });
-      const result = await sponsorAndSubmitSolanaTransaction(signedTransaction, {
-        prefundRent: true,
+      const prepared = await prepareSponsoredSolanaTransaction(transaction, {
+        prefundRent: tokenAddress !== null,
       });
+      const { signedTransaction } = await signTransaction({ transaction: prepared, wallet });
+      const result = await sponsorAndSubmitSolanaTransaction(signedTransaction);
       if (!result.submittedSignature) {
         throw new Error("The gas sponsor did not submit the transaction.");
       }

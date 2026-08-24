@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 import { friendlyError } from "@/lib/errors";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { usePrices } from "@/hooks/use-prices";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { useVaultActions, readMinStartStake } from "@/features/casino/hooks/use-vault-actions";
+import { useVaultActions } from "@/features/casino/hooks/use-vault-actions";
+import { useDefaultEntry } from "@/features/casino/hooks/use-default-entry";
 import { followGame } from "@/features/casino/lib/last-standing/followed-game";
 import {
-  DEFAULT_ENTRY_USD,
   formatEth,
   stakeToSend,
   usdToWei,
@@ -22,8 +21,13 @@ import {
 interface StartGameSheetProps {
   onClose: () => void;
   onStarted: () => void;
+  /** Last look before the transaction: resolves false to abort the start
+   *  (e.g. another game went live while the sheet was open). */
+  ensureCanStart?: () => Promise<boolean>;
   /** Formats a USD figure in the currency the user picked. */
   formatUsd: (usd: number) => string;
+  /** Opens funding when the wallet is short on ETH; without it the CTA just says so. */
+  onFund?: () => void;
 }
 
 // The pot split, fixed by the contract. Shown before signing because opening a
@@ -35,39 +39,24 @@ const SPLIT = [
   { key: "splitStarter", pct: 10 },
 ] as const;
 
-export function StartGameSheet({ onClose, onStarted, formatUsd }: StartGameSheetProps) {
+export function StartGameSheet({
+  onClose,
+  onStarted,
+  formatUsd,
+  onFund,
+  ensureCanStart,
+}: StartGameSheetProps) {
   const t = useTranslations("casino.lastStanding");
   const router = useRouter();
   const { startGame, starting } = useVaultActions();
-  const ethPrice = usePrices(["ETH"])["ETH"] ?? 0;
 
   // Null until they type: the field shows the cheapest stake the contract will
   // actually accept, which is not always our preferred figure.
   const [edited, setEdited] = useState<string | null>(null);
 
-  // The contract's floor. Read rather than assumed, because a stake under it
-  // reverts, and because our default is only honest if it clears it.
-  //
-  // "failed" is kept apart from "not loaded yet". Treating a failed read as a
-  // zero floor is what let this sheet advertise a price the chain would not
-  // take: the clamp had nothing to clamp against and the button quoted the
-  // wrong number confidently.
-  const [floorWei, setFloorWei] = useState<bigint | null>(null);
-  const [floorFailed, setFloorFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void readMinStartStake()
-      .then((value) => {
-        if (!cancelled) setFloorWei(value);
-      })
-      .catch(() => {
-        if (!cancelled) setFloorFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // The contract's floor and the live price, from the same hook the lobby
+  // button reads, so the sheet can only ever quote what the button promised.
+  const { usd: defaultEntry, floorWei, floorFailed, ethPrice } = useDefaultEntry();
 
   // What the wallet needs to hold. The stake is native ETH on Base, so a user
   // whose balance is all USDC cannot start a game however much it is worth.
@@ -79,9 +68,7 @@ export function StartGameSheet({ onClose, onStarted, formatUsd }: StartGameSheet
   // The default is the greater of our preferred entry and the contract's floor,
   // so the field, the ETH figure and the button always agree. Lower the floor
   // on-chain and this drops back to the preferred entry on its own.
-  const floorUsd = floorWei === null ? 0 : weiToUsd(floorWei, ethPrice);
-  const defaultUsd = Math.max(DEFAULT_ENTRY_USD, floorUsd);
-  const usd = edited ?? (defaultUsd > 0 ? defaultUsd.toFixed(2) : "");
+  const usd = edited ?? (defaultEntry !== null ? defaultEntry.toFixed(2) : "");
 
   const wanted = useMemo(() => usdToWei(Number(usd), ethPrice), [usd, ethPrice]);
   const send = useMemo(
@@ -100,6 +87,11 @@ export function StartGameSheet({ onClose, onStarted, formatUsd }: StartGameSheet
   const confirm = async () => {
     if (!ready) return;
     try {
+      if (ensureCanStart && !(await ensureCanStart())) {
+        toast.error(t("toastStartBlockedLive"));
+        onClose();
+        return;
+      }
       const { gameId } = await startGame(send);
       // The pop-out timer follows whatever you last put money into.
       if (gameId !== null) followGame(gameId);
@@ -169,22 +161,33 @@ export function StartGameSheet({ onClose, onStarted, formatUsd }: StartGameSheet
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => void confirm()}
-        disabled={!ready}
-        className="bg-accent mt-5 w-full cursor-pointer rounded-[13px] py-3.5 text-[14.5px] font-semibold text-black transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {starting
-          ? t("startPending")
-          : floorFailed
-            ? t("startUnavailable")
-            : shortOnEth
-              ? t("startNeedsEthCta")
-              : send > 0n
-                ? t("startCta", { amount: formatUsd(sendUsd) })
-                : t("loading")}
-      </button>
+      {/* Short on ETH with a way to fund: the button becomes the way. */}
+      {shortOnEth && !floorFailed && !starting && onFund ? (
+        <button
+          type="button"
+          onClick={onFund}
+          className="bg-accent mt-5 w-full cursor-pointer rounded-[13px] py-3.5 text-[14.5px] font-semibold text-black"
+        >
+          {t("addMoney")}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void confirm()}
+          disabled={!ready}
+          className="bg-accent mt-5 w-full cursor-pointer rounded-[13px] py-3.5 text-[14.5px] font-semibold text-black transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {starting
+            ? t("startPending")
+            : floorFailed
+              ? t("startUnavailable")
+              : shortOnEth
+                ? t("startNeedsEthCta")
+                : send > 0n
+                  ? t("startCta", { amount: formatUsd(sendUsd) })
+                  : t("loading")}
+        </button>
+      )}
     </div>
   );
 }

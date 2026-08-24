@@ -18,8 +18,13 @@ describe("canSell", () => {
     expect(canSell("solana-mainnet")).toBe(true);
   });
 
-  it("rejects an unsupported network", () => {
-    expect(canSell("bnb-mainnet")).toBe(false);
+  it("accepts the chains added alongside spot's expanded buy list", () => {
+    expect(canSell("bnb-mainnet")).toBe(true);
+    expect(canSell("berachain-mainnet")).toBe(true);
+  });
+
+  it("rejects a network not in either list", () => {
+    expect(canSell("fantom-mainnet")).toBe(false);
   });
 });
 
@@ -27,6 +32,10 @@ describe("canSellAsset", () => {
   it("allows tokens (with an address) on supported chains", () => {
     expect(canSellAsset("polygon-mainnet", "0xusdc")).toBe(true);
     expect(canSellAsset("solana-mainnet", "somemint")).toBe(true);
+    // A token is assumed sellable on a new chain even where the chain's own
+    // native balance is not (berachain's native BERA is not, but its ERC-20s
+    // still are, per Dextopus's own quote endpoint).
+    expect(canSellAsset("berachain-mainnet", "0xsometoken")).toBe(true);
   });
 
   it("allows native ETH and native SOL but not native POL", () => {
@@ -34,13 +43,25 @@ describe("canSellAsset", () => {
     expect(canSellAsset("eth-mainnet", null)).toBe(true);
     expect(canSellAsset("arb-mainnet", null)).toBe(true);
     expect(canSellAsset("polygon-mainnet", null)).toBe(false);
-    // Native SOL sells via a single sponsored LI.FI leg straight to USDC on
-    // Base — LI.FI takes SOL as an origin where Dextopus does not.
+    // Native SOL uses a direct sponsored Dextopus deposit.
     expect(canSellAsset("solana-mainnet", null)).toBe(true);
   });
 
+  it("allows native BNB, confirmed live against Dextopus's own quote endpoint", () => {
+    expect(canSellAsset("bnb-mainnet", null)).toBe(true);
+  });
+
+  it("rejects native balances Dextopus does not accept as a sell origin, even though the chain itself is supported", () => {
+    // Confirmed live: Dextopus rejects a native origin on these four chains
+    // specifically ("Origin asset ... is not supported" / no route at all).
+    expect(canSellAsset("berachain-mainnet", null)).toBe(false);
+    expect(canSellAsset("celo-mainnet", null)).toBe(false);
+    expect(canSellAsset("gnosis-mainnet", null)).toBe(false);
+    expect(canSellAsset("avax-mainnet", null)).toBe(false);
+  });
+
   it("rejects everything on an unsupported network", () => {
-    expect(canSellAsset("bnb-mainnet", "0xtoken")).toBe(false);
+    expect(canSellAsset("fantom-mainnet", "0xtoken")).toBe(false);
   });
 });
 
@@ -63,6 +84,7 @@ describe("buildSellQuoteBody", () => {
       recipient: "0xbase",
       refundTo: "0xarb",
       slippageBps: 100,
+      strict: true,
     });
   });
 
@@ -79,7 +101,7 @@ describe("buildSellQuoteBody", () => {
     expect(body.originChainId).toBe(8453);
   });
 
-  it("uses the wrapped-SOL mint for native SOL", () => {
+  it("uses the system-program sentinel accepted by Dextopus for native SOL", () => {
     const body = buildSellQuoteBody({
       network: "solana-mainnet",
       asset: null,
@@ -88,14 +110,15 @@ describe("buildSellQuoteBody", () => {
       refundTo: "solwallet",
       slippageBps: 100,
     });
-    expect(body.originAsset).toBe("So11111111111111111111111111111111111111112");
+    expect(body.originAsset).toBe("11111111111111111111111111111111");
     expect(body.originChainId).toBe(792703809);
+    expect(body.strict).toBe(true);
   });
 
   it("throws for an unsupported network", () => {
     expect(() =>
       buildSellQuoteBody({
-        network: "bnb-mainnet",
+        network: "fantom-mainnet",
         asset: "0x",
         amount: 1n,
         recipient: "0x",

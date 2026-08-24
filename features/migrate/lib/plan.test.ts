@@ -21,7 +21,7 @@ function token(partial: Partial<TokenBalance>): TokenBalance {
 
 describe("buildSweepPlan", () => {
   it("drops zero balances and groups the rest by network", () => {
-    const plan = buildSweepPlan([
+    const { chains, skipped } = buildSweepPlan([
       token({ symbol: "USDC", rawBalance: "5000000" }),
       token({ symbol: "DUST", rawBalance: "0" }),
       token({
@@ -33,20 +33,21 @@ describe("buildSweepPlan", () => {
       }),
     ]);
 
-    expect(plan.map((c) => c.network)).toEqual(["base-mainnet", "solana-mainnet"]);
-    expect(plan[0].assets.map((a) => a.symbol)).toEqual(["USDC"]);
-    expect(plan[1].assets.map((a) => a.symbol)).toEqual(["SOL"]);
+    expect(chains.map((c) => c.network)).toEqual(["base-mainnet", "solana-mainnet"]);
+    expect(chains[0].assets.map((a) => a.symbol)).toEqual(["USDC"]);
+    expect(chains[1].assets.map((a) => a.symbol)).toEqual(["SOL"]);
+    expect(skipped).toEqual([]);
   });
 
   it("keeps amounts exact through bigint parsing", () => {
     const raw = "123456789012345678901234567890";
-    const plan = buildSweepPlan([token({ rawBalance: raw, decimals: 18 })]);
+    const { chains } = buildSweepPlan([token({ rawBalance: raw, decimals: 18 })]);
 
-    expect(plan[0].assets[0].amount).toBe(BigInt(raw));
+    expect(chains[0].assets[0].amount).toBe(BigInt(raw));
   });
 
   it("orders each chain's tokens before its native asset", () => {
-    const plan = buildSweepPlan([
+    const { chains } = buildSweepPlan([
       token({ symbol: "ETH", address: null, decimals: 18, rawBalance: "1000000000000000000" }),
       token({ symbol: "USDC", rawBalance: "5000000" }),
       token({
@@ -56,39 +57,47 @@ describe("buildSweepPlan", () => {
       }),
     ]);
 
-    expect(plan[0].assets.map((a) => a.symbol)).toEqual(["USDC", "WSWS", "ETH"]);
+    expect(chains[0].assets.map((a) => a.symbol)).toEqual(["USDC", "WSWS", "ETH"]);
   });
 
   it("marks EVM chains as batched and Solana as sequential", () => {
-    const plan = buildSweepPlan([
+    const { chains } = buildSweepPlan([
       token({}),
       token({ network: "solana-mainnet", address: null, decimals: 9, rawBalance: "1" }),
     ]);
 
-    expect(plan.find((c) => c.network === "base-mainnet")?.kind).toBe("evm-batch");
-    expect(plan.find((c) => c.network === "solana-mainnet")?.kind).toBe("solana-sequential");
+    expect(chains.find((c) => c.network === "base-mainnet")?.kind).toBe("evm-batch");
+    expect(chains.find((c) => c.network === "solana-mainnet")?.kind).toBe("solana-sequential");
   });
 
-  it("orders chains deterministically with Solana last", () => {
-    const plan = buildSweepPlan([
+  it("orders EVM chains richest first with Solana last", () => {
+    const { chains } = buildSweepPlan([
       token({ network: "solana-mainnet", address: null, decimals: 9, rawBalance: "1" }),
-      token({ network: "polygon-mainnet" }),
-      token({ network: "base-mainnet" }),
+      token({ network: "polygon-mainnet", valueUsd: 5 }),
+      token({ network: "base-mainnet", valueUsd: 100 }),
+      token({ network: "arb-mainnet", valueUsd: 40 }),
     ]);
 
-    expect(plan.map((c) => c.network)).toEqual([
+    expect(chains.map((c) => c.network)).toEqual([
       "base-mainnet",
+      "arb-mainnet",
       "polygon-mainnet",
       "solana-mainnet",
     ]);
   });
 
-  it("refuses to plan an unsupported network instead of guessing", () => {
-    expect(() => buildSweepPlan([token({ network: "sepolia" })])).toThrow(/unsupported network/i);
+  it("skips holdings on unsponsored networks instead of failing the sweep", () => {
+    const { chains, skipped } = buildSweepPlan([
+      token({ symbol: "USDC", rawBalance: "5000000" }),
+      token({ symbol: "AVAX", network: "avax-mainnet", address: null, decimals: 18 }),
+    ]);
+
+    expect(chains.map((c) => c.network)).toEqual(["base-mainnet"]);
+    expect(skipped.map((a) => a.symbol)).toEqual(["AVAX"]);
   });
 
   it("returns an empty plan for an empty portfolio", () => {
-    expect(buildSweepPlan([])).toEqual([]);
+    expect(buildSweepPlan([])).toEqual({ chains: [], skipped: [] });
   });
 });
 

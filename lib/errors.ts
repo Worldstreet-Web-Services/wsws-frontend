@@ -111,6 +111,11 @@ export function friendlyError(
   if (!m) return fallback;
   const gateway = gatewayMeta(e);
 
+  // The Solana sell executor already replaced the stale amount with confirmed
+  // chain state. Tell the user why another confirmation is required instead
+  // of masking it behind the generic order failure.
+  if (/^your solana balance changed\./i.test(raw)) return raw;
+
   // Before the text patterns: a custom-error revert often ALSO contains the
   // word "reverted", which no pattern below would translate, so the hex would
   // survive all the way to the toast.
@@ -164,7 +169,7 @@ export function friendlyError(
   // is worse than saying nothing. Must precede the server-message passthrough,
   // which would otherwise judge a short revert string "safe" and print it.
   if (/execution reverted|call revert|\breverted\b|0x[0-9a-fA-F]{8,}/.test(raw)) {
-    return "The network rejected this transaction. Nothing was charged — please try again.";
+    return "The network rejected this transaction. Nothing was charged, so please try again.";
   }
   // For typed server responses (like chess cashier failures), keep the message
   // when it is already plain English and not obviously an infrastructure dump.

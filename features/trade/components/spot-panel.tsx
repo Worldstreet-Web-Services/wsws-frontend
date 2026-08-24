@@ -4,17 +4,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useBuy } from "@/features/trade/hooks/use-buy";
 import { useSell } from "@/features/trade/hooks/use-sell";
+import { useMemeTrade, type TradePhase } from "@/features/trade/hooks/use-meme-trade";
 import { useDepositStatus } from "@/hooks/use-deposit";
-import { useLifiSettlement } from "@/hooks/use-lifi-settlement";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { savePendingRwaSettlement } from "@/lib/trade/pending-settlement";
 import { usdcBaseUnits, depositProgress, type DepositStage } from "@/lib/deposit";
 import { canSellAsset } from "@/lib/sell";
 import { gasBufferFor, maxSellable } from "@/lib/trade/gas-buffer";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
-import { formatAmount, formatUsd, toBaseUnits } from "@/lib/trade/math";
+import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
+import { SolanaBalanceChangedError } from "@/lib/trade/solana-balance";
+import { belowMinimumBuy, isSolanaChainId, minimumBuyUsd } from "@/lib/trade/minimums";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 import type { BuyRoute } from "@/lib/buy";
+import type { SwapRoute } from "@/lib/spot-swap";
 import type { TokenBalance } from "@/lib/server/alchemy";
 
 // The order ticket only needs the selected market's ticker and logo; price comes
@@ -46,6 +50,19 @@ interface SpotPanelProps {
   // The Dextopus route a buy would settle through, or null when the asset is not
   // buyable. Presence of a route is what enables buying.
   buyRoute: BuyRoute | null;
+  // The same-chain swap route for a symbol Dextopus does not offer (see
+  // lib/spot-swap.ts). A market has buyRoute or swapRoute, never both.
+  swapRoute: SwapRoute | null;
+}
+
+// Maps the meme swap engine's phases onto the same four states the Dextopus
+// settlement flow reports, so the confirm sheet does not need to know which
+// rail is running.
+function swapOrderPhase(phase: TradePhase): SpotOrderPhase {
+  if (phase === "idle") return "confirm";
+  if (phase === "confirmed") return "settled";
+  if (phase === "failed") return "failed";
+  return "working";
 }
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
@@ -69,7 +86,6 @@ const CHAIN_LABEL: Record<string, string> = {
 // Indicative taker fee shown on the ticket. The real price tolerance is applied
 // by the quote at execution.
 const FEE_PCT = 0.001;
-const MIN_BUY_USD = 1;
 const SLIPPAGE_BPS = 100;
 
 // Plain-language settlement stage message keys for the confirm sheet.
@@ -82,33 +98,46 @@ const STAGE_KEY: Record<DepositStage, string> = {
   failed: "stageFailed",
 };
 
-export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: SpotPanelProps) {
+export function SpotPanel({
+  token,
+  mark,
+  usdcBalance,
+  heldToken,
+  buyRoute,
+  swapRoute,
+}: SpotPanelProps) {
   const t = useTranslations("spot");
   const [side, setSide] = useState<Side>("buy");
   const [amount, setAmount] = useState("");
+  const [maxRequested, setMaxRequested] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
-  // Which rail carried a sell: Dextopus settlement polls a deposit request,
-  // LI.FI (Solana sells) polls the transaction signature. Buys are always
-  // Dextopus.
-  const [rail, setRail] = useState<"dextopus" | "lifi">("dextopus");
 
   const buy = useBuy();
   const sell = useSell();
+  const memeTrade = useMemeTrade();
   const portfolio = usePortfolio();
-  const status = useDepositStatus(rail === "dextopus" ? requestId : null);
-  const lifiProgress = useLifiSettlement(rail === "lifi" ? requestId : null);
+  const status = useDepositStatus(requestId, "trade");
 
   const base = token?.symbol ?? "";
   const buying = side === "buy";
-  const canBuy = buyRoute != null;
+  // A symbol with a swap route settles through the meme swap engine instead
+  // of Dextopus for both sides of the ticket.
+  const isSwapMarket = swapRoute != null;
+  const canBuy = buyRoute != null || swapRoute != null;
   const heldBalance = heldToken?.balance ?? 0;
 
-  // Sell-side gates, mirroring the sell sheet.
-  const notSellable = heldToken != null && !canSellAsset(heldToken.network, heldToken.address);
-  const maxSell = heldToken
-    ? maxSellable(heldToken.network, heldToken.address, heldToken.balance)
-    : 0;
+  // Sell-side gates, mirroring the sell sheet. A swap market always sells
+  // (the swap engine handles its own gas sponsorship via useEvmSend, the
+  // same mechanism every EVM network here already uses), so none of
+  // Dextopus's per-network sell rules apply to it.
+  const notSellable =
+    !isSwapMarket && heldToken != null && !canSellAsset(heldToken.network, heldToken.address);
+  const maxSell = isSwapMarket
+    ? heldBalance
+    : heldToken
+      ? maxSellable(heldToken.network, heldToken.address, heldToken.balance)
+      : 0;
   // Same sponsorship rule as the sell sheet: every registered EVM network
   // sends gas-free, and Solana sells ride the platform co-signer. Hardcoding
   // Base here is what blocked spot sells of assets the portfolio sheet sold
@@ -123,7 +152,8 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
     portfolio.tokens.some(
       (p) => p.network === heldToken.network && p.symbol === sellNativeSym && p.balance > 0
     );
-  const sellNeedsGas = !buying && heldToken != null && !portfolio.loading && !sellHasGas;
+  const sellNeedsGas =
+    !isSwapMarket && !buying && heldToken != null && !portfolio.loading && !sellHasGas;
 
   // Clear the amount when the market or side changes, so a figure meant for one
   // asset never carries into another.
@@ -132,6 +162,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
   if (seen !== key) {
     setSeen(key);
     setAmount("");
+    setMaxRequested(false);
   }
 
   const balance = buying ? usdcBalance : maxSell;
@@ -148,7 +179,10 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
 
   const notBuyable = buying && !canBuy;
   const overBalance = amountNum > balance + 1e-9;
-  const belowMin = buying && amountNum > 0 && amountNum < MIN_BUY_USD;
+  // Solana buys start at 2 USDC, everything else at 1 (lib/trade/minimums).
+  const minBuyUsd = minimumBuyUsd(isSolanaChainId(buyRoute?.destinationChainId));
+  const belowMin =
+    buying && belowMinimumBuy(amountNum, isSolanaChainId(buyRoute?.destinationChainId));
   // A missing mark only blocks buys; a sell prices at the quote.
   const invalid =
     amountNum <= 0 ||
@@ -159,23 +193,67 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
     (buying && mark <= 0) ||
     (!buying && (notSellable || sellNeedsGas));
 
-  // Settlement phase for the confirm sheet, from whichever rail is live.
+  // Buy settlement stays in the confirm sheet. Sells are handed to the
+  // dashboard-level Dextopus tracker as soon as their source transfer lands.
+  // A swap market reports its own phase directly from useMemeTrade instead,
+  // since it never goes through Dextopus's deposit-status polling.
   const dextopusProgress = status.data
     ? depositProgress(status.data.status, status.data.executionStatus)
     : depositProgress("", "");
-  const progress = rail === "lifi" ? lifiProgress : dextopusProgress;
+  // received is an on-chain-verified balanceOf delta that lands before the
+  // backend's own slower confirmation — treated as settled immediately, so
+  // this screen never sits on "working" for a trade that has already landed
+  // in the wallet.
+  const swapSettled = memeTrade.phase === "confirmed" || memeTrade.received != null;
+  const swapStage: DepositStage = swapSettled
+    ? "settled"
+    : memeTrade.phase === "failed"
+      ? "failed"
+      : memeTrade.phase === "signing" || memeTrade.phase === "confirming"
+        ? "processing"
+        : "waiting";
+  const swapPct: Record<TradePhase, number> = {
+    idle: 0,
+    linking: 10,
+    quoting: 25,
+    signing: 50,
+    confirming: 75,
+    confirmed: 100,
+    failed: 0,
+  };
+  const progress = isSwapMarket
+    ? { stage: swapStage, pct: swapSettled ? 100 : swapPct[memeTrade.phase] }
+    : dextopusProgress;
   const stage = progress.stage;
-  const phase: SpotOrderPhase = !requestId
-    ? "confirm"
-    : stage === "settled"
+  const phase: SpotOrderPhase = isSwapMarket
+    ? swapSettled
       ? "settled"
-      : stage === "failed" || stage === "refunded"
-        ? "failed"
-        : "working";
+      : swapOrderPhase(memeTrade.phase)
+    : !requestId
+      ? "confirm"
+      : stage === "settled"
+        ? "settled"
+        : stage === "failed" || stage === "refunded"
+          ? "failed"
+          : "working";
 
   // Fire the result toast and refresh holdings once, when the order resolves.
   const resolvedRef = useRef(false);
   useEffect(() => {
+    if (isSwapMarket) {
+      if (memeTrade.phase === "idle" || resolvedRef.current) return;
+      if (memeTrade.phase === "confirmed") {
+        resolvedRef.current = true;
+        toast.success(
+          buying ? t("toastBought", { symbol: base }) : t("toastSold", { symbol: base })
+        );
+        void portfolio.refetchUntilChanged();
+      } else if (memeTrade.phase === "failed") {
+        resolvedRef.current = true;
+        toast.error(memeTrade.error ?? t("orderFailedNote"));
+      }
+      return;
+    }
     if (!requestId || resolvedRef.current) return;
     if (stage === "settled") {
       resolvedRef.current = true;
@@ -185,11 +263,24 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
       resolvedRef.current = true;
       toast.error(t("orderFailedNote"));
     }
-  }, [stage, requestId, buying, base, portfolio]);
+  }, [
+    isSwapMarket,
+    memeTrade.phase,
+    memeTrade.error,
+    stage,
+    requestId,
+    buying,
+    base,
+    portfolio,
+    t,
+  ]);
 
   const handleAmount = (raw: string) => {
     const next = raw.replace(/,/g, "");
-    if (next === "" || DECIMAL_INPUT.test(next)) setAmount(next);
+    if (next === "" || DECIMAL_INPUT.test(next)) {
+      setAmount(next);
+      setMaxRequested(false);
+    }
   };
   const setPercent = (pct: number) => {
     if (balance <= 0) return;
@@ -198,11 +289,13 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
     // full precision and settle the exact held amount via rawBalance below.
     if (buying) {
       setAmount((Math.floor(v * 100) / 100).toFixed(2));
+      setMaxRequested(false);
       return;
     }
     // String() emits scientific notation for dust, which the regex rejects.
     const fixed = v.toFixed(heldToken?.decimals ?? 18);
     setAmount(fixed.includes(".") ? fixed.replace(/\.?0+$/, "") || "0" : fixed);
+    setMaxRequested(pct === 100);
   };
 
   const submit = () => {
@@ -211,6 +304,29 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
   };
 
   const runOrder = async () => {
+    if (isSwapMarket) {
+      if (!swapRoute) return;
+      try {
+        await memeTrade.trade({
+          side: buying ? "BUY" : "SELL",
+          tokenAddress: swapRoute.tokenAddress,
+          amount,
+          slippageBps: SLIPPAGE_BPS,
+        });
+        if (buying) return; // buy stays in the sheet, matching the Dextopus path
+        setConfirmOpen(false);
+        setAmount("");
+        setMaxRequested(false);
+        void portfolio.refetchUntilChanged();
+      } catch (e) {
+        // useMemeTrade already records phase "failed" and its own error
+        // message; only the sheet needs closing for a sell, matching the
+        // Dextopus sell branch below.
+        if (!buying) setConfirmOpen(false);
+        toast.error(friendlyError(e, t("orderRejected")));
+      }
+      return;
+    }
     try {
       if (buying) {
         if (!buyRoute) return;
@@ -219,7 +335,6 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
           amount: usdcBaseUnits(amount),
           slippageBps: SLIPPAGE_BPS,
         });
-        setRail("dextopus");
         setRequestId(result.requestId);
       } else {
         if (!heldToken) return;
@@ -234,11 +349,26 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
           decimals: heldToken.decimals,
           amount: amountUnits,
           slippageBps: SLIPPAGE_BPS,
+          maxRequested,
         });
-        setRail(result.rail);
-        setRequestId(result.requestId);
+        savePendingRwaSettlement({
+          requestId: result.requestId,
+          direction: "solana-to-base",
+          assetSymbol: base,
+          createdAt: Date.now(),
+        });
+        setConfirmOpen(false);
+        setAmount("");
+        setMaxRequested(false);
+        toast.success(t("workingNote"));
+        void portfolio.refetchUntilChanged();
       }
     } catch (e) {
+      if (e instanceof SolanaBalanceChangedError && heldToken) {
+        setAmount(fromBaseUnits(e.availableAmount, heldToken.decimals));
+        setMaxRequested(true);
+        void portfolio.refetch();
+      }
       setConfirmOpen(false);
       toast.error(friendlyError(e, t("orderRejected")));
     }
@@ -249,10 +379,21 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
   const closeSheet = () => {
     if (phase === "working") return;
     setConfirmOpen(false);
+    if (isSwapMarket) {
+      if (memeTrade.phase === "idle") return;
+      resolvedRef.current = false;
+      memeTrade.reset();
+      if (phase === "settled") {
+        setAmount("");
+        setMaxRequested(false);
+      }
+      return;
+    }
     if (requestId) {
       setRequestId(null);
       resolvedRef.current = false;
       if (phase === "settled") setAmount("");
+      if (phase === "settled") setMaxRequested(false);
     }
   };
 
@@ -286,7 +427,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
           : amountNum <= 0
             ? t("ctaEnterAmount")
             : belowMin
-              ? t("ctaMin", { amount: formatUsd(MIN_BUY_USD) })
+              ? t("ctaMin", { amount: formatUsd(minBuyUsd) })
               : overBalance
                 ? t("ctaNoBalance")
                 : buying
@@ -325,7 +466,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
           <span>{buying ? t("youPay") : t("youSell")}</span>
           <span className="flex items-center gap-2">
             <span className="tnum">
-              {t("balance", { amount: formatAmount(balance), symbol: buying ? "USDC" : base })}
+              {t("balance", { amount: formatAmount(balance), symbol: buying ? "USD" : base })}
             </span>
             {balance > 0 ? (
               <button
@@ -346,7 +487,7 @@ export function SpotPanel({ token, mark, usdcBalance, heldToken, buyRoute }: Spo
             className="ws-display tnum min-w-0 flex-1 bg-transparent text-[30px] text-white outline-none placeholder:text-white/30"
           />
           <span className="shrink-0 font-sans text-sm font-medium text-white/70">
-            {buying ? "USDC" : base}
+            {buying ? "USD" : base}
           </span>
         </div>
       </div>

@@ -1,10 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequestIdentity, verifyRequest } from "@/lib/server/auth";
+import { Buffer } from "node:buffer";
+import { getRequestIdentity, getRequestUser, verifyRequest } from "@/lib/server/auth";
 import {
+  chessDisplayNameOfUser,
   chessReadNeedsSession,
+  withChessCountry,
   withChessReadIdentity,
   withChessIdentity,
 } from "@/lib/server/chess-identity";
+import { detectRequestCountry } from "@/lib/server/ipinfo";
 import { lotterySchemaFor } from "@/lib/api/schemas/lottery";
 import { checkUpstream } from "@/lib/server/validate-upstream";
 import { wsapiService } from "@/lib/wsapi-base";
@@ -27,6 +31,8 @@ const BASE =
   process.env.NEXT_PUBLIC_CHESS_API_URL ??
   wsapiService("chess");
 const NO_STORE = "no-store, max-age=0, must-revalidate";
+const COUNTRY_WRITE = /^(?:matches|matches\/[^/]+\/join|arenas\/[^/]+\/join)$/u;
+const PLAYER_PROFILE_WRITE = /^(?:matches|matches\/[^/]+\/join)$/u;
 
 // Just long enough to collapse the concurrent polls of two players watching the
 // same board, and short enough that neither sees a stale position. The match
@@ -52,6 +58,7 @@ function cacheTtlMs(joined: string): number {
   if (/^players\/[^/]+\/product-access$/u.test(joined)) return 0;
   if (/^players\/[^/]+\/coach(?:\/|$)/u.test(joined)) return 0;
   if (/^computer\/matches\/[^/]+\/coach$/u.test(joined)) return 0;
+  if (joined === "puzzles/next") return 0;
   return CACHE_TTL_MS;
 }
 
@@ -95,20 +102,40 @@ function noWallet() {
   );
 }
 
+function forwardAuthHeaders(req: NextRequest, headers: Record<string, string>): void {
+  const authorization = req.headers.get("authorization");
+  const accessToken = req.cookies.get("privy-token")?.value;
+  const identityToken =
+    req.headers.get("privy-id-token") ?? req.cookies.get("privy-id-token")?.value;
+
+  if (authorization) headers.authorization = authorization;
+  else if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+  if (identityToken) headers["privy-id-token"] = identityToken;
+}
+
 async function forward(
   req: NextRequest,
   joined: string,
   method: "GET" | "POST" | "PUT" | "DELETE",
   body?: string,
   wallet?: string,
-  searchParams?: URLSearchParams
+  searchParams?: URLSearchParams,
+  countryCode?: string | null,
+  displayName?: string | null
 ) {
   const search = searchParams ? searchParams.toString() : req.nextUrl.searchParams.toString();
   const query = search ? `?${search}` : "";
   const url = `${BASE}/${joined}${query}`;
   const headers: Record<string, string> = { accept: "application/json" };
   if (method !== "GET") headers["content-type"] = "application/json";
-  if (wallet) headers["x-wallet-address"] = wallet;
+  if (wallet) {
+    headers["x-wallet-address"] = wallet;
+    forwardAuthHeaders(req, headers);
+  }
+  if (countryCode) headers["x-country-code"] = countryCode;
+  if (displayName) {
+    headers["x-player-display-name-b64"] = Buffer.from(displayName, "utf8").toString("base64url");
+  }
   const ttl = cacheTtlMs(joined);
 
   try {
@@ -221,7 +248,25 @@ async function authedWrite(
 
   const raw = await req.text();
   const joined = path.join("/");
-  return forward(req, joined, method, withChessIdentity(joined, raw, wallet), wallet);
+  const identified = withChessIdentity(joined, raw, wallet);
+  const country = COUNTRY_WRITE.test(joined) ? await detectRequestCountry(req.headers) : null;
+  // Derived from the Privy user's linked accounts, so it only exists for
+  // un-migrated (Privy) sessions. Decane stores no profile server-side; a
+  // migrated player's profile write goes up without a derived name until the
+  // client passes the one it holds.
+  const displayName = PLAYER_PROFILE_WRITE.test(joined)
+    ? chessDisplayNameOfUser(await getRequestUser(req, claims))
+    : null;
+  return forward(
+    req,
+    joined,
+    method,
+    withChessCountry(joined, identified, country),
+    wallet,
+    undefined,
+    country,
+    displayName
+  );
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {

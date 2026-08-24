@@ -76,15 +76,41 @@ export function isRetryableDextopusError(error: unknown): boolean {
   return error.status >= 500;
 }
 
-// Deposits and withdrawals are two Dextopus integrations with two API keys.
-// The proxy signs a request with the key of its purpose, and the purpose rides
-// on the path: `withdraw/` in front of a Dextopus path selects the withdrawal
-// key. A request created under one key is only readable under the same key,
-// which is why status polling takes the purpose as well.
-export type DextopusPurpose = "deposit" | "withdrawal";
+// A quote has no funds attached yet, so a small retry budget is safe and
+// avoids making a user restart the flow for a transient proxy/upstream 5xx.
+// Do not use this after the wallet broadcasts a transfer: that path is
+// reconciled by Dextopus's deposit-address watcher and status instead.
+export async function retryDextopusQuote<T>(request: () => Promise<T>): Promise<T> {
+  const delays = [250, 750];
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await request();
+    } catch (error) {
+      if (!isRetryableDextopusError(error) || attempt >= delays.length) throw error;
+      const jitter = Math.round(Math.random() * 100);
+      await new Promise<void>((resolve) => setTimeout(resolve, delays[attempt] + jitter));
+    }
+  }
+}
 
-function purposedPath(path: string, purpose: DextopusPurpose): string {
-  return purpose === "withdrawal" ? `withdraw/${path}` : path;
+// Deposits, withdrawals and trades are three Dextopus integrations with three
+// API keys. The proxy signs a request with the key of its purpose, and the
+// purpose rides on the path: `withdraw/` in front of a Dextopus path selects
+// the withdrawal key, `trade/` the trade key (spot buys and sells, the buy
+// catalog, gas top-ups, the casino fund sheet, prediction settlement), and a
+// bare path is a deposit. A request created under one key is only readable
+// under the same key, which is why status polling takes the purpose as well.
+export type DextopusPurpose = "deposit" | "withdrawal" | "trade";
+
+const PURPOSE_PREFIX: Record<DextopusPurpose, string> = {
+  deposit: "",
+  withdrawal: "withdraw/",
+  trade: "trade/",
+};
+
+/** The proxied path for a Dextopus call, carrying its purpose. */
+export function purposedPath(path: string, purpose: DextopusPurpose): string {
+  return `${PURPOSE_PREFIX[purpose]}${path}`;
 }
 
 export async function dextopusGet<T>(
@@ -96,6 +122,17 @@ export async function dextopusGet<T>(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new DextopusError(errorMessage(data, fallback), res.status);
   return data as T;
+}
+
+export function fetchDepositStatus(
+  depositRequestId: string,
+  purpose: DextopusPurpose = "deposit"
+): Promise<DepositStatusResult> {
+  return dextopusGet<DepositStatusResult>(
+    `deposit/status?depositRequestId=${depositRequestId}`,
+    "Couldn't check deposit status",
+    purpose
+  );
 }
 
 async function dextopusPost<T>(
@@ -332,9 +369,12 @@ export function useDepositTokens(chainId: number | null) {
   });
 }
 
-export function useCreateQuote() {
+export function useCreateQuote(purpose: DextopusPurpose = "deposit") {
   return useMutation<QuoteResult, Error, QuoteRequest>({
-    mutationFn: (req) => dextopusPost<QuoteResult>("deposit/quote", req, "Couldn't create a quote"),
+    mutationFn: (req) =>
+      retryDextopusQuote(() =>
+        dextopusPost<QuoteResult>("deposit/quote", req, "Couldn't create a quote", purpose)
+      ),
   });
 }
 
@@ -357,12 +397,15 @@ export interface WithdrawQuoteInput {
 // "if the swap can't complete, funds return to the sender" guarantee. The
 // returned depositAddress is where the origin token is sent to trigger the
 // cross-chain settlement Dextopus performs under the hood.
-export async function createWithdrawQuote(input: WithdrawQuoteInput): Promise<QuoteResult> {
+export async function createWithdrawQuote(
+  input: WithdrawQuoteInput,
+  purpose: DextopusPurpose = "withdrawal"
+): Promise<QuoteResult> {
   return dextopusPost<QuoteResult>(
     "deposit/quote",
     { ...input, strict: true },
     "Couldn't get a withdrawal quote",
-    "withdrawal"
+    purpose
   );
 }
 
@@ -372,9 +415,14 @@ export async function createWithdrawQuote(input: WithdrawQuoteInput): Promise<Qu
 // is minted per fetch, so we never refetch on focus/reconnect — only on input
 // change or an explicit refetch at execution time. `retry: false` so an
 // unroutable destination surfaces immediately instead of retrying.
-export function useWithdrawQuote(input: WithdrawQuoteInput | null) {
+// `purpose` defaults to the withdrawal key; the casino fund sheet reuses this
+// quote shape to turn USDC into ETH, which is a trade, and says so.
+export function useWithdrawQuote(
+  input: WithdrawQuoteInput | null,
+  purpose: DextopusPurpose = "withdrawal"
+) {
   return useQuery<QuoteResult>({
-    queryKey: ["withdraw-quote", input],
+    queryKey: ["withdraw-quote", purpose, input],
     enabled: input !== null,
     staleTime: 45_000,
     gcTime: 60_000,
@@ -382,7 +430,7 @@ export function useWithdrawQuote(input: WithdrawQuoteInput | null) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,
-    queryFn: () => createWithdrawQuote(input as WithdrawQuoteInput),
+    queryFn: () => createWithdrawQuote(input as WithdrawQuoteInput, purpose),
   });
 }
 
@@ -493,12 +541,7 @@ export function useDepositStatus(
       const { stage } = depositProgress(data.status, data.executionStatus);
       return TERMINAL_STAGES.has(stage) ? false : POLL_MS;
     },
-    queryFn: () =>
-      dextopusGet<DepositStatusResult>(
-        `deposit/status?depositRequestId=${depositRequestId}`,
-        "Couldn't check deposit status",
-        purpose
-      ),
+    queryFn: () => fetchDepositStatus(depositRequestId as string, purpose),
   });
 
   const hashes = query.data?.destinationTransactionHashes;

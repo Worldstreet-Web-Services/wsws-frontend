@@ -1,27 +1,30 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "@/lib/toast";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
+import { UpdateBalanceButton, useOfferMigration } from "@/features/migrate";
 import { SpotSection } from "@/features/trade/components/spot-section";
 import { PerpsSection } from "@/features/trade/components/perps-section";
 import { MemeSection } from "@/features/trade/components/meme-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
-import { RecentActivity } from "@/features/activity";
+import { DepositAnalytics } from "@/features/activity";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SuccessPanel } from "@/components/ui/success-panel";
 import { DetailModal } from "@/components/layout/modals/detail-modal";
 import { ConfirmModal } from "@/components/layout/modals/confirm-modal";
 import { FundsModal, WithdrawModal } from "@/features/funds";
-import { CrossBorderBanner, CrossBorderModal } from "@/features/remit";
-import { UpdateBalanceButton, useOfferMigration } from "@/features/migrate";
+import { CrossBorderBanner } from "@/features/remit";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
+import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
+import { useDashboardTour } from "@/features/tour";
 import type { DepositPrefill } from "@/lib/voice/intent";
 import { loadInterest } from "@/lib/preferences";
 import type { SectionId } from "@/lib/sections";
@@ -37,6 +40,17 @@ import type {
 import { AccountModal } from "@/components/layout/modals/account-modal";
 
 const SECTION_CLASS = "scroll-mt-[124px] md:scroll-mt-[76px]";
+
+// Which doorway follows which section, indexed by section position. Portfolio
+// leads the page, so nothing is pitched under it; the three doorways then
+// follow the sections after it. An index with no entry gets no banner, so a
+// shorter or reordered section list still works.
+const INTERLEAVED_BANNERS: readonly ("prediction" | "earn" | "casino" | undefined)[] = [
+  undefined,
+  "prediction",
+  "earn",
+  "casino",
+];
 
 // The scroll-spy sections mounted inline on this page. Prediction, earn and
 // casino live on their own routes and are never one of these — the dashboard
@@ -62,12 +76,14 @@ const Rwa = memo(RwaSection);
 export default function DashboardPage() {
   const [modal, setModal] = useState<DashboardModal>(null);
   const tSections = useTranslations("sections");
+  const tRemit = useTranslations("remitBanner");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
   const scrollSectionIds = useMemo(() => nav.map((n) => n.id).filter(isScrollSection), [nav]);
   const activeSection = useScrollSpy(scrollSectionIds);
   // True while this device's money still sits in the old Privy wallets: the
   // balance card masks its figures and offers the one-click update instead.
   const offerMigration = useOfferMigration();
+  useDashboardTour();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
   // the funds modal on the crypto screen with the chain/token pre-selected. The
@@ -107,7 +123,9 @@ export default function DashboardPage() {
   );
   const openFunds = useCallback(() => setModal({ type: "funds" }), []);
   const openWithdraw = useCallback(() => setModal({ type: "withdraw" }), []);
-  const openCrossBorder = useCallback(() => setModal({ type: "crossBorder" }), []);
+  // Cross-border is not open yet. The banner stays as the announcement; a tap
+  // says so rather than opening a flow that cannot complete.
+  const openCrossBorder = useCallback(() => toast.info(tRemit("comingSoonToast")), [tRemit]);
 
   const sections: Record<ScrollSectionId, React.ReactNode> = {
     portfolio: (
@@ -133,17 +151,24 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <DashboardShell nav={nav} activeSection={activeSection}>
-        {scrollSectionIds.map((id) => (
-          <section key={id} id={id} className={SECTION_CLASS}>
-            {sections[id]}
-          </section>
+        <RwaSettlementTracker />
+        {/* Reports settled deposits. It used to ride on the recent-activity
+            list that stood here; it is mounted on its own now that history
+            lives only on its own page. */}
+        <DepositAnalytics />
+        {scrollSectionIds.map((id, index) => (
+          <Fragment key={id}>
+            <section id={id} className={SECTION_CLASS}>
+              {sections[id]}
+            </section>
+            {/* One doorway after each of the first few sections, so Prediction,
+                Earn and Arkade are met while reading rather than only at the
+                very bottom. */}
+            {INTERLEAVED_BANNERS[index] ? (
+              <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
+            ) : null}
+          </Fragment>
         ))}
-        {/* The routed destinations, pitched where the prediction section used
-            to scroll: one banner each for Prediction, Earn and Casino. */}
-        <ExploreBanners />
-        {/* History closes the page: the last few transfers, then the way to
-            the full record. */}
-        <RecentActivity />
       </DashboardShell>
 
       <ModalShell
@@ -168,12 +193,18 @@ export default function DashboardPage() {
         {modal?.type === "buy" ? <BuySheet payload={modal.buy} onClose={close} /> : null}
         {modal?.type === "sell" ? <SellSheet payload={modal.sell} onClose={close} /> : null}
         {modal?.type === "memeSell" ? (
-          <MemeTradeSheet token={modal.memeSell} defaultSide="SELL" onClose={close} />
+          <MemeTradeSheet
+            token={modal.memeSell}
+            defaultSide="SELL"
+            onClose={close}
+            showRisk={false}
+          />
         ) : null}
-        {modal?.type === "rwaTrade" ? <RwaTradeModal payload={modal.rwaTrade} /> : null}
+        {modal?.type === "rwaTrade" ? (
+          <RwaTradeModal payload={modal.rwaTrade} onContinueInBackground={close} />
+        ) : null}
         {modal?.type === "funds" ? <FundsModal onClose={close} deposit={modal.deposit} /> : null}
         {modal?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}
-        {modal?.type === "crossBorder" ? <CrossBorderModal /> : null}
         {modal?.type === "account" ? <AccountModal onClose={close} /> : null}
         {modal?.type === "done" ? (
           <SuccessPanel title={modal.title} onDone={close}>

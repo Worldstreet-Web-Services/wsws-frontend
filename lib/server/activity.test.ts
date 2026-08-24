@@ -69,14 +69,18 @@ describe("buildActivityEntries", () => {
     );
   });
 
-  it("does not merge transfers that only share a hash across chains", () => {
-    // Hashes are unique per chain, but nothing stops a collision in the feed.
+  it("reads money out on one chain and an asset in on another as one purchase", () => {
+    // A shared hash across chains never merges by itself (grouping is per
+    // network:hash), but money leaving Base while an asset arrives on Solana
+    // moments later is one cross-chain purchase, and reads as one.
     const entries = buildActivityEntries([
       transfer({ symbol: "USDC", direction: "out", network: "base-mainnet" }),
       transfer({ symbol: "GLDx", direction: "in", network: "solana-mainnet" }),
     ]);
-    expect(entries).toHaveLength(2);
-    expect(entries.map((e) => e.kind).sort()).toEqual(["received", "withdrew"]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe("bought");
+    expect(entries[0].symbol).toBe("GLDx");
+    expect(entries[0].counterSymbol).toBe("USDC");
   });
 
   it("does not read a same-asset in-and-out as a trade", () => {
@@ -120,6 +124,40 @@ describe("buildActivityEntries", () => {
       transfer({ symbol: "SOL", direction: "in", hash: "0x2", timestamp: 9 }),
     ]);
     expect(entries[0].timestamp).toBe(9);
+  });
+});
+
+describe("dust", () => {
+  it("drops a stablecoin movement worth less than a cent", () => {
+    // The refund a Dextopus settlement hands back after a withdrawal: real,
+    // and worthless, and it read as "Deposited USDC +0" in the feed and the
+    // bell after every single withdrawal.
+    const entries = buildActivityEntries([
+      transfer({ hash: "0x1", symbol: "USDC", direction: "out", amount: 20 }),
+      transfer({ hash: "0x2", symbol: "USDC", direction: "in", amount: 0.00003 }),
+      transfer({ hash: "0x3", symbol: "USDC", direction: "in", amount: 0.0001 }),
+    ]);
+    expect(entries.map((e) => [e.kind, e.amount])).toEqual([["withdrew", 20]]);
+  });
+
+  it("keeps a cent, and keeps small amounts of anything that is not money", () => {
+    const entries = buildActivityEntries([
+      transfer({ hash: "0x1", symbol: "USDC", direction: "in", amount: 0.01 }),
+      transfer({ hash: "0x2", symbol: "SOL", direction: "in", amount: 0.000001 }),
+    ]);
+    expect(entries.map((e) => e.kind).sort()).toEqual(["deposited", "received"]);
+  });
+
+  it("does not break a trade apart over a dust leg", () => {
+    // A buy's own transaction can carry a rounding remainder of USDC back in;
+    // the trade still reads as one buy.
+    const entries = buildActivityEntries([
+      transfer({ hash: "0x9", symbol: "USDC", direction: "out", amount: 50 }),
+      transfer({ hash: "0x9", symbol: "GLDx", direction: "in", amount: 0.5 }),
+      transfer({ hash: "0x9", symbol: "USDC", direction: "in", amount: 0.000001 }),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe("bought");
   });
 });
 

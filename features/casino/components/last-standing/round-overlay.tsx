@@ -6,10 +6,9 @@ import { useTranslations } from "next-intl";
 import confetti from "canvas-confetti";
 import { MoneyTicker } from "@/features/casino/components/last-standing/money-ticker";
 
-// Two confetti palettes: gold-forward when this wallet won, cooler house
-// colours when we're celebrating someone else taking the pot.
+// The confetti palette. Confetti is the winner's alone: everyone else sees
+// the announcement card and nothing falls.
 const GOLD = ["#d8d8dc", "#a8a8ae", "#ffffff", "#d4d4d8", "#7CE7B0"];
-const HOUSE = ["#d4d4d8", "#b6b6bc", "#e8e8ea", "#7CE7B0", "#ffffff"];
 const BURST_MS = 4200;
 const WON_AUTO_CLOSE_MS = 7000;
 
@@ -20,6 +19,12 @@ interface RoundOverlayProps {
   // True when this wallet is the one that took the pot. Switches the reveal
   // from a personal jackpot to a "someone won" announcement.
   youWon?: boolean;
+  // The winner also opened the game, so their payout carries the starter's
+  // share as well; the card says so, because the number is bigger than half.
+  winnerIsStarter?: boolean;
+  // The contract's split in whole percents, for the share line.
+  winnerPct?: number;
+  starterPct?: number;
   // Truncated winner address (e.g. "0x12…34"). Only ever a shortened form —
   // never the full address — so the winner is named without exposing them.
   winnerLabel?: string | null;
@@ -34,11 +39,14 @@ interface RoundOverlayProps {
 
 // The end-of-round moment. First a short suspense ("calculating the winner")
 // that locks everyone in, then a reveal for everyone: a big personal jackpot
-// with confetti if this wallet won, otherwise a celebratory announcement of
+// with confetti if this wallet won, otherwise a plain announcement of
 // the winner by their truncated address. The full address is never shown.
 export function RoundOverlay({
   phase,
   youWon = false,
+  winnerIsStarter = false,
+  winnerPct = 50,
+  starterPct = 10,
   winnerLabel = null,
   prizeLabel,
   prizeValue,
@@ -53,11 +61,11 @@ export function RoundOverlay({
   }, [onClose]);
   const reduce = useReducedMotion();
 
-  // Confetti while the reveal card is up — gold for the winner, house colours
-  // when we're marking someone else's win.
+  // Confetti while the reveal card is up, and only on the winner's screen.
+  // Everyone else gets the announcement, not the celebration.
   useEffect(() => {
-    if (phase !== "won" || reduce || !canvasRef.current) return;
-    const colors = youWon ? GOLD : HOUSE;
+    if (phase !== "won" || !youWon || reduce || !canvasRef.current) return;
+    const colors = GOLD;
     const fire = confetti.create(canvasRef.current, { resize: true, useWorker: false });
     const end = Date.now() + BURST_MS;
     // Everything emanates from the card's centre (it sits dead-centre of the
@@ -67,7 +75,7 @@ export function RoundOverlay({
 
     // Opening explosion out of the card, in every direction.
     fire({
-      particleCount: youWon ? 220 : 150,
+      particleCount: 220,
       spread: 360,
       startVelocity: 45,
       gravity: 0.95,
@@ -143,8 +151,9 @@ export function RoundOverlay({
             onClick={won ? onClose : undefined}
             className="fixed inset-0 z-[398] bg-black/75 backdrop-blur-[7px]"
           />
-          {/* Confetti sits behind the card so the card stays cleanly on top. */}
-          {won ? (
+          {/* Confetti sits behind the card so the card stays cleanly on top.
+              Only mounted for the winner. */}
+          {won && youWon ? (
             <canvas
               ref={canvasRef}
               aria-hidden
@@ -220,6 +229,12 @@ export function RoundOverlay({
                       </div>
                     ) : null}
                     <div className="mt-3 text-[13.5px] font-normal text-white/60">
+                      {t(winnerIsStarter ? "revealShareStarter" : "revealShareWinner", {
+                        winner: winnerPct,
+                        starter: starterPct,
+                      })}
+                    </div>
+                    <div className="mt-1 text-[12.5px] font-normal text-white/45">
                       {t("revealPotAdded")}
                     </div>
                     <button

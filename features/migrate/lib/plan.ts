@@ -9,17 +9,6 @@ import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 
 export const SOLANA_NETWORK = "solana-mainnet";
 
-// The order chains are swept and listed in. Matches the portfolio's supported
-// set (lib/server/alchemy); Base first because that is where most value sits.
-const NETWORK_ORDER = [
-  "base-mainnet",
-  "eth-mainnet",
-  "arb-mainnet",
-  "opt-mainnet",
-  "polygon-mainnet",
-  SOLANA_NETWORK,
-];
-
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.
   id: string;
@@ -40,6 +29,15 @@ export interface ChainSweep {
   assets: SweepAsset[];
 }
 
+export interface SweepPlan {
+  chains: ChainSweep[];
+  // Holdings the sweep cannot move: assets on EVM networks outside the gas
+  // sponsorship registry. Without sponsorship the full native balance cannot
+  // be sent (something must pay gas) and the batch path does not exist, so
+  // these stay in the old wallet and the UI says so instead of failing.
+  skipped: SweepAsset[];
+}
+
 export function sweepAssetId(network: string, tokenAddress: string | null): string {
   return `${network}:${tokenAddress ?? "native"}`;
 }
@@ -49,21 +47,15 @@ export function sweepAssetId(network: string, tokenAddress: string | null): stri
 // gas ever comes out of the native balance; under sponsorship it is free, but
 // the invariant is kept so the plan never depends on it.
 //
-// Every EVM network here must be gas-sponsored: the plan sends the FULL native
-// balance, which only settles if the user pays no gas. An unsponsored network
-// would need a gas reserve carved out, and rather than guess one we refuse to
-// plan, so the gap is caught in review instead of as a mid-sweep failure.
-export function buildSweepPlan(tokens: TokenBalance[]): ChainSweep[] {
+// Sponsored EVM chains sweep richest first, then Solana last; the order is
+// derived from the holdings rather than a fixed list because the portfolio's
+// tracked networks grow over time.
+export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
   const byNetwork = new Map<string, SweepAsset[]>();
+  const skipped: SweepAsset[] = [];
   for (const token of tokens) {
     const amount = BigInt(token.rawBalance);
     if (amount <= 0n) continue;
-    if (!NETWORK_ORDER.includes(token.network)) {
-      throw new Error(`Cannot plan a sweep for unsupported network ${token.network}`);
-    }
-    if (token.network !== SOLANA_NETWORK && !isSponsoredEvmNetwork(token.network)) {
-      throw new Error(`Cannot sweep ${token.network}: it is not gas-sponsored`);
-    }
     const asset: SweepAsset = {
       id: sweepAssetId(token.network, token.address),
       network: token.network,
@@ -73,24 +65,32 @@ export function buildSweepPlan(tokens: TokenBalance[]): ChainSweep[] {
       amount,
       valueUsd: token.valueUsd,
     };
+    if (token.network !== SOLANA_NETWORK && !isSponsoredEvmNetwork(token.network)) {
+      skipped.push(asset);
+      continue;
+    }
     const group = byNetwork.get(token.network);
     if (group) group.push(asset);
     else byNetwork.set(token.network, [asset]);
   }
 
-  const plan: ChainSweep[] = [];
-  for (const network of NETWORK_ORDER) {
-    const assets = byNetwork.get(network);
-    if (!assets) continue;
+  const chainValue = (assets: SweepAsset[]) => assets.reduce((sum, a) => sum + a.valueUsd, 0);
+  const evmNetworks = [...byNetwork.keys()]
+    .filter((network) => network !== SOLANA_NETWORK)
+    .sort((a, b) => chainValue(byNetwork.get(b)!) - chainValue(byNetwork.get(a)!));
+  const ordered = byNetwork.has(SOLANA_NETWORK) ? [...evmNetworks, SOLANA_NETWORK] : evmNetworks;
+
+  const chains: ChainSweep[] = ordered.map((network) => {
+    const assets = byNetwork.get(network)!;
     const tokensFirst = [
       ...assets.filter((a) => a.tokenAddress !== null),
       ...assets.filter((a) => a.tokenAddress === null),
     ];
-    plan.push({
+    return {
       network,
       kind: network === SOLANA_NETWORK ? "solana-sequential" : "evm-batch",
       assets: tokensFirst,
-    });
-  }
-  return plan;
+    };
+  });
+  return { chains, skipped };
 }

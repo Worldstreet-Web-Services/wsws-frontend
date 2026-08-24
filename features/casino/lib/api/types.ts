@@ -27,6 +27,9 @@ export type ChessTimeControl = string;
 export type ChessClockMode = "real_time" | "unlimited";
 
 export type ChessPerfKey = "ultraBullet" | "bullet" | "blitz" | "rapid" | "classical" | "standard";
+export type ChessLeaderboardPerfKey = Exclude<ChessPerfKey, "standard">;
+export type ChessRatingSkillLevel = "new" | "beginner" | "intermediate" | "advanced";
+export type ChessRatingChartRange = "7d" | "30d" | "90d" | "1y" | "all";
 
 export interface ChessComputerWager {
   stakeUsdc: string;
@@ -61,6 +64,8 @@ export interface ChessPlayer {
   // seeded profile).
   rating: number | null;
   provisional?: boolean | null;
+  // Optional during rolling deploys from service versions that predate player profiles.
+  countryCode?: string | null;
   walletAddress: string;
 }
 
@@ -140,6 +145,7 @@ export interface ChessMatchComment {
 export interface ChessMatch {
   id: string;
   state: ChessMatchState;
+  videoEnabled: boolean;
   white: ChessPlayer | null;
   black: ChessPlayer | null;
   timeControl: ChessTimeControl;
@@ -184,6 +190,7 @@ export interface ChessMatch {
 // A match listed in the lobby as joinable.
 export interface ChessChallenge {
   id: string;
+  videoEnabled: boolean;
   creator: ChessPlayer;
   timeControl: ChessTimeControl;
   createdAt: string;
@@ -200,6 +207,18 @@ export interface CreateChessChallengeInput {
   // Human PvP is always rated. Computer and coaching flows use separate APIs.
   rated?: true;
   allowTimeExtensions?: boolean;
+  videoEnabled?: boolean;
+}
+
+export type ChessVideoRole = "player" | "spectator";
+
+export interface ChessVideoAccess {
+  serverUrl: string;
+  participantToken: string;
+  roomName: string;
+  participantIdentity: string;
+  role: ChessVideoRole;
+  expiresAt: string;
 }
 
 export interface CreateComputerMatchInput {
@@ -275,6 +294,60 @@ export interface ChessCoachHome {
   trainingPositionCount: number;
   recommendedLessonKey: string | null;
   lessons: ChessCoachLessonState[];
+}
+
+export interface ChessPuzzleSpeechReference {
+  key: string;
+  audioUrl: string;
+  alignmentUrl: string;
+}
+
+export interface ChessPuzzleNarratedLine {
+  text: string;
+  speech: ChessPuzzleSpeechReference | null;
+}
+
+export interface ChessPuzzleNarration {
+  introduction: ChessPuzzleNarratedLine;
+  hint: ChessPuzzleNarratedLine;
+  success: ChessPuzzleNarratedLine;
+}
+
+export interface ChessPuzzle {
+  id: string;
+  fen: string;
+  lastMove: string;
+  sideToMove: "white" | "black";
+  rating: number;
+  ratingDeviation: number;
+  popularity: number;
+  playCount: number;
+  themes: string[];
+  openingTags: string[];
+  sourceUrl: string;
+  playerMoveCount: number;
+  narration: ChessPuzzleNarration;
+}
+
+export interface ChessPuzzleCatalog {
+  source: string;
+  puzzleCount: number;
+  minimumRating: number | null;
+  maximumRating: number | null;
+  voiceEnabled: boolean;
+}
+
+export interface ChessPuzzleAttempt {
+  puzzleId: string;
+  attemptedUci: string;
+  legal: boolean;
+  correct: boolean;
+  completed: boolean;
+  nextFen: string;
+  opponentMove: string | null;
+  nextSolutionPly: number;
+  message: string;
+  speech: ChessPuzzleSpeechReference | null;
 }
 
 export interface ChessCoachTrainingItem {
@@ -561,6 +634,9 @@ export interface ChessPlayerPerf {
 
 export interface ChessPlayerRatings {
   player: string;
+  skillLevel: ChessRatingSkillLevel;
+  initialRating: number;
+  onboardingLocked: boolean;
   items: ChessPlayerPerf[];
 }
 
@@ -577,6 +653,101 @@ export interface ChessRatingHistory {
   player: string;
   perfKey: ChessPerfKey;
   items: ChessRatingHistoryEntry[];
+}
+
+export interface ChessLeaderboardPlayer {
+  rank: number;
+  player: string;
+  displayName: string | null;
+  countryCode: string | null;
+  rating: number;
+  deviation: number;
+  games: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  ratingProgress: number;
+  latestAt: string | null;
+}
+
+export interface ChessLeaderboard {
+  perfKey: ChessLeaderboardPerfKey;
+  countryCode: string | null;
+  page: number;
+  limit: number;
+  activeWithinDays: number;
+  hasMore: boolean;
+  items: ChessLeaderboardPlayer[];
+}
+
+export interface ChessLeaderboardCountry {
+  countryCode: string;
+  playerCount: number;
+}
+
+export interface ChessLeaderboardCountries {
+  perfKey: ChessLeaderboardPerfKey;
+  activeWithinDays: number;
+  totalPlayers: number;
+  items: ChessLeaderboardCountry[];
+}
+
+export interface ChessRatingRecord {
+  wins: number;
+  draws: number;
+  losses: number;
+}
+
+export interface ChessPlayerRatingStats {
+  player: string;
+  displayName: string | null;
+  countryCode: string | null;
+  perfKey: ChessLeaderboardPerfKey;
+  rating: number;
+  deviation: number;
+  provisional: boolean;
+  games: number;
+  record: ChessRatingRecord;
+  highestRating: number;
+  highestAt: string | null;
+  lowestRating: number;
+  lowestAt: string | null;
+  ratingProgress: number;
+  globalRank: number | null;
+  percentile: number | null;
+}
+
+export interface ChessRatingChartPoint {
+  rating: number;
+  at: string;
+  matchId: string | null;
+}
+
+export interface ChessPlayerRatingChart {
+  player: string;
+  perfKey: ChessLeaderboardPerfKey;
+  range: ChessRatingChartRange;
+  points: ChessRatingChartPoint[];
+}
+
+export interface ChessRatingPoolStats {
+  perfKey: ChessLeaderboardPerfKey;
+  countryCode: string | null;
+  playerCount: number;
+  averageRating: number | null;
+  medianRating: number | null;
+  liveGames: number;
+  livePlayers: number;
+}
+
+export interface ChessLeaderboardRules {
+  initialRating: number;
+  minimumRating: number;
+  maximumRating: number;
+  minimumGames: number;
+  maximumDeviationExclusive: number;
+  activeWithinDays: number;
+  supportedPerfs: ChessLeaderboardPerfKey[];
 }
 
 export interface ChessInsightBucket {

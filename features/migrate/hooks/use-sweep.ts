@@ -6,7 +6,8 @@ import {
   useLegacyEvmSendBatch,
   useLegacySendToken,
 } from "@/features/migrate/hooks/use-legacy-send";
-import { chainIdForNetwork, encodeErc20Transfer } from "@/lib/deposit";
+import { encodeErc20Transfer } from "@/lib/deposit";
+import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
 import type { ChainSweep } from "@/features/migrate/lib/plan";
 
 export interface SweepDestinations {
@@ -50,7 +51,9 @@ export function useSweep() {
       for (const chain of plan) {
         if (chain.kind === "evm-batch") {
           try {
-            const chainId = chainIdForNetwork(chain.network);
+            // The planner only emits evm-batch chains for sponsored networks,
+            // so the registry lookup is the chain-id source of truth.
+            const chainId = getSponsoredEvmChainByNetwork(chain.network)?.chainId;
             if (!chainId) throw new Error(`No chain id for network ${chain.network}`);
             const calls: EvmBatchCall[] = chain.assets.map((a) =>
               a.tokenAddress === null

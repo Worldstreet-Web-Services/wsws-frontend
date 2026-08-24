@@ -3,6 +3,11 @@ import { apiError } from "@/lib/api/envelope";
 import { friendlyError, isAlreadySettledError } from "@/lib/errors";
 
 describe("friendlyError", () => {
+  it("preserves the actionable confirmed-balance message", () => {
+    const message = "Your Solana balance changed. Review the updated Max amount and try again.";
+    expect(friendlyError(new Error(message), "Order rejected")).toBe(message);
+  });
+
   it("maps wallet rejections", () => {
     expect(friendlyError(new Error("User rejected the request"))).toMatch(/cancelled/i);
     expect(friendlyError("MetaMask Tx Signature: User denied transaction")).toMatch(/cancelled/i);
@@ -99,7 +104,7 @@ describe("contract reverts never reach the user as hex", () => {
     // The point of the catch-all: an unmapped selector must still not print.
     const message = friendlyError(new Error("execution reverted, data: 0xdeadbeef"));
     expect(message).toBe(
-      "The network rejected this transaction. Nothing was charged — please try again."
+      "The network rejected this transaction. Nothing was charged, so please try again."
     );
     expect(message).not.toContain("0x");
   });

@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Avatar } from "@/components/ui/avatar";
+import { LanguageSelect } from "@/components/ui/language-select";
 import { WalletList } from "@/features/portfolio";
+import { InviteFriendsModal } from "@/features/referrals";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
 
@@ -11,8 +14,30 @@ interface AccountModalProps {
   onClose: () => void;
 }
 
+function InviteIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M3.5 19.5c.6-3.1 2.8-5 5.5-5s4.9 1.9 5.5 5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M15.5 5.6a3.2 3.2 0 010 5.8M17.6 14.9c1.9.7 3.2 2.3 3.6 4.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function AccountModal({ onClose }: AccountModalProps) {
   const t = useTranslations("account");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const tLanguage = useTranslations("language");
   const { profile, logout } = useAuthSession();
   const router = useRouter();
 
@@ -35,8 +60,20 @@ export function AccountModal({ onClose }: AccountModalProps) {
           ) : null}
         </div>
       </div>
+      {/* Language lives here on a phone, where the header has no room for it.
+          The desktop header still carries its own picker. */}
+      <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
+        <span className="text-[13.5px] font-normal text-white/60">{tLanguage("label")}</span>
+        <LanguageSelect />
+      </div>
       <WalletList />
       <div className="mt-[18px] flex flex-col gap-1.5">
+        <button onClick={() => setInviteOpen(true)} className={`${item} text-white`}>
+          <span className="text-accent">
+            <InviteIcon />
+          </span>
+          {t("inviteFriends")}
+        </button>
         <button onClick={onClose} className={`${item} text-white`}>
           <HelpIcon size={20} />
           {t("helpSupport")}
@@ -46,6 +83,7 @@ export function AccountModal({ onClose }: AccountModalProps) {
           {t("signOut")}
         </button>
       </div>
+      <InviteFriendsModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
   );
 }

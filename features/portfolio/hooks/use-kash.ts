@@ -40,6 +40,8 @@ export function useKashStatus() {
     queryKey: ["kash", "status"],
     queryFn: getKashStatus,
     staleTime: STATUS_STALE_MS,
+    // Pre-launch the engine is not part of the page: no request, no error noise.
+    enabled: true,
   });
 }
 
@@ -69,7 +71,7 @@ export function useKashSubscriptionTiers(enabled: boolean) {
     queryKey: ["kash", "subscription-tiers"],
     queryFn: getKashSubscriptionTiers,
     staleTime: STATUS_STALE_MS,
-    enabled,
+    enabled: enabled,
   });
 }
 
@@ -101,21 +103,23 @@ export function useKashLedger(enabled: boolean) {
 
 // Quote for a buy amount, debounced so typing does not fire a request per
 // keystroke. An invalid amount disables the query instead of sending it.
-export function useKashPurchaseQuote(usdcAmount: string) {
+// `enabled` lets a caller park this quote while a superseding source (the
+// on-chain desk) is live — an idle query instead of a wasted request.
+export function useKashPurchaseQuote(usdcAmount: string, enabled = true) {
   const debounced = useDebouncedValue(usdcAmount.trim(), 300);
   return useQuery({
     queryKey: ["kash", "purchase-quote", debounced],
     queryFn: () => getKashPurchaseQuote(debounced),
-    enabled: isValidKashAmount(debounced),
+    enabled: enabled && isValidKashAmount(debounced),
   });
 }
 
-export function useKashConversionQuote(kashAmount: string) {
+export function useKashConversionQuote(kashAmount: string, enabled = true) {
   const debounced = useDebouncedValue(kashAmount.trim(), 300);
   return useQuery({
     queryKey: ["kash", "conversion-quote", debounced],
     queryFn: () => getKashConversionQuote(debounced),
-    enabled: isValidKashAmount(debounced),
+    enabled: enabled && isValidKashAmount(debounced),
   });
 }
 

@@ -56,13 +56,21 @@ function UpdateBalanceInner() {
     const toastId = toast.loading(t("updating"));
     try {
       const { data } = await oldPortfolio.refetch();
-      const plan = buildSweepPlan(data?.tokens ?? []);
-      if (plan.length === 0) {
+      const { chains, skipped } = buildSweepPlan(data?.tokens ?? []);
+      if (chains.length === 0) {
+        // Nothing sweepable. Any skipped holdings sit on networks the sponsor
+        // does not cover; keeping the button forever would not change that,
+        // so the balance unlocks and the toast says what stayed behind.
         markMigrationComplete();
-        toast.success(t("updateNothing"), { id: toastId });
+        toast.success(
+          skipped.length > 0 ? t("updateSkipped", { count: skipped.length }) : t("updateNothing"),
+          {
+            id: toastId,
+          }
+        );
         return;
       }
-      const result = await runSweep(plan, {
+      const result = await runSweep(chains, {
         evm: session.evmAddress,
         solana: session.solanaAddress,
       });
@@ -71,7 +79,12 @@ function UpdateBalanceInner() {
         return;
       }
       markMigrationComplete();
-      toast.success(t("updateDone"), { id: toastId });
+      toast.success(
+        skipped.length > 0 ? t("updateSkipped", { count: skipped.length }) : t("updateDone"),
+        {
+          id: toastId,
+        }
+      );
       void newPortfolio.refetchUntilChanged();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("updateNotReady"), { id: toastId });

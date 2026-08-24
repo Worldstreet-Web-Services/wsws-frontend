@@ -7,9 +7,9 @@ import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 import { useEvmSend } from "@/hooks/use-evm-send";
 import type { RwaAction, RwaChain, RwaStep } from "@/features/rwa/lib/api";
 
-// EVM chain ids per RWA chain. Every step names its chain explicitly so a
-// non-Ethereum RWA buy is never signed against a default chain and left to
-// fail with "insufficient funds for gas".
+// EVM chain ids per RWA chain. Without an explicit chainId, Privy defaults to
+// Ethereum mainnet (1), so a non-Ethereum RWA buy would be signed on the wrong
+// chain and fail with "insufficient funds for gas".
 const EVM_CHAIN_ID: Partial<Record<RwaChain, number>> = {
   ethereum: 1,
   base: 8453,
@@ -59,7 +59,10 @@ export function useExecuteRwa() {
 
         if (action.chain === "solana") {
           if (!step.tx.base64) throw new Error("The transaction is missing.");
-          lastSolanaSig = await sendSponsored({ transaction: step.tx.base64 });
+          lastSolanaSig = await sendSponsored({
+            transaction: step.tx.base64,
+            prefundRent: true,
+          });
         } else {
           if (!step.tx.to) throw new Error("The transaction is missing.");
           const chainId = EVM_CHAIN_ID[step.chain];

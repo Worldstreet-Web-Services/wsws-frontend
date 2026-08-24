@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { SellPayload } from "@/lib/modal-types";
 import { motion, useReducedMotion } from "motion/react";
@@ -14,7 +14,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Pager } from "@/components/ui/pager";
-import { MoneyTicker } from "@/features/casino/components/last-standing/money-ticker";
+import { MoneyTicker } from "@/components/ui/money-ticker";
 import { useMoney } from "@/components/ui/currency-select";
 import { FundSheet } from "@/features/casino/components/last-standing/fund-sheet";
 import { GameBalanceCard } from "@/features/casino/components/last-standing/game-balance-card";

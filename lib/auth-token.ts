@@ -38,7 +38,14 @@ export function createAuthTokenResolver({
   getDecaneToken,
 }: AuthTokenResolverDeps): () => Promise<AuthTokens> {
   return async function resolveTokens(): Promise<AuthTokens> {
-    const privy = await resolvePrivyTokens();
+    let privy: AuthTokens = { accessToken: null, idToken: null };
+    try {
+      privy = await resolvePrivyTokens();
+    } catch {
+      // Privy's module-level getters can throw when no PrivyProvider is
+      // mounted (everywhere but the legacy surfaces). That is not an error,
+      // just the post-cutover normal; the Decane token below carries auth.
+    }
     if (privy.accessToken) return privy;
     const decaneToken = getDecaneToken();
     if (decaneToken) return { accessToken: decaneToken, idToken: null };

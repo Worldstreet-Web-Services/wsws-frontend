@@ -62,7 +62,12 @@ export function useAuthSession(): AuthSession {
 
   const evmAddress = social.addresses?.evm ?? null;
   const solanaAddress = social.addresses?.solana ?? null;
-  const authenticated = social.addresses !== null && Boolean(evmAddress);
+  // Addresses alone are not a session: after a tab closes, Decane remembers
+  // WHO the user is but holds no JWT (needsReconnect), so every authed API
+  // call would starve. Treating that state as signed-out routes the user
+  // through /auth, where one passkey prompt or Google round trip restores a
+  // real session.
+  const authenticated = social.addresses !== null && Boolean(evmAddress) && !social.needsReconnect;
 
   // What sign-in told us about the user, persisted device-side because Decane
   // keeps no profile to re-fetch (see lib/display-profile). Google gives a

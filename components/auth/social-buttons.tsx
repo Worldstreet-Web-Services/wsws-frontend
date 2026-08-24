@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSocialAuth } from "decane-connect-kit";
 import { useTranslations } from "next-intl";
 import { recordAuthMethod } from "@/lib/analytics/auth-method";
@@ -37,7 +38,8 @@ const BUTTON =
 
 export function SocialButtons() {
   const t = useTranslations("auth");
-  const { signInWithGoogle, googleLoading } = useSocialAuth();
+  const { signInWithGoogle, googleLoading, canUsePasskey, signInWithPasskey } = useSocialAuth();
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   const signIn = async () => {
     try {
@@ -49,8 +51,29 @@ export function SocialButtons() {
     }
   };
 
+  // One biometric prompt instead of a Google round trip, offered when this
+  // device already holds a passkey-wrapped share for the remembered user, the
+  // common case after a closed tab dropped the session.
+  const passkeySignIn = async () => {
+    setPasskeyBusy(true);
+    try {
+      recordAuthMethod("passkey");
+      await signInWithPasskey();
+    } catch (err) {
+      console.error("Passkey sign-in failed:", err);
+      toast.error(t("passkeyError"));
+    } finally {
+      setPasskeyBusy(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-[11px]">
+      {canUsePasskey ? (
+        <button className={BUTTON} disabled={passkeyBusy} onClick={passkeySignIn}>
+          {passkeyBusy ? t("passkeyWaiting") : t("passkeySignIn")}
+        </button>
+      ) : null}
       <button className={BUTTON} disabled={googleLoading} onClick={signIn}>
         <GoogleLogo />
         {t("continueGoogle")}

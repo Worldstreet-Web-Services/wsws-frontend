@@ -55,8 +55,15 @@ function UpdateBalanceInner() {
     setBusy(true);
     const toastId = toast.loading(t("updating"));
     try {
-      const { data } = await oldPortfolio.refetch();
-      const { chains, skipped } = buildSweepPlan(data?.tokens ?? []);
+      const refetched = await oldPortfolio.refetch();
+      // A refetch failure resolves (status "error") instead of throwing. It
+      // must never read as an empty wallet: marking the migration complete on
+      // a failed fetch would hide the button while the money is still there.
+      if (refetched.status !== "success" || !refetched.data) {
+        toast.error(t("updateNotReady"), { id: toastId });
+        return;
+      }
+      const { chains, skipped } = buildSweepPlan(refetched.data.tokens);
       if (chains.length === 0) {
         // Nothing sweepable. Any skipped holdings sit on networks the sponsor
         // does not cover; keeping the button forever would not change that,

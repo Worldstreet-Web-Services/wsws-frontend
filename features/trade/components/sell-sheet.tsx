@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useInvalidateKash } from "@/hooks/use-kash-invalidate";
 import { useSell } from "@/features/trade/hooks/use-sell";
 import { savePendingRwaSettlement } from "@/lib/trade/pending-settlement";
 import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
@@ -33,6 +34,7 @@ interface SellSheetProps {
 export function SellSheet({ payload, onClose }: SellSheetProps) {
   const t = useTranslations("buySell");
   const portfolio = usePortfolio();
+  const invalidateKash = useInvalidateKash();
   const [amount, setAmount] = useState("");
   const [maxRequested, setMaxRequested] = useState(false);
   const sell = useSell();
@@ -139,6 +141,7 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
       toast.success(t("takesAMoment"), { id: toastRef.current });
       toastRef.current = undefined;
       void portfolio.refetchUntilChanged();
+      invalidateKash();
       onClose();
     } catch (error) {
       if (error instanceof SolanaBalanceChangedError) {

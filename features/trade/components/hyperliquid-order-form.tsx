@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatAmount } from "@/lib/trade/math";
+import { formatAmount, formatUsd, openFee } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import {
   isBridgeMinimumDetails,
@@ -263,6 +263,13 @@ export function HyperliquidOrderForm({
           </button>
         ))}
       </div>
+
+      {amountUsdcNum > 0 ? (
+        <div className="ws-inset mt-2 flex justify-between p-3 text-[12.5px] font-normal">
+          <span className="text-white/55">Est. open fee (0.08%)</span>
+          <span className="tnum text-white">{formatUsd(openFee(amountUsdcNum))}</span>
+        </div>
+      ) : null}
 
       {orderKind === "limit" ? (
         <div className="ws-inset mt-3 p-3">

@@ -17,7 +17,7 @@ import {
   pointsToKash,
   postKashConversion,
   settlesIn,
-  revenueShareTiers,
+  tierShares,
 } from "./kash";
 
 const account = (balance: string, min: string) => ({
@@ -164,7 +164,7 @@ describe("pointsToKash", () => {
   });
 });
 
-describe("revenueShareTiers", () => {
+describe("tierShares", () => {
   // The shape the engine actually publishes today.
   const points = {
     pointValueUsd: 0.001,
@@ -172,14 +172,14 @@ describe("revenueShareTiers", () => {
   };
 
   it("derives one tier per published share, numbered from 1", () => {
-    const tiers = revenueShareTiers(points);
+    const tiers = tierShares(points);
     expect(tiers).toHaveLength(5);
     expect(tiers[0]).toEqual({ tier: 1, sharePct: 3 });
     expect(tiers[4]).toEqual({ tier: 5, sharePct: 10 });
   });
 
   it("is empty until the engine has answered", () => {
-    expect(revenueShareTiers(undefined)).toEqual([]);
+    expect(tierShares(undefined)).toEqual([]);
   });
 
   it("SURVIVES the engine renaming or dropping the field", () => {
@@ -187,19 +187,19 @@ describe("revenueShareTiers", () => {
     // so the day the engine replaced it the whole portfolio page died with
     // "Cannot read properties of undefined (reading 'map')". A ladder nobody
     // can read is a missing row, not a broken dashboard.
-    expect(revenueShareTiers({ pointValueUsd: 0.001 })).toEqual([]);
-    expect(revenueShareTiers({ pointValueUsd: 0.001, tierRevenueSharePct: undefined })).toEqual([]);
+    expect(tierShares({ pointValueUsd: 0.001 })).toEqual([]);
+    expect(tierShares({ pointValueUsd: 0.001, tierRevenueSharePct: undefined })).toEqual([]);
     // Not an array at all — a shape change, not just an absence.
     expect(
-      revenueShareTiers({
+      tierShares({
         pointValueUsd: 0.001,
         tierRevenueSharePct: 7,
-      } as unknown as Parameters<typeof revenueShareTiers>[0])
+      } as unknown as Parameters<typeof tierShares>[0])
     ).toEqual([]);
   });
 
   it("drops a share that is not a usable number rather than rendering NaN", () => {
-    const tiers = revenueShareTiers({
+    const tiers = tierShares({
       pointValueUsd: 0.001,
       tierRevenueSharePct: [3, Number.NaN, 7],
     });

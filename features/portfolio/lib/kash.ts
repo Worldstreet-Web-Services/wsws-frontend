@@ -27,9 +27,10 @@ export interface KashStatus {
   /**
    * Points economics, straight from the engine.
    *
-   * `tierBoundsUsd` are the VOLUME band edges and `tierRatesPer10Usd` the rate
-   * inside each band — one more rate than bounds, the last being open-ended.
-   * Both are config; restating them in the UI would let the two drift.
+   * Flat per-tier share of the fee an activity produced — no volume banding.
+   * `tierRevenueSharePct[0]` is tier 1 (free)'s share, as a percentage
+   * (3 means 3%). One entry per subscription tier; restating it in the UI
+   * would let the two drift.
    */
   points: {
     pointValueUsd: number;
@@ -43,6 +44,13 @@ export interface KashStatus {
      */
     tierRevenueSharePct?: number[];
   };
+  /**
+   * A self-serve claim (POST /settlements/claim) below `minClaimKash` mints
+   * for less KSH than the gas is worth — the engine skips it rather than
+   * spending the holder's money on a dust transaction, so the "Claim" control
+   * must gate on this instead of any wallet holding > 0.
+   */
+  settlement: { periodSeconds: number; minClaimKash: string };
   subscriptions: { periodDays: number; tiers: { tier: number; priceUsd: number }[] };
   desk: {
     purchaseMinUsdc: number;
@@ -311,22 +319,20 @@ function trimZeros(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
-/** One subscription tier and the revenue share it earns. */
-export interface RevenueShareTier {
-  /** 1-based, matching the engine's tier numbering. */
+/** One subscription tier's flat reward rate. */
+export interface TierShare {
+  /** 1-based subscription tier. */
   tier: number;
-  /** Share of generated fees this tier earns, in whole percent. */
+  /** Share of the fee an activity produced that this tier pays out, e.g. 3 = 3%. */
   sharePct: number;
 }
 
 /**
- * What each subscription tier earns, as published by the engine.
+ * The reward ladder, derived from the engine's per-tier shares.
  *
- * A tier takes a share of the fees its holder generates; upgrading raises that
- * share. This replaced the old volume ladder — bounds and per-$10 rates — when
- * the engine moved to the points-first model, and reading it from the engine
- * rather than restating it here is what stops the modal quoting a number that
- * is not what pays out.
+ * Flat, not banded: every dollar of fee at a given tier earns that tier's
+ * share, whatever the trade size — `reward = fee × tier's sharePct`. A
+ * wallet's subscription tier is simply which flat rate it earns at.
  *
  * EMPTY rather than a guess whenever the field is absent or not an array. The
  * previous version destructured it and called `.map`, so the day the engine
@@ -334,7 +340,7 @@ export interface RevenueShareTier {
  * `Cannot read properties of undefined (reading 'map')`. A ladder nobody can
  * read is a missing row; it is not a broken dashboard.
  */
-export function revenueShareTiers(points: KashStatus["points"] | undefined): RevenueShareTier[] {
+export function tierShares(points: KashStatus["points"] | undefined): TierShare[] {
   const shares = points?.tierRevenueSharePct;
   if (!Array.isArray(shares)) return [];
   return shares.flatMap((sharePct, index) =>

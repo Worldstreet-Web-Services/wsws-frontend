@@ -7,6 +7,7 @@ import { useSell } from "@/features/trade/hooks/use-sell";
 import { useMemeTrade, type TradePhase } from "@/features/trade/hooks/use-meme-trade";
 import { useDepositStatus } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useInvalidateKash } from "@/hooks/use-kash-invalidate";
 import { savePendingRwaSettlement } from "@/lib/trade/pending-settlement";
 import { usdcBaseUnits, depositProgress, type DepositStage } from "@/lib/deposit";
 import { canSellAsset } from "@/lib/sell";
@@ -68,9 +69,26 @@ function swapOrderPhase(phase: TradePhase): SpotOrderPhase {
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
 const PERCENTS = [25, 50, 75, 100];
-// Indicative taker fee shown on the ticket. The real price tolerance is applied
-// by the quote at execution.
-const FEE_PCT = 0.001;
+const NATIVE_SYMBOL: Record<string, string> = {
+  "base-mainnet": "ETH",
+  "eth-mainnet": "ETH",
+  "arb-mainnet": "ETH",
+  "opt-mainnet": "ETH",
+  "polygon-mainnet": "POL",
+  "solana-mainnet": "SOL",
+};
+const CHAIN_LABEL: Record<string, string> = {
+  "base-mainnet": "Base",
+  "eth-mainnet": "Ethereum",
+  "arb-mainnet": "Arbitrum",
+  "opt-mainnet": "Optimism",
+  "polygon-mainnet": "Polygon",
+  "solana-mainnet": "Solana",
+};
+// Indicative taker fee shown on the ticket — mirrors apps/trade's
+// SWAP_PLATFORM_FEE_BPS (0.15%). The real price tolerance is applied by the
+// quote at execution.
+const FEE_PCT = 0.0015;
 const SLIPPAGE_BPS = 100;
 
 // Plain-language settlement stage message keys for the confirm sheet.
@@ -102,6 +120,7 @@ export function SpotPanel({
   const sell = useSell();
   const memeTrade = useMemeTrade();
   const portfolio = usePortfolio();
+  const invalidateKash = useInvalidateKash();
   const status = useDepositStatus(requestId, "trade");
 
   const base = token?.symbol ?? "";
@@ -235,6 +254,7 @@ export function SpotPanel({
           buying ? t("toastBought", { symbol: base }) : t("toastSold", { symbol: base })
         );
         void portfolio.refetchUntilChanged();
+        invalidateKash();
       } else if (memeTrade.phase === "failed") {
         resolvedRef.current = true;
         toast.error(memeTrade.error ?? t("orderFailedNote"));
@@ -246,6 +266,7 @@ export function SpotPanel({
       resolvedRef.current = true;
       toast.success(buying ? t("toastBought", { symbol: base }) : t("toastSold", { symbol: base }));
       void portfolio.refetchUntilChanged();
+      invalidateKash();
     } else if (stage === "failed" || stage === "refunded") {
       resolvedRef.current = true;
       toast.error(t("orderFailedNote"));
@@ -260,6 +281,7 @@ export function SpotPanel({
     base,
     portfolio,
     t,
+    invalidateKash,
   ]);
 
   const handleAmount = (raw: string) => {

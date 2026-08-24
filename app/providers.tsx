@@ -17,6 +17,12 @@ import { NetworkStatusProvider } from "@/components/providers/network-status";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { DecaneTokenBridge } from "@/components/providers/decane-token-bridge";
+import { DecaneRecoveryHost } from "@/components/providers/decane-recovery-host";
+import {
+  collectRotatedRecoveryPassword,
+  deliverRecoveryFile,
+  offerRecoveryShare,
+} from "@/lib/decane-recovery";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { MiniTimerHost } from "@/features/casino";
 
@@ -51,6 +57,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           apiKey: DECANE_API_KEY,
           authMethods: ["google", "email"],
           chains: DECANE_CHAINS,
+          // Wallet recovery rotates the share set and must hand the user a
+          // fresh recovery file; these bridge into the dialogs rendered by
+          // DecaneRecoveryHost below. Without onRecoveryRotated the kit
+          // refuses to run recovery at all.
+          onRecoveryShareOffer: offerRecoveryShare,
+          onRecoveryRotated: collectRotatedRecoveryPassword,
+          onRecoveryFileReady: deliverRecoveryFile,
         },
       }}
     >
@@ -76,6 +89,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             {/* Hands the Decane access-token getter to lib/auth-token so
                 apiFetch can attach it. Renders nothing. */}
             <DecaneTokenBridge />
+            {/* The wallet-recovery dialogs Decane's callbacks block on. */}
+            <DecaneRecoveryHost />
             {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
                 the app; it only subscribes to game data while open. */}

@@ -1,0 +1,134 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 222e51eb5bfe8e3fbf982f26c117b9385438cdda..9f8ca5b3d9927ed85b9211a2b33db746c5f73038 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -6301,7 +6301,13 @@ function DecaneKit({ config, children }) {
+       apiBaseUrl,
+       chains,
+       rpcUrls,
+-      requireAssertionPerSignature
++      requireAssertionPerSignature,
++      offerRecoveryAtSignup,
++      onRecoveryShareOffer,
++      onRecoveryFileReady,
++      promptForRecoveryFile,
++      onRecoveryRotated,
++      onRecoveryProgress
+     } = config.social;
+     createDecaneConnect({
+       appId: config.appId,
+@@ -6311,7 +6317,13 @@ function DecaneKit({ config, children }) {
+       chains: chains ?? ["evm:1", "solana:mainnet"],
+       rpcUrls,
+       promptPin,
+-      requireAssertionPerSignature
++      requireAssertionPerSignature,
++      offerRecoveryAtSignup,
++      onRecoveryShareOffer,
++      onRecoveryFileReady,
++      promptForRecoveryFile,
++      onRecoveryRotated,
++      onRecoveryProgress
+     }).then((sdk) => {
+       socialRef.current = sdk;
+       sdk.on(
+diff --git a/dist/index.d.cts b/dist/index.d.cts
+index b2f32260628be56c669d959d620d002439fbea0c..2aac026b34f326ba93b8b291b1075d7199e44a95 100644
+--- a/dist/index.d.cts
++++ b/dist/index.d.cts
+@@ -112,6 +112,28 @@ interface SocialConfig {
+         providerId?: string;
+         getToken: () => Promise<string>;
+     };
++    offerRecoveryAtSignup?: boolean;
++    onRecoveryShareOffer?: (addresses: {
++        evmAddress: string;
++        solanaAddress: string;
++    }) => Promise<{
++        wants: boolean;
++        password: string;
++        passwordHint?: string;
++    }>;
++    onRecoveryFileReady?: (file: RecoveryShareFile, filename: string) => Promise<void>;
++    promptForRecoveryFile?: () => Promise<{
++        value: unknown;
++        getPassword: () => Promise<string | null>;
++    } | null>;
++    onRecoveryRotated?: (addresses: {
++        evmAddress: string;
++        solanaAddress: string;
++    }) => Promise<{
++        password: string;
++        passwordHint?: string;
++    }>;
++    onRecoveryProgress?: (event: RecoveryProgress) => void;
+ }
+ interface DecaneConfig {
+     appId: string;
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index b2f32260628be56c669d959d620d002439fbea0c..2aac026b34f326ba93b8b291b1075d7199e44a95 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -112,6 +112,28 @@ interface SocialConfig {
+         providerId?: string;
+         getToken: () => Promise<string>;
+     };
++    offerRecoveryAtSignup?: boolean;
++    onRecoveryShareOffer?: (addresses: {
++        evmAddress: string;
++        solanaAddress: string;
++    }) => Promise<{
++        wants: boolean;
++        password: string;
++        passwordHint?: string;
++    }>;
++    onRecoveryFileReady?: (file: RecoveryShareFile, filename: string) => Promise<void>;
++    promptForRecoveryFile?: () => Promise<{
++        value: unknown;
++        getPassword: () => Promise<string | null>;
++    } | null>;
++    onRecoveryRotated?: (addresses: {
++        evmAddress: string;
++        solanaAddress: string;
++    }) => Promise<{
++        password: string;
++        passwordHint?: string;
++    }>;
++    onRecoveryProgress?: (event: RecoveryProgress) => void;
+ }
+ interface DecaneConfig {
+     appId: string;
+diff --git a/dist/index.js b/dist/index.js
+index 8b487d3ea582155b1195bbb2f2c6429878aeaf5b..0b3aea89ddf2e071a46885cd3bedb108e5dd285d 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -6233,7 +6233,13 @@ function DecaneKit({ config, children }) {
+       apiBaseUrl,
+       chains,
+       rpcUrls,
+-      requireAssertionPerSignature
++      requireAssertionPerSignature,
++      offerRecoveryAtSignup,
++      onRecoveryShareOffer,
++      onRecoveryFileReady,
++      promptForRecoveryFile,
++      onRecoveryRotated,
++      onRecoveryProgress
+     } = config.social;
+     createDecaneConnect({
+       appId: config.appId,
+@@ -6243,7 +6249,13 @@ function DecaneKit({ config, children }) {
+       chains: chains ?? ["evm:1", "solana:mainnet"],
+       rpcUrls,
+       promptPin,
+-      requireAssertionPerSignature
++      requireAssertionPerSignature,
++      offerRecoveryAtSignup,
++      onRecoveryShareOffer,
++      onRecoveryFileReady,
++      promptForRecoveryFile,
++      onRecoveryRotated,
++      onRecoveryProgress
+     }).then((sdk) => {
+       socialRef.current = sdk;
+       sdk.on(

@@ -2401,5 +2401,20 @@
     "updateFailed": "Algumas transferências não chegaram ({message}). Toque em Atualizar saldo para tentar de novo.",
     "updateNotReady": "Sua carteira ainda não está pronta. Tente novamente em instantes.",
     "updateSkipped": "Saldo atualizado. {count, plural, one {# ativo ficou} other {# ativos ficaram}} em redes não suportadas na sua carteira antiga; fale com o suporte para movê-los."
+  },
+  "recovery": {
+    "offerTitle": "Salve um arquivo de recuperação",
+    "offerBody": "Se você perder este dispositivo e seu passkey, o arquivo de recuperação com a senha é o único caminho de volta à sua carteira. Proteja-o com uma senha; nós não vemos nenhuma das duas coisas.",
+    "rotatedTitle": "Seu arquivo de recuperação foi substituído",
+    "rotatedBody": "A recuperação neste dispositivo emitiu um arquivo novo e invalidou o antigo. Defina uma senha para o novo arquivo e guarde-o em local seguro.",
+    "passwordPlaceholder": "Senha de recuperação (mín. 8 caracteres)",
+    "hintPlaceholder": "Dica de senha (opcional)",
+    "passwordTooShort": "Use pelo menos 8 caracteres.",
+    "createFile": "Criar arquivo de recuperação",
+    "skipForNow": "Pular por enquanto",
+    "fileTitle": "Salve seu arquivo de recuperação",
+    "fileBody": "Baixe o arquivo e guarde-o em um lugar seguro, como um gerenciador de senhas. Quem tiver este arquivo E a senha pode restaurar a carteira; sem a senha, ele é inútil.",
+    "downloadFile": "Baixar arquivo",
+    "savedIt": "Salvei"
   }
 }

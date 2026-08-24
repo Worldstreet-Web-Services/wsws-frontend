@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  decane-connect-kit:
+    hash: 95bf83e8fc34c25887cafc51f4f67da55378fca45e4da8a644251582158aee30
+    path: patches/decane-connect-kit.patch
+
 importers:
 
   .:
@@ -64,7 +69,7 @@ importers:
         version: 2.1.1
       decane-connect-kit:
         specifier: ^2.7.1
-        version: 2.7.1(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(utf-8-validate@6.0.6)
+        version: 2.7.1(patch_hash=95bf83e8fc34c25887cafc51f4f67da55378fca45e4da8a644251582158aee30)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(utf-8-validate@6.0.6)
       decane-node:
         specifier: ^1.1.1
         version: 1.2.0
@@ -11272,7 +11277,7 @@ snapshots:
 
   decamelize@1.2.0: {}
 
-  decane-connect-kit@2.7.1(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(utf-8-validate@6.0.6):
+  decane-connect-kit@2.7.1(patch_hash=95bf83e8fc34c25887cafc51f4f67da55378fca45e4da8a644251582158aee30)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(utf-8-validate@6.0.6):
     dependencies:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0

@@ -2401,5 +2401,20 @@
     "updateFailed": "Einige Transfers sind nicht angekommen ({message}). Tippe erneut auf Guthaben aktualisieren.",
     "updateNotReady": "Deine Wallet ist noch nicht bereit. Versuche es gleich noch einmal.",
     "updateSkipped": "Guthaben aktualisiert. {count, plural, one {# Asset} other {# Assets}} auf nicht unterstützten Netzwerken blieben in deiner alten Wallet; wende dich an den Support."
+  },
+  "recovery": {
+    "offerTitle": "Wiederherstellungsdatei speichern",
+    "offerBody": "Wenn du dieses Gerät und deinen Passkey verlierst, ist die Wiederherstellungsdatei mit ihrem Passwort der einzige Weg zurück in deine Wallet. Schütze sie mit einem Passwort; wir sehen keins von beiden.",
+    "rotatedTitle": "Deine Wiederherstellungsdatei wurde ersetzt",
+    "rotatedBody": "Die Wiederherstellung auf diesem Gerät hat eine neue Datei erstellt und die alte ungültig gemacht. Lege ein Passwort für die neue Datei fest und speichere sie sicher.",
+    "passwordPlaceholder": "Wiederherstellungspasswort (mind. 8 Zeichen)",
+    "hintPlaceholder": "Passwort-Hinweis (optional)",
+    "passwordTooShort": "Verwende mindestens 8 Zeichen.",
+    "createFile": "Wiederherstellungsdatei erstellen",
+    "skipForNow": "Später",
+    "fileTitle": "Wiederherstellungsdatei speichern",
+    "fileBody": "Lade die Datei herunter und bewahre sie sicher auf, etwa in einem Passwort-Manager. Wer diese Datei UND ihr Passwort hat, kann die Wallet wiederherstellen; ohne Passwort ist sie nutzlos.",
+    "downloadFile": "Datei herunterladen",
+    "savedIt": "Ich habe sie gespeichert"
   }
 }

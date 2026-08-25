@@ -47,8 +47,15 @@ export function HyperliquidProPerps() {
     );
   }
 
+  // Default to BTC-USDC before the user has picked anything — assets sort
+  // alphabetically from the backend, so falling back to assets[0] directly
+  // would land on whatever sorts first (e.g. a native ticker like "0G"),
+  // not the market a new user actually expects to see first.
   const asset =
-    trading.assets.find((a) => a.symbol === selectedSymbol) ?? trading.assets[0] ?? null;
+    trading.assets.find((a) => a.symbol === selectedSymbol) ??
+    trading.assets.find((a) => a.symbol === "BTC") ??
+    trading.assets[0] ??
+    null;
   const markPrice = asset ? Number(trading.prices[asset.symbol] ?? 0) : 0;
 
   const withBusy = async <T,>(fn: () => Promise<T>): Promise<T> => {

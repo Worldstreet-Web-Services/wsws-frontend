@@ -14,6 +14,7 @@ import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessEngine } from "@/features/casino/hooks/use-chess-engine";
 import { CASHIER_KEYS, useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
 import { useChessProducts } from "@/features/casino/hooks/use-chess-products";
+import { CashierSheet } from "@/features/casino/components/chess/cashier-sheet";
 import { ChessCashierLauncher } from "@/features/casino/components/chess/chess-cashier-launcher";
 import { ChessBoard } from "@/features/casino/components/chess/chess-board";
 import { CapturedRow } from "@/features/casino/components/chess/captured-row";
@@ -30,7 +31,13 @@ import {
 import { LiveChatFeed } from "@/features/casino/components/live-chat-feed";
 import { identifyOpening } from "@/features/casino/lib/chess/openings";
 import { formatEngineScore, uciToSan } from "@/features/casino/lib/chess/engine-analysis";
-import { CHESS_CARD_BG, CHESS_CARD_SHADOW, CHESS_SURFACE_BG } from "@/features/casino/lib/chess/ui";
+import {
+  CHESS_CARD_BG,
+  CHESS_CARD_SHADOW,
+  CHESS_MODAL_CLOSE_BUTTON_CLASS,
+  CHESS_MODAL_PANEL_CLASS,
+  CHESS_SURFACE_BG,
+} from "@/features/casino/lib/chess/ui";
 import {
   armAudioUnlock,
   moveSoundFromSan,
@@ -52,7 +59,7 @@ import {
 import { friendlyError, isConflictError } from "@/lib/errors";
 import { track } from "@/lib/analytics/mixpanel";
 import { computerGamePayout, gamePayout } from "@/lib/analytics/game-result";
-import { hasPositiveUsdc } from "@/features/casino/lib/api/cashier";
+import { hasPositiveUsdc, wagerBreakdown } from "@/features/casino/lib/api/cashier";
 import { copyText } from "@/lib/clipboard";
 import { toast } from "@/lib/toast";
 import type {
@@ -76,6 +83,7 @@ import {
 } from "@/features/casino/components/chess/round/round-moves";
 import { RoundChatFeed } from "@/features/casino/components/chess/round/round-chat";
 import { RoundBoardMenu } from "@/features/casino/components/chess/round/round-board-menu";
+import { shareOrigin } from "@/lib/site-url";
 
 const LiveVideoPlayer = dynamic(
   () =>
@@ -517,6 +525,7 @@ function CoachGameSummaryPanel({ summary }: { summary: ChessComputerCoachSummary
 function PostGameActions({
   result,
   ratingDiff,
+  winnings,
   computerGame,
   canRematch,
   rematchReadyId,
@@ -529,12 +538,18 @@ function PostGameActions({
   onOfferRematch,
   onDeclineRematch,
   onNewComputer,
+  onWithdrawWinnings,
   onReview,
   onLobby,
   t,
 }: {
   result: string;
   ratingDiff: number | null;
+  winnings: {
+    creditedUsdc: string;
+    balanceUsdc: string;
+    withdrawalFeePct: number | null;
+  } | null;
   computerGame: boolean;
   canRematch: boolean;
   rematchReadyId: string | null;
@@ -547,6 +562,7 @@ function PostGameActions({
   onOfferRematch: () => void;
   onDeclineRematch: () => void;
   onNewComputer: () => void;
+  onWithdrawWinnings: () => void;
   onReview: () => void;
   onLobby: () => void;
   t: Translator;
@@ -562,6 +578,35 @@ function PostGameActions({
           className={`tnum mt-1 text-[0.82rem] ${ratingDiff !== null && ratingDiff > 0 ? "text-up" : "text-down"}`}
         >
           {ratingText}
+        </div>
+      ) : null}
+
+      {winnings ? (
+        <div className="mt-3 rounded-[12px] border border-[#817d75]/35 bg-[#34312d] px-3.5 py-3">
+          <div className="text-[0.7rem] font-semibold tracking-[0.08em] text-white/48 uppercase">
+            {t("winningsCredited")}
+          </div>
+          <div className="tnum mt-1 text-[1.22rem] font-semibold text-[#8fcf64]">
+            +{winnings.creditedUsdc} USDC
+          </div>
+          <div className="mt-1 text-[0.78rem] leading-5 text-white/58">
+            {t("winningsCreditedBody")}
+          </div>
+          <div className="tnum mt-2 text-[0.75rem] text-white/44">
+            {t("chessBalanceNow", { amount: winnings.balanceUsdc })}
+          </div>
+          {winnings.withdrawalFeePct !== null ? (
+            <div className="mt-1 text-[0.72rem] text-white/38">
+              {t("withdrawalFeeApplies", { pct: winnings.withdrawalFeePct })}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onWithdrawWinnings}
+            className={`${railActionButton} mt-3 w-full`}
+          >
+            {t("withdrawToWallet")}
+          </button>
         </div>
       ) : null}
 
@@ -649,8 +694,8 @@ export function PlaySection({
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
   const products = useChessProducts();
-  // Only the fee percentage is read here, for the settled-wager line.
-  const { feePct } = useChessCashierStatus();
+  const cashier = useChessCashierStatus();
+  const { feePct } = cashier;
   const {
     match,
     clocks,
@@ -716,6 +761,7 @@ export function PlaySection({
   const [boardMenuOpen, setBoardMenuOpen] = useState(false);
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [showInviteQr, setShowInviteQr] = useState(false);
+  const [withdrawWinningsOpen, setWithdrawWinningsOpen] = useState(false);
   const hintMove =
     match && hintGuidance && match.fen === hintGuidance.fen ? hintGuidance.move : null;
   const setHintMove = (
@@ -1417,6 +1463,28 @@ export function PlaySection({
           : feePct !== null
             ? tStake("wagerSettled", { pct: feePct })
             : tStake("wagerEach", { amount: match.stakeUsdc });
+  const wonSettledPvpWager =
+    computerWager === null &&
+    match.stakeUsdc !== null &&
+    match.wagerStatus === "settled" &&
+    result !== null &&
+    result.kind !== "draw" &&
+    you !== null &&
+    result.winner === you;
+  const settledPvpWinnings = wonSettledPvpWager
+    ? {
+        creditedUsdc: wagerBreakdown(
+          match.stakeUsdc as string,
+          "0",
+          cashier.config?.platformFeeBps ?? CHESS_FEE_BPS
+        ).winnerReceives,
+        balanceUsdc: cashier.available,
+        withdrawalFeePct:
+          cashier.config?.withdrawalFeeBps === undefined
+            ? null
+            : cashier.config.withdrawalFeeBps / 100,
+      }
+    : null;
 
   const turnLabel = over
     ? resultLine(t, match, you)
@@ -1443,7 +1511,7 @@ export function PlaySection({
     waiting && matchId
       ? typeof window === "undefined"
         ? `/casino/chess/invite?code=${matchId}`
-        : `${window.location.origin}/casino/chess/invite?code=${matchId}`
+        : `${shareOrigin()}/casino/chess/invite?code=${matchId}`
       : null;
   const canWriteChat = !!wallet.address && !isComputerGame;
   const canEditComments = you !== null && currentPly !== null;
@@ -1968,6 +2036,7 @@ export function PlaySection({
                 <PostGameActions
                   result={resultLine(t, match, you)}
                   ratingDiff={yourRatingDiff}
+                  winnings={settledPvpWinnings}
                   computerGame={isComputerGame}
                   canRematch={you !== null && !isComputerGame}
                   rematchReadyId={rematchReadyId}
@@ -1984,6 +2053,7 @@ export function PlaySection({
                   onOfferRematch={() => void onRematch()}
                   onDeclineRematch={() => void onDeclineRematch()}
                   onNewComputer={() => router.push("/casino/chess?computer=1")}
+                  onWithdrawWinnings={() => setWithdrawWinningsOpen(true)}
                   onReview={() => router.push(`/casino/chess/review?match=${match.id}`)}
                   onLobby={() => router.push("/casino/chess")}
                   t={t}
@@ -2205,6 +2275,7 @@ export function PlaySection({
                 <PostGameActions
                   result={resultLine(t, match, you)}
                   ratingDiff={yourRatingDiff}
+                  winnings={settledPvpWinnings}
                   computerGame={isComputerGame}
                   canRematch={you !== null && !isComputerGame}
                   rematchReadyId={rematchReadyId}
@@ -2221,6 +2292,7 @@ export function PlaySection({
                   onOfferRematch={() => void onRematch()}
                   onDeclineRematch={() => void onDeclineRematch()}
                   onNewComputer={() => router.push("/casino/chess?computer=1")}
+                  onWithdrawWinnings={() => setWithdrawWinningsOpen(true)}
                   onReview={() => router.push(`/casino/chess/review?match=${match.id}`)}
                   onLobby={() => router.push("/casino/chess")}
                   t={t}
@@ -2487,6 +2559,16 @@ export function PlaySection({
             </div>
           </div>
         )}
+      </ModalShell>
+
+      <ModalShell
+        open={withdrawWinningsOpen}
+        onClose={() => setWithdrawWinningsOpen(false)}
+        contentKey="chess-winnings-withdraw"
+        panelClassName={CHESS_MODAL_PANEL_CLASS}
+        closeButtonClassName={CHESS_MODAL_CLOSE_BUTTON_CLASS}
+      >
+        <CashierSheet onClose={() => setWithdrawWinningsOpen(false)} initialMode="withdraw" />
       </ModalShell>
     </div>
   );

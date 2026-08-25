@@ -136,6 +136,7 @@
     "ctaNeedsGas": "Preparando tu monedero de {chain}. Añade un poco de {symbol} para continuar."
   },
   "topbar": {
+    "support": "soporte",
     "searchPlaceholder": "Buscar activos, mercados, tickers",
     "menu": "Menú",
     "closeMenu": "Cerrar menú",
@@ -785,6 +786,7 @@
   "prediction": {
     "eyebrow": "Mercados de predicción",
     "heading": "Opera tu convicción",
+    "exploreAllMarkets": "Explorar todos los mercados",
     "regionBlockedTitle": "No disponible en tu región",
     "regionBlockedBody": "Los mercados de predicción no se ofrecen donde estás ahora. El resto de {brand} sigue totalmente disponible.",
     "toastClaiming": "Reclamando tus ganancias…",
@@ -1518,6 +1520,8 @@
       }
     },
     "lastStanding": {
+      "connectionLostTitle": "Conexión perdida",
+      "connectionLostBody": "El juego se congeló mientras reconectamos. Se pone al día solo en cuanto vuelve tu red.",
       "eyebrow": "Arkade · El ganador se lo lleva todo",
       "title": "The Last Man",
       "intro": "Juega para ser el último en pie. Cuando el tiempo se agota, el último jugador en jugar se lleva la mitad del pozo; el 10 % va para quien creó la partida.",
@@ -1809,6 +1813,11 @@
         "resultYouLost": "{how} · Perdiste",
         "resultWhiteWon": "{how} · Ganaron las blancas",
         "resultBlackWon": "{how} · Ganaron las negras",
+        "winningsCredited": "Ganancias acreditadas",
+        "winningsCreditedBody": "Ya están disponibles en tu saldo de ajedrez. Retíralas para enviar los fondos a tu wallet.",
+        "chessBalanceNow": "Saldo de ajedrez · {amount} USD disponibles",
+        "withdrawalFeeApplies": "Los retiros a la wallet incluyen una comisión del {pct}%.",
+        "withdrawToWallet": "Retirar a la wallet",
         "toastMoveFailed": "Esa jugada no se registró.",
         "toastDrawOffered": "Tablas ofrecidas.",
         "toastDrawOfferFailed": "No se pudieron ofrecer tablas.",
@@ -1987,6 +1996,13 @@
         "oddsMovement": "Movimiento de cuotas",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "Liquidando tus apuestas",
+        "settlingBetsBody": "El resultado es definitivo. Estamos actualizando tu saldo de ajedrez.",
+        "returnCredited": "Retorno acreditado",
+        "refundCredited": "Apuesta reembolsada",
+        "returnCreditedBody": "El importe está disponible en tu saldo de ajedrez. Retíralo para enviarlo a tu wallet.",
+        "noReturn": "Apuesta liquidada",
+        "noReturnBody": "Tu selección no ganó, por lo que este mercado no genera ningún pago.",
         "noSelfBet": "Estás jugando esta partida, así que no puedes poner un stake en ella."
       },
       "cashier": {
@@ -2017,6 +2033,7 @@
         "withdrawing": "Retirando…",
         "withdrawalSent": "Retiro en camino: {amount} USD.",
         "withdrawFailed": "El retiro falló. Tu saldo no ha cambiado.",
+        "withdrawalFeeNote": "Se aplica una comisión de retiro del {pct}%.",
         "notEnough": "Es más que tu saldo de ajedrez disponible.",
         "feeNote": "Se aplica una comisión de plataforma del {pct}% a las ganancias.",
         "unavailable": "Los saldos de ajedrez aún no están disponibles."
@@ -2285,6 +2302,27 @@
     "claimFailed": "No se pudo reclamar ese nombre de usuario. Inténtalo de nuevo.",
     "loadFailed": "No se pudieron cargar tus referidos.",
     "retry": "Reintentar"
+  },
+  "marquee": {
+    "liveLabel": "En vivo",
+    "liveJoin": "Únete ya",
+    "liveLastMan": "Last Man · bote de {pot}",
+    "liveWatch": "Ver",
+    "liveChess": "Ajedrez · partida en vivo",
+    "liveCheckers": "Damas · partida en vivo",
+    "newBadge": "Nuevo",
+    "portfolio": "El portafolio es la pantalla de inicio de tu dinero. Reúne tu saldo, tus monedas y tus activos en un solo lugar y los valora en vivo, para que siempre sepas qué tienes y cuánto vale.",
+    "kash": "Kash+ es nuestro token de recompensas. Tenlo en tu billetera y la plataforma te devuelve por lo que ya haces, así cada operación y cada partida te dejan un extra sin esfuerzo.",
+    "funds": "Añadir fondos recarga tu billetera. Transfiere desde tu banco desde ₦1,000 o envía cripto, y el dinero llega en minutos, listo para operar, jugar o enviar.",
+    "spot": "Spot es comprar cripto sin rodeos. Elige una moneda, mira el precio en vivo, confirma en dos toques, y queda en tu propia billetera donde solo tú decides.",
+    "perps": "Los perpetuos te dejan operar un movimiento de precio con apalancamiento. Ve en largo si crees que sube, en corto si crees que baja, y un buen acierto paga varias veces más.",
+    "meme": "En Memecoins aparecen primero los tokens recién nacidos. Mira lo que es tendencia, compra en un par de toques y atrapa al próximo ganador cuando todavía es temprano.",
+    "rwa": "Activos reales pone acciones y oro en tu panel. Compra una parte directamente desde tu billetera en segundos, sin corredor ni papeleo, y vende igual de fácil.",
+    "prediction": "Predicción convierte tu opinión en una posición. Apuesta por un resultado en deportes, elecciones o precios, y si el mundo va a tu favor cobras dinero real.",
+    "casino": "Arkade son juegos con apuestas reales. Reta a otros al ajedrez, las damas o Last Man, y cuando ganas el premio se paga directo a tu billetera.",
+    "earn": "Earn es trabajo, no suerte. Toma encargos y tareas pequeñas, entrégalos y cobra en tu billetera sin hacer ni una sola operación.",
+    "activity": "Actividad es tu historial completo de dinero. Cada depósito, operación, premio y retiro está en una lista clara, para que siempre puedas rastrear a dónde fue tu dinero.",
+    "invite": "Invitar amigos es tu enlace de referido. Compártelo donde quieras, y cada vez que un amigo se registra y hace su primer depósito, el crédito es tuyo. Las recompensas vienen en camino."
   },
   "tour": {
     "replayCta": "Hacer el recorrido",

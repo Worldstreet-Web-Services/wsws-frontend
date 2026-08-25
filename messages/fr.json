@@ -136,6 +136,7 @@
     "ctaNeedsGas": "Préparation de votre portefeuille {chain}. Ajoutez un peu de {symbol} pour continuer."
   },
   "topbar": {
+    "support": "support",
     "searchPlaceholder": "Rechercher actifs, marchés, tickers",
     "menu": "Menu",
     "closeMenu": "Fermer le menu",
@@ -785,6 +786,7 @@
   "prediction": {
     "eyebrow": "Marchés de prédiction",
     "heading": "Tradez vos convictions",
+    "exploreAllMarkets": "Explorer tous les marchés",
     "regionBlockedTitle": "Indisponible dans votre région",
     "regionBlockedBody": "Les marchés de prédiction ne sont pas proposés là où vous êtes. Le reste de {brand} reste entièrement disponible.",
     "toastClaiming": "Réclamation de vos gains…",
@@ -1518,6 +1520,8 @@
       }
     },
     "lastStanding": {
+      "connectionLostTitle": "Connexion perdue",
+      "connectionLostBody": "La partie est figée pendant la reconnexion. Elle se met à jour toute seule dès que votre réseau revient.",
       "eyebrow": "Arkade · Le gagnant rafle tout",
       "title": "The Last Man",
       "intro": "Jouez pour être le dernier en lice. Quand le chrono tombe à zéro, le dernier joueur à avoir joué remporte la moitié du pot ; 10 % vont à celui qui a lancé la partie.",
@@ -1809,6 +1813,11 @@
         "resultYouLost": "{how} · Vous avez perdu",
         "resultWhiteWon": "{how} · Victoire des Blancs",
         "resultBlackWon": "{how} · Victoire des Noirs",
+        "winningsCredited": "Gains crédités",
+        "winningsCreditedBody": "Ils sont disponibles dans votre solde d’échecs. Retirez-les pour envoyer les fonds vers votre wallet.",
+        "chessBalanceNow": "Solde d’échecs · {amount} USD disponibles",
+        "withdrawalFeeApplies": "Les retraits vers le wallet incluent {pct} % de frais.",
+        "withdrawToWallet": "Retirer vers le wallet",
         "toastMoveFailed": "Ce coup n'est pas passé.",
         "toastDrawOffered": "Nulle proposée.",
         "toastDrawOfferFailed": "Impossible de proposer la nulle.",
@@ -1987,6 +1996,13 @@
         "oddsMovement": "Évolution des cotes",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "Règlement de vos mises",
+        "settlingBetsBody": "Le résultat est définitif. Votre solde d’échecs est en cours d’actualisation.",
+        "returnCredited": "Retour crédité",
+        "refundCredited": "Mise remboursée",
+        "returnCreditedBody": "Le montant est disponible dans votre solde d’échecs. Retirez-le pour l’envoyer vers votre wallet.",
+        "noReturn": "Mise réglée",
+        "noReturnBody": "Votre sélection n’a pas gagné, ce marché ne verse donc aucun paiement.",
         "noSelfBet": "Tu joues cette partie, tu ne peux donc pas miser dessus."
       },
       "cashier": {
@@ -2017,6 +2033,7 @@
         "withdrawing": "Retrait en cours…",
         "withdrawalSent": "Retrait en route : {amount} USD.",
         "withdrawFailed": "Le retrait a échoué. Votre solde est inchangé.",
+        "withdrawalFeeNote": "Des frais de retrait de {pct} % s’appliquent.",
         "notEnough": "C'est plus que votre solde échecs disponible.",
         "feeNote": "Des frais de plateforme de {pct} % s'appliquent aux gains.",
         "unavailable": "Les soldes échecs ne sont pas encore disponibles."
@@ -2285,6 +2302,27 @@
     "claimFailed": "Impossible de réserver ce nom d'utilisateur. Réessayez.",
     "loadFailed": "Impossible de charger vos parrainages.",
     "retry": "Réessayer"
+  },
+  "marquee": {
+    "liveLabel": "En direct",
+    "liveJoin": "Rejoindre",
+    "liveLastMan": "Last Man · cagnotte de {pot}",
+    "liveWatch": "Regarder",
+    "liveChess": "Échecs · partie en direct",
+    "liveCheckers": "Dames · partie en direct",
+    "newBadge": "Nouveau",
+    "portfolio": "Le portefeuille est l'écran d'accueil de votre argent. Il réunit votre solde, vos cryptos et vos actifs au même endroit et les valorise en direct, pour que vous sachiez toujours ce que vous avez et ce que ça vaut.",
+    "kash": "Kash+ est notre token de récompense. Gardez-en dans votre portefeuille et la plateforme vous rend ce que vous faites déjà : chaque trade et chaque partie vous rapportent un petit extra.",
+    "funds": "Ajouter des fonds recharge votre portefeuille. Virez depuis votre banque dès ₦1 000 ou envoyez de la crypto, et l'argent arrive en quelques minutes, prêt à trader, jouer ou envoyer.",
+    "spot": "Spot, c'est l'achat de crypto sans détour. Choisissez une monnaie, regardez le prix en direct, confirmez en deux gestes, et elle atterrit dans votre propre portefeuille, sous votre seul contrôle.",
+    "perps": "Les perpétuels vous laissent trader un mouvement de prix avec effet de levier. Long si vous pensez que ça monte, short si vous pensez que ça baisse, et une bonne lecture paie plusieurs fois plus fort.",
+    "meme": "Memecoins, c'est là où les tout nouveaux tokens apparaissent en premier. Parcourez les tendances, achetez en deux gestes et attrapez le prochain gagnant tant qu'il est tôt.",
+    "rwa": "Actifs réels met les actions et l'or sur votre tableau de bord. Achetez-en une part depuis votre portefeuille en quelques secondes, sans courtier ni paperasse, et revendez aussi simplement.",
+    "prediction": "Prédiction transforme votre opinion en position. Misez sur une issue en sport, en politique ou sur les prix, et si le monde vous donne raison, vous touchez du vrai argent.",
+    "casino": "Arkade, ce sont des jeux avec de vraies mises. Défiez d'autres joueurs aux échecs, aux dames ou à Last Man, et quand vous gagnez, le prix est versé droit dans votre portefeuille.",
+    "earn": "Earn, c'est du travail, pas de la chance. Prenez des missions et de petites tâches, livrez-les et soyez payé dans votre portefeuille sans jamais passer un trade.",
+    "activity": "Activité est l'historique complet de votre argent. Chaque dépôt, trade, gain et retrait tient dans une liste claire, pour toujours pouvoir retracer où est passé votre argent.",
+    "invite": "Inviter des amis, c'est votre lien de parrainage. Partagez-le partout, et chaque fois qu'un ami s'inscrit et fait son premier dépôt, le crédit est pour vous. Les récompenses arrivent."
   },
   "tour": {
     "replayCta": "Faire la visite",

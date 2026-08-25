@@ -9,11 +9,11 @@ import {
 } from "@/lib/decane-recovery";
 
 // Renders the wallet-recovery dialogs Decane's callbacks wait on: the
-// signup-time offer of a recovery file, the new-password prompt after a
-// rotation, and the save-your-file step. Mounted once inside DecaneKit.
-// Deliberately not dismissible: each dialog resolves a promise the SDK is
-// blocked on, and walking away from a rotation would strand the user with a
-// dead recovery file.
+// new-password prompt after a rotation, the save-your-file step, and the
+// restore-from-file prompt for a device with no share. Mounted once inside
+// DecaneKit. The rotation dialogs are deliberately not dismissible: each
+// resolves a promise the SDK is blocked on, and walking away from a rotation
+// would strand the user with a dead recovery file.
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -24,11 +24,7 @@ const PRIMARY =
 const SECONDARY =
   "h-12 w-full cursor-pointer rounded-[14px] border border-white/14 bg-white/8 text-[14.5px] font-medium text-white transition-colors hover:border-white/30";
 
-function PasswordDialog({
-  request,
-}: {
-  request: Extract<RecoveryRequest, { kind: "offer" | "rotated" }>;
-}) {
+function PasswordDialog({ request }: { request: Extract<RecoveryRequest, { kind: "rotated" }> }) {
   const t = useTranslations("recovery");
   const [password, setPassword] = useState("");
   const [hint, setHint] = useState("");
@@ -36,27 +32,15 @@ function PasswordDialog({
 
   const submit = () => {
     if (password.length < MIN_PASSWORD_LENGTH) return;
-    const choice = { password, passwordHint: hint.trim() || undefined };
-    if (request.kind === "offer") request.resolve({ wants: true, ...choice });
-    else request.resolve(choice);
-    completeRecoveryRequest(request);
-  };
-
-  const decline = () => {
-    if (request.kind !== "offer") return;
-    request.resolve({ wants: false, password: "" });
+    request.resolve({ password, passwordHint: hint.trim() || undefined });
     completeRecoveryRequest(request);
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="ws-display text-[20px]">
-          {request.kind === "offer" ? t("offerTitle") : t("rotatedTitle")}
-        </div>
-        <p className="mt-1.5 text-[13.5px] leading-[1.55] text-white/55">
-          {request.kind === "offer" ? t("offerBody") : t("rotatedBody")}
-        </p>
+        <div className="ws-display text-[20px]">{t("rotatedTitle")}</div>
+        <p className="mt-1.5 text-[13.5px] leading-[1.55] text-white/55">{t("rotatedBody")}</p>
       </div>
       <input
         type="password"
@@ -76,11 +60,6 @@ function PasswordDialog({
       <button onClick={submit} disabled={password.length < MIN_PASSWORD_LENGTH} className={PRIMARY}>
         {t("createFile")}
       </button>
-      {request.kind === "offer" ? (
-        <button onClick={decline} className={SECONDARY}>
-          {t("skipForNow")}
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -121,6 +100,71 @@ function FileDialog({ request }: { request: Extract<RecoveryRequest, { kind: "fi
   );
 }
 
+// A new device with no passkey: the only way in is the recovery file the user
+// saved. Cancelling is allowed here (unlike the rotation dialogs) and resolves
+// null, which the kit surfaces as NewDeviceError on the sign-in screen.
+function RestoreDialog({ request }: { request: Extract<RecoveryRequest, { kind: "restore" }> }) {
+  const t = useTranslations("recovery");
+  const [file, setFile] = useState<{ name: string; value: unknown } | null>(null);
+  const [password, setPassword] = useState("");
+  const [unreadable, setUnreadable] = useState(false);
+
+  const pick = async (picked: File | undefined) => {
+    setUnreadable(false);
+    if (!picked) return;
+    try {
+      setFile({ name: picked.name, value: JSON.parse(await picked.text()) });
+    } catch {
+      setFile(null);
+      setUnreadable(true);
+    }
+  };
+
+  const restore = () => {
+    if (!file || !password) return;
+    request.resolve({ value: file.value, getPassword: async () => password });
+    completeRecoveryRequest(request);
+  };
+
+  const cancel = () => {
+    request.resolve(null);
+    completeRecoveryRequest(request);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <div className="ws-display text-[20px]">{t("restoreTitle")}</div>
+        <p className="mt-1.5 text-[13.5px] leading-[1.55] text-white/55">{t("restoreBody")}</p>
+      </div>
+      <label className={`${SECONDARY} grid cursor-pointer place-items-center truncate px-4`}>
+        {file ? file.name : t("chooseFile")}
+        <input
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => void pick(e.target.files?.[0])}
+        />
+      </label>
+      {unreadable ? <p className="text-[13px] text-red-400">{t("fileUnreadable")}</p> : null}
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder={t("restorePasswordPlaceholder")}
+        autoComplete="current-password"
+        className={INPUT}
+      />
+      <button onClick={restore} disabled={!file || !password} className={PRIMARY}>
+        {t("restore")}
+      </button>
+      <button onClick={cancel} className={SECONDARY}>
+        {t("cancelRestore")}
+      </button>
+    </div>
+  );
+}
+
 export function DecaneRecoveryHost() {
   const request = useRecoveryRequest();
   if (!request) return null;
@@ -129,6 +173,8 @@ export function DecaneRecoveryHost() {
       <div className="ws-card w-full max-w-[420px] px-6 py-6">
         {request.kind === "file" ? (
           <FileDialog request={request} />
+        ) : request.kind === "restore" ? (
+          <RestoreDialog request={request} />
         ) : (
           <PasswordDialog request={request} />
         )}

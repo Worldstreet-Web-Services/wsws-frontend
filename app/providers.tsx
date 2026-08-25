@@ -21,7 +21,7 @@ import { DecaneRecoveryHost } from "@/components/providers/decane-recovery-host"
 import {
   collectRotatedRecoveryPassword,
   deliverRecoveryFile,
-  offerRecoveryShare,
+  promptForRecoveryFile,
 } from "@/lib/decane-recovery";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { MiniTimerHost } from "@/features/casino";
@@ -57,13 +57,21 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           apiKey: DECANE_API_KEY,
           authMethods: ["google", "email"],
           chains: DECANE_CHAINS,
+          // The kit's own full-screen "Creating your wallet" overlay is off:
+          // the sign-in page shows its branded busy panel for the creating
+          // window (it is where the Google redirect lands), and AuthGuard's
+          // loading screen covers the unlocking window on every other route.
+          showStatusOverlay: false,
           // Wallet recovery rotates the share set and must hand the user a
           // fresh recovery file; these bridge into the dialogs rendered by
           // DecaneRecoveryHost below. Without onRecoveryRotated the kit
-          // refuses to run recovery at all.
-          onRecoveryShareOffer: offerRecoveryShare,
+          // refuses to run recovery at all. No signup-time offer: new devices
+          // are provisioned from the sign-in alone since 2.7.4.
           onRecoveryRotated: collectRotatedRecoveryPassword,
           onRecoveryFileReady: deliverRecoveryFile,
+          // Without this, a device with no share and no passkey throws
+          // NewDeviceError instantly instead of asking for the saved file.
+          promptForRecoveryFile,
         },
       }}
     >

@@ -12,8 +12,11 @@ import type { RecoveryShareFile } from "decane-connect-kit";
 // Why these exist at all: recovering a wallet on a new device rotates the
 // Shamir share set, which invalidates the user's previous recovery file. The
 // kit refuses to run recovery unless the app can collect a new password
-// (onRecoveryRotated) and deliver the replacement file (onRecoveryFileReady).
-// The signup-time offer (onRecoveryShareOffer) uses the same two dialogs.
+// (onRecoveryRotated), deliver the replacement file (onRecoveryFileReady),
+// and, on a device with neither share nor passkey, take the saved file back
+// in (promptForRecoveryFile). There is no signup-time offer: since 2.7.4
+// server-assisted provisioning covers new devices, and the kit no longer
+// calls onRecoveryShareOffer unless offerRecoveryAtSignup is set explicitly.
 
 export interface RecoveryAddresses {
   evmAddress: string;
@@ -25,16 +28,7 @@ export interface RecoveryPasswordChoice {
   passwordHint?: string;
 }
 
-export interface RecoveryOfferChoice extends RecoveryPasswordChoice {
-  wants: boolean;
-}
-
 export type RecoveryRequest =
-  | {
-      kind: "offer";
-      addresses: RecoveryAddresses;
-      resolve: (choice: RecoveryOfferChoice) => void;
-    }
   | {
       kind: "rotated";
       addresses: RecoveryAddresses;
@@ -45,7 +39,19 @@ export type RecoveryRequest =
       file: RecoveryShareFile;
       filename: string;
       resolve: () => void;
+    }
+  | {
+      // A new device with no passkey: the user supplies the recovery file they
+      // saved, plus its password. null means they cancelled, which the kit
+      // reports as NewDeviceError.
+      kind: "restore";
+      resolve: (supplied: RecoveryFileSupply | null) => void;
     };
+
+export interface RecoveryFileSupply {
+  value: unknown;
+  getPassword: () => Promise<string | null>;
+}
 
 const queue: RecoveryRequest[] = [];
 const listeners = new Set<() => void>();
@@ -81,10 +87,6 @@ export function useRecoveryRequest(): RecoveryRequest | null {
 
 // The three callbacks DecaneKit's social config is wired to.
 
-export function offerRecoveryShare(addresses: RecoveryAddresses): Promise<RecoveryOfferChoice> {
-  return new Promise((resolve) => enqueue({ kind: "offer", addresses, resolve }));
-}
-
 export function collectRotatedRecoveryPassword(
   addresses: RecoveryAddresses
 ): Promise<RecoveryPasswordChoice> {
@@ -93,4 +95,8 @@ export function collectRotatedRecoveryPassword(
 
 export function deliverRecoveryFile(file: RecoveryShareFile, filename: string): Promise<void> {
   return new Promise((resolve) => enqueue({ kind: "file", file, filename, resolve }));
+}
+
+export function promptForRecoveryFile(): Promise<RecoveryFileSupply | null> {
+  return new Promise((resolve) => enqueue({ kind: "restore", resolve }));
 }

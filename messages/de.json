@@ -2403,18 +2403,22 @@
     "updateSkipped": "Guthaben aktualisiert. {count, plural, one {# Asset} other {# Assets}} auf nicht unterstützten Netzwerken blieben in deiner alten Wallet; wende dich an den Support."
   },
   "recovery": {
-    "offerTitle": "Wiederherstellungsdatei speichern",
-    "offerBody": "Wenn du dieses Gerät und deinen Passkey verlierst, ist die Wiederherstellungsdatei mit ihrem Passwort der einzige Weg zurück in deine Wallet. Schütze sie mit einem Passwort; wir sehen keins von beiden.",
     "rotatedTitle": "Deine Wiederherstellungsdatei wurde ersetzt",
     "rotatedBody": "Die Wiederherstellung auf diesem Gerät hat eine neue Datei erstellt und die alte ungültig gemacht. Lege ein Passwort für die neue Datei fest und speichere sie sicher.",
     "passwordPlaceholder": "Wiederherstellungspasswort (mind. 8 Zeichen)",
     "hintPlaceholder": "Passwort-Hinweis (optional)",
     "passwordTooShort": "Verwende mindestens 8 Zeichen.",
     "createFile": "Wiederherstellungsdatei erstellen",
-    "skipForNow": "Später",
     "fileTitle": "Wiederherstellungsdatei speichern",
     "fileBody": "Lade die Datei herunter und bewahre sie sicher auf, etwa in einem Passwort-Manager. Wer diese Datei UND ihr Passwort hat, kann die Wallet wiederherstellen; ohne Passwort ist sie nutzlos.",
     "downloadFile": "Datei herunterladen",
-    "savedIt": "Ich habe sie gespeichert"
+    "savedIt": "Ich habe sie gespeichert",
+    "restoreTitle": "Aus Wiederherstellungsdatei wiederherstellen",
+    "restoreBody": "Dieses Gerät hat keine Kopie deines Wallet-Schlüssels und dein Passkey ist nicht hier. Wähle die gespeicherte Wiederherstellungsdatei und gib ihr Passwort ein. Die Wiederherstellung erstellt eine neue Datei; du wirst gleich gebeten, sie zu speichern.",
+    "chooseFile": "Wiederherstellungsdatei wählen",
+    "restorePasswordPlaceholder": "Passwort der Wiederherstellungsdatei",
+    "restore": "Wallet wiederherstellen",
+    "cancelRestore": "Abbrechen",
+    "fileUnreadable": "Diese Datei ist keine lesbare Wiederherstellungsdatei."
   }
 }

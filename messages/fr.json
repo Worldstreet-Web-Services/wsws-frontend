@@ -2403,18 +2403,22 @@
     "updateSkipped": "Solde mis à jour. {count, plural, one {# actif est resté} other {# actifs sont restés}} sur des réseaux non pris en charge dans votre ancien portefeuille ; contactez le support pour les transférer."
   },
   "recovery": {
-    "offerTitle": "Enregistrez un fichier de récupération",
-    "offerBody": "Si vous perdez cet appareil et votre passkey, le fichier de récupération et son mot de passe sont le seul moyen de retrouver votre portefeuille. Protégez-le d'un mot de passe ; nous ne voyons ni l'un ni l'autre.",
     "rotatedTitle": "Votre fichier de récupération a été remplacé",
     "rotatedBody": "La récupération sur cet appareil a émis un nouveau fichier et invalidé l'ancien. Définissez un mot de passe pour le nouveau fichier, puis conservez-le en lieu sûr.",
     "passwordPlaceholder": "Mot de passe de récupération (8 caractères min.)",
     "hintPlaceholder": "Indice de mot de passe (facultatif)",
     "passwordTooShort": "Utilisez au moins 8 caractères.",
     "createFile": "Créer le fichier de récupération",
-    "skipForNow": "Plus tard",
     "fileTitle": "Enregistrez votre fichier de récupération",
     "fileBody": "Téléchargez le fichier et gardez-le en lieu sûr, par exemple dans un gestionnaire de mots de passe. Quiconque possède ce fichier ET son mot de passe peut restaurer le portefeuille ; sans le mot de passe, il est inutilisable.",
     "downloadFile": "Télécharger le fichier",
-    "savedIt": "Je l'ai enregistré"
+    "savedIt": "Je l'ai enregistré",
+    "restoreTitle": "Restaurer depuis votre fichier de récupération",
+    "restoreBody": "Cet appareil n'a pas de copie de la clé de votre portefeuille et votre passkey n'est pas ici. Choisissez le fichier de récupération enregistré et saisissez son mot de passe. La restauration émet un nouveau fichier ; vous devrez l'enregistrer ensuite.",
+    "chooseFile": "Choisir le fichier de récupération",
+    "restorePasswordPlaceholder": "Mot de passe du fichier de récupération",
+    "restore": "Restaurer le portefeuille",
+    "cancelRestore": "Annuler",
+    "fileUnreadable": "Ce fichier n'est pas un fichier de récupération lisible."
   }
 }

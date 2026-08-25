@@ -2403,18 +2403,22 @@
     "updateSkipped": "Saldo actualizado. {count, plural, one {# activo se quedó} other {# activos se quedaron}} en redes no compatibles en tu billetera antigua; contacta con soporte para moverlos."
   },
   "recovery": {
-    "offerTitle": "Guarda un archivo de recuperación",
-    "offerBody": "Si pierdes este dispositivo y tu passkey, el archivo de recuperación con su contraseña es la única forma de volver a tu billetera. Protégelo con una contraseña; nosotros no vemos ninguna de las dos cosas.",
     "rotatedTitle": "Tu archivo de recuperación fue reemplazado",
     "rotatedBody": "Recuperar en este dispositivo emitió un archivo nuevo y anuló el anterior. Define una contraseña para el nuevo archivo y guárdalo en un lugar seguro.",
     "passwordPlaceholder": "Contraseña de recuperación (mín. 8 caracteres)",
     "hintPlaceholder": "Pista de contraseña (opcional)",
     "passwordTooShort": "Usa al menos 8 caracteres.",
     "createFile": "Crear archivo de recuperación",
-    "skipForNow": "Omitir por ahora",
     "fileTitle": "Guarda tu archivo de recuperación",
     "fileBody": "Descarga el archivo y guárdalo en un lugar seguro, como un gestor de contraseñas. Quien tenga este archivo Y su contraseña puede restaurar la billetera; sin la contraseña no sirve.",
     "downloadFile": "Descargar archivo",
-    "savedIt": "Lo guardé"
+    "savedIt": "Lo guardé",
+    "restoreTitle": "Restaurar desde tu archivo de recuperación",
+    "restoreBody": "Este dispositivo no tiene copia de la clave de tu billetera y tu passkey no está aquí. Elige el archivo de recuperación que guardaste e introduce su contraseña. Restaurar emite un archivo nuevo; te pediremos guardarlo a continuación.",
+    "chooseFile": "Elegir archivo de recuperación",
+    "restorePasswordPlaceholder": "Contraseña del archivo de recuperación",
+    "restore": "Restaurar billetera",
+    "cancelRestore": "Cancelar",
+    "fileUnreadable": "Ese archivo no es un archivo de recuperación legible."
   }
 }

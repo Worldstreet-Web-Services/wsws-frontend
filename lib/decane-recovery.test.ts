@@ -6,7 +6,7 @@ import {
   collectRotatedRecoveryPassword,
   completeRecoveryRequest,
   deliverRecoveryFile,
-  offerRecoveryShare,
+  promptForRecoveryFile,
   useRecoveryRequest,
 } from "@/lib/decane-recovery";
 
@@ -58,23 +58,33 @@ describe("recovery bridge", () => {
     expect(result.current).toBeNull();
   });
 
-  it("lets the signup offer be declined", async () => {
+  it("hands the restore prompt to the host and returns the supplied file, or null on cancel", async () => {
     const { result } = renderHook(() => useRecoveryRequest());
 
-    let promise!: Promise<{ wants: boolean }>;
+    let supplied!: Promise<{ value: unknown } | null>;
     act(() => {
-      promise = offerRecoveryShare(ADDRESSES);
+      supplied = promptForRecoveryFile();
     });
-
     const request = result.current;
-    if (request?.kind !== "offer") throw new Error("expected an offer request");
+    if (request?.kind !== "restore") throw new Error("expected a restore request");
 
     act(() => {
-      request.resolve({ wants: false, password: "" });
+      request.resolve({ value: { type: "decane-recovery-share" }, getPassword: async () => "pw" });
       completeRecoveryRequest(request);
     });
+    await expect(supplied).resolves.toMatchObject({ value: { type: "decane-recovery-share" } });
 
-    await expect(promise).resolves.toMatchObject({ wants: false });
+    let cancelled!: Promise<unknown>;
+    act(() => {
+      cancelled = promptForRecoveryFile();
+    });
+    const second = result.current;
+    if (second?.kind !== "restore") throw new Error("expected a restore request");
+    act(() => {
+      second.resolve(null);
+      completeRecoveryRequest(second);
+    });
+    await expect(cancelled).resolves.toBeNull();
     expect(result.current).toBeNull();
   });
 

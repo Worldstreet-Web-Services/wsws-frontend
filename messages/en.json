@@ -2403,18 +2403,22 @@
     "updateSkipped": "Balance updated. {count, plural, one {# asset} other {# assets}} on unsupported networks stayed in your old wallet; contact support to move them."
   },
   "recovery": {
-    "offerTitle": "Save a recovery file",
-    "offerBody": "If you lose this device and your passkey, a recovery file plus its password is the only way back into your wallet. Set a password to protect it; we never see either.",
     "rotatedTitle": "Your recovery file was replaced",
     "rotatedBody": "Recovering on this device issued a new recovery file and retired the old one. Set a password for the new file, then save it somewhere safe.",
     "passwordPlaceholder": "Recovery password (min 8 characters)",
     "hintPlaceholder": "Password hint (optional)",
     "passwordTooShort": "Use at least 8 characters.",
     "createFile": "Create recovery file",
-    "skipForNow": "Skip for now",
     "fileTitle": "Save your recovery file",
     "fileBody": "Download the file and keep it somewhere safe, like a password manager. Anyone with this file AND its password can restore the wallet; without the password it is useless.",
     "downloadFile": "Download file",
-    "savedIt": "I saved it"
+    "savedIt": "I saved it",
+    "restoreTitle": "Restore from your recovery file",
+    "restoreBody": "This device has no copy of your wallet key and your passkey isn't here. Choose the recovery file you saved and enter its password. Restoring issues a new file; you'll be asked to save it next.",
+    "chooseFile": "Choose recovery file",
+    "restorePasswordPlaceholder": "Recovery file password",
+    "restore": "Restore wallet",
+    "cancelRestore": "Cancel",
+    "fileUnreadable": "That file isn't a readable recovery file."
   }
 }

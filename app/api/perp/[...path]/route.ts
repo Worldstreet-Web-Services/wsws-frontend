@@ -28,7 +28,7 @@ async function proxy(req: NextRequest, path: string[], method: "GET" | "POST", b
       );
     }
     // The trader in a build body must be the wallet the session owns. The
-    // Hyperliquid prepare/submit bodies carry an opaque walletId instead of a
+    // Ark prepare/submit bodies carry an opaque walletId instead of a
     // raw address, so this check does not apply to them — their real
     // authorization is the client-signed action itself, which the perp
     // service independently verifies against the wallet it resolves for that
@@ -53,22 +53,22 @@ async function proxy(req: NextRequest, path: string[], method: "GET" | "POST", b
     }
   }
 
-  // The Hyperliquid wallet-identity/margin-state reads and the Base deposit
+  // The Ark wallet-identity/margin-state reads and the Base deposit
   // address carry the target address in the path rather than a body, so the
   // ownership check has to happen here instead of the body-shaped one above.
   // Both fall back to NOT_FOUND (not FORBIDDEN) for an unauthenticated
   // request so an unauthenticated probe cannot distinguish "wrong path" from
   // "not yours".
-  const hlAddressMatch =
+  const addressMatch =
     method === "GET"
-      ? /^(?:hl\/(?:wallet|clearinghouse|arbitrum-balance)|funding\/deposit-address)\/([^/]+)$/.exec(
+      ? /^(?:ark\/(?:wallet|account-state|arbitrum-balance)|funding\/deposit-address)\/([^/]+)$/.exec(
           joined
         )
       : null;
-  if (hlAddressMatch) {
+  if (addressMatch) {
     const claims = await verifyRequest(req);
     const wallet = claims ? walletOfUser(await getRequestUser(req, claims)) : null;
-    if (!wallet || hlAddressMatch[1]!.toLowerCase() !== wallet.toLowerCase()) {
+    if (!wallet || addressMatch[1]!.toLowerCase() !== wallet.toLowerCase()) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Not found" } },
         { status: 404 }

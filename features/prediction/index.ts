@@ -7,3 +7,4 @@ export {
   buildLegacyClaimCalls,
   type LegacyClaimState,
 } from "./lib/legacy-claim";
+export { polymarketMigrationAdapter, cpmmMigrationAdapter } from "./lib/migration-adapter";

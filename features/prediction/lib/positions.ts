@@ -103,16 +103,9 @@ export function isCashoutable(
   return redeemable !== true && shares > 0 && tokenId != null && tokenId !== "";
 }
 
-// The lowest fill price a market SELL accepts, from the estimated crossing
-// price: a small tolerance below the estimate so a normal book move between
-// estimate and placement still fills, but the shares are never dumped far
-// under it. Clamped to valid whole-cent ticks.
-const SELL_SLIPPAGE = 0.03;
-
-export function sellFloorPrice(estimate: number): number {
-  const floored = Math.floor(estimate * (1 - SELL_SLIPPAGE) * 100) / 100;
-  return Math.min(Math.max(floored, 0.01), 0.99);
-}
+// The sell floor moved to lib/polymarket/exit with the order mechanics; the
+// name stays exported here for the panels and tests that import it.
+export { sellFloorPrice } from "@/lib/polymarket/exit";
 
 // Whether a position actually has winnings to claim. A market resolving marks
 // BOTH sides `redeemable`, but the losing side settles to $0, so redeeming it

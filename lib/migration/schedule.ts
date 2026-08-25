@@ -24,7 +24,7 @@ export interface SettlementPlan {
 
 export function isSettleable(holding: LegacyHolding, now: number): boolean {
   const s: Settleability = holding.settleability;
-  return s.state === "now" || (s.state === "waitUntil" && s.at <= now);
+  return s.state === "now" || (s.state === "waitUntil" && s.at !== null && s.at <= now);
 }
 
 export function sumValueUsd(holdings: readonly LegacyHolding[]): number {

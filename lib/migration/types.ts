@@ -12,7 +12,12 @@ export type Venue =
 // renders these as reasons; the scheduler routes on them.
 export type Settleability =
   | { state: "now" }
-  | { state: "waitUntil"; at: number; reason: "challengeWindow" | "keeper" | "settlement" }
+  // `at` is null when the end is not knowable yet (a market awaiting resolution).
+  | {
+      state: "waitUntil";
+      at: number | null;
+      reason: "challengeWindow" | "awaitingResolution" | "keeper" | "settlement";
+    }
   | {
       state: "needsBackend";
       reason:
@@ -22,11 +27,13 @@ export type Settleability =
         | "lotteryTicket"
         | "subscriptionTier"
         | "referrals"
-        | "earnPayoutAddress";
+        | "earnPayoutAddress"
+        | "kashPoints";
     }
   | {
       state: "stranded";
-      reason: "unsponsoredNetwork" | "insolventMarket" | "noLiquidity" | "closedMarket";
+      reason:
+        "unsponsoredNetwork" | "insolventMarket" | "invalidMarket" | "noLiquidity" | "closedMarket";
     }
   | { state: "pending"; reason: "onramp" };
 
@@ -81,6 +88,12 @@ export interface DiscoverContext {
   // True once the user has signed in to the old account. Adapters that need
   // the legacy identity for reads are skipped until then.
   hasLegacySession: boolean;
+  // Present exactly when hasLegacySession: some venues (Polymarket) can only
+  // be read through a client built on the old signer.
+  signer: LegacySigner | null;
+  // Spot price for valuing ETH-denominated holdings (the vault). Display only;
+  // 0 when unknown.
+  ethPriceUsd: number;
 }
 
 export interface SettleContext extends DiscoverContext {

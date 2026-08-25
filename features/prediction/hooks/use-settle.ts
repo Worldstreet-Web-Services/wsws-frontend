@@ -1,59 +1,21 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { encodeFunctionData, erc20Abi } from "viem";
 import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
 import { useAuthSession } from "@/hooks/use-auth-session";
-import { useEvmSend } from "@/hooks/use-evm-send";
+import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { CONTRACTS, POLYGON_CHAIN_ID } from "@/lib/polymarket/config";
-import { SETTLE_CHAINS } from "@/lib/deposit";
-import { fetchSellQuote } from "@/lib/sell";
-import { awaitReceipt, publicClientForChain, type ChainReadClient } from "@/lib/trade/receipt";
+import { settleCollateral, SettleError, type SettlePhase } from "@/lib/polymarket/settle";
 
-// Turns pUSD (Polymarket collateral, on Polygon) into USDC on Base, in the
-// user's own wallet. Polymarket's offramp only exists on Polygon, so the path is
-// pUSD -> USDC.e (offramp) -> USDC on Base (Dextopus bridge; it accepts USDC.e
-// directly, so no on-Polygon swap is needed). The Polygon steps are signed by
-// the EOA and need a little POL for gas, checked up front.
-//
-// It is balance-driven and resumable: it offramps whatever pUSD the account
-// holds, then bridges whatever USDC.e the wallet holds. A run that failed after
-// unwrapping (funds sitting as USDC.e) is recovered by simply running again.
+export type { SettlePhase } from "@/lib/polymarket/settle";
 
-// CollateralOfframp.unwrap(asset, to, amount): burns pUSD, sends USDC.e to `to`.
-const OFFRAMP_ABI = [
-  {
-    type: "function",
-    name: "unwrap",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_asset", type: "address" },
-      { name: "_to", type: "address" },
-      { name: "_amount", type: "uint256" },
-    ],
-    outputs: [],
-  },
-] as const;
-
-export type SettlePhase = "idle" | "unwrapping" | "bridging";
-
-// A user-facing settle error whose message is shown verbatim.
-class SettleError extends Error {}
-
-function readErc20(client: ChainReadClient, token: string, owner: string): Promise<bigint> {
-  return client.readContract({
-    address: token as `0x${string}`,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [owner as `0x${string}`],
-  });
-}
-
+// Cashes the signed-in user's Polymarket collateral out to USDC on Base in
+// their own wallet. The mechanics live in lib/polymarket/settle so the
+// migration flow can run the same path from the old wallet to the new one.
 export function useSettleToBase() {
   const { evmAddress } = useAuthSession();
-  const send = useEvmSend();
+  const sendBatch = useEvmSendBatch();
   const { ensureReady } = usePolymarketSession();
   const { sendToken } = useSendToken();
   const [phase, setPhase] = useState<SettlePhase>("idle");
@@ -65,79 +27,14 @@ export function useSettleToBase() {
     try {
       const eoa = evmAddress;
       if (!eoa) throw new SettleError("No wallet connected.");
-
-      const polygon = publicClientForChain(POLYGON_CHAIN_ID);
-
-      // Gas gate: the Polygon offramp + bridge send are signed by the EOA and
-      // need POL. Check first so we never strand funds mid-flow.
-      const pol = await polygon.getBalance({ address: eoa as `0x${string}` });
-      if (pol <= 0n) {
-        throw new SettleError(
-          "You need a little POL on Polygon to cash out. Add some, then try again."
-        );
-      }
-
       const client = await ensureReady();
-      const depositWallet = client.account.wallet;
-
-      // 1) Offramp any pUSD in the Deposit Wallet to USDC.e in the EOA. Skipped
-      // when there's none (e.g. a resumed run where it's already USDC.e).
-      const pusd = await readErc20(polygon, CONTRACTS.pusd, depositWallet);
-      if (pusd > 0n) {
-        setPhase("unwrapping");
-        const transfer = await client.transferErc20({
-          tokenAddress: CONTRACTS.pusd,
-          recipientAddress: eoa,
-          amount: pusd,
-        });
-        await transfer.wait();
-
-        const approveHash = await send({
-          to: CONTRACTS.pusd,
-          data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [CONTRACTS.collateralOfframp as `0x${string}`, pusd],
-          }),
-          chainId: POLYGON_CHAIN_ID,
-          address: eoa,
-        });
-        await awaitReceipt(polygon, approveHash, "The approval");
-
-        const unwrapHash = await send({
-          to: CONTRACTS.collateralOfframp,
-          data: encodeFunctionData({
-            abi: OFFRAMP_ABI,
-            functionName: "unwrap",
-            args: [CONTRACTS.usdcE as `0x${string}`, eoa as `0x${string}`, pusd],
-          }),
-          chainId: POLYGON_CHAIN_ID,
-          address: eoa,
-        });
-        await awaitReceipt(polygon, unwrapHash, "The unwrap");
-      }
-
-      // 2) Bridge all the USDC.e the wallet holds to USDC on Base (Dextopus takes
-      // USDC.e directly, so no on-Polygon swap). Read the real balance so we send
-      // exactly what's there.
-      setPhase("bridging");
-      const usdce = await readErc20(polygon, CONTRACTS.usdcE, eoa);
-      if (usdce <= 0n) throw new SettleError("There's nothing to cash out right now.");
-
-      const quote = await fetchSellQuote({
-        network: "polygon-mainnet",
-        asset: CONTRACTS.usdcE,
-        amount: usdce,
+      await settleCollateral({
+        client,
+        eoa,
         recipient: eoa,
-        refundTo: eoa,
-        slippageBps: 100,
-      });
-      await sendToken({
-        network: "polygon-mainnet",
-        tokenAddress: CONTRACTS.usdcE,
-        decimals: SETTLE_CHAINS.polygon.decimals,
-        to: quote.depositAddress,
-        amount: usdce,
+        sendBatch: (calls, chainId) => sendBatch(calls, chainId, eoa),
+        sendToken,
+        onPhase: setPhase,
       });
     } catch (e) {
       setError(
@@ -147,7 +44,7 @@ export function useSettleToBase() {
     } finally {
       setPhase("idle");
     }
-  }, [evmAddress, send, ensureReady, sendToken]);
+  }, [evmAddress, sendBatch, ensureReady, sendToken]);
 
   return { settleToBase, phase, error };
 }

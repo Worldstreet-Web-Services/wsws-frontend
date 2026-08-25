@@ -1,19 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import type { EvmBatchCall } from "@/hooks/use-evm-send";
-import {
-  useLegacyEvmSendBatch,
-  useLegacySendToken,
-} from "@/features/migrate/hooks/use-legacy-send";
-import { encodeErc20Transfer } from "@/lib/deposit";
-import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
+import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
+import { runSweep, type SweepDestinations } from "@/features/migrate/lib/sweep";
 import type { ChainSweep } from "@/features/migrate/lib/plan";
 
-export interface SweepDestinations {
-  evm: string;
-  solana: string;
-}
+export type { SweepDestinations } from "@/features/migrate/lib/sweep";
 
 export interface SweepResult {
   done: number;
@@ -23,70 +15,28 @@ export interface SweepResult {
   firstError: string | null;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Transfer failed";
-}
-
-// Runs the one-click sweep: per EVM chain one atomic sponsored batch (all
-// ERC-20 transfers plus the full native balance, gas paid by the sponsor),
-// and on Solana one sponsored transaction per asset. A failure counts and
-// moves on, so one bad asset never strands the rest; clicking Update Balance
-// again replans from whatever balances remain, which is the retry.
-// Signing goes through the LEGACY Privy hooks: the sweep spends from the old
-// wallets, which only the Privy session can sign for.
+// The one-click sweep: runSweep over the legacy signer, summarised. Clicking
+// Update Balance again replans from whatever balances remain, which is the
+// retry.
 export function useSweep() {
-  const sendBatch = useLegacyEvmSendBatch();
-  const sendToken = useLegacySendToken();
+  const signer = useLegacySigner();
 
   return useCallback(
     async (plan: ChainSweep[], destinations: SweepDestinations): Promise<SweepResult> => {
+      if (!signer) throw new Error("Your old wallet is not connected. Sign in again.");
+      const outcomes = await runSweep(plan, destinations, signer);
       let done = 0;
       let failed = 0;
       let firstError: string | null = null;
-      const fail = (count: number, error: unknown) => {
-        failed += count;
-        if (firstError === null) firstError = errorMessage(error);
-      };
-
-      for (const chain of plan) {
-        if (chain.kind === "evm-batch") {
-          try {
-            // The planner only emits evm-batch chains for sponsored networks,
-            // so the registry lookup is the chain-id source of truth.
-            const chainId = getSponsoredEvmChainByNetwork(chain.network)?.chainId;
-            if (!chainId) throw new Error(`No chain id for network ${chain.network}`);
-            const calls: EvmBatchCall[] = chain.assets.map((a) =>
-              a.tokenAddress === null
-                ? { to: destinations.evm as `0x${string}`, value: a.amount }
-                : {
-                    to: a.tokenAddress as `0x${string}`,
-                    data: encodeErc20Transfer(destinations.evm, a.amount),
-                  }
-            );
-            await sendBatch(calls, chainId);
-            done += chain.assets.length;
-          } catch (error) {
-            fail(chain.assets.length, error);
-          }
-        } else {
-          for (const asset of chain.assets) {
-            try {
-              await sendToken({
-                network: asset.network,
-                tokenAddress: asset.tokenAddress,
-                decimals: asset.decimals,
-                to: destinations.solana,
-                amount: asset.amount,
-              });
-              done += 1;
-            } catch (error) {
-              fail(1, error);
-            }
-          }
+      for (const outcome of outcomes.values()) {
+        if (outcome.ok) done += 1;
+        else {
+          failed += 1;
+          if (firstError === null) firstError = outcome.error;
         }
       }
       return { done, failed, firstError };
     },
-    [sendBatch, sendToken]
+    [signer]
   );
 }

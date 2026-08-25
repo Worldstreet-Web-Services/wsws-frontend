@@ -74,17 +74,29 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
     else byNetwork.set(token.network, [asset]);
   }
 
-  const chainValue = (assets: SweepAsset[]) => assets.reduce((sum, a) => sum + a.valueUsd, 0);
+  return { chains: groupSweepAssets([...byNetwork.values()].flat()), skipped };
+}
+
+// Groups sweepable assets into per-chain sweeps: EVM chains richest first,
+// Solana last, tokens before each chain's native coin. Exported so a venue
+// adapter can rebuild the chains from the subset of assets a run selected.
+export function groupSweepAssets(assets: readonly SweepAsset[]): ChainSweep[] {
+  const byNetwork = new Map<string, SweepAsset[]>();
+  for (const asset of assets) {
+    const group = byNetwork.get(asset.network);
+    if (group) group.push(asset);
+    else byNetwork.set(asset.network, [asset]);
+  }
+  const chainValue = (group: SweepAsset[]) => group.reduce((sum, a) => sum + a.valueUsd, 0);
   const evmNetworks = [...byNetwork.keys()]
     .filter((network) => network !== SOLANA_NETWORK)
     .sort((a, b) => chainValue(byNetwork.get(b)!) - chainValue(byNetwork.get(a)!));
   const ordered = byNetwork.has(SOLANA_NETWORK) ? [...evmNetworks, SOLANA_NETWORK] : evmNetworks;
-
-  const chains: ChainSweep[] = ordered.map((network) => {
-    const assets = byNetwork.get(network)!;
+  return ordered.map((network) => {
+    const group = byNetwork.get(network)!;
     const tokensFirst = [
-      ...assets.filter((a) => a.tokenAddress !== null),
-      ...assets.filter((a) => a.tokenAddress === null),
+      ...group.filter((a) => a.tokenAddress !== null),
+      ...group.filter((a) => a.tokenAddress === null),
     ];
     return {
       network,
@@ -92,5 +104,4 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
       assets: tokensFirst,
     };
   });
-  return { chains, skipped };
 }

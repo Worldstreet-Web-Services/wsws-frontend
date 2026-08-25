@@ -56,16 +56,24 @@ describe("migrationOutcome", () => {
         0
       )
     ).toBe("partial");
-    expect(migrationOutcome(plan(["a", "b"]), new Map<string, SettleOutcome>([["a", ok]]), 0)).toBe("partial");
+    expect(migrationOutcome(plan(["a", "b"]), new Map<string, SettleOutcome>([["a", ok]]), 0)).toBe(
+      "partial"
+    );
   });
 
   it("is partial when steps landed but something waits for later or a deposit is pending", () => {
-    expect(migrationOutcome(plan(["a"], ["later"]), new Map<string, SettleOutcome>([["a", ok]]), 0)).toBe("partial");
-    expect(migrationOutcome(plan(["a"]), new Map<string, SettleOutcome>([["a", ok]]), 1)).toBe("partial");
+    expect(
+      migrationOutcome(plan(["a"], ["later"]), new Map<string, SettleOutcome>([["a", ok]]), 0)
+    ).toBe("partial");
+    expect(migrationOutcome(plan(["a"]), new Map<string, SettleOutcome>([["a", ok]]), 1)).toBe(
+      "partial"
+    );
   });
 
   it("is blocked when nothing could be attempted and something remains", () => {
-    expect(migrationOutcome(plan([], ["later"]), new Map<string, SettleOutcome>(), 0)).toBe("blocked");
+    expect(migrationOutcome(plan([], ["later"]), new Map<string, SettleOutcome>(), 0)).toBe(
+      "blocked"
+    );
     expect(migrationOutcome(plan([]), new Map<string, SettleOutcome>(), 2)).toBe("blocked");
   });
 

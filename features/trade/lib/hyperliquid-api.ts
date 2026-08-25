@@ -29,44 +29,44 @@ import type {
 } from "@/features/trade/lib/hyperliquid-types";
 
 // Same BFF proxy the legacy Avantis perp client uses (app/api/perp/[...path]/route.ts) —
-// it is the SAME backend service, just the new /hl/* sub-paths. One transport,
+// it is the SAME backend service, just the /ark/* sub-paths. One transport,
 // per this app's architecture rules.
 const perp = createServiceClient("/api/perp", "The perp service is unavailable right now.");
 
 export async function getOrCreateWallet(address: string): Promise<HlWallet> {
-  return perp.authedGet<HlWallet>(`/hl/wallet/${address}`);
+  return perp.authedGet<HlWallet>(`/ark/wallet/${address}`);
 }
 
 export async function listAssets(): Promise<HlAsset[]> {
-  return perp.get<HlAsset[]>("/hl/assets");
+  return perp.get<HlAsset[]>("/ark/assets");
 }
 
 export async function getPrices(): Promise<HlAllMids> {
-  return perp.get<HlAllMids>("/hl/prices");
+  return perp.get<HlAllMids>("/ark/prices");
 }
 
 export async function getMarketContexts(): Promise<HlMarketContext[]> {
-  return perp.get<HlMarketContext[]>("/hl/market-contexts");
+  return perp.get<HlMarketContext[]>("/ark/market-contexts");
 }
 
-export async function getClearinghouseState(address: string): Promise<HlClearinghouseState> {
-  return perp.authedGet<HlClearinghouseState>(`/hl/clearinghouse/${address}`);
+export async function getAccountState(address: string): Promise<HlClearinghouseState> {
+  return perp.authedGet<HlClearinghouseState>(`/ark/account-state/${address}`);
 }
 
 // Reads the destination chain directly rather than the Dextopus-webhook-driven
 // treasury ledger — used to confirm a Base deposit actually landed, since a
 // webhook can be missed, delayed, or (in local development) unreachable.
 export async function getArbitrumBalance(address: string): Promise<string> {
-  const { balance } = await perp.authedGet<{ balance: string }>(`/hl/arbitrum-balance/${address}`);
+  const { balance } = await perp.authedGet<{ balance: string }>(`/ark/arbitrum-balance/${address}`);
   return balance;
 }
 
 export async function listPositions(walletId: string): Promise<HlPositionView[]> {
-  return perp.get<HlPositionView[]>(`/hl/wallets/${walletId}/positions`);
+  return perp.get<HlPositionView[]>(`/ark/wallets/${walletId}/positions`);
 }
 
 export async function listOrders(walletId: string): Promise<HlOrderRow[]> {
-  return perp.get<HlOrderRow[]>(`/hl/wallets/${walletId}/orders`);
+  return perp.get<HlOrderRow[]>(`/ark/wallets/${walletId}/orders`);
 }
 
 // Closed positions only — trading history. Kept off listPositions above so
@@ -76,14 +76,14 @@ export async function listClosedPositions(
   limit = 50,
   offset = 0
 ): Promise<HlClosedPositionView[]> {
-  return perp.get<HlClosedPositionView[]>(`/hl/wallets/${walletId}/positions/closed`, {
+  return perp.get<HlClosedPositionView[]>(`/ark/wallets/${walletId}/positions/closed`, {
     limit,
     offset,
   });
 }
 
 export async function prepareOrder(request: PlaceOrderRequest): Promise<PreparedOrder> {
-  return perp.post<PreparedOrder>("/hl/orders/prepare", request);
+  return perp.post<PreparedOrder>("/ark/orders/prepare", request);
 }
 
 export async function submitOrder(
@@ -91,7 +91,7 @@ export async function submitOrder(
   prepared: PreparedOrder,
   signature: HlSignature
 ): Promise<PlaceOrderResult> {
-  return perp.post<PlaceOrderResult>("/hl/orders/submit", { walletId, prepared, signature });
+  return perp.post<PlaceOrderResult>("/ark/orders/submit", { walletId, prepared, signature });
 }
 
 export async function prepareLeverageUpdate(
@@ -100,7 +100,7 @@ export async function prepareLeverageUpdate(
   leverage: number,
   marginMode: "isolated" | "cross"
 ): Promise<PrepareLeverageResult> {
-  return perp.post<PrepareLeverageResult>("/hl/leverage/prepare", {
+  return perp.post<PrepareLeverageResult>("/ark/leverage/prepare", {
     walletId,
     assetSymbol,
     leverage,
@@ -114,7 +114,7 @@ export async function submitLeverageUpdate(
   nonce: number,
   signature: HlSignature
 ): Promise<{ updated: true }> {
-  return perp.post<{ updated: true }>("/hl/leverage/submit", {
+  return perp.post<{ updated: true }>("/ark/leverage/submit", {
     walletId,
     action,
     nonce,
@@ -126,7 +126,7 @@ export async function prepareCancelOrder(
   walletId: string,
   orderId: string
 ): Promise<PreparedCancel> {
-  return perp.post<PreparedCancel>("/hl/orders/cancel/prepare", { walletId, orderId });
+  return perp.post<PreparedCancel>("/ark/orders/cancel/prepare", { walletId, orderId });
 }
 
 export async function submitCancelOrder(
@@ -134,7 +134,7 @@ export async function submitCancelOrder(
   prepared: PreparedCancel,
   signature: HlSignature
 ): Promise<HlOrderRow> {
-  return perp.post<HlOrderRow>("/hl/orders/cancel/submit", { walletId, prepared, signature });
+  return perp.post<HlOrderRow>("/ark/orders/cancel/submit", { walletId, prepared, signature });
 }
 
 export async function prepareClosePosition(
@@ -142,7 +142,7 @@ export async function prepareClosePosition(
   positionId: string,
   size?: string
 ): Promise<PreparedClosePosition> {
-  return perp.post<PreparedClosePosition>("/hl/positions/close/prepare", {
+  return perp.post<PreparedClosePosition>("/ark/positions/close/prepare", {
     walletId,
     positionId,
     size,
@@ -154,7 +154,7 @@ export async function submitClosePosition(
   prepared: PreparedClosePosition,
   signature: HlSignature
 ): Promise<{ closeOrder: HlOrderRow }> {
-  return perp.post<{ closeOrder: HlOrderRow }>("/hl/positions/close/submit", {
+  return perp.post<{ closeOrder: HlOrderRow }>("/ark/positions/close/submit", {
     walletId,
     prepared,
     signature,
@@ -167,7 +167,7 @@ export async function prepareTriggerOrder(
   kind: HlTriggerKind,
   triggerPrice: string
 ): Promise<PreparedTriggerOrder> {
-  return perp.post<PreparedTriggerOrder>("/hl/orders/trigger/prepare", {
+  return perp.post<PreparedTriggerOrder>("/ark/orders/trigger/prepare", {
     walletId,
     positionId,
     kind,
@@ -180,14 +180,14 @@ export async function submitTriggerOrder(
   prepared: PreparedTriggerOrder,
   signature: HlSignature
 ): Promise<HlOrderRow> {
-  return perp.post<HlOrderRow>("/hl/orders/trigger/submit", { walletId, prepared, signature });
+  return perp.post<HlOrderRow>("/ark/orders/trigger/submit", { walletId, prepared, signature });
 }
 
 export async function prepareBridge(
   walletId: string,
   requiredUsdc: string
 ): Promise<PrepareBridgeResult> {
-  return perp.post<PrepareBridgeResult>("/hl/bridge/prepare", { walletId, requiredUsdc });
+  return perp.post<PrepareBridgeResult>("/ark/bridge/prepare", { walletId, requiredUsdc });
 }
 
 export async function confirmBridge(
@@ -195,7 +195,7 @@ export async function confirmBridge(
   txHash: string,
   amountUsdc: string
 ): Promise<{ treasuryMovementId: string }> {
-  return perp.post<{ treasuryMovementId: string }>("/hl/bridge/confirm", {
+  return perp.post<{ treasuryMovementId: string }>("/ark/bridge/confirm", {
     walletId,
     txHash,
     amountUsdc,
@@ -206,7 +206,7 @@ export async function prepareWithdrawal(
   walletId: string,
   amountUsdc: string
 ): Promise<PreparedWithdrawal> {
-  return perp.post<PreparedWithdrawal>("/hl/withdrawals/prepare", { walletId, amountUsdc });
+  return perp.post<PreparedWithdrawal>("/ark/withdrawals/prepare", { walletId, amountUsdc });
 }
 
 export async function submitWithdrawal(
@@ -214,23 +214,23 @@ export async function submitWithdrawal(
   action: HlWithdraw3Action,
   signature: HlSignature
 ): Promise<{ treasuryMovementId: string }> {
-  return perp.post<{ treasuryMovementId: string }>("/hl/withdrawals/submit", {
+  return perp.post<{ treasuryMovementId: string }>("/ark/withdrawals/submit", {
     walletId,
     action,
     signature,
   });
 }
 
-// ── Builder fee (Hyperliquid's own revenue-collection mechanism) ────────
+// ── Builder fee (the venue's own revenue-collection mechanism) ────────
 
 export async function getBuilderFeeStatus(walletId: string): Promise<HlBuilderFeeStatus> {
-  return perp.get<HlBuilderFeeStatus>(`/hl/wallets/${walletId}/builder-fee`);
+  return perp.get<HlBuilderFeeStatus>(`/ark/wallets/${walletId}/builder-fee`);
 }
 
 export async function prepareBuilderFeeApproval(
   walletId: string
 ): Promise<PreparedBuilderFeeApproval> {
-  return perp.post<PreparedBuilderFeeApproval>("/hl/builder-fee/prepare", { walletId });
+  return perp.post<PreparedBuilderFeeApproval>("/ark/builder-fee/prepare", { walletId });
 }
 
 export async function submitBuilderFeeApproval(
@@ -238,7 +238,7 @@ export async function submitBuilderFeeApproval(
   action: HlApproveBuilderFeeAction,
   signature: HlSignature
 ): Promise<{ approved: true }> {
-  return perp.post<{ approved: true }>("/hl/builder-fee/submit", { walletId, action, signature });
+  return perp.post<{ approved: true }>("/ark/builder-fee/submit", { walletId, action, signature });
 }
 
 // ── Dextopus funding (Base -> Arbitrum) ──────────────────────────────────

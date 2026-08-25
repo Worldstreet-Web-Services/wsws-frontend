@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getClearinghouseState, getPrices, listAssets } from "@/features/trade/lib/hyperliquid-api";
+import { getAccountState, getPrices, listAssets } from "@/features/trade/lib/hyperliquid-api";
 
 const ASSETS_STALE_MS = 5 * 60_000;
 // This is a DISPLAY price only — order execution always re-reads a fresh
@@ -42,7 +42,7 @@ export function useHyperliquidPrices(enabled = true) {
 export function useHyperliquidClearinghouse(address: string | null, enabled = true) {
   const query = useQuery({
     queryKey: ["hl-clearinghouse", address],
-    queryFn: () => getClearinghouseState(address as string),
+    queryFn: () => getAccountState(address as string),
     enabled: enabled && address != null,
   });
   return { state: query.data ?? null, loading: query.isLoading, refetch: query.refetch };

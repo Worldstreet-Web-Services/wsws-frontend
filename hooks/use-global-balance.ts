@@ -15,12 +15,12 @@ const perp = createServiceClient("/api/perp", "The perps service is unavailable 
 const POLL_MS = 20 * 1000;
 
 async function fetchPerpsBalance(address: string): Promise<number> {
-  const state = await perp.authedGet<{ withdrawable: string }>(`/hl/clearinghouse/${address}`);
+  const state = await perp.authedGet<{ withdrawable: string }>(`/ark/account-state/${address}`);
   return Number(state.withdrawable);
 }
 
 // A wallet's balance across everything it holds today: spot/token holdings
-// (usePortfolio's own totalUsd, untouched) plus its Hyperliquid perps wallet
+// (usePortfolio's own totalUsd, untouched) plus its perps wallet
 // balance. Deliberately a separate figure rather than folded into
 // usePortfolio itself — that total already feeds analytics
 // (components/providers/analytics-segments.tsx) and the remit flow's

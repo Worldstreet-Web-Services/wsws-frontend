@@ -30,12 +30,12 @@ export interface HlWallet {
 
 export interface HlAsset {
   id: string;
-  hlAssetIndex: number;
+  assetIndex: number;
   /** '' = native perps; a HIP-3 dex name (e.g. "xyz") otherwise. */
   dex: string;
   symbol: string;
   /** Coarse asset class for the market picker's category tabs — "crypto"
-   *  for native assets, otherwise normalized from Hyperliquid's own
+   *  for native assets, otherwise normalized from the venue's own
    *  curation ("equities" | "forex" | "commodities" | "indices" | "other"). */
   category: string | null;
   szDecimals: number;
@@ -131,7 +131,7 @@ export interface HlOrderRow {
   walletId: string;
   assetId: string;
   cloid: string;
-  hlOid: string | null;
+  externalOrderId: string | null;
   parentOrderId: string | null;
   orderType: HlOrderType;
   side: HlOrderSide;

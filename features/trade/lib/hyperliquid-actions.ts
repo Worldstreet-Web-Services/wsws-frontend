@@ -7,9 +7,9 @@ import { useReroutedWithdraw } from "@/hooks/use-withdraw";
 import { useHyperliquidSigner } from "@/features/trade/lib/hyperliquid-signer";
 import {
   confirmBridge,
+  getAccountState,
   getArbitrumBalance,
   getBuilderFeeStatus,
-  getClearinghouseState,
   prepareBridge,
   prepareBuilderFeeApproval,
   prepareCancelOrder,
@@ -176,7 +176,7 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
         onStatus?.("Waiting for the balance to land — this can take up to 2 minutes…");
         const deadline = Date.now() + MARGIN_POLL_TIMEOUT_MS;
         while (Date.now() < deadline) {
-          const state = await getClearinghouseState(address);
+          const state = await getAccountState(address);
           if (Number(state.withdrawable) >= Number(details.requiredUsdc)) break;
           await delay(MARGIN_POLL_INTERVAL_MS);
         }

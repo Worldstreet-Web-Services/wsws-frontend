@@ -40,6 +40,17 @@ export function markMigrationComplete(): void {
   listeners.forEach((listener) => listener());
 }
 
+// Re-opens the one-click door, for when a later bank deposit or a settled
+// window puts money back in the old wallet.
+export function clearMigrationComplete(): void {
+  try {
+    window.localStorage.removeItem(MIGRATION_COMPLETE_KEY);
+  } catch {
+    // Storage unavailable: nothing was stored to clear.
+  }
+  listeners.forEach((listener) => listener());
+}
+
 export function shouldOfferMigration(): boolean {
   try {
     if (window.localStorage.getItem(MIGRATION_COMPLETE_KEY) === "1") return false;

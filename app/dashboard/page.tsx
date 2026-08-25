@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
 import { UpdateBalanceButton, useOfferMigration } from "@/features/migrate";
+import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 import { SpotSection } from "@/features/trade/components/spot-section";
 import { PerpsSection } from "@/features/trade/components/perps-section";
 import { MemeSection } from "@/features/trade/components/meme-section";
@@ -133,7 +134,7 @@ export default function DashboardPage() {
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
-        updateBalanceSlot={<UpdateBalanceButton />}
+        updateBalanceSlot={<UpdateBalanceButton adapters={MIGRATION_ADAPTERS} />}
         balanceLocked={offerMigration}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}

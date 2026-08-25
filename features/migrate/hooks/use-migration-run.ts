@@ -24,13 +24,14 @@ export interface RunProgress {
 // per step, and a cancel that takes effect between venues (a step already
 // signed is never abandoned midway).
 export function useMigrationRun(input: MigrationRunInput) {
+  const { adapters, legacy, current, signer, ethPriceUsd } = input;
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<RunProgress | null>(null);
   const controller = useRef<AbortController | null>(null);
 
   const run = useCallback(
     async (plan: SettlementPlan): Promise<RunResult> => {
-      if (!input.signer) throw new Error("Sign in to your old account first.");
+      if (!signer) throw new Error("Sign in to your old account first.");
       const abort = new AbortController();
       controller.current = abort;
       const total = plan.phases.reduce((sum, p) => sum + p.holdings.length, 0);
@@ -40,13 +41,13 @@ export function useMigrationRun(input: MigrationRunInput) {
       try {
         return await runSettlement(
           plan,
-          input.adapters,
+          adapters,
           {
-            legacy: input.legacy,
-            current: input.current,
+            legacy,
+            current,
             hasLegacySession: true,
-            signer: input.signer,
-            ethPriceUsd: input.ethPriceUsd,
+            signer,
+            ethPriceUsd,
             signal: abort.signal,
             onProgress: (message) => setProgress({ message, done, total }),
           },
@@ -71,7 +72,7 @@ export function useMigrationRun(input: MigrationRunInput) {
         setRunning(false);
       }
     },
-    [input.adapters, input.legacy, input.current, input.signer, input.ethPriceUsd]
+    [adapters, legacy, current, signer, ethPriceUsd]
   );
 
   const cancel = useCallback(() => controller.current?.abort(), []);

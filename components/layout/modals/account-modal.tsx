@@ -7,6 +7,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { LanguageSelect } from "@/components/ui/language-select";
 import { WalletList } from "@/features/portfolio";
 import { InviteFriendsModal } from "@/features/referrals";
+import { MoveOldMoneyEntry } from "@/features/migrate";
+import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
 
@@ -74,6 +76,7 @@ export function AccountModal({ onClose }: AccountModalProps) {
           </span>
           {t("inviteFriends")}
         </button>
+        <MoveOldMoneyEntry adapters={MIGRATION_ADAPTERS} className={item} />
         <button onClick={onClose} className={`${item} text-white`}>
           <HelpIcon size={20} />
           {t("helpSupport")}

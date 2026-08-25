@@ -117,8 +117,14 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
         const signature = await signBuilderFeeApproval(prepared.action);
         await submitBuilderFeeApproval(id, prepared.action, signature);
         builderFeeApprovedWallets.add(id);
-      } catch {
-        // See doc comment — never let this block a trade.
+      } catch (error) {
+        // See doc comment — never let this block a trade. Still surfaced,
+        // though (warn, not error — Next's dev overlay treats console.error
+        // as a crash, and this is an expected, non-blocking condition until
+        // the treasury wallet is funded on Hyperliquid): a silently-failing
+        // approval means zero platform revenue on every trade this wallet
+        // places until it succeeds.
+        console.warn("Builder fee approval failed — trading without it this time", error);
       }
     },
     [signBuilderFeeApproval]

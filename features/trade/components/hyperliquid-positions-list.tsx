@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatAmount } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { HyperliquidClosePositionModal } from "@/features/trade/components/hyperliquid-close-position-modal";
+import { HyperliquidHistoryModal } from "@/features/trade/components/hyperliquid-history-modal";
 import type {
   HlOrderRow,
   HlPositionView,
@@ -15,6 +16,7 @@ interface HyperliquidPositionsListProps {
   orders: HlOrderRow[];
   loading: boolean;
   busy: boolean;
+  walletId: string | null;
   onClosePosition: (position: HlPositionView, siblingOrderIdsToCancel: string[]) => Promise<void>;
   onEditTrigger: (
     position: HlPositionView,
@@ -45,10 +47,12 @@ export function HyperliquidPositionsList({
   orders,
   loading,
   busy,
+  walletId,
   onClosePosition,
   onEditTrigger,
 }: HyperliquidPositionsListProps) {
   const [closing, setClosing] = useState<HlPositionView | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [expanded, setExpanded] = useState<{ positionId: string; kind: HlTriggerKind } | null>(
     null
   );
@@ -96,7 +100,16 @@ export function HyperliquidPositionsList({
 
   return (
     <div className="ws-card p-4 sm:p-5">
-      <div className="mb-3 text-xs font-normal text-white/55">Open positions</div>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-normal text-white/55">Open positions</span>
+        <button
+          onClick={() => setHistoryOpen(true)}
+          disabled={!walletId}
+          className="cursor-pointer rounded-full border border-white/14 bg-white/6 px-3 py-1 text-[11.5px] font-medium text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          History
+        </button>
+      </div>
       {loading ? (
         <p className="text-xs font-normal text-white/45">Loading…</p>
       ) : positions.length === 0 ? (
@@ -208,6 +221,11 @@ export function HyperliquidPositionsList({
         position={closing}
         onClose={() => setClosing(null)}
         onConfirm={confirmClose}
+      />
+      <HyperliquidHistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        walletId={walletId}
       />
     </div>
   );

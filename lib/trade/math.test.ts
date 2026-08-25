@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   closeFee,
   estimatedWithdrawalFee,
+  formatUsd,
   fromBaseUnits,
   liquidationPrice,
   openFee,
@@ -128,5 +129,29 @@ describe("estimatedWithdrawalFee", () => {
   it("is zero for a non-positive amount", () => {
     expect(estimatedWithdrawalFee(0)).toBe(0);
     expect(estimatedWithdrawalFee(-5)).toBe(0);
+  });
+});
+
+describe("formatUsd", () => {
+  it("puts the sign before the currency symbol, not inside the number", () => {
+    // toLocaleString on a negative value alone would read "$-1.00" — the
+    // sign has to move outside the "$" for a loss to read naturally.
+    expect(formatUsd(-1)).toBe("-$1.00");
+    expect(formatUsd(-0.00819)).toBe("-$0.00819");
+  });
+
+  it("shows a positive value with no sign", () => {
+    expect(formatUsd(1)).toBe("$1.00");
+    expect(formatUsd(0.0091)).toBe("$0.0091");
+  });
+
+  it("shows more decimals for smaller magnitudes so a small value never rounds to zero", () => {
+    expect(formatUsd(0.5)).toBe("$0.50");
+    expect(formatUsd(0.001234)).toBe("$0.001234");
+  });
+
+  it("falls back to $0.00 for a non-finite value", () => {
+    expect(formatUsd(NaN)).toBe("$0.00");
+    expect(formatUsd(Infinity)).toBe("$0.00");
   });
 });

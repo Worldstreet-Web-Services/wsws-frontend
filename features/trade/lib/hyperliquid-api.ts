@@ -7,6 +7,7 @@ import type {
   HlAsset,
   HlBuilderFeeStatus,
   HlClearinghouseState,
+  HlClosedPositionView,
   HlL1Action,
   HlMarketContext,
   HlOrderRow,
@@ -66,6 +67,19 @@ export async function listPositions(walletId: string): Promise<HlPositionView[]>
 
 export async function listOrders(walletId: string): Promise<HlOrderRow[]> {
   return perp.get<HlOrderRow[]>(`/hl/wallets/${walletId}/orders`);
+}
+
+// Closed positions only — trading history. Kept off listPositions above so
+// an open-positions poll never pages through history it doesn't need.
+export async function listClosedPositions(
+  walletId: string,
+  limit = 50,
+  offset = 0
+): Promise<HlClosedPositionView[]> {
+  return perp.get<HlClosedPositionView[]>(`/hl/wallets/${walletId}/positions/closed`, {
+    limit,
+    offset,
+  });
 }
 
 export async function prepareOrder(request: PlaceOrderRequest): Promise<PreparedOrder> {

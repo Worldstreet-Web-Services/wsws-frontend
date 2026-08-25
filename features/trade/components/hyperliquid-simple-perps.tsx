@@ -342,6 +342,7 @@ export function HyperliquidSimplePerps() {
           orders={trading.orders}
           loading={trading.positionsLoading}
           busy={busy}
+          walletId={trading.walletId}
           onClosePosition={handleClosePosition}
           onEditTrigger={handleEditTrigger}
         />

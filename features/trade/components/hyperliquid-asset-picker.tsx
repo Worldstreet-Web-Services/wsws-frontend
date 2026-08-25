@@ -30,6 +30,21 @@ interface MarketRow {
   openInterestUsd: number | null;
 }
 
+// Fixed display order — native crypto first (the original, always-present
+// market), then HIP-3 categories roughly by how common they are, "other"
+// last as the catch-all. A category only gets a tab when at least one
+// synced asset actually has it, so this list quietly does nothing until
+// HIP-3 dexs are configured (PERPS_HIP3_DEXS).
+const CATEGORY_LABELS: Record<string, string> = {
+  crypto: "Crypto",
+  equities: "Equities",
+  forex: "Forex",
+  commodities: "Commodities",
+  indices: "Indices",
+  other: "Other",
+};
+const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
+
 // Header-as-trigger with a searchable market list underneath — the list
 // itself is the same Market/Last Price/24h Change/Funding/Volume/Open
 // Interest table Hyperliquid's own pro UI shows, sourced from
@@ -45,6 +60,12 @@ export function HyperliquidAssetPicker({
 }: HyperliquidAssetPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string>("all");
+
+  const availableCategories = useMemo(() => {
+    const present = new Set(assets.map((a) => a.category ?? "other"));
+    return CATEGORY_ORDER.filter((c) => present.has(c));
+  }, [assets]);
 
   const contextBySymbol = useMemo(() => {
     const map = new Map<string, HlMarketContext>();
@@ -72,10 +93,14 @@ export function HyperliquidAssetPicker({
         openInterestUsd: ctx && price > 0 ? Number(ctx.openInterest) * price : null,
       };
     });
+    const byCategory =
+      category === "all" ? built : built.filter((r) => (r.asset.category ?? "other") === category);
     const q = search.trim().toLowerCase();
-    const filtered = q ? built.filter((r) => r.asset.symbol.toLowerCase().includes(q)) : built;
+    const filtered = q
+      ? byCategory.filter((r) => r.asset.symbol.toLowerCase().includes(q))
+      : byCategory;
     return filtered.sort((a, b) => (b.volumeUsd ?? 0) - (a.volumeUsd ?? 0));
-  }, [assets, contextBySymbol, prices, search]);
+  }, [assets, contextBySymbol, prices, search, category]);
 
   const pick = (symbol: string) => {
     onSelect(symbol);
@@ -126,6 +151,31 @@ export function HyperliquidAssetPicker({
               className="min-w-0 flex-1 bg-transparent text-[13.5px] font-normal text-white outline-none"
             />
           </div>
+          {availableCategories.length > 1 ? (
+            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-white/8 px-3.5 py-2">
+              <button
+                onClick={() => setCategory("all")}
+                className={`shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+                  category === "all"
+                    ? "bg-white/14 text-white"
+                    : "text-white/50 hover:text-white/80"
+                }`}
+              >
+                All
+              </button>
+              {availableCategories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={`shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+                    category === c ? "bg-white/14 text-white" : "text-white/50 hover:text-white/80"
+                  }`}
+                >
+                  {CATEGORY_LABELS[c] ?? c}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="overflow-x-auto">
             <div className="min-w-[560px]">
               <div className="grid grid-cols-[1.6fr_1fr_1fr_0.9fr_1fr_1fr] gap-2 px-3.5 py-2 text-[10.5px] font-normal text-white/40">

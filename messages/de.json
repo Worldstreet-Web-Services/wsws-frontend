@@ -2467,7 +2467,9 @@
       "noLiquidity": "Gerade kauft das niemand. Halte es bis zur Auflösung.",
       "closedMarket": "Dieser Markt ist gerade geschlossen. Versuch es während der Handelszeiten.",
       "onramp": "Eine Bankeinzahlung ist noch auf dem Weg in deine alte Wallet."
-    }
+    },
+    "signInKnown": "In deiner alten Wallet liegen noch etwa {amount}. Melde dich bei deinem alten Konto an, um sie zu bewegen.",
+    "entryBadge": "{amount} übrig"
   },
   "recovery": {
     "rotatedTitle": "Deine Wiederherstellungsdatei wurde ersetzt",

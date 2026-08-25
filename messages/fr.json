@@ -2467,7 +2467,9 @@
       "noLiquidity": "Personne n'achète ceci pour l'instant. Gardez-le jusqu'à la résolution.",
       "closedMarket": "Ce marché est fermé en ce moment. Réessayez pendant les heures de cotation.",
       "onramp": "Un dépôt bancaire est encore en route vers votre ancien portefeuille."
-    }
+    },
+    "signInKnown": "Il vous reste environ {amount} dans votre ancien portefeuille. Connectez-vous à votre ancien compte pour les déplacer.",
+    "entryBadge": "{amount} restants"
   },
   "recovery": {
     "rotatedTitle": "Votre fichier de récupération a été remplacé",

@@ -53,6 +53,12 @@ function extractAccessToken(req: NextRequest): string | null {
   return req.cookies.get("privy-token")?.value ?? null;
 }
 
+// Verifies a Privy access token on its own, for the migration link route,
+// which carries the OLD identity's token in a second header.
+export async function verifyPrivyAccessToken(token: string): Promise<AccessClaims | null> {
+  return verifyWithPrivy(token);
+}
+
 async function verifyWithPrivy(token: string): Promise<AccessClaims | null> {
   try {
     const claims = await getPrivyClient().utils().auth().verifyAccessToken(token);

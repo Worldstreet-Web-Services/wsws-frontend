@@ -2467,7 +2467,9 @@
       "noLiquidity": "Nobody is buying this right now. Hold it to resolution.",
       "closedMarket": "This market is closed right now. Try during trading hours.",
       "onramp": "A bank deposit is still on its way to your old wallet."
-    }
+    },
+    "signInKnown": "You have about {amount} left in your old wallet. Sign in to your old account to move it.",
+    "entryBadge": "{amount} left"
   },
   "recovery": {
     "rotatedTitle": "Your recovery file was replaced",

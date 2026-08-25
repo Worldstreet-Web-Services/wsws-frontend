@@ -2467,7 +2467,9 @@
       "noLiquidity": "Ninguém está comprando isto agora. Segure até a resolução.",
       "closedMarket": "Este mercado está fechado agora. Tente no horário de negociação.",
       "onramp": "Um depósito bancário ainda está a caminho da sua carteira antiga."
-    }
+    },
+    "signInKnown": "Você ainda tem cerca de {amount} na sua carteira antiga. Entre na sua conta antiga para mover.",
+    "entryBadge": "{amount} restantes"
   },
   "recovery": {
     "rotatedTitle": "Seu arquivo de recuperação foi substituído",

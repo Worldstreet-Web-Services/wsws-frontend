@@ -2467,7 +2467,9 @@
       "noLiquidity": "Nadie está comprando esto ahora. Mantenlo hasta la resolución.",
       "closedMarket": "Este mercado está cerrado ahora. Inténtalo en horario de negociación.",
       "onramp": "Un depósito bancario sigue en camino a tu billetera anterior."
-    }
+    },
+    "signInKnown": "Te quedan unos {amount} en tu billetera anterior. Inicia sesión en tu cuenta anterior para moverlos.",
+    "entryBadge": "{amount} restantes"
   },
   "recovery": {
     "rotatedTitle": "Tu archivo de recuperación fue reemplazado",

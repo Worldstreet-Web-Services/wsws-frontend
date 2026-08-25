@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
@@ -10,9 +10,11 @@ import { CheckIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { track } from "@/lib/analytics/mixpanel";
+import { isUnconfigured } from "@/lib/api/envelope";
 import { formatUsd } from "@/lib/currency";
 import { scheduleSettlement } from "@/lib/migration/schedule";
 import type { LegacyHolding, VenueAdapter } from "@/lib/migration/types";
+import { linkLegacyAccount } from "@/features/migrate/lib/api";
 import { ethPriceFromPortfolio } from "@/features/migrate/lib/discover";
 import type { RunResult } from "@/features/migrate/lib/run";
 import {
@@ -29,6 +31,7 @@ import {
   useLegacyHoldings,
 } from "@/features/migrate/hooks/use-legacy-holdings";
 import { useMigrationRun } from "@/features/migrate/hooks/use-migration-run";
+import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 
 export type MigrationEntry = "balance_card" | "account_modal";
 
@@ -55,8 +58,17 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
   const newPortfolio = usePortfolio();
   const queryClient = useQueryClient();
 
+  const status = useMigrationStatus();
+  const refetchStatus = status.refetch;
+
   const ethPriceUsd = ethPriceFromPortfolio(newPortfolio.tokens);
-  const legacy = useMemo(() => signer?.addresses ?? { evm: null, solana: null }, [signer]);
+  // Before the old sign-in, a linked account's addresses come from the
+  // server, so a fresh device can already see the on-chain venues.
+  const serverLegacy = status.data?.legacy ?? null;
+  const legacy = useMemo(
+    () => signer?.addresses ?? serverLegacy ?? { evm: null, solana: null },
+    [signer, serverLegacy]
+  );
   const current = useMemo(
     () => ({ evm: session.evmAddress, solana: session.solanaAddress }),
     [session.evmAddress, session.solanaAddress]
@@ -74,6 +86,23 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
   useEffect(() => {
     track("migration_started", { entry });
   }, [entry]);
+
+  // Link the two accounts the moment the old sign-in lands. Idempotent
+  // upstream, so every opening may post it; a service that is not deployed
+  // yet is simply not there.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (!signer || linked.current) return;
+    linked.current = true;
+    linkLegacyAccount()
+      .then(() => {
+        track("migration_linked");
+        void refetchStatus();
+      })
+      .catch((error: unknown) => {
+        if (!isUnconfigured(error)) console.error("Linking the old account failed", error);
+      });
+  }, [signer, refetchStatus]);
 
   // Old-identity data never outlives the panel.
   useEffect(
@@ -129,8 +158,12 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
   };
 
   if (!signer) {
+    const known = status.data?.hasLegacyFunds ? status.data.legacyFundsUsd : 0;
     return (
-      <Step title={t("signInTitle")} body={t("signInBody")}>
+      <Step
+        title={t("signInTitle")}
+        body={known > 0 ? t("signInKnown", { amount: formatUsd(known) }) : t("signInBody")}
+      >
         <button onClick={() => privy.login()} disabled={!privy.ready} className={PRIMARY}>
           {t("signInButton")}
         </button>

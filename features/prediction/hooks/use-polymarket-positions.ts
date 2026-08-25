@@ -4,11 +4,8 @@ import { useCallback, useState } from "react";
 import { friendlyError } from "@/lib/errors";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
-import {
-  readCollateralUsd,
-  readUnsettledUsdcUsd,
-} from "@/features/prediction/lib/polymarket/collateral";
-import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
+import { readCollateralUsd, readUnsettledUsdcUsd } from "@/lib/polymarket/collateral";
+import type { SecureClient } from "@/lib/polymarket/secure-client";
 
 type PositionsPage = Awaited<ReturnType<ReturnType<SecureClient["listPositions"]>["firstPage"]>>;
 export type PolymarketPosition = PositionsPage["items"][number];

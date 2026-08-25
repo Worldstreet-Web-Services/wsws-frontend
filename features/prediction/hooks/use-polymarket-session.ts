@@ -7,10 +7,7 @@ import { deployDepositWallet, isWalletDeployed } from "@polymarket/client/action
 import type { EIP1193Provider } from "viem";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { ensureUnlocked } from "@/lib/decane";
-import {
-  buildSecureClient,
-  type SecureClient,
-} from "@/features/prediction/lib/polymarket/secure-client";
+import { buildSecureClient, type SecureClient } from "@/lib/polymarket/secure-client";
 
 export type SessionStatus = "idle" | "connecting" | "deploying" | "approving" | "ready" | "error";
 

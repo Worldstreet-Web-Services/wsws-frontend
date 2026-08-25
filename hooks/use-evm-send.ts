@@ -7,6 +7,7 @@ import { recordSelfInitiated } from "@/lib/analytics/self-initiated";
 import { ensureUnlocked } from "@/lib/decane";
 import { sendSponsoredEvmCalls, type SignAuthorization } from "@/lib/trade/sponsor";
 import { getSponsoredEvmChainById, isSponsoredEvmChainId } from "@/lib/trade/sponsored-evm";
+import type { EvmBatchCall } from "@/lib/migration/types";
 
 export interface EvmSendInput {
   to: `0x${string}`;
@@ -95,11 +96,9 @@ export function useEvmSend() {
   );
 }
 
-export interface EvmBatchCall {
-  to: `0x${string}`;
-  data?: `0x${string}`;
-  value?: bigint;
-}
+// Shared with the migration contract in lib/migration/types, which cannot
+// import upward from hooks.
+export type { EvmBatchCall } from "@/lib/migration/types";
 
 // Sends several calls as one atomic sponsored operation on a supported EVM
 // chain. Used where a flow would otherwise need sequential dependent
@@ -109,12 +108,19 @@ export function useEvmSendBatch() {
   const wallet = useSocialWallet();
 
   return useCallback(
-    async (calls: EvmBatchCall[], chainId: number): Promise<`0x${string}`> => {
+    async (
+      calls: EvmBatchCall[],
+      chainId: number,
+      // The wallet the caller believes it is sending from. A stale address
+      // (a migration flow mixing old and new wallets) is refused rather than
+      // silently signed by whichever wallet is connected.
+      expectedAddress?: string
+    ): Promise<`0x${string}`> => {
       if (!isSponsoredEvmChainId(chainId)) {
         throw new Error("Batched transactions are only supported on sponsored EVM chains.");
       }
       if (calls.length === 0) throw new Error("Nothing to send.");
-      const from = connectedEvmAddress(wallet);
+      const from = connectedEvmAddress(wallet, expectedAddress);
       await ensureUnlocked(wallet);
       const accessToken = wallet.getAccessToken();
       if (!accessToken) throw new Error("Your session expired. Sign in again.");

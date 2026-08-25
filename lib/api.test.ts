@@ -42,6 +42,24 @@ describe("apiFetch authentication", () => {
     expect(headers.get("privy-id-token")).toBeNull();
   });
 
+  it("asks the resolver for the named identity", async () => {
+    auth.resolveAuthTokens.mockResolvedValue({ accessToken: "privy-access", idToken: "id" });
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await apiFetch("/api/legacy", {}, { requireAuth: true, identity: "legacy" });
+
+    expect(auth.resolveAuthTokens).toHaveBeenCalledWith("legacy");
+  });
+
+  it("fails a legacy call without a Privy session as a non-retryable session error", async () => {
+    auth.resolveAuthTokens.mockResolvedValue({ accessToken: null, idToken: null });
+
+    await expect(
+      apiFetch("/api/legacy", {}, { requireAuth: true, identity: "legacy" })
+    ).rejects.toMatchObject({ code: "LEGACY_SESSION" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("forwards both tokens when a Privy session supplies them", async () => {
     auth.resolveAuthTokens.mockResolvedValue({
       accessToken: "access-token",

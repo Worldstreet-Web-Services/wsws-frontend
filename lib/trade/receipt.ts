@@ -1,4 +1,5 @@
 import { createPublicClient, fallback, http, type Chain } from "viem";
+import { authHeaders } from "@/lib/api";
 import { SPONSORED_EVM_CHAINS } from "@/lib/trade/sponsored-evm";
 
 // Read client per chain for confirming transactions. Reads must go through a
@@ -43,13 +44,22 @@ const FALLBACK_RPCS: Record<number, string> = {
 // moment the primary errors, so a proxy outage degrades to a slower public node
 // instead of stalling the flow.
 //
-// The proxy is same-origin, so the privy-token cookie authenticates it with no
-// header plumbing. Browser-only by construction: every caller runs in a hook or
-// an event handler.
+// The proxy verifies the caller's session, and a Decane session sets no
+// cookie, so the bearer is attached per request through viem's fetch hook.
+// Browser-only by construction: every caller runs in a hook or an event
+// handler.
+const authedFetch: typeof fetch = async (input, init) => {
+  const headers = new Headers(init?.headers);
+  for (const [name, value] of Object.entries(await authHeaders("current"))) {
+    headers.set(name, value);
+  }
+  return fetch(input, { ...init, headers });
+};
+
 export function publicClientForChain(chainId: number) {
   const entry = READ_CHAINS[chainId];
   if (!entry) throw new Error(`This chain isn't supported yet (${chainId}).`);
-  const primary = http(`/api/evm-rpc/${entry.network}`);
+  const primary = http(`/api/evm-rpc/${entry.network}`, { fetchFn: authedFetch });
   const backup = FALLBACK_RPCS[chainId];
   return createPublicClient({
     chain: entry.chain,

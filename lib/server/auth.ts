@@ -85,13 +85,13 @@ async function verifyWithDecane(token: string): Promise<AccessClaims | null> {
 }
 
 // Verifies the caller's access token. During the Privy to Decane migration
-// window both issuers are trusted: Privy is tried first because it still
-// carries all pre-cutover traffic, then Decane. Returns null when the request
-// carries no token or neither issuer verifies it.
+// window both issuers are trusted: Decane first, since it is the app's
+// identity, then Privy for the migration flow's legacy calls. Returns null
+// when the request carries no token or neither issuer verifies it.
 export async function verifyRequest(req: NextRequest): Promise<AccessClaims | null> {
   const token = extractAccessToken(req);
   if (!token) return null;
-  return (await verifyWithPrivy(token)) ?? verifyWithDecane(token);
+  return (await verifyWithDecane(token)) ?? verifyWithPrivy(token);
 }
 
 // The caller's proven identity: who they are and which embedded wallets the

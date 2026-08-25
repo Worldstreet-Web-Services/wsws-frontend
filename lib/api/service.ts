@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@/lib/api";
 import { unwrap } from "@/lib/api/envelope";
+import type { AuthIdentity } from "@/lib/auth-token";
 
 export type QueryParams = Record<string, string | number | boolean | undefined>;
 
@@ -32,16 +33,32 @@ export interface ServiceClient {
   post<T>(path: string, body?: unknown): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
   del<T>(path: string, body?: unknown): Promise<T>;
+  // The same service, authenticating as the named identity. Memoised, so a
+  // feature can hold `client.as("legacy")` next to its normal client.
+  as(identity: AuthIdentity): ServiceClient;
 }
 
-export function createServiceClient(basePath: string, fallbackMessage: string): ServiceClient {
+export interface ServiceClientOptions {
+  identity?: AuthIdentity;
+}
+
+export function createServiceClient(
+  basePath: string,
+  fallbackMessage: string,
+  options: ServiceClientOptions = {}
+): ServiceClient {
+  const identity = options.identity ?? "current";
   const url = (path: string, params?: QueryParams) => `${basePath}${path}${buildQuery(params)}`;
 
-  // requireAuth turns a cold Privy token into a retryable error instead of a 401.
+  // requireAuth turns a cold token into a retryable error instead of a 401.
   const authed = <T>(path: string, init: RequestInit): Promise<T> =>
-    apiFetch(path, init, { requireAuth: true }).then((res) => unwrap<T>(res, fallbackMessage));
+    apiFetch(path, init, { requireAuth: true, identity }).then((res) =>
+      unwrap<T>(res, fallbackMessage)
+    );
 
-  return {
+  const variants = new Map<AuthIdentity, ServiceClient>();
+
+  const client: ServiceClient = {
     // Public reads stay on plain fetch so they remain cacheable.
     get: <T>(path: string, params?: QueryParams) =>
       fetch(url(path, params)).then((res) => unwrap<T>(res, fallbackMessage)),
@@ -49,5 +66,15 @@ export function createServiceClient(basePath: string, fallbackMessage: string): 
     post: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("POST", body)),
     put: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("PUT", body)),
     del: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("DELETE", body)),
+    as(next) {
+      if (next === identity) return client;
+      let variant = variants.get(next);
+      if (!variant) {
+        variant = createServiceClient(basePath, fallbackMessage, { identity: next });
+        variants.set(next, variant);
+      }
+      return variant;
+    },
   };
+  return client;
 }

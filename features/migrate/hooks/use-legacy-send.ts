@@ -115,11 +115,16 @@ export function useLegacySendToken() {
         tokenAddress === null
           ? await buildSolanaSolTransfer(from, to, amount)
           : await buildSolanaTokenTransfer(from, to, amount, tokenAddress, decimals);
+      // The gas-sponsor service still verifies Privy tokens, and this spends
+      // from the old wallet anyway, so both hops name the legacy identity.
       const prepared = await prepareSponsoredSolanaTransaction(transaction, {
         prefundRent: tokenAddress !== null,
+        identity: "legacy",
       });
       const { signedTransaction } = await signTransaction({ transaction: prepared, wallet });
-      const result = await sponsorAndSubmitSolanaTransaction(signedTransaction);
+      const result = await sponsorAndSubmitSolanaTransaction(signedTransaction, {
+        identity: "legacy",
+      });
       if (!result.submittedSignature) {
         throw new Error("The gas sponsor did not submit the transaction.");
       }

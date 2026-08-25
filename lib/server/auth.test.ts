@@ -59,13 +59,15 @@ describe("verifyRequest", () => {
     expect(decane.verifyToken).not.toHaveBeenCalled();
   });
 
-  it("accepts a Privy token without consulting Decane", async () => {
+  it("accepts a Privy token after Decane declines it", async () => {
     privy.verifyToken.mockResolvedValue({
       user_id: "privy_user",
       session_id: "privy_session",
       issued_at: 1,
       expiration: 2,
     });
+
+    decane.verifyToken.mockRejectedValue(new Error("not a decane token"));
 
     const claims = await verifyRequest(makeReq({ authorization: "Bearer privy-token" }));
 
@@ -75,11 +77,10 @@ describe("verifyRequest", () => {
       issuedAt: 1,
       expiration: 2,
     });
-    expect(decane.verifyToken).not.toHaveBeenCalled();
+    expect(decane.verifyToken).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to Decane when Privy rejects the token", async () => {
-    privy.verifyToken.mockRejectedValue(new Error("not a privy token"));
+  it("accepts a Decane token without consulting Privy", async () => {
     decane.verifyToken.mockResolvedValue({
       userId: "decane_user",
       subject: "subject_1",
@@ -97,10 +98,10 @@ describe("verifyRequest", () => {
       issuedAt: 10,
       expiration: 20,
     });
+    expect(privy.verifyToken).not.toHaveBeenCalled();
   });
 
   it("keys Decane claims on the subject when the token has no token id", async () => {
-    privy.verifyToken.mockRejectedValue(new Error("not a privy token"));
     decane.verifyToken.mockResolvedValue({
       userId: "decane_user",
       subject: "subject_1",

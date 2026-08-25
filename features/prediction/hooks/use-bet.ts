@@ -8,9 +8,9 @@ import {
   type SessionStatus,
 } from "@/features/prediction/hooks/use-polymarket-session";
 import { usePolymarketFunding } from "@/features/prediction/hooks/use-polymarket-funding";
-import { readCollateralUsd } from "@/features/prediction/lib/polymarket/collateral";
+import { readCollateralUsd } from "@/lib/polymarket/collateral";
 import { BUILDER_CODE, CONTRACTS } from "@/lib/polymarket/config";
-import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
+import type { SecureClient } from "@/lib/polymarket/secure-client";
 
 export type BetPhase = "idle" | "placing" | "funding" | "settling" | "approving";
 

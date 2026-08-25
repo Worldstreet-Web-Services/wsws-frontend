@@ -60,7 +60,11 @@ describe("createServiceClient", () => {
   it("routes an authed read through apiFetch with requireAuth", async () => {
     await client.authedGet("/mine", { limit: 5 });
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(apiFetch).toHaveBeenCalledWith("/api/demo/mine?limit=5", {}, { requireAuth: true });
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/demo/mine?limit=5",
+      {},
+      { requireAuth: true, identity: "current" }
+    );
   });
 
   it("sends a JSON content-type only when there is a body", async () => {
@@ -72,14 +76,14 @@ describe("createServiceClient", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: "1" }),
       },
-      { requireAuth: true }
+      { requireAuth: true, identity: "current" }
     );
 
     await client.post("/resign");
     expect(apiFetch).toHaveBeenLastCalledWith(
       "/api/demo/resign",
       { method: "POST" },
-      { requireAuth: true }
+      { requireAuth: true, identity: "current" }
     );
   });
 
@@ -88,15 +92,27 @@ describe("createServiceClient", () => {
     expect(apiFetch).toHaveBeenLastCalledWith(
       "/api/demo/note",
       expect.objectContaining({ method: "PUT" }),
-      { requireAuth: true }
+      { requireAuth: true, identity: "current" }
     );
 
     await client.del("/note", { id: 1 });
     expect(apiFetch).toHaveBeenLastCalledWith(
       "/api/demo/note",
       expect.objectContaining({ method: "DELETE" }),
-      { requireAuth: true }
+      { requireAuth: true, identity: "current" }
     );
+  });
+
+  it("switches identity for legacy calls and memoises the variant", async () => {
+    const legacy = client.as("legacy");
+    await legacy.post("/withdraw", { amount: "1" });
+    expect(apiFetch).toHaveBeenLastCalledWith(
+      "/api/demo/withdraw",
+      expect.objectContaining({ method: "POST" }),
+      { requireAuth: true, identity: "legacy" }
+    );
+    expect(client.as("legacy")).toBe(legacy);
+    expect(client.as("current")).toBe(client);
   });
 
   it("throws the service's own error code, not the fallback sentence", async () => {

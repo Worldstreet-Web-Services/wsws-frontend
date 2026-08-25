@@ -7,7 +7,7 @@ import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
 import { sellFloorPrice } from "@/features/prediction/lib/positions";
 import { BUILDER_CODE, CONTRACTS } from "@/lib/polymarket/config";
-import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
+import type { SecureClient } from "@/lib/polymarket/secure-client";
 
 export type CashoutPhase = "idle" | "selling" | "approving";
 

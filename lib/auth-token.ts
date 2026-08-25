@@ -2,13 +2,21 @@
 
 import { resolveAuthTokens as resolvePrivyAuthTokens, type AuthTokens } from "@/lib/privy-token";
 
-// The one place the transport gets its bearer token during the Privy to Decane
-// migration window. A live Privy session wins: the gateway services behind our
-// proxies (earn, trade, gas-sponsor) still verify Privy tokens upstream, so as
-// long as the user holds a Privy session its token must be the one on the wire.
-// The Decane token is used only when there is no Privy session, which is every
-// session created after the auth cutover. Once the migration window closes and
-// Privy is removed, this module collapses back into a single source.
+// The one place the transport gets its bearer token. Two identities exist
+// during the Privy to Decane migration window and the caller names which one
+// it wants:
+//
+// - "current": the app's identity. Decane first; Privy only when no Decane
+//   token source is registered at all (the prediction reclaim page mounts
+//   Privy without a Decane session).
+// - "legacy": the OLD Privy identity, and nothing else. Used only by the
+//   migration flow, for calls that must act on the old wallets: the chess
+//   cashier withdrawal, the Kash points claim, the gas-sponsor service.
+//   Yields no token when Privy is not mounted or not signed in.
+//
+// The default is "current" on purpose. Privy's getters are module-level, so a
+// live Privy session inside the migration flow would otherwise leak into every
+// ordinary dashboard request and retarget them at the old wallet.
 //
 // Decane's getAccessToken() is synchronous and lives on the kit's React
 // context, so the provider tree registers it here at mount through
@@ -17,6 +25,8 @@ import { resolveAuthTokens as resolvePrivyAuthTokens, type AuthTokens } from "@/
 // and routes resolve the user from the verified claims instead.
 
 export type { AuthTokens };
+
+export type AuthIdentity = "current" | "legacy";
 
 type DecaneTokenSource = () => string | null;
 
@@ -28,28 +38,38 @@ export function registerDecaneTokenSource(source: DecaneTokenSource | null): voi
 
 interface AuthTokenResolverDeps {
   resolvePrivyTokens: () => Promise<AuthTokens>;
+  // null when no Decane provider has registered a source; a string or null
+  // from the source itself once one has.
   getDecaneToken: () => string | null;
+  hasDecaneSource: () => boolean;
 }
+
+const NO_TOKENS: AuthTokens = { accessToken: null, idToken: null };
 
 // Builds the resolver over injected sources. The real one is exported below;
 // tests build their own with fakes.
 export function createAuthTokenResolver({
   resolvePrivyTokens,
   getDecaneToken,
-}: AuthTokenResolverDeps): () => Promise<AuthTokens> {
-  return async function resolveTokens(): Promise<AuthTokens> {
-    let privy: AuthTokens = { accessToken: null, idToken: null };
+  hasDecaneSource,
+}: AuthTokenResolverDeps): (identity?: AuthIdentity) => Promise<AuthTokens> {
+  const privy = async (): Promise<AuthTokens> => {
     try {
-      privy = await resolvePrivyTokens();
+      return await resolvePrivyTokens();
     } catch {
       // Privy's module-level getters can throw when no PrivyProvider is
-      // mounted (everywhere but the legacy surfaces). That is not an error,
-      // just the post-cutover normal; the Decane token below carries auth.
+      // mounted, which is the post-cutover normal on every ordinary route.
+      return NO_TOKENS;
     }
-    if (privy.accessToken) return privy;
-    const decaneToken = getDecaneToken();
-    if (decaneToken) return { accessToken: decaneToken, idToken: null };
-    return { accessToken: null, idToken: null };
+  };
+
+  return async function resolveTokens(identity: AuthIdentity = "current"): Promise<AuthTokens> {
+    if (identity === "legacy") return privy();
+    if (hasDecaneSource()) {
+      const decaneToken = getDecaneToken();
+      return decaneToken ? { accessToken: decaneToken, idToken: null } : NO_TOKENS;
+    }
+    return privy();
   };
 }
 
@@ -57,4 +77,5 @@ export function createAuthTokenResolver({
 export const resolveAuthTokens = createAuthTokenResolver({
   resolvePrivyTokens: resolvePrivyAuthTokens,
   getDecaneToken: () => (decaneTokenSource ? decaneTokenSource() : null),
+  hasDecaneSource: () => decaneTokenSource !== null,
 });

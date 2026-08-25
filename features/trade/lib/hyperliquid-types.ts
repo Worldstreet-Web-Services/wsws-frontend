@@ -8,9 +8,13 @@
 // Every Hyperliquid perp is margined and settled in USDC — displayed as
 // "{symbol}-USDC" everywhere a market/pair is shown to the user, matching
 // Hyperliquid's own convention. The bare `symbol` (e.g. "BTC") stays what
-// every API call actually uses; this is display-only.
+// every API call, WS subscription, and order still actually uses; this is
+// display-only. A HIP-3 asset's symbol carries a dex prefix on the wire
+// (e.g. "xyz:AAPL", matching Hyperliquid's own naming) — stripped here so
+// the user sees "AAPL-USDC", not the internal dex name.
 export function hlPairLabel(symbol: string): string {
-  return `${symbol}-USDC`;
+  const bareSymbol = symbol.includes(":") ? symbol.split(":")[1]! : symbol;
+  return `${bareSymbol}-USDC`;
 }
 
 export interface HlWallet {
@@ -27,7 +31,13 @@ export interface HlWallet {
 export interface HlAsset {
   id: string;
   hlAssetIndex: number;
+  /** '' = native perps; a HIP-3 dex name (e.g. "xyz") otherwise. */
+  dex: string;
   symbol: string;
+  /** Coarse asset class for the market picker's category tabs — "crypto"
+   *  for native assets, otherwise normalized from Hyperliquid's own
+   *  curation ("equities" | "forex" | "commodities" | "indices" | "other"). */
+  category: string | null;
   szDecimals: number;
   maxLeverage: number;
   isActive: boolean;

@@ -131,7 +131,7 @@ export function HyperliquidOrderForm({
     if (orderKind === "limit" && !limitPrice) return;
     setStatus({ text: "Placing order…", kind: "info" });
     try {
-      const result = await onSubmit(
+      await onSubmit(
         {
           assetSymbol,
           side,
@@ -143,7 +143,10 @@ export function HyperliquidOrderForm({
         (text) => setStatus({ text, kind: "info" })
       );
       setStatus({
-        text: `Order submitted — entry order ${result.entryOrder.id}.`,
+        text:
+          orderKind === "market"
+            ? `${side === "buy" ? "Long" : "Short"} ${assetSymbol} opened.`
+            : `${side === "buy" ? "Buy" : "Sell"} order for ${assetSymbol} placed.`,
         kind: "success",
       });
       setAmountUsdc("");

@@ -11,7 +11,15 @@ interface HyperliquidOrdersListProps {
   onCancel: (order: HlOrderRow) => Promise<void>;
 }
 
+// Once an order settles (filled, cancelled, rejected) there's nothing left
+// to do with it here — a fill already shows up in Positions, and once that
+// position closes it shows up in History. Keeping it around just clutters
+// this panel with rows that can no longer be acted on, so this panel only
+// ever shows resting orders — which happen to be exactly the cancellable ones.
 const CANCELLABLE_STATUSES = new Set(["submitted", "open", "partially_filled"]);
+// Orders arrive newest-first; capped so a wallet with a long resting-order
+// history doesn't turn this into a scroll of its own.
+const MAX_VISIBLE = 4;
 
 export function HyperliquidOrdersList({
   orders,
@@ -19,6 +27,9 @@ export function HyperliquidOrdersList({
   busy,
   onCancel,
 }: HyperliquidOrdersListProps) {
+  const visibleOrders = orders
+    .filter((o) => CANCELLABLE_STATUSES.has(o.status))
+    .slice(0, MAX_VISIBLE);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<{ id: string; message: string } | null>(null);
@@ -52,11 +63,11 @@ export function HyperliquidOrdersList({
       <div className="mb-3 text-xs font-normal text-white/55">Orders</div>
       {loading ? (
         <p className="text-xs font-normal text-white/45">Loading…</p>
-      ) : orders.length === 0 ? (
+      ) : visibleOrders.length === 0 ? (
         <p className="text-xs font-normal text-white/45">No orders.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {orders.map((order) => {
+          {visibleOrders.map((order) => {
             const cancellable = CANCELLABLE_STATUSES.has(order.status) && order.hlOid != null;
             const cancelling = cancellingId === order.id;
             const confirming = confirmingId === order.id;

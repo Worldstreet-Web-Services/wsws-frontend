@@ -92,10 +92,13 @@ export function formatUsd(value: number): string {
   if (!Number.isFinite(value)) return "$0.00";
   const abs = Math.abs(value);
   const maxDigits = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
-  return `$${value.toLocaleString(undefined, {
+  const formatted = abs.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: maxDigits,
-  })}`;
+  });
+  // The sign belongs before the currency symbol ("-$1.00"), not inside the
+  // number ("$-1.00") — toLocaleString on a negative value does the latter.
+  return value < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 // Trimmed token amount for display. Large amounts show fewer decimals.

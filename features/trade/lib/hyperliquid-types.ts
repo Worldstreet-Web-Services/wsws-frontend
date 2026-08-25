@@ -87,6 +87,30 @@ export interface HlPositionView {
   closedAt: string | null;
 }
 
+export type HlPositionCloseReason =
+  "take_profit" | "stop_loss" | "manual_close" | "liquidation" | "reconciled";
+
+// A closed position, for the trading-history view. No live valuation —
+// everything about a closed position is already final. Carries the asset's
+// symbol, which HlPositionView does not (only assetId).
+export interface HlClosedPositionView {
+  id: string;
+  walletId: string;
+  assetId: string;
+  symbol: string;
+  side: HlPositionSide;
+  size: string;
+  entryPrice: string;
+  leverage: number;
+  marginMode: HlMarginMode;
+  status: "closed";
+  closeReason: HlPositionCloseReason;
+  closePrice: string;
+  realizedPnlUsdc: string;
+  openedAt: string;
+  closedAt: string;
+}
+
 export type HlOrderType = "market" | "limit" | "take_profit" | "stop_loss" | "close";
 export type HlOrderSide = "buy" | "sell";
 export type HlOrderStatus =

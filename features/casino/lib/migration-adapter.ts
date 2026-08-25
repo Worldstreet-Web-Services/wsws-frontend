@@ -155,10 +155,20 @@ export const cashierMigrationAdapter: VenueAdapter<CashierRef> = {
       throw error;
     };
     const [balance, tickets] = await Promise.all([
+      // The balance is withdrawable money, so failing to read it fails this
+      // venue: the review must not imply the cashier is empty.
       fetchChessBalance(wallet, "legacy").catch(quiet),
-      fetchLotteryTickets(wallet, 50, "legacy").catch((error) => quiet(error) ?? []),
+      // Tickets are informational: they re-key with the backend and nothing
+      // settles from here. A lottery outage must not hide the balance above,
+      // so it degrades to no tickets rather than taking the venue down.
+      fetchLotteryTickets(wallet, 50, "legacy").catch((error) => {
+        if (!isCashierUnavailable(error) && !isCashierAccessDenied(error)) {
+          console.error("Migration: couldn't read the old account's lottery tickets", error);
+        }
+        return [] as LotteryTicket[];
+      }),
     ]);
-    return classifyCashier(balance, tickets ?? []);
+    return classifyCashier(balance, tickets);
   },
   async settle(holdings, ctx) {
     const outcomes = new Map<string, SettleOutcome>();

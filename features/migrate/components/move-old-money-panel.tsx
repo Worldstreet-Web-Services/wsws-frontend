@@ -208,7 +208,7 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
               return (
                 <li key={h.id}>
                   <span className="text-white/85">{h.label}</span>:{" "}
-                  {outcome && !outcome.ok ? outcome.error : ""}
+                  {outcome && !outcome.ok ? shortError(outcome.error) : ""}
                 </li>
               );
             })}
@@ -248,9 +248,18 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
   return (
     <Step title={t("reviewTitle")} body={t("reviewBody")}>
       {failures.length > 0 ? (
-        <p className="text-down mb-3 text-[12.5px]">
-          {t("discoveryFailed", { venues: failures.map((f) => t(`venue.${f.venue}`)).join(", ") })}
-        </p>
+        <div className="border-down/25 bg-down/8 mb-4 rounded-xl border px-3 py-2.5">
+          <div className="text-down text-[12.5px] font-semibold">{t("discoveryFailedTitle")}</div>
+          <ul className="mt-1 flex flex-col gap-1 text-[12px] text-white/60">
+            {failures.map((failure) => (
+              <li key={failure.venue}>
+                <span className="text-white/85">{t(`venue.${failure.venue}`)}</span>:{" "}
+                {shortError(failure.error)}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[12px] text-white/50">{t("discoveryFailedHint")}</p>
+        </div>
       ) : null}
       <Section title={t("automaticHeading")} holdings={groups.automatic} t={t} />
       <Section
@@ -315,6 +324,14 @@ function Row({ label, value, tone }: { label: string; value: string; tone?: "dow
       </span>
     </div>
   );
+}
+
+// The first line of an error, capped. Library errors (viem especially) append
+// a docs link and a version banner that are noise on a review screen; the
+// console still has the whole thing.
+function shortError(message: string): string {
+  const first = message.split("\n")[0].trim();
+  return first.length > 160 ? `${first.slice(0, 157)}...` : first;
 }
 
 type Translate = ReturnType<typeof useTranslations<"migrate">>;

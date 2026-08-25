@@ -2409,7 +2409,6 @@
     "reviewBody": "Everything below still belongs to your old account. Tick what you want closed now; the rest waits.",
     "checking": "Checking every place your old account could hold money…",
     "checkFailed": "We couldn't check your old account. Try again.",
-    "discoveryFailed": "Couldn't check: {venues}. Run again later for those.",
     "automaticHeading": "Moves automatically",
     "optInHeading": "Your call",
     "laterHeading": "Settles later",
@@ -2469,7 +2468,9 @@
       "onramp": "A bank deposit is still on its way to your old wallet."
     },
     "signInKnown": "You have about {amount} left in your old wallet. Sign in to your old account to move it.",
-    "entryBadge": "{amount} left"
+    "entryBadge": "{amount} left",
+    "discoveryFailedTitle": "Some places couldn't be checked",
+    "discoveryFailedHint": "Nothing was moved from these. Try again once they're back."
   },
   "recovery": {
     "rotatedTitle": "Your recovery file was replaced",

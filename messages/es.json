@@ -2409,7 +2409,6 @@
     "reviewBody": "Todo lo de abajo sigue perteneciendo a tu cuenta anterior. Marca lo que quieras cerrar ahora; el resto espera.",
     "checking": "Revisando cada lugar donde tu cuenta anterior podría tener dinero…",
     "checkFailed": "No pudimos revisar tu cuenta anterior. Inténtalo de nuevo.",
-    "discoveryFailed": "No se pudo revisar: {venues}. Vuelve a ejecutarlo más tarde.",
     "automaticHeading": "Se mueve automáticamente",
     "optInHeading": "Tú decides",
     "laterHeading": "Se liquida después",
@@ -2469,7 +2468,9 @@
       "onramp": "Un depósito bancario sigue en camino a tu billetera anterior."
     },
     "signInKnown": "Te quedan unos {amount} en tu billetera anterior. Inicia sesión en tu cuenta anterior para moverlos.",
-    "entryBadge": "{amount} restantes"
+    "entryBadge": "{amount} restantes",
+    "discoveryFailedTitle": "No se pudieron revisar algunos lugares",
+    "discoveryFailedHint": "De ahí no se movió nada. Inténtalo de nuevo cuando vuelvan."
   },
   "recovery": {
     "rotatedTitle": "Tu archivo de recuperación fue reemplazado",

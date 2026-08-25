@@ -2409,7 +2409,6 @@
     "reviewBody": "Tout ce qui suit appartient encore à votre ancien compte. Cochez ce que vous voulez clôturer maintenant ; le reste attend.",
     "checking": "Vérification de chaque endroit où votre ancien compte pourrait avoir de l'argent…",
     "checkFailed": "Impossible de vérifier votre ancien compte. Réessayez.",
-    "discoveryFailed": "Vérification impossible : {venues}. Relancez plus tard pour ceux-là.",
     "automaticHeading": "Déplacé automatiquement",
     "optInHeading": "À vous de décider",
     "laterHeading": "Réglé plus tard",
@@ -2469,7 +2468,9 @@
       "onramp": "Un dépôt bancaire est encore en route vers votre ancien portefeuille."
     },
     "signInKnown": "Il vous reste environ {amount} dans votre ancien portefeuille. Connectez-vous à votre ancien compte pour les déplacer.",
-    "entryBadge": "{amount} restants"
+    "entryBadge": "{amount} restants",
+    "discoveryFailedTitle": "Certains endroits n'ont pas pu être vérifiés",
+    "discoveryFailedHint": "Rien n'en a été déplacé. Réessayez quand ils seront de retour."
   },
   "recovery": {
     "rotatedTitle": "Votre fichier de récupération a été remplacé",

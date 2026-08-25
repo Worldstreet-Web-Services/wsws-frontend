@@ -1,7 +1,21 @@
-import { describe, expect, it } from "vitest";
-import { classifyCashier, classifyVault } from "@/features/casino/lib/migration-adapter";
-import type { CashierBalance } from "@/features/casino/lib/api/cashier";
-import type { LotteryTicket } from "@/features/casino/lib/api/lottery";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  cashierMigrationAdapter,
+  classifyCashier,
+  classifyVault,
+} from "@/features/casino/lib/migration-adapter";
+import { fetchChessBalance, type CashierBalance } from "@/features/casino/lib/api/cashier";
+import { fetchLotteryTickets, type LotteryTicket } from "@/features/casino/lib/api/lottery";
+import type { DiscoverContext } from "@/lib/migration/types";
+
+vi.mock("@/features/casino/lib/api/cashier", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/casino/lib/api/cashier")>()),
+  fetchChessBalance: vi.fn(),
+}));
+vi.mock("@/features/casino/lib/api/lottery", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/casino/lib/api/lottery")>()),
+  fetchLotteryTickets: vi.fn(),
+}));
 
 function ticket(overrides: Partial<LotteryTicket>): LotteryTicket {
   return {
@@ -72,6 +86,44 @@ describe("classifyCashier", () => {
       totalUsdc: "0",
     };
     expect(classifyCashier(balance, [])).toEqual([]);
+  });
+});
+
+describe("cashierMigrationAdapter.discover", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const ctx = {
+    legacy: { evm: "0xOld", solana: null },
+    current: { evm: "0xNew", solana: null },
+    hasLegacySession: true,
+    signer: null,
+    ethPriceUsd: 0,
+  } as unknown as DiscoverContext;
+
+  const balance: CashierBalance = {
+    player: "0xOld",
+    availableUsdc: "12.5",
+    lockedUsdc: "0",
+    totalUsdc: "12.5",
+  };
+
+  it("keeps the withdrawable balance when the lottery read fails", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(fetchChessBalance).mockResolvedValue(balance);
+    vi.mocked(fetchLotteryTickets).mockRejectedValue(new Error("Chess is unreachable."));
+
+    const holdings = await cashierMigrationAdapter.discover(ctx);
+
+    expect(holdings.map((h) => h.id)).toEqual(["cashier:available:balance"]);
+    expect(holdings[0].amount).toBe(12_500_000n);
+    expect(logged).toHaveBeenCalled();
+  });
+
+  it("fails the venue when the balance itself cannot be read", async () => {
+    vi.mocked(fetchChessBalance).mockRejectedValue(new Error("Chess is unreachable."));
+    vi.mocked(fetchLotteryTickets).mockResolvedValue([]);
+
+    await expect(cashierMigrationAdapter.discover(ctx)).rejects.toThrow("Chess is unreachable.");
   });
 });
 

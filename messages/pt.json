@@ -2409,7 +2409,6 @@
     "reviewBody": "Tudo abaixo ainda pertence à sua conta antiga. Marque o que quer fechar agora; o resto espera.",
     "checking": "Verificando cada lugar onde sua conta antiga pode ter dinheiro…",
     "checkFailed": "Não conseguimos verificar sua conta antiga. Tente de novo.",
-    "discoveryFailed": "Não foi possível verificar: {venues}. Execute de novo mais tarde.",
     "automaticHeading": "Move automaticamente",
     "optInHeading": "Você decide",
     "laterHeading": "Liquida depois",
@@ -2469,7 +2468,9 @@
       "onramp": "Um depósito bancário ainda está a caminho da sua carteira antiga."
     },
     "signInKnown": "Você ainda tem cerca de {amount} na sua carteira antiga. Entre na sua conta antiga para mover.",
-    "entryBadge": "{amount} restantes"
+    "entryBadge": "{amount} restantes",
+    "discoveryFailedTitle": "Não deu para verificar alguns lugares",
+    "discoveryFailedHint": "Nada foi movido de lá. Tente de novo quando voltarem."
   },
   "recovery": {
     "rotatedTitle": "Seu arquivo de recuperação foi substituído",

@@ -6,7 +6,7 @@ import { toast } from "@/lib/toast";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
-import { UpdateBalanceButton, useOfferMigration } from "@/features/migrate";
+import { UpdateBalanceButton, useMaskBalance } from "@/features/migrate";
 import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 import { SpotSection } from "@/features/trade/components/spot-section";
 import { PerpsSection } from "@/features/trade/components/perps-section";
@@ -83,7 +83,7 @@ export default function DashboardPage() {
   const activeSection = useScrollSpy(scrollSectionIds);
   // True while this device's money still sits in the old Privy wallets: the
   // balance card masks its figures and offers the one-click update instead.
-  const offerMigration = useOfferMigration();
+  const maskBalance = useMaskBalance();
   useDashboardTour();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
@@ -135,7 +135,7 @@ export default function DashboardPage() {
         onOpenWithdraw={openWithdraw}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
         updateBalanceSlot={<UpdateBalanceButton adapters={MIGRATION_ADAPTERS} />}
-        balanceLocked={offerMigration}
+        balanceLocked={maskBalance}
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}

@@ -24,7 +24,7 @@ import {
   reviewGroups,
   VENUE_ORDER,
 } from "@/features/migrate/lib/review";
-import { markMigrationComplete } from "@/features/migrate/lib/visibility";
+import { markFundsMoved, markMigrationComplete } from "@/features/migrate/lib/visibility";
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
 import {
   MIGRATION_QUERY_PREFIX,
@@ -142,6 +142,9 @@ export function MoveOldMoneyPanel({ adapters, entry, onClose }: MoveOldMoneyPane
     setResult(outcome);
     track("migration_completed", { outcome: outcome.outcome, moved_usd: outcome.movedUsd });
     if (outcome.outcome === "complete") markMigrationComplete();
+    // Anything that landed is the user's money in their new wallet, so it
+    // stops being hidden even when the run as a whole is unfinished.
+    if (outcome.movedCount > 0) markFundsMoved();
     void newPortfolio.refetchUntilChanged();
   }, [holdings, checked, now, groups.movingUsd, runner, newPortfolio]);
 

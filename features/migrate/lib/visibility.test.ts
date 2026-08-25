@@ -2,7 +2,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   clearMigrationComplete,
+  hasMovedFunds,
+  markFundsMoved,
   markMigrationComplete,
+  maskBalance,
   offerMigration,
   shouldOfferMigration,
 } from "@/features/migrate/lib/visibility";
@@ -85,6 +88,31 @@ describe("clearMigrationComplete", () => {
     markMigrationComplete();
     expect(shouldOfferMigration()).toBe(false);
     clearMigrationComplete();
+    expect(shouldOfferMigration()).toBe(true);
+  });
+});
+
+describe("maskBalance", () => {
+  it("hides the figure only while the old account still holds everything", () => {
+    expect(maskBalance({ offer: true, moved: false })).toBe(true);
+  });
+
+  it("shows the figure as soon as a run moved something, even unfinished", () => {
+    expect(maskBalance({ offer: true, moved: true })).toBe(false);
+  });
+
+  it("never hides it once there is nothing left to offer", () => {
+    expect(maskBalance({ offer: false, moved: false })).toBe(false);
+  });
+});
+
+describe("markFundsMoved", () => {
+  it("records that money landed, independently of completion", () => {
+    window.localStorage.setItem("privy:token", "jwt");
+    expect(hasMovedFunds()).toBe(false);
+    markFundsMoved();
+    expect(hasMovedFunds()).toBe(true);
+    // The migration is still on offer: more may be left behind.
     expect(shouldOfferMigration()).toBe(true);
   });
 });

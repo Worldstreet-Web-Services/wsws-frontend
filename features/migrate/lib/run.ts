@@ -20,6 +20,9 @@ export interface RunResult {
   outcome: MigrationOutcome;
   // Display total of the holdings that settled.
   movedUsd: number;
+  // How many holdings actually settled. Above zero means money left the old
+  // wallet, even on a partial run, so the balance mask can come off.
+  movedCount: number;
 }
 
 export interface RunHooks {
@@ -108,9 +111,7 @@ export async function runSettlement(
 
   const pendingOnramps = plan.settleLater.filter((h) => h.settleability.state === "pending").length;
   const outcome = migrationOutcome(executed, results, pendingOnramps);
-  const movedUsd = executed.phases
-    .flatMap((p) => p.holdings)
-    .filter((h) => results.get(h.id)?.ok)
-    .reduce((sum, h) => sum + h.valueUsd, 0);
-  return { plan: executed, results, outcome, movedUsd };
+  const settled = executed.phases.flatMap((p) => p.holdings).filter((h) => results.get(h.id)?.ok);
+  const movedUsd = settled.reduce((sum, h) => sum + h.valueUsd, 0);
+  return { plan: executed, results, outcome, movedUsd, movedCount: settled.length };
 }

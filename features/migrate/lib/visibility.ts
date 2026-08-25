@@ -29,6 +29,12 @@ const PRIVY_SESSION_KEYS = [
 
 const MIGRATION_COMPLETE_KEY = "ws.migrationComplete";
 
+// Set the first time a run actually moves something. The migration can stay
+// unfinished for days (challenge windows, keeper fills, a venue that was
+// down), and masking a balance that already holds the user's money is worse
+// than showing a figure that is not final yet.
+const FUNDS_MOVED_KEY = "ws.migrationMoved";
+
 // The storage event only fires in OTHER tabs, so same-tab completion notifies
 // subscribers directly.
 const listeners = new Set<() => void>();
@@ -55,6 +61,23 @@ export function clearMigrationComplete(): void {
     // Storage unavailable: nothing was stored to clear.
   }
   notify();
+}
+
+export function markFundsMoved(): void {
+  try {
+    window.localStorage.setItem(FUNDS_MOVED_KEY, "1");
+  } catch {
+    // Storage unavailable: the balance stays masked, the money still moved.
+  }
+  notify();
+}
+
+export function hasMovedFunds(): boolean {
+  try {
+    return window.localStorage.getItem(FUNDS_MOVED_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function isMigrationComplete(): boolean {
@@ -90,6 +113,13 @@ export function offerMigration(input: {
   return input.status.hasLegacyFunds || input.status.pendingOnramps.length > 0;
 }
 
+// Whether to hide the balance figure. Only while the old account still holds
+// everything: once any of it has landed, the number is real money the user
+// can see, even though more may still be on its way.
+export function maskBalance(input: { offer: boolean; moved: boolean }): boolean {
+  return input.offer && !input.moved;
+}
+
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   window.addEventListener("storage", onChange);
@@ -106,4 +136,8 @@ export function useMigrationCompleteFlag(): boolean {
 
 export function useLocalPrivyHistory(): boolean {
   return useSyncExternalStore(subscribe, hasLocalPrivyHistory, () => false);
+}
+
+export function useFundsMoved(): boolean {
+  return useSyncExternalStore(subscribe, hasMovedFunds, () => false);
 }

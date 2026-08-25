@@ -11,7 +11,7 @@ import { toast } from "@/lib/toast";
 import { scheduleSettlement } from "@/lib/migration/schedule";
 import type { VenueAdapter } from "@/lib/migration/types";
 import { discoverHoldings, ethPriceFromPortfolio } from "@/features/migrate/lib/discover";
-import { markMigrationComplete } from "@/features/migrate/lib/visibility";
+import { markFundsMoved, markMigrationComplete } from "@/features/migrate/lib/visibility";
 import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
 import { legacyHoldingsKey } from "@/features/migrate/hooks/use-legacy-holdings";
@@ -98,6 +98,12 @@ function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] })
       }
       const result = await runner.run(plan);
       if (result.outcome !== "complete") {
+        // Part of it may still have landed. Unmask what arrived and pull it
+        // into view before saying the rest needs another go.
+        if (result.movedCount > 0) {
+          markFundsMoved();
+          void newPortfolio.refetchUntilChanged();
+        }
         const firstError = [...result.results.values()].find((o) => !o.ok);
         toast.error(
           t("updateFailed", { message: firstError && !firstError.ok ? firstError.error : "" }),

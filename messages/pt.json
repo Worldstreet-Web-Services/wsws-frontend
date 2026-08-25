@@ -2249,7 +2249,7 @@
     "pointsDisclaimer": "Ainda não é KASH — é a sua parte de KASH+ real, paga mensalmente.",
     "pointsClaim": "Resgatar",
     "pointsClaiming": "Resgatando…",
-    "pointsClaimBelowMin": "Resgate ao atingir {min} KASH.",
+    "pointsClaimBelowMin": "Continue ganhando para desbloquear seu resgate.",
     "pointsClaimSuccess": "Resgatado! {kash} KASH está no seu saldo.",
     "pointsClaimFailed": "Não foi possível resgatar agora. Tente novamente.",
     "claimedSoFar": "Resgatado até agora",

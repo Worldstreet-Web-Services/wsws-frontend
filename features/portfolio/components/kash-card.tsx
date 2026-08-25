@@ -317,7 +317,7 @@ export function KashCard({ onBuy, onSend, onConvert, onHistory, onUpgrade }: Kas
           </p>
           {hasPoints && !canClaim && (
             <p className="relative mt-1 text-[11px] leading-[1.5] font-normal text-white/35">
-              {t("pointsClaimBelowMin", { min: engineStatus?.settlement.minClaimKash ?? "0" })}
+              {t("pointsClaimBelowMin")}
             </p>
           )}
 

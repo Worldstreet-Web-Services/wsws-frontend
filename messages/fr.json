@@ -2249,7 +2249,7 @@
     "pointsDisclaimer": "Pas encore du KASH — c'est votre part de vrais KASH+, versée chaque mois.",
     "pointsClaim": "Réclamer",
     "pointsClaiming": "Réclamation…",
-    "pointsClaimBelowMin": "Réclamez dès que vous atteignez {min} KASH.",
+    "pointsClaimBelowMin": "Continuez à gagner pour débloquer votre réclamation.",
     "pointsClaimSuccess": "Réclamé ! {kash} KASH est dans votre solde.",
     "pointsClaimFailed": "Impossible de réclamer pour le moment. Réessayez.",
     "claimedSoFar": "Déjà réclamé",

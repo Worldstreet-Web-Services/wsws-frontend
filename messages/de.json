@@ -2230,7 +2230,7 @@
     "pointsDisclaimer": "Noch kein KASH — das ist dein Anteil an echtem KASH+, monatlich ausgezahlt.",
     "pointsClaim": "Beanspruchen",
     "pointsClaiming": "Wird beansprucht…",
-    "pointsClaimBelowMin": "Beanspruchbar ab {min} KASH.",
+    "pointsClaimBelowMin": "Weiter verdienen, um deinen Anspruch freizuschalten.",
     "pointsClaimSuccess": "Beansprucht! {kash} KASH ist jetzt in deinem Guthaben.",
     "pointsClaimFailed": "Konnte gerade nicht beansprucht werden. Versuch es erneut.",
     "claimedSoFar": "Bisher eingelöst",

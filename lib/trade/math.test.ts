@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  closeFee,
+  estimatedWithdrawalFee,
   fromBaseUnits,
   liquidationPrice,
   openFee,
@@ -89,12 +91,42 @@ describe("receiveFromPrices", () => {
 
 describe("openFee", () => {
   it("is a flat rate on the notional size", () => {
-    expect(openFee(10_000)).toBeCloseTo(6);
-    expect(openFee(2500)).toBeCloseTo(1.5);
+    expect(openFee(10_000)).toBeCloseTo(8);
+    expect(openFee(2500)).toBeCloseTo(2);
   });
 
   it("is zero for a non-positive size", () => {
     expect(openFee(0)).toBe(0);
     expect(openFee(-100)).toBe(0);
+  });
+});
+
+describe("closeFee", () => {
+  it("charges the same flat rate as openFee — both legs of a round trip", () => {
+    expect(closeFee(10_000)).toBeCloseTo(8);
+    expect(closeFee(2500)).toBeCloseTo(2);
+  });
+
+  it("is zero for a non-positive size", () => {
+    expect(closeFee(0)).toBe(0);
+    expect(closeFee(-100)).toBe(0);
+  });
+});
+
+describe("estimatedWithdrawalFee", () => {
+  it("is the $1 flat fee plus 0.2% of what's left after it", () => {
+    // $101 -> $1 flat + 0.2% of the remaining $100 = $1.20
+    expect(estimatedWithdrawalFee(101)).toBeCloseTo(1.2);
+    // $10 -> $1 flat + 0.2% of the remaining $9 = $1.018
+    expect(estimatedWithdrawalFee(10)).toBeCloseTo(1.018);
+  });
+
+  it("never charges more than the flat fee when the amount is below it", () => {
+    expect(estimatedWithdrawalFee(0.5)).toBeCloseTo(0.5);
+  });
+
+  it("is zero for a non-positive amount", () => {
+    expect(estimatedWithdrawalFee(0)).toBe(0);
+    expect(estimatedWithdrawalFee(-5)).toBe(0);
   });
 });

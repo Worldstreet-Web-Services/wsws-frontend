@@ -55,6 +55,11 @@ export function useMemeTrade() {
 
   const [phase, setPhase] = useState<TradePhase>("idle");
   const [error, setError] = useState<string | null>(null);
+  // The raw thrown value, kept alongside the extracted `error` string so a
+  // caller can run it through friendlyError() itself — a pre-stringified
+  // message loses the status/code a server-provided reason needs to pass that
+  // function's safety check (see buy-sheet.tsx).
+  const [errorDetail, setErrorDetail] = useState<unknown>(null);
   const [swapId, setSwapId] = useState<string | null>(null);
   // The on-chain verified delivery ("142,244.11 FART"), set the moment the
   // balanceOf delta confirms it — usually minutes before the server does.
@@ -96,6 +101,7 @@ export function useMemeTrade() {
       if (!wallet) throw new Error("Sign in first.");
       activeRef.current = true;
       setError(null);
+      setErrorDetail(null);
       setSwapId(null);
       setReceived(null);
       try {
@@ -190,6 +196,7 @@ export function useMemeTrade() {
       } catch (e) {
         setPhase("failed");
         setError(e instanceof Error ? e.message : "The trade didn't complete.");
+        setErrorDetail(e);
         throw e;
       } finally {
         activeRef.current = false;
@@ -201,11 +208,12 @@ export function useMemeTrade() {
   const reset = useCallback(() => {
     setPhase("idle");
     setError(null);
+    setErrorDetail(null);
     setSwapId(null);
     setReceived(null);
   }, []);
 
-  return { wallet, phase, error, swapId, received, trade, reset, linkForPreview };
+  return { wallet, phase, error, errorDetail, swapId, received, trade, reset, linkForPreview };
 }
 
 // Debounced-by-caller indicative preview; rate limited upstream (20/min).

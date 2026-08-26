@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useBuy } from "@/features/trade/hooks/use-buy";
 import { useSell } from "@/features/trade/hooks/use-sell";
 import { useMemeTrade, type TradePhase } from "@/features/trade/hooks/use-meme-trade";
+import { fetchTradability } from "@/lib/meme/api";
 import { useDepositStatus } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { savePendingRwaSettlement } from "@/lib/trade/pending-settlement";
@@ -250,7 +251,7 @@ export function SpotPanel({
         void portfolio.refetchUntilChanged();
       } else if (memeTrade.phase === "failed") {
         resolvedRef.current = true;
-        toast.error(memeTrade.error ?? t("orderFailedNote"));
+        toast.error(friendlyError(memeTrade.errorDetail, t("orderFailedNote")));
       }
       return;
     }
@@ -266,7 +267,7 @@ export function SpotPanel({
   }, [
     isSwapMarket,
     memeTrade.phase,
-    memeTrade.error,
+    memeTrade.errorDetail,
     stage,
     requestId,
     buying,
@@ -307,6 +308,19 @@ export function SpotPanel({
     if (isSwapMarket) {
       if (!swapRoute) return;
       try {
+        // A token's tradability can flip between this screen loading and the
+        // order being confirmed — attempting the swap anyway fails deep in
+        // the flow with a confusing message. Ask fresh, right before
+        // committing, so a token the risk engine has since blocked (e.g. its
+        // liquidity dropped below the trading floor) fails fast with an
+        // accurate reason instead of a doomed swap attempt.
+        const tradability = await fetchTradability(swapRoute.tokenAddress);
+        const tradableForSide = buying ? tradability.buyEnabled : tradability.sellEnabled;
+        if (!tradableForSide) {
+          if (!buying) setConfirmOpen(false);
+          toast.error(t("notTradableNote", { symbol: base }));
+          return;
+        }
         await memeTrade.trade({
           side: buying ? "BUY" : "SELL",
           tokenAddress: swapRoute.tokenAddress,

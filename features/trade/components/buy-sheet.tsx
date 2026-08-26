@@ -10,6 +10,7 @@ import { useDepositChains, useDepositStatus } from "@/hooks/use-deposit";
 import { useBuyDestinations } from "@/features/trade/hooks/use-buy-catalog";
 import { useBuy } from "@/features/trade/hooks/use-buy";
 import { useMemeTrade } from "@/features/trade/hooks/use-meme-trade";
+import { fetchTradability } from "@/lib/meme/api";
 import { NetworkPicker, NetworkSelect } from "@/features/trade/components/network-select";
 import { belowMinimumBuy, isSolanaChainId, minimumBuyUsd } from "@/lib/trade/minimums";
 import { routesForSymbol } from "@/lib/buy";
@@ -237,6 +238,21 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     toastRef.current = toast.loading(t("buyingToast", { name: payload.name }));
     if (swapRoute) {
       try {
+        // A token's tradability can flip between the sheet opening and this
+        // click (its price/route was resolved once, up front, with no live
+        // re-check anywhere in this flow) — attempting the swap anyway fails
+        // deep in the flow with a confusing message. Ask fresh, right before
+        // committing, so a token the risk engine has since blocked (e.g. its
+        // liquidity dropped below the trading floor) fails fast with an
+        // accurate reason instead of a doomed swap attempt.
+        const tradability = await fetchTradability(swapRoute.tokenAddress);
+        if (!tradability.buyEnabled) {
+          toast.error(t("tokenNotTradableToast", { name: payload.name }), {
+            id: toastRef.current,
+          });
+          toastRef.current = undefined;
+          return;
+        }
         await memeTrade.trade({
           side: "BUY",
           tokenAddress: swapRoute.tokenAddress,
@@ -301,16 +317,15 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
                 : t("assetInAccount", { name: payload.name })}
             </p>
           ) : failed ? (
-            <>
-              <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
-                {t("orderFailedBody")}
-              </p>
-              {isSwapMarket && memeTrade.error ? (
-                <p className="mt-1 text-[11px] leading-[1.4] font-normal text-white/40">
-                  {friendlyError(memeTrade.error, t("orderFailedBody"))}
-                </p>
-              ) : null}
-            </>
+            <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
+              {isSwapMarket
+                ? // A same-chain swap never actually takes funds until it
+                  // fully confirms, so "your money has been returned" (below)
+                  // is Dextopus-refund framing that doesn't apply here — show
+                  // the real reason instead.
+                  friendlyError(memeTrade.errorDetail, t("buyFailedToast", { name: payload.name }))
+                : t("orderFailedBody")}
+            </p>
           ) : (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
               {t("takesAMoment")}
@@ -404,7 +419,9 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           {friendlyError(buy.error, t("purchaseFailedFallback"))}
         </p>
       ) : isSwapMarket && memeTrade.error ? (
-        <p className="text-down mt-3 text-[13px] font-normal">{memeTrade.error}</p>
+        <p className="text-down mt-3 text-[13px] font-normal">
+          {friendlyError(memeTrade.errorDetail, t("buyFailedToast", { name: payload.name }))}
+        </p>
       ) : null}
       <button
         onClick={() => void confirm()}

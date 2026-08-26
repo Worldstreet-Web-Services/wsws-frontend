@@ -1,6 +1,10 @@
 "use client";
 
-import { COMPUTER_WAGER_FEE_BPS, computerWagerBreakdown } from "@/features/casino/lib/api/cashier";
+import {
+  COMPUTER_WAGER_FEE_BPS,
+  chessComputerWagerBreakdown,
+  computerWagerBreakdown,
+} from "@/features/casino/lib/api/cashier";
 
 function SummaryRow({
   label,
@@ -26,13 +30,17 @@ export function ComputerWagerSummary({
   availableUsdc,
   level,
   showDrawPayout = false,
+  fixedChessReward = false,
 }: {
   stakeUsdc: string;
   availableUsdc: string;
   level: number;
   showDrawPayout?: boolean;
+  fixedChessReward?: boolean;
 }) {
-  const breakdown = computerWagerBreakdown(stakeUsdc, availableUsdc, level);
+  const breakdown = fixedChessReward
+    ? chessComputerWagerBreakdown(stakeUsdc, availableUsdc, level)
+    : computerWagerBreakdown(stakeUsdc, availableUsdc, level);
   if (!breakdown) return null;
 
   return (
@@ -42,17 +50,23 @@ export function ComputerWagerSummary({
     >
       <SummaryRow label="Your stake" value={`${breakdown.youLock} USD`} />
       <SummaryRow
-        label={`House reward (${breakdown.rewardPercent}%)`}
+        label={
+          breakdown.rewardPercent === null
+            ? "Fixed win reward"
+            : `House reward (${breakdown.rewardPercent}%)`
+        }
         value={`${breakdown.houseExposure} USD`}
       />
-      <SummaryRow
-        label={`Fee (${COMPUTER_WAGER_FEE_BPS / 100}% of reward)`}
-        value={`${breakdown.fee} USD`}
-      />
+      {breakdown.fee !== "0" ? (
+        <SummaryRow
+          label={`Fee (${COMPUTER_WAGER_FEE_BPS / 100}% of reward)`}
+          value={`${breakdown.fee} USD`}
+        />
+      ) : null}
       <div className="h-px bg-white/8" />
       <SummaryRow label="Potential payout" value={`${breakdown.potentialPayout} USD`} emphasized />
       {showDrawPayout ? (
-        <SummaryRow label="Completed draw returns" value={`${breakdown.drawPayout} USD`} />
+        <SummaryRow label="Draw return" value={`${breakdown.drawPayout} USD`} />
       ) : null}
       <SummaryRow label="Balance after stake" value={`${breakdown.balanceAfter} USD`} />
     </div>

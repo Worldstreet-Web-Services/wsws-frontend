@@ -30,15 +30,15 @@ export function ComputerWagerSummary({
   availableUsdc,
   level,
   showDrawPayout = false,
-  fixedChessReward = false,
+  chessLevelEightTerms = false,
 }: {
   stakeUsdc: string;
   availableUsdc: string;
   level: number;
   showDrawPayout?: boolean;
-  fixedChessReward?: boolean;
+  chessLevelEightTerms?: boolean;
 }) {
-  const breakdown = fixedChessReward
+  const breakdown = chessLevelEightTerms
     ? chessComputerWagerBreakdown(stakeUsdc, availableUsdc, level)
     : computerWagerBreakdown(stakeUsdc, availableUsdc, level);
   if (!breakdown) return null;
@@ -53,8 +53,8 @@ export function ComputerWagerSummary({
       <SummaryRow label="Your stake" value={`${breakdown.youLock} USD`} />
       <SummaryRow
         label={
-          breakdown.rewardPercent === null
-            ? "Fixed win reward"
+          chessLevelEightTerms
+            ? `Win profit (${breakdown.rewardPercent}%)`
             : `House reward (${breakdown.rewardPercent}%)`
         }
         value={`${breakdown.houseExposure} USD`}

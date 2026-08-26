@@ -453,13 +453,13 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                       availableUsdc={cashier.available}
                       level={setup.level}
                       showDrawPayout
-                      fixedChessReward
+                      chessLevelEightTerms
                     />
                     <p className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                      A reviewed win returns your stake plus a fixed 0.50 USDC reward. A draw or
-                      loss forfeits your stake to the computer. An abort or system cancellation
-                      returns 100%. Winning payouts remain held until post-game engine review clears
-                      them.
+                      A reviewed win pays 1.1x your stake, returning your principal plus 10% profit.
+                      A draw or loss forfeits your stake to the computer. An abort or system
+                      cancellation returns 100%. After engine analysis, every winning payout stays
+                      held until a moderator clears it.
                     </p>
                   </div>
                 ) : (

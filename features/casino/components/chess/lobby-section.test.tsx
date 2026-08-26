@@ -308,7 +308,7 @@ describe("chess lobby", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/casino/chess/play?match=computer-1"));
   });
 
-  it("keeps levels one to seven free and quotes the fixed level-eight reward", async () => {
+  it("keeps levels one to seven free and quotes the level-eight ten-percent profit", async () => {
     cashierStatus.configured = true;
     cashierStatus.available = "20";
     render(<LobbySection />, { wrapper });
@@ -328,12 +328,12 @@ describe("chess lobby", () => {
       target: { value: "10" },
     });
 
-    expect(screen.getByText("Fixed win reward")).toBeInTheDocument();
-    expect(screen.getByText("10.5 USD")).toBeInTheDocument();
+    expect(screen.getByText("Win profit (10%)")).toBeInTheDocument();
+    expect(screen.getByText("11 USD")).toBeInTheDocument();
     expect(screen.getByText("Draw return")).toBeInTheDocument();
     expect(screen.getByText("0 USD")).toBeInTheDocument();
     expect(screen.getByText(/fixed 5\+0 clock/)).toBeInTheDocument();
-    expect(screen.getByText(/post-game engine review/)).toBeInTheDocument();
+    expect(screen.getByText(/until a moderator clears it/)).toBeInTheDocument();
     expect(screen.getByText("Balance after stake")).toBeInTheDocument();
   });
 

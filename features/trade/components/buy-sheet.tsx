@@ -362,7 +362,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
 
   // Order form.
   return (
-    <div>
+    <div data-sensitive="other">
       <Eyebrow>{t("buy")}</Eyebrow>
       <div className="mt-3 flex items-center gap-[13px]">
         <AssetIcon sym={payload.symbol} bg="#26262b" size={44} logo={payload.logo} />
@@ -371,7 +371,6 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           <div className="truncate text-[12.5px] font-normal text-white/50">{payload.symbol}</div>
         </div>
       </div>
-
       <div className="ws-inset mt-4 p-[15px]">
         <div className="mb-[9px] flex justify-between text-xs font-normal text-white/55">
           <span>{t("amount")}</span>
@@ -393,7 +392,6 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           />
         </div>
       </div>
-
       <div className="mt-2 flex gap-1.5">
         {PRESETS.map((p) => (
           <button
@@ -405,12 +403,10 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           </button>
         ))}
       </div>
-
       <div className="mt-3 flex items-center justify-between text-[13.5px] font-normal">
         <span className="text-white/55">{t("youGetAbout")}</span>
         <span className="tnum text-white">{preview ? `${preview} ${payload.symbol}` : "—"}</span>
       </div>
-
       {networkOptions.length > 0 ? (
         <div className="mt-3">
           <NetworkSelect
@@ -420,7 +416,6 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
           />
         </div>
       ) : null}
-
       {buy.error ? (
         <p className="text-down mt-3 text-[13px] font-normal">
           {friendlyError(buy.error, t("purchaseFailedFallback"))}
@@ -428,7 +423,6 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       ) : isSwapMarket && memeTrade.error ? (
         <p className="text-down mt-3 text-[13px] font-normal">{memeTrade.error}</p>
       ) : null}
-
       <button
         onClick={() => void confirm()}
         disabled={!canBuy}

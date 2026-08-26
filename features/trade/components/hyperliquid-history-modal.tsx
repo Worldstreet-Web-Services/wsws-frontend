@@ -83,9 +83,7 @@ export function HyperliquidHistoryModal({ open, onClose, walletId }: Hyperliquid
                           </span>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10.5px] font-semibold ${
-                              position.side === "long"
-                                ? "bg-up/16 text-up"
-                                : "bg-down/14 text-down"
+                              position.side === "long" ? "bg-up/16 text-up" : "bg-down/14 text-down"
                             }`}
                           >
                             {position.side === "long" ? "LONG" : "SHORT"}
@@ -95,13 +93,19 @@ export function HyperliquidHistoryModal({ open, onClose, walletId }: Hyperliquid
                           </span>
                         </div>
                         <div className="mt-0.5 text-[11.5px] font-normal text-white/35">
-                          {formatTimestamp(position.openedAt)} → {formatTimestamp(position.closedAt)}
-                          <span className="text-white/25"> · {formatDuration(position.openedAt, position.closedAt)}</span>
+                          {formatTimestamp(position.openedAt)} →{" "}
+                          {formatTimestamp(position.closedAt)}
+                          <span className="text-white/25">
+                            {" "}
+                            · {formatDuration(position.openedAt, position.closedAt)}
+                          </span>
                         </div>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className={`tnum text-[14.5px] font-semibold ${isWin ? "text-up" : "text-down"}`}>
+                      <div
+                        className={`tnum text-[14.5px] font-semibold ${isWin ? "text-up" : "text-down"}`}
+                      >
                         {isWin ? "+" : ""}
                         {formatUsd(pnl)}
                       </div>
@@ -115,7 +119,9 @@ export function HyperliquidHistoryModal({ open, onClose, walletId }: Hyperliquid
                     <div className="flex items-center gap-4">
                       <div>
                         <span className="text-white/45">Size </span>
-                        <span className="tnum text-white/85">{formatAmount(Number(position.size))}</span>
+                        <span className="tnum text-white/85">
+                          {formatAmount(Number(position.size))}
+                        </span>
                       </div>
                       <div>
                         <span className="text-white/45">Entry </span>

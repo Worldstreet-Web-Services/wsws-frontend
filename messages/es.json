@@ -137,6 +137,7 @@
     "ctaNeedsGas": "Preparando tu monedero de {chain}. Añade un poco de {symbol} para continuar."
   },
   "topbar": {
+    "support": "soporte",
     "searchPlaceholder": "Buscar activos, mercados, tickers",
     "menu": "Menú",
     "closeMenu": "Cerrar menú",
@@ -599,6 +600,7 @@
     "marketPrice": "Precio de mercado",
     "positionValue": "Valor de la posición",
     "buyMore": "Comprar más {name}",
+    "managePrediction": "Gestionar en Predicciones",
     "sell": "Vender {name}",
     "assetDetails": "Detalles del activo"
   },
@@ -670,7 +672,8 @@
     "notEnoughBalance": "Saldo insuficiente",
     "confirming": "Confirmando…",
     "buyToken": "Comprar {name}",
-    "sellToken": "Vender {name}"
+    "sellToken": "Vender {name}",
+    "transactionFee": "Comisión de transacción"
   },
   "rwa": {
     "eyebrow": "Activos del mundo real",
@@ -788,6 +791,7 @@
   "prediction": {
     "eyebrow": "Mercados de predicción",
     "heading": "Opera tu convicción",
+    "exploreAllMarkets": "Explorar todos los mercados",
     "regionBlockedTitle": "No disponible en tu región",
     "regionBlockedBody": "Los mercados de predicción no se ofrecen donde estás ahora. El resto de {brand} sigue totalmente disponible.",
     "toastClaiming": "Reclamando tus ganancias…",
@@ -1295,7 +1299,8 @@
     "fiatComingSoonBody": "Estamos terminando la verificación con nuestro socio de pagos. El fondeo con tarjeta y banco llega en breve. Mientras tanto, deposita cripto.",
     "withdrawNeedsGas": "Necesitas un poco de {symbol} en {chain} para enviar desde ahí. Retira desde Base o añade fondos.",
     "withdrawalUnconfirmed": "No pudimos confirmar este retiro. Puede que ya se haya realizado, así que revisa la actividad antes de volver a intentarlo para no enviarlo dos veces.",
-    "withdrawalUnconfirmedToast": "Sin confirmar. Revisa la actividad."
+    "withdrawalUnconfirmedToast": "Sin confirmar. Revisa la actividad.",
+    "transactionFee": "Comisión de transacción"
   },
   "remit": {
     "sendMoney": "Enviar dinero",
@@ -1521,6 +1526,8 @@
       }
     },
     "lastStanding": {
+      "connectionLostTitle": "Conexión perdida",
+      "connectionLostBody": "El juego se congeló mientras reconectamos. Se pone al día solo en cuanto vuelve tu red.",
       "eyebrow": "Arkade · El ganador se lo lleva todo",
       "title": "The Last Man",
       "intro": "Juega para ser el último en pie. Cuando el tiempo se agota, el último jugador en jugar se lleva la mitad del pozo; el 10 % va para quien creó la partida.",
@@ -1686,7 +1693,8 @@
       "toastFailed": "No se pudo añadir el dinero, así que se te reembolsó",
       "toastRefunded": "Reembolsado a tu saldo",
       "errorQuote": "No se pudo ahora mismo. Inténtalo de nuevo.",
-      "errorSend": "Eso no se procesó. Inténtalo de nuevo."
+      "errorSend": "Eso no se procesó. Inténtalo de nuevo.",
+      "transactionFee": "Comisión de transacción"
     },
     "entries": {
       "title": "Mis boletos",
@@ -1812,6 +1820,11 @@
         "resultYouLost": "{how} · Perdiste",
         "resultWhiteWon": "{how} · Ganaron las blancas",
         "resultBlackWon": "{how} · Ganaron las negras",
+        "winningsCredited": "Ganancias acreditadas",
+        "winningsCreditedBody": "Ya están disponibles en tu saldo de ajedrez. Retíralas para enviar los fondos a tu wallet.",
+        "chessBalanceNow": "Saldo de ajedrez · {amount} USD disponibles",
+        "withdrawalFeeApplies": "Los retiros a la wallet incluyen una comisión del {pct}%.",
+        "withdrawToWallet": "Retirar a la wallet",
         "toastMoveFailed": "Esa jugada no se registró.",
         "toastDrawOffered": "Tablas ofrecidas.",
         "toastDrawOfferFailed": "No se pudieron ofrecer tablas.",
@@ -1990,6 +2003,13 @@
         "oddsMovement": "Movimiento de cuotas",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "Liquidando tus apuestas",
+        "settlingBetsBody": "El resultado es definitivo. Estamos actualizando tu saldo de ajedrez.",
+        "returnCredited": "Retorno acreditado",
+        "refundCredited": "Apuesta reembolsada",
+        "returnCreditedBody": "El importe está disponible en tu saldo de ajedrez. Retíralo para enviarlo a tu wallet.",
+        "noReturn": "Apuesta liquidada",
+        "noReturnBody": "Tu selección no ganó, por lo que este mercado no genera ningún pago.",
         "noSelfBet": "Estás jugando esta partida, así que no puedes poner un stake en ella."
       },
       "cashier": {
@@ -2020,6 +2040,7 @@
         "withdrawing": "Retirando…",
         "withdrawalSent": "Retiro en camino: {amount} USD.",
         "withdrawFailed": "El retiro falló. Tu saldo no ha cambiado.",
+        "withdrawalFeeNote": "Se aplica una comisión de retiro del {pct}%.",
         "notEnough": "Es más que tu saldo de ajedrez disponible.",
         "feeNote": "Se aplica una comisión de plataforma del {pct}% a las ganancias.",
         "unavailable": "Los saldos de ajedrez aún no están disponibles."
@@ -2274,6 +2295,7 @@
     "pendingNote": "{count} se unieron · primer depósito pendiente",
     "howTitle": "¿Cómo funciona?",
     "howBody": "Comparte tu enlace. Cuando un amigo se une a ARK y hace su primer depósito, tu referido cuenta aquí. Las recompensas en Kash+ por referidos están en camino.",
+    "howMinimum": "El primer depósito de tu amigo debe ser de al menos $1 para que cuente.",
     "cta": "Invita y gana",
     "shareTitle": "Únete conmigo en ARK",
     "shareText": "Regístrate con mi enlace de invitación y crezcamos juntos en ARK.",
@@ -2289,6 +2311,62 @@
     "claimFailed": "No se pudo reclamar ese nombre de usuario. Inténtalo de nuevo.",
     "loadFailed": "No se pudieron cargar tus referidos.",
     "retry": "Reintentar"
+  },
+  "marquee": {
+    "liveLabel": "En vivo",
+    "liveJoin": "Únete ya",
+    "liveLastMan": "Last Man · bote de {pot}",
+    "liveWatch": "Ver",
+    "liveChess": "Ajedrez · partida en vivo",
+    "liveCheckers": "Damas · partida en vivo",
+    "newBadge": "Nuevo",
+    "portfolio": "El portafolio es la pantalla de inicio de tu dinero. Reúne tu saldo, tus monedas y tus activos en un solo lugar y los valora en vivo, para que siempre sepas qué tienes y cuánto vale.",
+    "kash": "Kash+ es nuestro token de recompensas. Tenlo en tu billetera y la plataforma te devuelve por lo que ya haces, así cada operación y cada partida te dejan un extra sin esfuerzo.",
+    "funds": "Añadir fondos recarga tu billetera. Transfiere desde tu banco desde ₦1,000 o envía cripto, y el dinero llega en minutos, listo para operar, jugar o enviar.",
+    "spot": "Spot es comprar cripto sin rodeos. Elige una moneda, mira el precio en vivo, confirma en dos toques, y queda en tu propia billetera donde solo tú decides.",
+    "perps": "Los perpetuos te dejan operar un movimiento de precio con apalancamiento. Ve en largo si crees que sube, en corto si crees que baja, y un buen acierto paga varias veces más.",
+    "meme": "En Memecoins aparecen primero los tokens recién nacidos. Mira lo que es tendencia, compra en un par de toques y atrapa al próximo ganador cuando todavía es temprano.",
+    "rwa": "Activos reales pone acciones y oro en tu panel. Compra una parte directamente desde tu billetera en segundos, sin corredor ni papeleo, y vende igual de fácil.",
+    "prediction": "Predicción convierte tu opinión en una posición. Apuesta por un resultado en deportes, elecciones o precios, y si el mundo va a tu favor cobras dinero real.",
+    "casino": "Arkade son juegos con apuestas reales. Reta a otros al ajedrez, las damas o Last Man, y cuando ganas el premio se paga directo a tu billetera.",
+    "earn": "Earn es trabajo, no suerte. Toma encargos y tareas pequeñas, entrégalos y cobra en tu billetera sin hacer ni una sola operación.",
+    "activity": "Actividad es tu historial completo de dinero. Cada depósito, operación, premio y retiro está en una lista clara, para que siempre puedas rastrear a dónde fue tu dinero.",
+    "invite": "Invitar amigos es tu enlace de referido. Compártelo donde quieras, y cada vez que un amigo se registra y hace su primer depósito, el crédito es tuyo. Las recompensas vienen en camino."
+  },
+  "tour": {
+    "replayCta": "Hacer el recorrido",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "done": "Entendido",
+    "progressOf": "de",
+    "welcomeTitle": "Bienvenido a ARK",
+    "welcomeBody": "Este es tu hogar para el dinero en movimiento. Danos un minuto y te enseñamos qué hace cada cosa.",
+    "portfolioTitle": "Tu portafolio",
+    "portfolioBody": "Todo lo que tienes en ARK, en un solo lugar. Tu saldo, tus monedas y tu Kash+. Aquí también añades dinero.",
+    "kashTitle": "Kash+",
+    "kashBody": "Nuestro propio token. Tenlo y gana recompensas por todo lo que haces aquí, desde trades hasta juegos. Puedes comprarlo desde esta misma tarjeta.",
+    "addFundsTitle": "Añadir fondos",
+    "addFundsBody": "Toca aquí cuando quieras meter dinero. Por banco o con cripto, tú eliges.",
+    "spotTitle": "Spot",
+    "spotBody": "Compra y vende cripto al precio actual. Eliges una moneda, escribes una cantidad y listo.",
+    "perpsTitle": "Perpetuos",
+    "perpsBody": "Opera con apalancamiento sobre hacia dónde va un precio, arriba o abajo. Más riesgo y más recompensa, así que empieza poco a poco.",
+    "memeTitle": "Memecoins",
+    "memeBody": "El carril rápido. Tokens nuevos y en tendencia que compras en un par de toques. Divertido y volátil, así que nunca apuestes el alquiler.",
+    "rwaTitle": "Activos reales",
+    "rwaBody": "Ten una parte de cosas reales como acciones y oro, directo desde tu billetera.",
+    "predictionTitle": "Predicción",
+    "predictionBody": "Pon dinero en resultados del mundo real. Deportes, elecciones, precios. Si aciertas, ganas.",
+    "earnTitle": "Earn",
+    "earnBody": "Completa tareas y encargos y cobra por ello. Una forma simple de hacer crecer tu saldo sin operar.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Juegos con apuestas reales, como ajedrez y Last Man. Si ganas, va directo a tu billetera.",
+    "activityTitle": "Actividad",
+    "activityBody": "Tu historial completo. Cada depósito, operación y premio, en el orden en que pasó.",
+    "moreTitle": "Más secciones",
+    "moreBody": "Predicción, Earn, Arkade y tu actividad viven aquí, junto con cualquier sección que no quepa en la barra.",
+    "profileTitle": "Tu cuenta",
+    "profileBody": "Tu acceso, tus billeteras y tus ajustes. Desde aquí también invitas a tus amigos y ganas cuando se unen."
   },
   "activity": {
     "eyebrow": "Actividad",
@@ -2317,6 +2395,15 @@
     "received": "{symbol} recibido",
     "sent": "{symbol} enviado",
     "moved": "{symbol} movido",
+    "entered_game": "Apuesta realizada",
+    "claimed_winnings": "Ganancias reclamadas",
+    "prediction_buy": "Acciones de predicción compradas",
+    "prediction_payout": "Pago de predicción",
+    "perp_margin": "Operación perp financiada",
+    "perp_return": "Pago de operación perp",
+    "bought_kash": "KASH+ comprado",
+    "arkade_deposit": "Fondos de juego añadidos",
+    "arkade_withdraw": "Fondos de juego retirados",
     "notifications": "Notificaciones",
     "newCount": "{count} nuevas"
   },

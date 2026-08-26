@@ -137,6 +137,7 @@
     "ctaNeedsGas": "Wir richten deine {chain}-Wallet ein. Füge etwas {symbol} hinzu, um fortzufahren."
   },
   "topbar": {
+    "support": "support",
     "searchPlaceholder": "Assets, Märkte, Ticker suchen",
     "menu": "Menü",
     "closeMenu": "Menü schließen",
@@ -599,6 +600,7 @@
     "marketPrice": "Marktpreis",
     "positionValue": "Positionswert",
     "buyMore": "Mehr {name} kaufen",
+    "managePrediction": "In Prognosen verwalten",
     "sell": "{name} verkaufen",
     "assetDetails": "Asset-Details"
   },
@@ -670,7 +672,8 @@
     "notEnoughBalance": "Guthaben reicht nicht",
     "confirming": "Wird bestätigt…",
     "buyToken": "{name} kaufen",
-    "sellToken": "{name} verkaufen"
+    "sellToken": "{name} verkaufen",
+    "transactionFee": "Transaktionsgebühr"
   },
   "rwa": {
     "eyebrow": "Reale Vermögenswerte",
@@ -788,6 +791,7 @@
   "prediction": {
     "eyebrow": "Prognosemärkte",
     "heading": "Handeln Sie Ihre Überzeugung",
+    "exploreAllMarkets": "Alle Märkte entdecken",
     "regionBlockedTitle": "In Ihrer Region nicht verfügbar",
     "regionBlockedBody": "Prognosemärkte werden dort, wo Sie sind, gerade nicht angeboten. Der Rest von {brand} bleibt voll verfügbar.",
     "toastClaiming": "Ihre Gewinne werden abgeholt…",
@@ -1295,7 +1299,8 @@
     "fiatComingSoonBody": "Wir schließen die Verifizierung mit unserem Zahlungspartner ab. Karten- und Bankaufladung starten in Kürze. Zahlen Sie in der Zwischenzeit Krypto ein.",
     "withdrawNeedsGas": "Du brauchst etwas {symbol} auf {chain}, um von dort zu senden. Hebe stattdessen von Base ab oder lade Guthaben auf.",
     "withdrawalUnconfirmed": "Wir konnten diese Auszahlung nicht bestätigen. Sie ist möglicherweise schon durchgegangen, prüfe also die Aktivität, bevor du es erneut versuchst, damit du nicht doppelt sendest.",
-    "withdrawalUnconfirmedToast": "Nicht bestätigt. Prüfe die Aktivität."
+    "withdrawalUnconfirmedToast": "Nicht bestätigt. Prüfe die Aktivität.",
+    "transactionFee": "Transaktionsgebühr"
   },
   "remit": {
     "sendMoney": "Geld senden",
@@ -1521,6 +1526,8 @@
       }
     },
     "lastStanding": {
+      "connectionLostTitle": "Verbindung unterbrochen",
+      "connectionLostBody": "Das Spiel ist eingefroren, während wir neu verbinden. Sobald dein Netz zurück ist, holt es von selbst auf.",
       "eyebrow": "Arkade · Der Gewinner bekommt alles",
       "title": "The Last Man",
       "intro": "Spielen Sie, um als Letzter übrig zu bleiben. Läuft die Uhr ab, nimmt der letzte Spieler, der gespielt hat, die Hälfte des Pots; 10 % gehen an den, der das Spiel eröffnet hat.",
@@ -1686,7 +1693,8 @@
       "toastFailed": "Geld konnte nicht hinzugefügt werden, Sie wurden erstattet",
       "toastRefunded": "Auf Ihr Guthaben erstattet",
       "errorQuote": "Gerade nicht möglich. Versuchen Sie es erneut.",
-      "errorSend": "Das hat nicht geklappt. Bitte versuchen Sie es erneut."
+      "errorSend": "Das hat nicht geklappt. Bitte versuchen Sie es erneut.",
+      "transactionFee": "Transaktionsgebühr"
     },
     "entries": {
       "title": "Meine Tipps",
@@ -1812,6 +1820,11 @@
         "resultYouLost": "{how} · Sie haben verloren",
         "resultWhiteWon": "{how} · Weiß hat gewonnen",
         "resultBlackWon": "{how} · Schwarz hat gewonnen",
+        "winningsCredited": "Gewinn gutgeschrieben",
+        "winningsCreditedBody": "Der Betrag ist in Ihrem Schach-Guthaben verfügbar. Zahlen Sie ihn aus, um ihn an Ihre Wallet zu senden.",
+        "chessBalanceNow": "Schach-Guthaben · {amount} USD verfügbar",
+        "withdrawalFeeApplies": "Für Wallet-Auszahlungen fällt eine Gebühr von {pct} % an.",
+        "withdrawToWallet": "An Wallet auszahlen",
         "toastMoveFailed": "Dieser Zug ist nicht durchgegangen.",
         "toastDrawOffered": "Remis angeboten.",
         "toastDrawOfferFailed": "Remis konnte nicht angeboten werden.",
@@ -1990,6 +2003,13 @@
         "oddsMovement": "Quotenverlauf",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "Deine Einsätze werden abgerechnet",
+        "settlingBetsBody": "Das Ergebnis steht fest. Dein Schach-Guthaben wird jetzt aktualisiert.",
+        "returnCredited": "Auszahlung gutgeschrieben",
+        "refundCredited": "Einsatz zurückerstattet",
+        "returnCreditedBody": "Der Betrag ist in deinem Schach-Guthaben verfügbar. Zahle ihn aus, um ihn an deine Wallet zu senden.",
+        "noReturn": "Einsatz abgerechnet",
+        "noReturnBody": "Deine Auswahl hat nicht gewonnen, daher gibt es aus diesem Markt keine Auszahlung.",
         "noSelfBet": "Du spielst diese Partie, deshalb kannst du nicht auf sie setzen."
       },
       "cashier": {
@@ -2020,6 +2040,7 @@
         "withdrawing": "Auszahlung läuft…",
         "withdrawalSent": "Auszahlung unterwegs: {amount} USD.",
         "withdrawFailed": "Die Auszahlung ist fehlgeschlagen. Ihr Guthaben ist unverändert.",
+        "withdrawalFeeNote": "Es fällt eine Auszahlungsgebühr von {pct} % an.",
         "notEnough": "Das ist mehr als Ihr verfügbares Schach-Guthaben.",
         "feeNote": "Auf Gewinne fällt eine Plattformgebühr von {pct} % an.",
         "unavailable": "Schach-Guthaben sind noch nicht verfügbar."
@@ -2274,6 +2295,7 @@
     "pendingNote": "{count} beigetreten · erste Einzahlung ausstehend",
     "howTitle": "Wie funktioniert es?",
     "howBody": "Teilen Sie Ihren Link. Sobald ein Freund ARK beitritt und die erste Einzahlung macht, zählt Ihre Empfehlung hier. Kash+-Belohnungen für Empfehlungen sind unterwegs.",
+    "howMinimum": "Die erste Einzahlung deines Freundes muss mindestens 1 $ betragen, damit sie zählt.",
     "cta": "Einladen und verdienen",
     "shareTitle": "Komm zu mir auf ARK",
     "shareText": "Melde dich über meinen Einladungslink an und lass uns gemeinsam auf ARK wachsen.",
@@ -2289,6 +2311,62 @@
     "claimFailed": "Dieser Benutzername konnte nicht gesichert werden. Versuchen Sie es erneut.",
     "loadFailed": "Ihre Empfehlungen konnten nicht geladen werden.",
     "retry": "Erneut versuchen"
+  },
+  "marquee": {
+    "liveLabel": "Live",
+    "liveJoin": "Jetzt mitspielen",
+    "liveLastMan": "Last Man · {pot} im Pott",
+    "liveWatch": "Zusehen",
+    "liveChess": "Schach · Live-Partie",
+    "liveCheckers": "Dame · Live-Partie",
+    "newBadge": "Neu",
+    "portfolio": "Das Portfolio ist die Startseite deines Geldes. Es sammelt Guthaben, Coins und Werte an einem Ort und bepreist sie live, damit du immer genau weißt, was du hast und was es wert ist.",
+    "kash": "Kash+ ist unser Belohnungstoken. Halte ihn in deiner Wallet und die Plattform zahlt dir für das zurück, was du ohnehin tust. So bringt jeder Trade und jedes Spiel still ein bisschen extra.",
+    "funds": "Mit Einzahlen füllst du deine Wallet auf. Überweise ab ₦1.000 von deiner Bank oder schicke Krypto, und das Geld ist in Minuten da, bereit zum Handeln, Spielen oder Senden.",
+    "spot": "Spot ist Kryptokauf ohne Umwege. Coin wählen, Live-Preis sehen, mit zwei Fingertipps bestätigen, und er liegt in deiner eigenen Wallet, über die nur du bestimmst.",
+    "perps": "Mit Perpetuals handelst du Preisbewegungen mit Hebel. Geh long, wenn du an steigende Kurse glaubst, short, wenn du fallende erwartest, und ein guter Riecher zahlt mehrfach.",
+    "meme": "Bei Memecoins tauchen brandneue Token zuerst auf. Stöbere durch die Trends, kaufe mit wenigen Fingertipps und erwische den nächsten Überflieger, solange es früh ist.",
+    "rwa": "Reale Werte bringt Aktien und Gold auf dein Dashboard. Kauf dir in Sekunden ein Stück direkt aus der Wallet, ohne Broker und ohne Papierkram, und verkaufe genauso leicht.",
+    "prediction": "Prediction macht aus deiner Meinung eine Position. Setz auf einen Ausgang bei Sport, Wahlen oder Preisen, und läuft die Welt in deine Richtung, bekommst du echtes Geld.",
+    "casino": "Arkade sind Spiele mit echtem Einsatz. Fordere andere bei Schach, Dame oder Last Man heraus, und gewinnst du, wird der Preis direkt in deine Wallet gezahlt.",
+    "earn": "Earn ist Arbeit statt Glück. Nimm Gigs und kleine Aufgaben an, liefere ab und werde in deine Wallet bezahlt, ganz ohne einen einzigen Trade.",
+    "activity": "Aktivität ist deine komplette Geldhistorie. Jede Einzahlung, jeder Trade, Gewinn und jede Auszahlung stehen in einer klaren Liste, damit du jeden Schritt deines Geldes nachvollziehen kannst.",
+    "invite": "Freunde einladen ist dein Empfehlungslink. Teile ihn überall, und jedes Mal, wenn ein Freund beitritt und zum ersten Mal einzahlt, wird es dir gutgeschrieben. Belohnungen sind unterwegs."
+  },
+  "tour": {
+    "replayCta": "Tour starten",
+    "next": "Weiter",
+    "back": "Zurück",
+    "done": "Alles klar",
+    "progressOf": "von",
+    "welcomeTitle": "Willkommen bei ARK",
+    "welcomeBody": "Hier ist dein Zuhause für Geld in Bewegung. Gib uns eine Minute, wir zeigen dir, was alles kann.",
+    "portfolioTitle": "Dein Portfolio",
+    "portfolioBody": "Alles, was dir auf ARK gehört, an einem Ort. Dein Guthaben, deine Coins und dein Kash+. Hier zahlst du auch Geld ein.",
+    "kashTitle": "Kash+",
+    "kashBody": "Unser eigener Token. Halte ihn und verdiene Belohnungen auf alles, was du hier tust, von Trades bis Spielen. Kaufen kannst du ihn direkt über diese Karte.",
+    "addFundsTitle": "Geld einzahlen",
+    "addFundsBody": "Tippe hier, um jederzeit Geld einzuzahlen. Per Bank oder Krypto, wie du willst.",
+    "spotTitle": "Spot",
+    "spotBody": "Kaufe und verkaufe Krypto zum aktuellen Preis. Coin wählen, Betrag eingeben, fertig.",
+    "perpsTitle": "Perpetuals",
+    "perpsBody": "Handle mit Hebel darauf, wohin ein Preis als Nächstes geht, rauf oder runter. Mehr Risiko, mehr Chance, also fang klein an.",
+    "memeTitle": "Memecoins",
+    "memeBody": "Die Überholspur. Neue und angesagte Token, gekauft mit wenigen Fingertipps. Spaßig und wild, setze also nie die Miete.",
+    "rwaTitle": "Reale Werte",
+    "rwaBody": "Besitze ein Stück echter Dinge wie Aktien und Gold, direkt aus deiner Wallet.",
+    "predictionTitle": "Prediction",
+    "predictionBody": "Setze Geld auf echte Ereignisse. Sport, Wahlen, Preise. Liegst du richtig, gewinnst du.",
+    "earnTitle": "Earn",
+    "earnBody": "Erledige Aufgaben und Gigs und werde dafür bezahlt. Ein einfacher Weg, dein Guthaben wachsen zu lassen, ohne zu handeln.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Spiele mit echtem Einsatz, etwa Schach und Last Man. Gewinnst du, landet es direkt in deiner Wallet.",
+    "activityTitle": "Aktivität",
+    "activityBody": "Deine ganze Historie. Jede Einzahlung, jeder Trade und jeder Gewinn, in der Reihenfolge, in der es passiert ist.",
+    "moreTitle": "Mehr Bereiche",
+    "moreBody": "Prediction, Earn, Arkade und deine Aktivität findest du hier, zusammen mit jedem Bereich, der nicht in die Leiste passt.",
+    "profileTitle": "Dein Konto",
+    "profileBody": "Dein Login, deine Wallets und Einstellungen. Von hier aus lädst du auch Freunde ein und verdienst, wenn sie mitmachen."
   },
   "activity": {
     "eyebrow": "Aktivität",
@@ -2317,6 +2395,15 @@
     "received": "{symbol} erhalten",
     "sent": "{symbol} gesendet",
     "moved": "{symbol} bewegt",
+    "entered_game": "Wette platziert",
+    "claimed_winnings": "Gewinn beansprucht",
+    "prediction_buy": "Prognoseanteile gekauft",
+    "prediction_payout": "Prognose-Auszahlung",
+    "perp_margin": "Perp-Trade finanziert",
+    "perp_return": "Perp-Trade-Auszahlung",
+    "bought_kash": "KASH+ gekauft",
+    "arkade_deposit": "Spielguthaben aufgeladen",
+    "arkade_withdraw": "Spielguthaben abgehoben",
     "notifications": "Benachrichtigungen",
     "newCount": "{count} neu"
   },

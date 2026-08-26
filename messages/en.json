@@ -137,6 +137,7 @@
     "ctaNeedsGas": "Getting your {chain} wallet ready. Add a little {symbol} to continue."
   },
   "topbar": {
+    "support": "support",
     "searchPlaceholder": "Search assets, markets, tickers",
     "menu": "Menu",
     "closeMenu": "Close menu",
@@ -599,6 +600,7 @@
     "marketPrice": "Market price",
     "positionValue": "Position value",
     "buyMore": "Buy more {name}",
+    "managePrediction": "Manage in Prediction",
     "sell": "Sell {name}",
     "assetDetails": "Asset details"
   },
@@ -670,7 +672,8 @@
     "notEnoughBalance": "Not enough balance",
     "confirming": "Confirming…",
     "buyToken": "Buy {name}",
-    "sellToken": "Sell {name}"
+    "sellToken": "Sell {name}",
+    "transactionFee": "Transaction fee"
   },
   "rwa": {
     "eyebrow": "Real-world assets",
@@ -788,6 +791,7 @@
   "prediction": {
     "eyebrow": "Prediction markets",
     "heading": "Trade your conviction",
+    "exploreAllMarkets": "Explore all markets",
     "regionBlockedTitle": "Not available in your region",
     "regionBlockedBody": "Prediction markets aren't offered where you are right now. The rest of {brand} stays fully available.",
     "toastClaiming": "Claiming your winnings…",
@@ -1295,7 +1299,8 @@
     "fiatComingSoonBody": "We are finishing verification with our payments partner. Card and bank funding go live shortly. Deposit crypto in the meantime.",
     "withdrawNeedsGas": "You need a little {symbol} on {chain} to send from there. Withdraw from Base instead, or add funds.",
     "withdrawalUnconfirmed": "We couldn't confirm this withdrawal. It may already have gone through, so check Activity before trying again to avoid sending twice.",
-    "withdrawalUnconfirmedToast": "Couldn't confirm. Check Activity."
+    "withdrawalUnconfirmedToast": "Couldn't confirm. Check Activity.",
+    "transactionFee": "Transaction fee"
   },
   "remit": {
     "sendMoney": "Send money",
@@ -1521,6 +1526,8 @@
       }
     },
     "lastStanding": {
+      "connectionLostTitle": "Connection lost",
+      "connectionLostBody": "The game froze while we reconnect. It catches up on its own the moment your network is back.",
       "eyebrow": "Arkade · Winner takes all",
       "title": "The Last Man",
       "intro": "Play to become the last one standing. When the timer runs out, the last player to play takes half the pot; 10% goes to whoever started the game.",
@@ -1686,7 +1693,8 @@
       "toastFailed": "Couldn't add money, so you were refunded",
       "toastRefunded": "Refunded to your balance",
       "errorQuote": "Couldn't do that right now. Try again.",
-      "errorSend": "That didn't go through. Please try again."
+      "errorSend": "That didn't go through. Please try again.",
+      "transactionFee": "Transaction fee"
     },
     "entries": {
       "title": "My entries",
@@ -1812,6 +1820,11 @@
         "resultYouLost": "{how} · You lost",
         "resultWhiteWon": "{how} · White won",
         "resultBlackWon": "{how} · Black won",
+        "winningsCredited": "Winnings credited",
+        "winningsCreditedBody": "This is available in your chess balance. Withdraw it to move the funds to your wallet.",
+        "chessBalanceNow": "Chess balance · {amount} USD available",
+        "withdrawalFeeApplies": "Wallet withdrawals include a {pct}% fee.",
+        "withdrawToWallet": "Withdraw to wallet",
         "toastMoveFailed": "That move didn't go through.",
         "toastDrawOffered": "Draw offered.",
         "toastDrawOfferFailed": "Couldn't offer a draw.",
@@ -1990,6 +2003,13 @@
         "oddsMovement": "Odds movement",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "Settling your stakes",
+        "settlingBetsBody": "The result is final. We are refreshing your Chess balance now.",
+        "returnCredited": "Return credited",
+        "refundCredited": "Stake refunded",
+        "returnCreditedBody": "This is available in your Chess balance. Withdraw it to move the funds to your wallet.",
+        "noReturn": "Stake settled",
+        "noReturnBody": "Your selection did not win, so there is no payout from this market.",
         "noSelfBet": "You are playing this match, so you cannot stake on it."
       },
       "cashier": {
@@ -2020,6 +2040,7 @@
         "withdrawing": "Withdrawing…",
         "withdrawalSent": "Withdrawal on its way: {amount} USD.",
         "withdrawFailed": "The withdrawal failed. Your balance is unchanged.",
+        "withdrawalFeeNote": "A {pct}% withdrawal fee applies.",
         "notEnough": "That's more than your available chess balance.",
         "feeNote": "A {pct}% platform fee applies to winnings.",
         "unavailable": "Chess balances aren't available yet."
@@ -2274,6 +2295,7 @@
     "pendingNote": "{count} joined · first deposit pending",
     "howTitle": "How it works?",
     "howBody": "Share your link. When a friend joins ARK and makes their first deposit, your referral counts here. Kash+ rewards for referrals are on the way.",
+    "howMinimum": "Your friend’s first deposit must be at least $1 for it to count.",
     "cta": "Invite and Earn",
     "shareTitle": "Join me on ARK",
     "shareText": "Sign up with my invite link and let's grow together on ARK.",
@@ -2289,6 +2311,62 @@
     "claimFailed": "Couldn't claim that username. Try again.",
     "loadFailed": "Couldn't load your referrals.",
     "retry": "Retry"
+  },
+  "marquee": {
+    "liveLabel": "Live",
+    "liveJoin": "Join now",
+    "liveLastMan": "Last Man · {pot} pot",
+    "liveWatch": "Watch",
+    "liveChess": "Chess · live match",
+    "liveCheckers": "Checkers · live match",
+    "newBadge": "New",
+    "portfolio": "Portfolio is your money's home screen. It gathers your balance, coins and assets in one place and prices them live, so you always know exactly what you hold and what it's worth.",
+    "kash": "Kash+ is our reward token. Hold it in your wallet and the platform pays you back for what you already do, so every trade and game quietly earns you a little extra.",
+    "funds": "Add funds tops up your wallet. Transfer from your bank from as little as ₦1,000, or send crypto, and the money lands in minutes, ready to trade, play or send.",
+    "spot": "Spot is straight crypto buying. Pick a coin, see the live price, confirm in two taps, and it lands in your own wallet where only you control it.",
+    "perps": "Perpetuals let you trade a price move with leverage. Go long if you think it rises, short if you think it falls, and a good call pays several times harder.",
+    "meme": "Memecoins is where brand new tokens show up first. Browse what's trending, buy in a couple of taps, and catch the next runner while it's still early.",
+    "rwa": "Real assets puts stocks and gold on your dashboard. Buy a piece straight from your wallet in seconds, with no broker and no paperwork, and sell just as easily.",
+    "prediction": "Prediction turns your opinion into a position. Back an outcome in sports, elections or prices, and if the world goes your way you get paid real cash.",
+    "casino": "Arkade is games with real stakes. Challenge people at chess, checkers or Last Man, and when you win the prize is paid straight into your wallet.",
+    "earn": "Earn is work, not luck. Pick up gigs and small tasks, deliver them, and get paid into your wallet without ever placing a trade.",
+    "activity": "Activity is your full money history. Every deposit, trade, win and withdrawal sits in one clean list, so you can always trace exactly where your money went.",
+    "invite": "Invite friends is your referral link. Share it anywhere, and each time a friend signs up and makes their first deposit you get the credit. Rewards are on the way."
+  },
+  "tour": {
+    "replayCta": "Take a tour",
+    "next": "Next",
+    "back": "Back",
+    "done": "Got it",
+    "progressOf": "of",
+    "welcomeTitle": "Welcome to ARK",
+    "welcomeBody": "This is your home for money that moves. Give us a minute and we will walk you through what everything does.",
+    "portfolioTitle": "Your portfolio",
+    "portfolioBody": "Everything you own on ARK, in one place. Your balance, your coins and your Kash+ all live here. This is also where you add money.",
+    "kashTitle": "Kash+",
+    "kashBody": "Our own token. Hold it to earn rewards on everything you do here, from trades to games. Buy some right from this card.",
+    "addFundsTitle": "Add funds",
+    "addFundsBody": "Tap here any time to put money in. Bank transfer or crypto, your choice.",
+    "spotTitle": "Spot",
+    "spotBody": "Buy and sell crypto at the current price. Pick a coin, type an amount, done.",
+    "perpsTitle": "Perpetuals",
+    "perpsBody": "Trade with leverage on where a price goes next, up or down. Higher risk, higher reward, so start small.",
+    "memeTitle": "Memecoins",
+    "memeBody": "The fast lane. New and trending tokens you can buy in a couple of taps. Fun and volatile, so never bet the rent.",
+    "rwaTitle": "Real assets",
+    "rwaBody": "Own a piece of real things like stocks and gold, straight from your wallet.",
+    "predictionTitle": "Prediction",
+    "predictionBody": "Put money on real world outcomes. Sports, elections, prices. Call it right and you win.",
+    "earnTitle": "Earn",
+    "earnBody": "Complete tasks and gigs, get paid. A simple way to grow your balance without trading.",
+    "casinoTitle": "Arkade",
+    "casinoBody": "Games with real stakes, like chess and Last Man. Win, and it pays straight to your wallet.",
+    "activityTitle": "Activity",
+    "activityBody": "Your full history. Every deposit, trade and win, in the order it happened.",
+    "moreTitle": "More sections",
+    "moreBody": "Prediction, Earn, Arkade and your activity all live in here, along with any section that does not fit in the bar.",
+    "profileTitle": "Your account",
+    "profileBody": "Your login, wallets and settings. Invite friends from here too, and earn when they join."
   },
   "activity": {
     "eyebrow": "Activity",
@@ -2317,6 +2395,15 @@
     "received": "Received {symbol}",
     "sent": "Sent {symbol}",
     "moved": "Moved {symbol}",
+    "entered_game": "Placed a wager",
+    "claimed_winnings": "Claimed winnings",
+    "prediction_buy": "Bought prediction shares",
+    "prediction_payout": "Prediction payout",
+    "perp_margin": "Funded a perp trade",
+    "perp_return": "Perp trade payout",
+    "bought_kash": "Bought KASH+",
+    "arkade_deposit": "Added game funds",
+    "arkade_withdraw": "Withdrew game funds",
     "notifications": "Notifications",
     "newCount": "{count} new"
   },

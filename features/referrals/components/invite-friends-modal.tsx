@@ -21,6 +21,7 @@ import {
   sanitizeUsernameInput,
   usernameProblem,
 } from "@/features/referrals/lib/referrals";
+import { CANONICAL_SITE_URL, shareOrigin } from "@/lib/site-url";
 
 // The Invite Friends screen, built to the designer's comp: the three mascots
 // with sparkles, "Let's grow together!", the invite link with Copy, a progress
@@ -34,14 +35,16 @@ import {
 
 const MASCOTS = "/referral/mascots.png";
 
-// Server and client disagree on window.location until hydration, so the origin
-// is read as an external store the same way the casino share card does it.
+// The share origin is the CANONICAL domain, never window.location.origin: a
+// link built from a Vercel preview deployment's URL breaks for everyone once
+// that deployment is paused (HTTP 402). Read through an external store so the
+// server render (canonical) and the client agree without a hydration flash.
 const NO_UPDATES = () => () => {};
-const readOrigin = () => window.location.origin;
-const noOrigin = () => "";
+const readShareOrigin = () => shareOrigin();
+const serverShareOrigin = () => CANONICAL_SITE_URL;
 
 function useOrigin(): string {
-  return useSyncExternalStore(NO_UPDATES, readOrigin, noOrigin);
+  return useSyncExternalStore(NO_UPDATES, readShareOrigin, serverShareOrigin);
 }
 
 // Each star blinks like the designer's Figma: same keyframe, staggered starts.
@@ -114,7 +117,7 @@ function InviteScreen({
 }) {
   const t = useTranslations("referral");
   const origin = useOrigin();
-  const url = inviteLink(origin || "https://tsionark.com", username);
+  const url = inviteLink(origin, username);
 
   const [copied, setCopied] = useState(false);
 
@@ -189,6 +192,9 @@ function InviteScreen({
         <p className="mt-1.5 text-[13px] leading-[1.55] font-normal text-white/60">
           {t("howBody")}
         </p>
+        <p className="mt-2 text-[12.5px] leading-[1.5] font-medium text-white/80">
+          {t("howMinimum")}
+        </p>
       </div>
 
       <button
@@ -259,7 +265,7 @@ function ClaimScreen() {
         {feedback ? <span className={feedback.tone}>{feedback.text}</span> : null}
       </div>
       <p className="tnum truncate px-4 text-[12.5px] font-normal text-white/40">
-        {displayLink(inviteLink(origin || "https://tsionark.com", name || t("placeholder")))}
+        {displayLink(inviteLink(origin, name || t("placeholder")))}
       </p>
 
       <button
@@ -309,7 +315,7 @@ export function InviteFriendsModal({ open, onClose }: { open: boolean; onClose: 
                   ? { duration: 0.15 }
                   : { type: "spring", stiffness: 380, damping: 38, mass: 0.9 }
               }
-              className="bg-sheet pointer-events-auto max-h-[92dvh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:w-[min(440px,100%)] md:rounded-[24px] md:pt-[22px]"
+              className="bg-sheet ws-no-scrollbar pointer-events-auto max-h-[92dvh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:w-[min(440px,100%)] md:rounded-[24px] md:pt-[22px]"
             >
               <span
                 aria-hidden

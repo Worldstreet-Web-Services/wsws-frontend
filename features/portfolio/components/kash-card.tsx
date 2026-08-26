@@ -132,7 +132,10 @@ export function KashCard({ onBuy, onSend, onConvert, onHistory, onUpgrade }: Kas
     : null;
 
   return (
-    <div className="ws-card relative flex h-full flex-col overflow-hidden p-5 sm:p-[26px]">
+    <div
+      data-tour="kash"
+      className="ws-card relative flex h-full flex-col overflow-hidden p-5 sm:p-[26px]"
+    >
       {/* Ambient glow anchored to the balance — a premium touch, not a focal point. */}
       <div className="pointer-events-none absolute -top-16 -right-14 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
 

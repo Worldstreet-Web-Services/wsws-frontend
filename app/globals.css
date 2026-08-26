@@ -152,6 +152,17 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
+@utility ws-no-scrollbar {
+  /* Modals scroll without showing a scrollbar: the sheet's rounded frame is
+     the affordance, the bar is just noise inside it. Scrolling itself is
+     untouched. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility tnum {
   font-variant-numeric: tabular-nums;
 }
@@ -423,6 +434,232 @@ body {
   to {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* Product owner: a light-purple shine that ripples inside any button when it
+   is clicked (the ripple element is injected by ClickRipple), plus a soft
+   purple glow on hover. Applies to every button; opt out with data-no-ripple. */
+@keyframes ws-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.ws-ripple-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ws-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  opacity: 0.35;
+  transform: scale(0);
+  animation: ws-ripple 0.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@media (hover: hover) {
+  /* A soft light-purple lift on hover for every button. The brighter ringed
+     treatment is opt-in via .ws-btn-hover, so the global default does not
+     outline every icon and nav row. */
+  button:not(:disabled):not([data-no-ripple]):hover,
+  [role="button"]:not([data-no-ripple]):hover {
+    box-shadow: 0 4px 20px -8px rgba(167, 139, 250, 0.55);
+  }
+  .ws-btn-hover:not(:disabled):hover {
+    box-shadow:
+      0 0 0 1px rgba(167, 139, 250, 0.4),
+      0 6px 22px -6px rgba(167, 139, 250, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-ripple {
+    animation: none;
+    display: none;
+  }
+}
+
+/* Product tour (driver.js): the popover restyled to the app's dark sheet.
+   Applied through popoverClass, so the library's own defaults never leak
+   into the page. */
+.driver-popover.ws-tour {
+  background: #131316;
+  color: #fff;
+  /* Product owner: a LIGHT purple ring with a soft glow on the card. */
+  border: 1.5px solid rgba(196, 181, 253, 0.85);
+  border-radius: 18px;
+  padding: 18px;
+  max-width: 320px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 4px rgba(196, 181, 253, 0.14),
+    0 18px 60px -18px rgba(196, 181, 253, 0.4),
+    0 24px 80px -24px rgba(0, 0, 0, 0.9);
+}
+
+.driver-popover.ws-tour .driver-popover-title {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.driver-popover.ws-tour .driver-popover-description {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.driver-popover.ws-tour .driver-popover-progress-text {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 12px;
+}
+
+.driver-popover.ws-tour .driver-popover-navigation-btns {
+  gap: 8px;
+}
+
+.driver-popover.ws-tour button.driver-popover-prev-btn,
+.driver-popover.ws-tour button.driver-popover-next-btn {
+  border-radius: 9999px;
+  padding: 8px 16px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.driver-popover.ws-tour button.driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.driver-popover.ws-tour button.driver-popover-next-btn {
+  background: #fff;
+  border: 1px solid #fff;
+  color: #0a0a0a;
+}
+
+.driver-popover.ws-tour .driver-popover-close-btn {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.driver-popover.ws-tour .driver-popover-close-btn:hover {
+  color: #fff;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #131316;
+}
+
+.driver-popover.ws-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #131316;
+}
+
+/* The feature marquee under the topbar: a duplicated item list slides one
+   full copy for a seamless wrap (the casino ticker's trick), pauses while
+   hovered or focused so items can be read and clicked, and a periodic glint
+   sweeps the silver. Reduced motion swaps the slide for a scrollable strip. */
+@keyframes ws-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ws-marquee-track {
+  animation: ws-marquee-scroll 120s linear infinite;
+}
+
+.ws-marquee:hover .ws-marquee-track,
+.ws-marquee:focus-within .ws-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes ws-marquee-sheen {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  55%,
+  100% {
+    transform: translateX(560%) skewX(-18deg);
+  }
+}
+
+.ws-marquee-sheen {
+  animation: ws-marquee-sheen 11s ease-in-out infinite;
+}
+
+.ws-marquee-viewport {
+  overflow: hidden;
+  /* News-ticker edges: items fade in and out instead of being cut off. */
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 28px,
+    black calc(100% - 28px),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-marquee-track,
+  .ws-marquee-sheen {
+    animation: none;
+  }
+  .ws-marquee-viewport {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* The live chip's label scrolls in place only when its text is wider than the
+   narrow box it gets on a phone. JS measures the overflow and sets
+   --ws-live-shift; without it the class is inert. It dwells at each end, then
+   slides, ping-ponging via `alternate` so the whole label is readable without
+   ever widening the chip. */
+@keyframes ws-live-scroll {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(var(--ws-live-shift, 0));
+  }
+}
+
+.ws-live-scroll {
+  animation: ws-live-scroll 5s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-live-scroll {
+    animation: none;
   }
 }
 

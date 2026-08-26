@@ -116,6 +116,13 @@ export function friendlyError(
   // of masking it behind the generic order failure.
   if (/^your solana balance changed\./i.test(raw)) return raw;
 
+  if (gateway.code === "PLAYER_BALANCE_INSUFFICIENT") {
+    return "You don't have enough in your chess balance for that. Deposit more USDC or choose a smaller stake.";
+  }
+  if (gateway.code === "HOUSE_RESERVE_INSUFFICIENT") {
+    return "Stockfish staking is temporarily unavailable because the reward reserve is low. You can still play a free game.";
+  }
+
   // Before the text patterns: a custom-error revert often ALSO contains the
   // word "reverted", which no pattern below would translate, so the hex would
   // survive all the way to the toast.
@@ -132,8 +139,11 @@ export function friendlyError(
   }
   // The chess cashier has its own internal balance. Preserve that distinction
   // so a withdrawal failure doesn't read like a wallet/allowance problem.
-  if (/insufficient available balance/.test(m)) {
-    return "You don't have enough in your chess balance for that. Deposit more USDC or withdraw a smaller amount.";
+  if (/insufficient available balance|player balance insufficient/.test(m)) {
+    return "You don't have enough in your chess balance for that. Deposit more USDC or choose a smaller amount.";
+  }
+  if (/house reserve insufficient/.test(m)) {
+    return "Stockfish staking is temporarily unavailable because the reward reserve is low. You can still play a free game.";
   }
   // Not enough of the specific asset being moved (e.g. an ERC-20 balance revert).
   if (/insufficient[- ]?balance|amount exceeds balance|exceeds allowance/.test(m)) {
@@ -163,6 +173,26 @@ export function friendlyError(
   ) {
     return "We couldn't complete this right now. Try again, or a different amount or asset.";
   }
+  // Solana failures arrive as RPC simulation dumps ("Transaction simulation
+  // failed: ... custom program error: 0x1" plus pages of program logs), which
+  // no user should ever face. 0x1 from the token program is an insufficient
+  // balance; 0x1771 is Jupiter's slippage guard.
+  if (/custom program error: 0x1771\b/.test(m)) {
+    return "We couldn't complete this right now. Try again, or a different amount or asset.";
+  }
+  if (/custom program error: 0x1\b/.test(m)) {
+    return "You don't have enough of this asset for that. Try a smaller amount.";
+  }
+  if (/insufficient lamports|found no record of a prior credit/.test(m)) {
+    return "You need a little more of the network's coin to cover the fee.";
+  }
+  if (/blockhash not found|block height exceeded/.test(m)) {
+    return "That took too long and expired on the network. Please try again.";
+  }
+  if (/transaction simulation failed|error processing instruction/.test(m)) {
+    return "The network rejected this transaction. Nothing was charged, so please try again.";
+  }
+
   // An unrecognised revert. The selector is not in the table above, so there is
   // nothing meaningful to say about it — but the raw text carries calldata, and
   // showing a user "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
@@ -177,4 +207,15 @@ export function friendlyError(
     return raw;
   }
   return fallback;
+}
+
+/**
+ * The raw reason, sized for fine print: whitespace collapsed and capped, so
+ * support can act on a screenshot without the user facing a wall of RPC logs.
+ * Never a substitute for friendlyError; always rendered beside it.
+ */
+export function supportDetail(e: unknown, max = 160): string {
+  const raw = text(e).replace(/\s+/g, " ").trim();
+  if (raw.length <= max) return raw;
+  return `${raw.slice(0, max - 1).trimEnd()}\u2026`;
 }

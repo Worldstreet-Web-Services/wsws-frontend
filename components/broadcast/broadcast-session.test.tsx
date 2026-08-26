@@ -404,13 +404,32 @@ describe("the Ark-only path", () => {
     expect(constraints.video.monitorTypeSurfaces).toBe("exclude");
   });
 
-  it("does not turn the camera on unless the mode asked for it", async () => {
+  // Viewers reported seeing a shared board with no broadcaster: the screen had
+  // replaced the face rather than joining it. The camera now comes up in every
+  // mode, screen shares included, and stays a toggle for anyone who would
+  // rather be heard than seen.
+  it("turns the camera on in every mode, so a shared screen never replaces the face", async () => {
+    for (const mode of ["ark", "camera-ark", "screen"] as const) {
+      setCameraEnabled.mockClear();
+      const view = renderHook(() => useBroadcastSession(), { wrapper });
+      await act(async () => {
+        await view.result.current.goLiveWith({ target, mode, capture: [] });
+      });
+
+      expect(setCameraEnabled, `mode ${mode} should publish a camera track`).toHaveBeenCalledWith(
+        true
+      );
+    }
+  });
+
+  it("still goes live when the camera is refused, because a screen share does not need one", async () => {
+    setCameraEnabled.mockRejectedValueOnce(new Error("NotAllowedError"));
     const view = renderHook(() => useBroadcastSession(), { wrapper });
     await act(async () => {
-      await view.result.current.goLiveWith({ target, mode: "ark", capture: [] });
+      await view.result.current.goLiveWith({ target, mode: "screen", capture: [] });
     });
 
-    expect(setCameraEnabled).not.toHaveBeenCalled();
+    expect(view.result.current.phase).toBe("live");
   });
 
   it("carries no deep link, because a portfolio is not a game", async () => {

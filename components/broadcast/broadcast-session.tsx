@@ -530,9 +530,15 @@ export function BroadcastSessionProvider({ children }: { children: React.ReactNo
 
         const connected = await room.connect(ingest.url, ingest.roomToken);
         if (capture.length > 0) await room.publishScreen(connected, capture);
-        // The camera is a deliberate choice, not a side effect of picking a
-        // mode: only "Camera + Ark" turns it on.
-        if (nextMode === "camera-ark") await room.setCameraEnabled(true).catch(() => {});
+        // Camera comes up in EVERY mode, screen shares included. Sharing a
+        // board or a chart without a face is the thing viewers complained
+        // about: the screen replaced the broadcaster instead of joining them.
+        // Screen and camera are separate tracks, so a viewer receives both and
+        // the stage puts the shared surface on the main stage with faces
+        // beside it. It stays a toggle in the console for anyone who wants to
+        // be heard and not seen, and a denied camera permission is not fatal
+        // to a screen share.
+        await room.setCameraEnabled(true).catch(() => {});
         setStartedAt(Date.now());
         setPhase("live");
       } catch (caught) {

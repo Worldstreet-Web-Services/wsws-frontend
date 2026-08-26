@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
@@ -19,6 +19,7 @@ import {
   usdcForNgnExact,
   type OnrampOrder,
 } from "@/lib/ramping/orders";
+import { openOnrampWatch } from "@/lib/ramping/onramp-watch";
 import { clearPendingBankDeposit, savePendingBankDeposit } from "@/lib/ramping/pending";
 import {
   clearCachedOnrampAccount,
@@ -169,18 +170,12 @@ export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps)
     if (orderQuery.isError || status === "failed") clearCachedOnrampAccount(walletAddress);
   }, [reused, walletAddress, orderQuery.isError, status]);
 
-  // Reported once, when the rail confirms delivery. `done` stays true while
-  // the screen is open, so the ref keeps this from firing on every poll.
-  const reportedComplete = useRef(false);
-  useEffect(() => {
-    if (!done || reportedComplete.current) return;
-    reportedComplete.current = true;
-    track("bank_transfer_completed", {
-      amount_ngn: Number(order?.amountNgn ?? amountNgn) || 0,
-      amount_usd: Number(order?.amountUsdc ?? 0) || 0,
-      bank: order?.paymentAccount?.bankName ?? "",
-    });
-  }, [done, order, amountNgn]);
+  // No completion event is reported here. This screen is unmounted the moment
+  // the funds sheet closes, so a user who pays their bank and walks away was
+  // never seen finishing, and a deposit that fired here fired a second time as
+  // a crypto one when the money landed on chain. `deposit_completed` is now
+  // reported once, from the arrival, with the rail named by the watch opened
+  // below. See lib/ramping/onramp-watch.
 
   // Hold the confirming state briefly, then move to the reassuring message. This
   // is a UX beat, not a real settlement check, so a fixed pause reads honestly.
@@ -266,6 +261,21 @@ export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps)
             const cached = loadCachedOnrampAccount(walletAddress);
             if (cached) {
               setReused(cached);
+              // Reused, so the rail cannot be polled for this deposit: its
+              // order completed on an earlier one and never moves again. The
+              // amount and rate below are what the arrival gets matched
+              // against instead.
+              openOnrampWatch(
+                {
+                  wallet: walletAddress,
+                  orderId: cached.orderId,
+                  reused: true,
+                  expectedNgn: ngnAmount,
+                  quotedRate: Number(rate) || 0,
+                  bank: cached.account.bankName,
+                },
+                Date.now()
+              );
               track("bank_account_requested", {
                 amount_ngn: ngnAmount,
                 fx_rate: Number(rate) || 0,
@@ -289,6 +299,20 @@ export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps)
                   if (result.paymentAccount) {
                     saveCachedOnrampAccount(walletAddress, result.id, result.paymentAccount);
                   }
+                  // A fresh order can be followed to settlement, so the money
+                  // that lands is named from the rail's own figures rather
+                  // than from the quote.
+                  openOnrampWatch(
+                    {
+                      wallet: walletAddress,
+                      orderId: result.id,
+                      reused: false,
+                      expectedNgn: ngnAmount,
+                      quotedRate: Number(rate) || 0,
+                      bank: result.paymentAccount?.bankName ?? "",
+                    },
+                    Date.now()
+                  );
                   // The amount and the rate the user accepted. Never the
                   // account number that came back with them.
                   track("bank_account_requested", {

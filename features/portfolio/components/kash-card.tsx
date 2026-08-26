@@ -143,11 +143,7 @@ export function KashCard({ onBuy, onSend, onConvert, onHistory, onUpgrade }: Kas
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-2 text-[13px] font-normal text-white/60">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={COIN}
-            alt=""
-            className="h-6 w-6 drop-shadow-[0_0_10px_rgba(252,211,77,0.3)]"
-          />
+          <img src={COIN} alt="" className="h-6 w-6 drop-shadow-[0_0_10px_rgba(252,211,77,0.3)]" />
           {t("balanceTitle")}
         </div>
         <div className="flex items-center gap-2.5">

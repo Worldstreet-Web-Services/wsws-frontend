@@ -76,14 +76,11 @@ export function MobileTabBar({
           );
         })}
 
-        {/* The centre node. It breaks the bar's top edge so it reads as
-            floating, while staying part of the bar rather than covering the
-            page: M3 forbids a FAB that obstructs the navigation bar, and a
-            free-floating button permanently hides content beneath it.
-            `-translate-y-3` lifts it without changing the bar's own height, so
-            the raised circle cannot clip against the pill's rounded edge the
-            way a negative margin did. */}
-        <span className="relative -translate-y-3 px-0.5">
+        {/* The centre action, in the row rather than above it. A raised node
+            overflowed this bar: the pattern assumes a full-width bar with room
+            above, and this is a floating pill with neither. It stays the one
+            different thing in the row through colour, not elevation. */}
+        <span className="relative px-0.5">
           <GoLiveControl variant="tab" />
         </span>
 

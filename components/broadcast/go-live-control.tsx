@@ -1,5 +1,7 @@
 "use client";
 
+import { ShareToSquare } from "@/components/share/share-to-square";
+
 // The Go Live control, in the two places the spec puts it.
 //
 // Mobile: the centre node of the existing tab bar, a ringed circle breaking
@@ -41,12 +43,14 @@ function LiveIcon({ size = 20 }: { size?: number }) {
 function Menu({
   onGoLive,
   onShareScreen,
+  onPost,
   onInvite,
   onClose,
   align,
 }: {
   onGoLive: () => void;
   onShareScreen: () => void;
+  onPost: () => void;
   onInvite: () => void;
   onClose: () => void;
   align: "up" | "down";
@@ -73,6 +77,10 @@ function Menu({
   const items = [
     { label: "Go Live", body: "Broadcast this view", action: onGoLive },
     { label: "Share screen", body: "Pick a tab or window", action: onShareScreen },
+    // Not everything worth saying needs a camera. The square is the platform's
+    // social surface, so posting to it belongs beside going live rather than
+    // only inside the square itself.
+    { label: "Post to Market Square", body: "Write something", action: onPost },
     { label: "Invite viewers", body: "Copy a link to your stream", action: onInvite },
   ];
 
@@ -105,6 +113,7 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
   const pathname = usePathname() ?? "/";
   const { user } = usePrivy();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   const target = arkBroadcastTarget(pathname, deriveProfile(user).name);
@@ -140,16 +149,17 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         title={label}
         className={
           variant === "tab"
-            ? // A CIRCLE on mobile, not a labelled pill. The bar is five slots
-              // wide on a phone; a pill wide enough for "Go Live" wrapped the
-              // words onto two lines and pushed the node off centre. The
-              // circular create-node is the convention every phone app uses
-              // here, and the words still reach a screen reader through
-              // aria-label and appear in the menu it opens.
-              `pointer-events-auto grid size-[52px] shrink-0 cursor-pointer place-items-center rounded-full text-white shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] ring-2 transition-colors ${
+            ? // Sits IN the bar at the same 44px height as every other tab.
+              // It was a raised 52px node breaking the pill's top edge, which
+              // overflowed the bar on a phone — the reason a raised node works
+              // elsewhere is a full-width bar with room above it, and this is a
+              // floating pill with neither. Distinction comes from the violet
+              // ring and fill rather than from size or elevation, so it reads
+              // as the one different thing in the row without leaving it.
+              `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-white ring-1 transition-colors ${
                 live
                   ? "bg-violet-500 ring-violet-300/70"
-                  : "bg-[#141416]/92 ring-violet-400/60 backdrop-blur-[18px] hover:bg-white/12"
+                  : "bg-violet-500/22 ring-violet-400/55 hover:bg-violet-500/32"
               }`
             : `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
                 live
@@ -169,6 +179,10 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
           align={variant === "tab" ? "up" : "down"}
           onGoLive={openShare}
           onShareScreen={openShare}
+          onPost={() => {
+            setMenuOpen(false);
+            setPosting(true);
+          }}
           onInvite={() => {
             setMenuOpen(false);
             void navigator.clipboard?.writeText(window.location.href);
@@ -178,6 +192,20 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
       ) : null}
 
       {sharing ? <ShareFlow target={target} onClose={() => setSharing(false)} /> : null}
+
+      {/* Posting needs no camera and no capture, so it does not go through the
+          broadcast flow: it is the square's composer, reached from Ark. */}
+      {posting ? (
+        <ShareToSquare
+          draft={{
+            title: "On Ark",
+            deepLink: { kind: "external", ref: window.location.href },
+            suggestedText: "",
+          }}
+          open
+          onClose={() => setPosting(false)}
+        />
+      ) : null}
     </div>
   );
 }

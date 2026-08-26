@@ -20,7 +20,18 @@ export type MarketSquareRole = "citizen" | "creator" | "ambassador" | "worldstre
 // activities. A casino broadcast points at the activity with kind "game", and
 // its ref is "<game>:<id>". See `lib/broadcast/deep-link.ts`.
 export type MarketSquareDeepLinkKind =
-  "stream" | "store_item" | "listing" | "market" | "game" | "external";
+  | "stream"
+  | "store_item"
+  | "listing"
+  | "market"
+  | "game"
+  // Added for shared Ark activities: a trade, a prediction position, or a
+  // scheduled activity. The square routes them back here rather than
+  // resolving them itself.
+  | "trade"
+  | "prediction"
+  | "activity"
+  | "external";
 
 export interface MarketSquareDeepLink {
   kind: MarketSquareDeepLinkKind;

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { SETTLE_CHAINS } from "@/lib/deposit";
 import {
   isTerminalProgress,
   normalizeBanks,
@@ -127,8 +128,16 @@ export function useCreateOnrampOrder() {
             "Content-Type": "application/json",
             "x-idempotency-key": idempotencyKey,
           },
+          // Pin the settlement to base-mainnet native USDC, the same asset and
+          // chain the crypto deposit rail uses. Without this the Difference rail
+          // picks its own default chain, and USDC that lands off-Base is money
+          // the user still sees (Cash aggregates every chain) but the referral
+          // deposit probe - which watches base-mainnet only - never sees, so a
+          // referred user's bank deposit never qualifies their referrer.
           body: JSON.stringify({
             destinationAddress,
+            destinationChainId: SETTLE_CHAINS.base.chainId,
+            destinationAsset: SETTLE_CHAINS.base.usdc,
             expectedAmountNgn,
           }),
         },
@@ -187,6 +196,12 @@ export function useRampOrder(
   return useQuery<OnrampOrder | OfframpOrder>({
     queryKey: ["ramping-order", kind, orderId],
     enabled: options.enabled && Boolean(orderId),
+    // Keep the last good order visible while a poll is in flight or briefly
+    // failing, so the account/status view never blanks mid-cycle.
+    placeholderData: keepPreviousData,
+    // A transient poll failure is retried a few times rather than surfaced
+    // immediately as isError, which the screen would otherwise react to.
+    retry: 3,
     refetchInterval: (query) => {
       const current = query.state.data?.status;
       if (current && isTerminalProgress(current)) return false;

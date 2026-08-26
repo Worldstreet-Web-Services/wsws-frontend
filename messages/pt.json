@@ -8,7 +8,7 @@
     "prediction": "Previsão",
     "earn": "Ganhar",
     "casino": "Arkade",
-    "activity": "Arktivity"
+    "activity": "Arkivity"
   },
   "explore": {
     "predictionTitle": "Mercados de previsão",
@@ -599,6 +599,7 @@
     "marketPrice": "Preço de mercado",
     "positionValue": "Valor da posição",
     "buyMore": "Comprar mais {name}",
+    "managePrediction": "Gerir em Previsões",
     "sell": "Vender {name}",
     "assetDetails": "Detalhes do ativo"
   },
@@ -668,7 +669,8 @@
     "notEnoughBalance": "Saldo insuficiente",
     "confirming": "A confirmar…",
     "buyToken": "Comprar {name}",
-    "sellToken": "Vender {name}"
+    "sellToken": "Vender {name}",
+    "transactionFee": "Taxa de transação"
   },
   "rwa": {
     "eyebrow": "Ativos do mundo real",
@@ -786,6 +788,7 @@
   "prediction": {
     "eyebrow": "Mercados de previsão",
     "heading": "Negoceie a sua convicção",
+    "exploreAllMarkets": "Explorar todos os mercados",
     "regionBlockedTitle": "Indisponível na sua região",
     "regionBlockedBody": "Os mercados de previsão não estão disponíveis onde está. O resto da {brand} continua totalmente disponível.",
     "toastClaiming": "A reclamar os seus ganhos…",
@@ -1292,8 +1295,9 @@
     "tokensError": "Não foi possível carregar os tokens.",
     "fiatComingSoonBody": "Estamos a finalizar a verificação com o nosso parceiro de pagamentos. O financiamento por cartão e banco chega em breve. Entretanto, deposite cripto.",
     "withdrawNeedsGas": "Precisa de um pouco de {symbol} na {chain} para enviar a partir daí. Levante a partir da Base ou adicione fundos.",
-    "withdrawalUnconfirmed": "Não conseguimos confirmar este levantamento. Pode já ter sido efetuado, então verifique a atividade antes de tentar de novo, para não enviar duas vezes.",
-    "withdrawalUnconfirmedToast": "Não confirmado. Verifique a atividade."
+    "withdrawalUnconfirmed": "Não conseguimos confirmar este levantamento. Pode já ter sido efetuado, então verifique Arkivity antes de tentar de novo, para não enviar duas vezes.",
+    "withdrawalUnconfirmedToast": "Não confirmado. Verifique Arkivity.",
+    "transactionFee": "Taxa de transação"
   },
   "remit": {
     "sendMoney": "Enviar dinheiro",
@@ -1686,7 +1690,8 @@
       "toastFailed": "Não foi possível adicionar o dinheiro, então você foi reembolsado",
       "toastRefunded": "Reembolsado para o seu saldo",
       "errorQuote": "Não foi possível agora. Tente novamente.",
-      "errorSend": "Não deu certo. Tente novamente."
+      "errorSend": "Não deu certo. Tente novamente.",
+      "transactionFee": "Taxa de transação"
     },
     "entries": {
       "title": "Meus bilhetes",
@@ -1812,6 +1817,11 @@
         "resultYouLost": "{how} · Você perdeu",
         "resultWhiteWon": "{how} · As brancas venceram",
         "resultBlackWon": "{how} · As pretas venceram",
+        "winningsCredited": "Ganhos creditados",
+        "winningsCreditedBody": "O valor está disponível no seu saldo de xadrez. Saque para enviar os fundos para a sua wallet.",
+        "chessBalanceNow": "Saldo de xadrez · {amount} USD disponíveis",
+        "withdrawalFeeApplies": "Os saques para a wallet incluem uma taxa de {pct}%.",
+        "withdrawToWallet": "Sacar para a wallet",
         "toastMoveFailed": "Esse lance não foi registrado.",
         "toastDrawOffered": "Empate oferecido.",
         "toastDrawOfferFailed": "Não foi possível oferecer empate.",
@@ -1990,6 +2000,13 @@
         "oddsMovement": "Movimento das odds",
         "marketSettled": "Market settled: {outcome} won",
         "marketVoided": "Market voided, stakes refunded",
+        "settlingBets": "A liquidar as tuas apostas",
+        "settlingBetsBody": "O resultado é final. Estamos a atualizar o teu saldo de xadrez.",
+        "returnCredited": "Retorno creditado",
+        "refundCredited": "Aposta reembolsada",
+        "returnCreditedBody": "O valor está disponível no teu saldo de xadrez. Saca para o enviar para a tua wallet.",
+        "noReturn": "Aposta liquidada",
+        "noReturnBody": "A tua seleção não venceu, por isso este mercado não tem pagamento.",
         "noSelfBet": "Estás a jogar esta partida, por isso não podes fazer stake nela."
       },
       "cashier": {
@@ -2020,6 +2037,7 @@
         "withdrawing": "Sacando…",
         "withdrawalSent": "Saque a caminho: {amount} USD.",
         "withdrawFailed": "O saque falhou. Seu saldo permanece igual.",
+        "withdrawalFeeNote": "Aplica-se uma taxa de saque de {pct}%.",
         "notEnough": "Isso é mais do que seu saldo de xadrez disponível.",
         "feeNote": "Uma taxa de plataforma de {pct}% se aplica aos ganhos.",
         "unavailable": "Os saldos de xadrez ainda não estão disponíveis."
@@ -2187,7 +2205,7 @@
     "historyEmpty": "Nada aqui ainda. Compras, recompensas e conversões aparecerão aqui.",
     "historyPurchase": "Compra",
     "historyConversion": "Convertido para USD",
-    "historyLocked": "Atividade (abaixo do limite)",
+    "historyLocked": "Arkivity (abaixo do limite)",
     "historyTransferIn": "Recebido",
     "historyTransferOut": "Enviado",
     "historyFrom": "de",
@@ -2273,6 +2291,7 @@
     "pendingNote": "{count} entraram · primeiro depósito pendente",
     "howTitle": "Como funciona?",
     "howBody": "Compartilhe seu link. Quando um amigo entra na ARK e faz o primeiro depósito, sua indicação conta aqui. As recompensas em Kash+ por indicações estão a caminho.",
+    "howMinimum": "O primeiro depósito do seu amigo deve ser de pelo menos $1 para contar.",
     "cta": "Convide e ganhe",
     "shareTitle": "Junte-se a mim na ARK",
     "shareText": "Cadastre-se com meu link de convite e vamos crescer juntos na ARK.",
@@ -2288,6 +2307,27 @@
     "claimFailed": "Não foi possível garantir esse nome de usuário. Tente novamente.",
     "loadFailed": "Não foi possível carregar suas indicações.",
     "retry": "Tentar novamente"
+  },
+  "marquee": {
+    "liveLabel": "Ao vivo",
+    "liveJoin": "Entrar agora",
+    "liveLastMan": "Last Man · pote de {pot}",
+    "liveWatch": "Assistir",
+    "liveChess": "Xadrez · partida ao vivo",
+    "liveCheckers": "Damas · partida ao vivo",
+    "newBadge": "Novo",
+    "portfolio": "O portfólio é a tela inicial do seu dinheiro. Ele reúne saldo, moedas e ativos num só lugar e precifica tudo ao vivo, para você saber sempre o que tem e quanto vale.",
+    "kash": "Kash+ é o nosso token de recompensa. Guarde na carteira e a plataforma devolve pelo que você já faz: cada operação e cada partida rendem um extra sem esforço.",
+    "funds": "Adicionar fundos recarrega a sua carteira. Transfira do banco a partir de ₦1.000 ou envie cripto, e o dinheiro chega em minutos, pronto para operar, jogar ou enviar.",
+    "spot": "Spot é compra de cripto sem rodeio. Escolha uma moeda, veja o preço ao vivo, confirme em dois toques, e ela fica na sua própria carteira, sob o seu controle.",
+    "perps": "Os perpétuos deixam você operar um movimento de preço com alavancagem. Fique comprado se acha que sobe, vendido se acha que cai, e um bom palpite paga várias vezes mais.",
+    "meme": "Em Memecoins os tokens novinhos aparecem primeiro. Veja o que está em alta, compre em dois toques e pegue o próximo vencedor enquanto ainda é cedo.",
+    "rwa": "Ativos reais coloca ações e ouro no seu painel. Compre um pedaço direto da carteira em segundos, sem corretora e sem papelada, e venda com a mesma facilidade.",
+    "prediction": "Previsão transforma a sua opinião em posição. Aposte num resultado de esportes, eleições ou preços, e se o mundo for do seu lado, você recebe dinheiro de verdade.",
+    "casino": "Arkade são jogos com apostas de verdade. Desafie outros no xadrez, nas damas ou no Last Man, e quando você vence o prêmio cai direto na sua carteira.",
+    "earn": "Earn é trabalho, não sorte. Pegue trabalhos e tarefas pequenas, entregue e receba na carteira sem fazer uma única operação.",
+    "activity": "Arkivity é o histórico completo do seu dinheiro. Cada depósito, operação, prêmio e saque fica numa lista limpa, para você sempre rastrear para onde o dinheiro foi.",
+    "invite": "Convidar amigos é o seu link de indicação. Compartilhe onde quiser, e cada vez que um amigo entra e faz o primeiro depósito, o crédito é seu. As recompensas estão a caminho."
   },
   "tour": {
     "replayCta": "Fazer o tour",
@@ -2317,7 +2357,7 @@
     "earnBody": "Complete tarefas e trabalhos e receba por isso. Um jeito simples de aumentar seu saldo sem operar.",
     "casinoTitle": "Arkade",
     "casinoBody": "Jogos com apostas de verdade, como xadrez e Last Man. Ganhou, cai direto na sua carteira.",
-    "activityTitle": "Atividade",
+    "activityTitle": "Arkivity",
     "activityBody": "Seu histórico completo. Cada depósito, operação e prêmio, na ordem em que aconteceu.",
     "moreTitle": "Mais seções",
     "moreBody": "Previsão, Earn, Arkade e sua atividade ficam aqui, junto com qualquer seção que não caiba na barra.",
@@ -2325,7 +2365,7 @@
     "profileBody": "Seu login, suas carteiras e seus ajustes. Daqui você também convida amigos e ganha quando eles entram."
   },
   "activity": {
-    "eyebrow": "Atividade",
+    "eyebrow": "Arkivity",
     "subtitle": "Cada depósito, negociação e saque da sua conta, em um só lugar. Toque em uma linha para ver o registro completo.",
     "loading": "Carregando sua atividade…",
     "errorBody": "Não foi possível carregar sua atividade.",
@@ -2351,8 +2391,30 @@
     "received": "{symbol} recebido",
     "sent": "{symbol} enviado",
     "moved": "{symbol} movido",
+    "entered_game": "Aposta feita",
+    "claimed_winnings": "Ganhos resgatados",
+    "prediction_buy": "Ações de previsão compradas",
+    "prediction_payout": "Pagamento de previsão",
+    "perp_margin": "Operação perp financiada",
+    "perp_return": "Pagamento de operação perp",
+    "bought_kash": "KASH+ comprado",
+    "arkade_deposit": "Fundos de jogo adicionados",
+    "arkade_withdraw": "Fundos de jogo retirados",
+    "won_chess": "Xadrez vencido",
+    "lost_chess": "Xadrez perdido",
+    "drew_chess": "Empate no xadrez",
+    "won_checkers": "Damas vencidas",
+    "lost_checkers": "Damas perdidas",
+    "drew_checkers": "Empate nas damas",
+    "arkball_ticket": "Bilhete ArkBall",
+    "arkball_won": "ArkBall vencido",
+    "vs": "vs",
+    "refunded": "Reembolsado",
     "notifications": "Notificações",
-    "newCount": "{count} novas"
+    "newCount": "{count} novas",
+    "prevPage": "Anterior",
+    "nextPage": "Próxima",
+    "pageOf": "Página {current} de {total}"
   },
   "launchGate": {
     "title": "Em breve",

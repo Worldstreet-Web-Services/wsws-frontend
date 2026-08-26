@@ -7,9 +7,11 @@ import { Topbar } from "@/components/layout/topbar";
 import { AccountModal } from "@/components/layout/modals/account-modal";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SupportButton } from "@/components/layout/support-button";
+import { BroadcastDock } from "@/components/broadcast/broadcast-dock";
+import { FeatureMarquee } from "@/components/layout/feature-marquee";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { FundsModal } from "@/features/funds";
-import { useClaimReferralFromLink } from "@/features/referrals";
+import { InviteFriendsModal, useClaimReferralFromLink } from "@/features/referrals";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
 import type { NavItem } from "@/components/layout/nav-items";
@@ -37,6 +39,9 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
   // the action works on every page, not just the dashboard, which keeps its own
   // copy for the balance card and the empty states.
   const [fundsOpen, setFundsOpen] = useState(false);
+  // The marquee's invite item opens the same Invite Friends modal the account
+  // menu reaches; the shell owns an instance so the item works on every page.
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // Anyone rendering the shell has an account, including sessions that
   // predate the flag — so the landing page can greet them with "Log in".
@@ -67,11 +72,20 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
         onClose={() => setMenuOpen(false)}
       />
 
-      {/* The tab bar floats over the page on a phone, so the last section
-          needs room to clear it. */}
-      <main className="min-h-screen pb-[92px] md:ml-[248px] md:pb-0">
+      {/* The tab bar sits at the bottom on a phone, so the last section needs
+          room to clear it. While a broadcast is running the dock adds its own
+          bar above the tab bar, which the root's --ws-live-bar variable
+          reserves, so the live indicator compresses the page instead of
+          covering the last row of it. */}
+      <main className="min-h-screen pb-[calc(92px+var(--ws-live-bar,0px))] md:ml-[248px] md:pb-[var(--ws-live-bar,0px)]">
         <div className="sticky top-0 z-[60]">
-          <Topbar onOpenAccount={() => setAccountOpen(true)} onSelectSection={navigate} />
+          <Topbar onOpenAccount={() => setAccountOpen(true)} />
+          <FeatureMarquee
+            navIds={nav.map((n) => n.id)}
+            onNavigate={navigate}
+            onAddFunds={() => setFundsOpen(true)}
+            onInvite={() => setInviteOpen(true)}
+          />
         </div>
 
         {children}
@@ -85,7 +99,14 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
         onAddFunds={() => setFundsOpen(true)}
       />
 
+      {/* The live indicator and the minimised self-view. Docked, never
+          floating over content: the dock reserves its own height so the page
+          is compressed rather than covered. */}
+      <BroadcastDock />
+
       <SupportButton />
+
+      <InviteFriendsModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <ModalShell open={accountOpen} onClose={() => setAccountOpen(false)}>
         <AccountModal onClose={() => setAccountOpen(false)} />

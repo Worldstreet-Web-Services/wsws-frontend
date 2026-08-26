@@ -13,6 +13,7 @@ import { MatchChat } from "@/features/casino/components/draughts/match-chat";
 import { MatchComments } from "@/features/casino/components/draughts/match-comments";
 import { SpectatorBetting } from "@/features/casino/components/draughts/spectator-betting";
 import { ChessCashierLauncher } from "@/features/casino/components/chess/chess-cashier-launcher";
+import { GameGoLive } from "@/features/casino/components/broadcast";
 import { armAudioUnlock, playGameEndSound, playMoveSound } from "@/features/casino/lib/chess/sound";
 import {
   remainingSeconds,
@@ -69,6 +70,7 @@ import { track } from "@/lib/analytics/mixpanel";
 import { copyText } from "@/lib/clipboard";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
+import { shareOrigin } from "@/lib/site-url";
 
 const OTHER: Record<DraughtsSide, DraughtsSide> = { white: "black", black: "white" };
 const EMPTY_PATH: number[] = [];
@@ -661,9 +663,7 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
               <button
                 type="button"
                 onClick={async () => {
-                  await copyText(
-                    `${window.location.origin}/casino/checkers/play?match=${match.id}`
-                  );
+                  await copyText(`${shareOrigin()}/casino/checkers/play?match=${match.id}`);
                   toast.success("Invite link copied.");
                 }}
                 className={DRAUGHTS_PANEL_BUTTON_CLASS}
@@ -898,6 +898,28 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
           </div>
           {match.wager || match.computer?.wager ? (
             <ChessCashierLauncher compact productName="Checkers" />
+          ) : null}
+          {/* Participants only, and never against the computer: there is no
+              second player and nothing worth spectating. Both players may
+              broadcast at once, each owning their own Market Square stream. */}
+          {seat && !match.computer ? (
+            <GameGoLive
+              target={{
+                game: "checkers",
+                ref: match.id,
+                title: `Checkers: ${whiteName} vs ${blackName}`,
+                watchPath: `/casino/checkers/play?match=${encodeURIComponent(match.id)}`,
+                descriptionLead: "Live checkers on Ark. Watch the match:",
+                content: "detail",
+                creatorApplicationNote: "I play checkers on Ark and want to broadcast my matches.",
+              }}
+              copy={{
+                subject: "the board",
+                finishedNotice:
+                  "The game is over. End the broadcast so you are not streaming a finished board.",
+              }}
+              activityOver={settled}
+            />
           ) : null}
         </div>
       }

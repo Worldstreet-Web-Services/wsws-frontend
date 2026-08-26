@@ -1,22 +1,23 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { friendlyError } from "@/lib/errors";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
+import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { useSendToken } from "@/hooks/use-withdraw";
 import { getWalletAddress } from "@/lib/user";
 import { CONTRACTS, POLYGON_CHAIN_ID } from "@/lib/polymarket/config";
 import { SETTLE_CHAINS } from "@/lib/deposit";
 import { fetchSellQuote } from "@/lib/sell";
-import { awaitReceipt, publicClientForChain, type ChainReadClient } from "@/lib/trade/receipt";
+import { publicClientForChain, type ChainReadClient } from "@/lib/trade/receipt";
 
 // Turns pUSD (Polymarket collateral, on Polygon) into USDC on Base, in the
 // user's own wallet. Polymarket's offramp only exists on Polygon, so the path is
 // pUSD -> USDC.e (offramp) -> USDC on Base (Dextopus bridge; it accepts USDC.e
-// directly, so no on-Polygon swap is needed). The Polygon steps are signed by
-// the EOA and need a little POL for gas, checked up front.
+// directly, so no on-Polygon swap is needed). The EOA's Polygon transactions use
+// the app's existing Alchemy-sponsored send path, so users do not need POL.
 //
 // It is balance-driven and resumable: it offramps whatever pUSD the account
 // holds, then bridges whatever USDC.e the wallet holds. A run that failed after
@@ -53,9 +54,8 @@ function readErc20(client: ChainReadClient, token: string, owner: string): Promi
 
 export function useSettleToBase() {
   const { user } = usePrivy();
-  const { sendTransaction } = useSendTransaction();
-  const { wallets } = useWallets();
   const { ensureReady } = usePolymarketSession();
+  const sendBatch = useEvmSendBatch();
   const { sendToken } = useSendToken();
   const [phase, setPhase] = useState<SettlePhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -66,62 +66,50 @@ export function useSettleToBase() {
     try {
       const eoa = getWalletAddress(user, "ethereum");
       if (!eoa) throw new SettleError("No wallet connected.");
-      const wallet = wallets.find((w) => w.address.toLowerCase() === eoa.toLowerCase());
-      if (!wallet) throw new SettleError("Wallet is not ready. Try again.");
 
       const polygon = publicClientForChain(POLYGON_CHAIN_ID);
-
-      // Gas gate: the Polygon offramp + bridge send are signed by the EOA and
-      // need POL. Check first so we never strand funds mid-flow.
-      const pol = await polygon.getBalance({ address: eoa as `0x${string}` });
-      if (pol <= 0n) {
-        throw new SettleError(
-          "You need a little POL on Polygon to cash out. Add some, then try again."
-        );
-      }
 
       const client = await ensureReady();
       const depositWallet = client.account.wallet;
 
-      // 1) Offramp any pUSD in the Deposit Wallet to USDC.e in the EOA. Skipped
-      // when there's none (e.g. a resumed run where it's already USDC.e).
-      const pusd = await readErc20(polygon, CONTRACTS.pusd, depositWallet);
-      if (pusd > 0n) {
+      // 1) Move pUSD from the Deposit Wallet into the EOA. A previous attempt
+      // may already have completed this transfer before failing, so the unwrap
+      // below always reads and consumes the EOA's actual balance.
+      const depositPusd = await readErc20(polygon, CONTRACTS.pusd, depositWallet);
+      if (depositPusd > 0n) {
         setPhase("unwrapping");
         const transfer = await client.transferErc20({
           tokenAddress: CONTRACTS.pusd,
           recipientAddress: eoa,
-          amount: pusd,
+          amount: depositPusd,
         });
         await transfer.wait();
+      }
 
-        const approve = await sendTransaction(
-          {
-            to: CONTRACTS.pusd,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: "approve",
-              args: [CONTRACTS.collateralOfframp as `0x${string}`, pusd],
-            }),
-            chainId: POLYGON_CHAIN_ID,
-          },
-          { address: eoa }
+      const walletPusd = await readErc20(polygon, CONTRACTS.pusd, eoa);
+      if (walletPusd > 0n) {
+        // Approve and unwrap in one sponsored Polygon batch.
+        await sendBatch(
+          [
+            {
+              to: CONTRACTS.pusd,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [CONTRACTS.collateralOfframp as `0x${string}`, walletPusd],
+              }),
+            },
+            {
+              to: CONTRACTS.collateralOfframp,
+              data: encodeFunctionData({
+                abi: OFFRAMP_ABI,
+                functionName: "unwrap",
+                args: [CONTRACTS.usdcE as `0x${string}`, eoa as `0x${string}`, walletPusd],
+              }),
+            },
+          ],
+          POLYGON_CHAIN_ID
         );
-        await awaitReceipt(polygon, approve.hash, "The approval");
-
-        const unwrap = await sendTransaction(
-          {
-            to: CONTRACTS.collateralOfframp,
-            data: encodeFunctionData({
-              abi: OFFRAMP_ABI,
-              functionName: "unwrap",
-              args: [CONTRACTS.usdcE as `0x${string}`, eoa as `0x${string}`, pusd],
-            }),
-            chainId: POLYGON_CHAIN_ID,
-          },
-          { address: eoa }
-        );
-        await awaitReceipt(polygon, unwrap.hash, "The unwrap");
       }
 
       // 2) Bridge all the USDC.e the wallet holds to USDC on Base (Dextopus takes
@@ -154,7 +142,7 @@ export function useSettleToBase() {
     } finally {
       setPhase("idle");
     }
-  }, [user, wallets, sendTransaction, ensureReady, sendToken]);
+  }, [user, ensureReady, sendBatch, sendToken]);
 
   return { settleToBase, phase, error };
 }

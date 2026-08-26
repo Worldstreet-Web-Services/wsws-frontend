@@ -14,7 +14,10 @@ import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 
 export const USDC_DECIMALS = 6;
 export const COMPUTER_WAGER_FEE_BPS = 800;
-export const MIN_STAKED_COMPUTER_LEVEL = 4;
+export const MIN_STAKED_CHESS_COMPUTER_LEVEL = 8;
+export const MIN_STAKED_DRAUGHTS_COMPUTER_LEVEL = 4;
+export const COMPUTER_DRAW_RETURN_BPS = 5_000;
+export const CHESS_WIN_REWARD_BPS = 1_000;
 
 const COMPUTER_REWARD_BPS: Readonly<Record<number, number>> = {
   4: 2_500,
@@ -32,6 +35,9 @@ export interface CashierConfig {
   requiredConfirmations: number;
   // Platform fee on winnings, in basis points (500 = 5%).
   platformFeeBps: number;
+  // Fee charged when moving funds from the chess balance back to the wallet.
+  withdrawalFeeBps: number;
+  autoPayoutWinnings: boolean;
 }
 
 export interface CashierBalance {
@@ -166,6 +172,7 @@ export interface ComputerWagerBreakdown {
   houseExposure: string;
   fee: string;
   potentialPayout: string;
+  drawPayout: string;
   rewardPercent: number;
   sufficient: boolean;
 }
@@ -191,6 +198,7 @@ export function computerWagerBreakdown(
   const normalizedFeeBps = BigInt(Math.max(0, Math.min(10_000, Math.round(feeBps))));
   const fee = (houseExposure * normalizedFeeBps) / 10_000n;
   const potentialPayout = stake + houseExposure - fee;
+  const drawPayout = (stake * BigInt(COMPUTER_DRAW_RETURN_BPS)) / 10_000n;
   const available = toBaseUnits(availableUsdc, USDC_DECIMALS);
   const sufficient = available >= stake;
 
@@ -200,7 +208,31 @@ export function computerWagerBreakdown(
     houseExposure: fromBaseUnits(houseExposure, USDC_DECIMALS),
     fee: fromBaseUnits(fee, USDC_DECIMALS),
     potentialPayout: fromBaseUnits(potentialPayout, USDC_DECIMALS),
+    drawPayout: fromBaseUnits(drawPayout, USDC_DECIMALS),
     rewardPercent: rewardBps / 100,
+    sufficient,
+  };
+}
+
+export function chessComputerWagerBreakdown(
+  stakeUsdc: string,
+  availableUsdc: string,
+  level: number
+): ComputerWagerBreakdown | null {
+  if (level !== MIN_STAKED_CHESS_COMPUTER_LEVEL) return null;
+  const stake = toBaseUnits(stakeUsdc, USDC_DECIMALS);
+  if (stake <= 0n) return null;
+  const reward = (stake * BigInt(CHESS_WIN_REWARD_BPS)) / 10_000n;
+  const available = toBaseUnits(availableUsdc, USDC_DECIMALS);
+  const sufficient = available >= stake;
+  return {
+    youLock: fromBaseUnits(stake, USDC_DECIMALS),
+    balanceAfter: fromBaseUnits(sufficient ? available - stake : 0n, USDC_DECIMALS),
+    houseExposure: fromBaseUnits(reward, USDC_DECIMALS),
+    fee: "0",
+    potentialPayout: fromBaseUnits(stake + reward, USDC_DECIMALS),
+    drawPayout: "0",
+    rewardPercent: CHESS_WIN_REWARD_BPS / 100,
     sufficient,
   };
 }

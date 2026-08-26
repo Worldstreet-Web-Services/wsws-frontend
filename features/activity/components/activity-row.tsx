@@ -142,6 +142,7 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
 
   return (
     <a
+      data-sensitive="other"
       href={explorer ? `${explorer}${item.hash}` : undefined}
       onClick={() => {
         if (explorer)

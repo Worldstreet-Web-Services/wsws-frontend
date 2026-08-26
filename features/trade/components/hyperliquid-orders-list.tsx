@@ -59,7 +59,7 @@ export function HyperliquidOrdersList({
   };
 
   return (
-    <div className="ws-card p-4 sm:p-5">
+    <div className="ws-card p-4 sm:p-5" data-sensitive="position">
       <div className="mb-3 text-xs font-normal text-white/55">Orders</div>
       {loading ? (
         <p className="text-xs font-normal text-white/45">Loading…</p>

@@ -170,7 +170,10 @@ export function HyperliquidSimplePerps() {
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
+    <div
+      className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]"
+      data-sensitive="position"
+    >
       <div className="ws-card p-4 sm:p-5">
         <div className="mb-3.5 flex gap-2">
           {SIMPLE_SYMBOLS.map((sym) => {

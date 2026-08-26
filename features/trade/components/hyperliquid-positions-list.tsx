@@ -99,7 +99,7 @@ export function HyperliquidPositionsList({
   };
 
   return (
-    <div className="ws-card p-4 sm:p-5">
+    <div className="ws-card p-4 sm:p-5" data-sensitive="position">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-normal text-white/55">Open positions</span>
         <button

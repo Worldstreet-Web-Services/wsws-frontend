@@ -106,7 +106,7 @@ export function HyperliquidProPerps() {
     });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-sensitive="position">
       <HyperliquidMarketHeader symbol={asset?.symbol ?? ""} fallbackMarkPrice={markPrice} />
 
       <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">

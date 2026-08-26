@@ -33,6 +33,12 @@ export function MobileTabBar({
 }: MobileTabBarProps) {
   const t = useTranslations("topbar");
   const tabs = items.slice(0, TAB_COUNT);
+  // Go Live belongs in the MIDDLE of the bar, not fourth of five. It is the one
+  // control that must be reachable from every route, so it gets the steadiest
+  // spot: dead centre, in the easy thumb zone, flanked by equal halves.
+  const half = Math.ceil(tabs.length / 2);
+  const leading = tabs.slice(0, half);
+  const trailing = tabs.slice(half);
   // Anything reached from the drawer keeps "More" lit, so the bar always shows
   // where the user is rather than going blank on, say, Arkade.
   const moreActive = !tabs.some((tab) => tab.id === activeSection);
@@ -41,9 +47,9 @@ export function MobileTabBar({
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-90 flex justify-center px-4 pb-[max(16px,env(safe-area-inset-bottom))] md:hidden">
       <nav
         aria-label={t("sections")}
-        className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/12 bg-[#141416]/92 p-1.5 shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] backdrop-blur-[18px]"
+        className="pointer-events-auto flex max-w-full items-center gap-1 overflow-visible rounded-full border border-white/12 bg-[#141416]/92 p-1.5 pt-1.5 shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] backdrop-blur-[18px]"
       >
-        {tabs.map((tab) => {
+        {leading.map((tab) => {
           const active = tab.id === activeSection;
           return (
             <button
@@ -70,10 +76,37 @@ export function MobileTabBar({
         {/* The centre node. It breaks the bar's top edge so it reads as
             floating, while staying part of the bar rather than covering the
             page: M3 forbids a FAB that obstructs the navigation bar, and a
-            free-floating button permanently hides content beneath it. */}
-        <span className="relative -mt-5 px-0.5">
+            free-floating button permanently hides content beneath it.
+            `-translate-y-3` lifts it without changing the bar's own height, so
+            the raised circle cannot clip against the pill's rounded edge the
+            way a negative margin did. */}
+        <span className="relative -translate-y-3 px-0.5">
           <GoLiveControl variant="tab" />
         </span>
+
+        {trailing.map((tab) => {
+          const active = tab.id === activeSection;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onNavigate(tab.id)}
+              aria-current={active ? "page" : undefined}
+              className={`flex h-11 cursor-pointer items-center gap-1.5 rounded-full transition-colors ${
+                active
+                  ? "bg-white/14 px-3.5 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+                  : "w-11 justify-center text-white/50"
+              }`}
+            >
+              <tab.icon size={21} />
+              {active ? (
+                <span className="font-sans text-[12.5px] font-medium whitespace-nowrap">
+                  {tab.label}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
 
         <button
           type="button"

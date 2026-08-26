@@ -66,4 +66,9 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_PRIVY_APP_ID: ${{ vars.NEXT_PUBLIC_PRIVY_APP_ID }}
+          # Fork pull requests do not receive repository variables, so this
+          # public client id arrives empty and the production build guard in
+          # next.config.ts trips. CI only compiles, it never deploys, so a
+          # placeholder satisfies the guard. Same-repo runs and real deploys
+          # still use the true value from the repository variable.
+          NEXT_PUBLIC_PRIVY_APP_ID: ${{ vars.NEXT_PUBLIC_PRIVY_APP_ID || 'ci-build-placeholder' }}

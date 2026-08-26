@@ -68,7 +68,8 @@ export function HyperliquidOrdersList({
       ) : (
         <div className="flex flex-col gap-2">
           {visibleOrders.map((order) => {
-            const cancellable = CANCELLABLE_STATUSES.has(order.status) && order.externalOrderId != null;
+            const cancellable =
+              CANCELLABLE_STATUSES.has(order.status) && order.externalOrderId != null;
             const cancelling = cancellingId === order.id;
             const confirming = confirmingId === order.id;
             return (

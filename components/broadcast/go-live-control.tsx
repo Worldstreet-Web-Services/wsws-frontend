@@ -136,9 +136,17 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         aria-haspopup={live ? undefined : "menu"}
         aria-expanded={menuOpen}
         data-tour="go-live"
+        aria-label={label}
+        title={label}
         className={
           variant === "tab"
-            ? `pointer-events-auto flex h-[52px] cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-white shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] ring-2 transition-colors ${
+            ? // A CIRCLE on mobile, not a labelled pill. The bar is five slots
+              // wide on a phone; a pill wide enough for "Go Live" wrapped the
+              // words onto two lines and pushed the node off centre. The
+              // circular create-node is the convention every phone app uses
+              // here, and the words still reach a screen reader through
+              // aria-label and appear in the menu it opens.
+              `pointer-events-auto grid size-[52px] shrink-0 cursor-pointer place-items-center rounded-full text-white shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] ring-2 transition-colors ${
                 live
                   ? "bg-violet-500 ring-violet-300/70"
                   : "bg-[#141416]/92 ring-violet-400/60 backdrop-blur-[18px] hover:bg-white/12"
@@ -151,11 +159,9 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         }
       >
         <span className="grid size-5 place-items-center">
-          <LiveIcon size={variant === "tab" ? 21 : 20} />
+          <LiveIcon size={variant === "tab" ? 22 : 20} />
         </span>
-        <span className={variant === "tab" ? "text-[12.5px] font-semibold" : "flex-1"}>
-          {label}
-        </span>
+        {variant === "tab" ? null : <span className="flex-1">{label}</span>}
       </button>
 
       {menuOpen ? (

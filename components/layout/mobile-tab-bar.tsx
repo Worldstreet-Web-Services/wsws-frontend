@@ -18,7 +18,10 @@ interface MobileTabBarProps {
 // Sections that fit in the bar itself. The rest stay reachable through "More",
 // which opens the same drawer the sidebar already provides, so the phone never
 // loses a destination the desktop rail has.
-const TAB_COUNT = 4;
+// Three tabs plus More gives FOUR items to flank the centre node — two a
+// side, so Go Live is genuinely in the middle. With four tabs the bar had five
+// flanking items and the node could only ever sit off-centre.
+const TAB_COUNT = 3;
 
 // The phone's primary navigation: a floating pill of the first few sections
 // with the active one labelled, and a separate round button for adding funds.
@@ -36,9 +39,9 @@ export function MobileTabBar({
   // Go Live belongs in the MIDDLE of the bar, not fourth of five. It is the one
   // control that must be reachable from every route, so it gets the steadiest
   // spot: dead centre, in the easy thumb zone, flanked by equal halves.
-  const half = Math.ceil(tabs.length / 2);
-  const leading = tabs.slice(0, half);
-  const trailing = tabs.slice(half);
+  // More renders on the right, so the left takes one more tab than the right.
+  const leading = tabs.slice(0, Math.ceil((tabs.length + 1) / 2));
+  const trailing = tabs.slice(leading.length);
   // Anything reached from the drawer keeps "More" lit, so the bar always shows
   // where the user is rather than going blank on, say, Arkade.
   const moreActive = !tabs.some((tab) => tab.id === activeSection);

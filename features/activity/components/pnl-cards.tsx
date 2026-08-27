@@ -56,7 +56,8 @@ function PnlCard({ asset, onShare }: { asset: AssetPnl; onShare: () => void }) {
         {percent !== null && (
           <div className="tnum text-[12.5px] font-normal text-white/45">
             {up ? "+" : "−"}
-            {Math.abs(percent).toFixed(1)}% {t("onCost", { cost: money.format(asset.realisedCostBasis) })}
+            {Math.abs(percent).toFixed(1)}%{" "}
+            {t("onCost", { cost: money.format(asset.realisedCostBasis) })}
           </div>
         )}
       </div>
@@ -86,10 +87,7 @@ export function PnlCards({ entries }: { entries: ActivityEntry[] }) {
     const symbol = displaySymbol(asset.symbol);
     return {
       title: t(up ? "pnlShareWin" : "pnlShareLoss", { symbol }),
-      subtitle:
-        percent === null
-          ? symbol
-          : `${up ? "+" : "−"}${Math.abs(percent).toFixed(1)}%`,
+      subtitle: percent === null ? symbol : `${up ? "+" : "−"}${Math.abs(percent).toFixed(1)}%`,
       deepLink: { kind: "activity", ref: "" },
       suggestedText: "",
       // The money stays behind the same opt-in every other share uses: one
@@ -106,16 +104,14 @@ export function PnlCards({ entries }: { entries: ActivityEntry[] }) {
         </div>
         {/* A rail, not a grid: results are glanced at, and a grid of them would
             outweigh the timeline they belong to. */}
-        <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex [scrollbar-width:none] gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
           {closed.map((asset) => (
             <PnlCard key={asset.symbol} asset={asset} onShare={() => setSharing(asset)} />
           ))}
         </div>
       </div>
 
-      {sharing && (
-        <ShareToSquare draft={draft(sharing)} open onClose={() => setSharing(null)} />
-      )}
+      {sharing && <ShareToSquare draft={draft(sharing)} open onClose={() => setSharing(null)} />}
     </>
   );
 }

@@ -123,9 +123,15 @@ describe("closedPositions", () => {
   });
 
   it("returns no percentage when nothing was backed", () => {
-    expect(realisedPercent({
-      symbol: "X", quantity: 0, averageCost: 0,
-      realised: 0, realisedCostBasis: 0, unbackedQuantity: 5,
-    })).toBeNull();
+    expect(
+      realisedPercent({
+        symbol: "X",
+        quantity: 0,
+        averageCost: 0,
+        realised: 0,
+        realisedCostBasis: 0,
+        unbackedQuantity: 5,
+      })
+    ).toBeNull();
   });
 });

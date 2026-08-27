@@ -21,6 +21,10 @@ const GET_PATHS = [
   // surface is met while scrolling rather than only by leaving for another
   // deployment. Public upstream — a signed-out player sees the same posts.
   /^feed$/u,
+  // The topic vocabulary behind the feed's tab strip. Public upstream, and
+  // fetched rather than hard-coded so a topic the square adds shows up here
+  // instead of drifting out of sync with a compiled-in list.
+  /^topics$/u,
   /^me\/creator-application$/u,
   /^streams$/u,
   /^streams\/[^/]+$/u,
@@ -45,15 +49,32 @@ const POST_PATHS = [
   /^streams\/[^/]+\/speaker-requests$/u,
   /^streams\/[^/]+\/speaker-requests\/[^/]+\/(approve|decline|remove|leave)$/u,
   /^streams\/[^/]+\/speaker-token$/u,
+  // Liking a post from Ark. Deliberately the ONLY engagement relayed: Ark
+  // forwards the player's session, so every path opened here acts as them, and
+  // a like is the one action whose entire blast radius is a heart on a post.
+  // Commenting, following and reporting stay in the square.
+  /^posts\/[^/]+\/like$/u,
 ];
+
+// Undoing a like is a DELETE upstream, so the relay has to speak it — for this
+// one path and nothing else.
+const DELETE_PATHS = [/^posts\/[^/]+\/like$/u];
 
 function allowed(patterns: RegExp[], joined: string): boolean {
   return patterns.some((pattern) => pattern.test(joined));
 }
 
+export type ProxyMethod = "GET" | "POST" | "DELETE";
+
+const BY_METHOD: Record<ProxyMethod, RegExp[]> = {
+  GET: GET_PATHS,
+  POST: POST_PATHS,
+  DELETE: DELETE_PATHS,
+};
+
 export const marketSquareProxyPaths = {
   get: GET_PATHS,
   post: POST_PATHS,
-  allows: (method: "GET" | "POST", joined: string): boolean =>
-    allowed(method === "GET" ? GET_PATHS : POST_PATHS, joined),
+  delete: DELETE_PATHS,
+  allows: (method: ProxyMethod, joined: string): boolean => allowed(BY_METHOD[method], joined),
 };

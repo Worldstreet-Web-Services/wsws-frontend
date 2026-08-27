@@ -2479,6 +2479,12 @@
     "openPost": "Diesen Beitrag im Marktplatz öffnen",
     "likesLabel": "Likes",
     "commentsLabel": "Kommentare",
-    "repostsLabel": "Reposts"
+    "repostsLabel": "Reposts",
+    "tabsLabel": "Filter für den Marktplatz-Feed",
+    "liveNow": "Jetzt live",
+    "railTitle": "Auf dem Marktplatz gibt es mehr",
+    "railBlurb": "Folge Tradern, tritt Live-Räumen bei und teile deine eigenen Einschätzungen.",
+    "emptyHint": "Beiträge, Live-Räume und Einschätzungen aus der ganzen Plattform landen hier.",
+    "emptyFollowingHint": "Folge ein paar Tradern, dann erscheinen ihre Beiträge hier."
   }
 }

@@ -2479,6 +2479,12 @@
     "openPost": "Ouvrir ce message sur la Place du Marché",
     "likesLabel": "J'aime",
     "commentsLabel": "Commentaires",
-    "repostsLabel": "Repartages"
+    "repostsLabel": "Repartages",
+    "tabsLabel": "Filtres du fil de la Place",
+    "liveNow": "En direct",
+    "railTitle": "Il y a plus sur la Place",
+    "railBlurb": "Suivez des traders, rejoignez des salons en direct et publiez vos propres analyses.",
+    "emptyHint": "Les messages, salons en direct et analyses de toute la plateforme arrivent ici.",
+    "emptyFollowingHint": "Suivez quelques traders et leurs messages apparaîtront ici."
   }
 }

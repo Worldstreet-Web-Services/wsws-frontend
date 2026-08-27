@@ -2479,6 +2479,12 @@
     "openPost": "Abrir esta publicación en la Plaza del Mercado",
     "likesLabel": "Me gusta",
     "commentsLabel": "Comentarios",
-    "repostsLabel": "Republicaciones"
+    "repostsLabel": "Republicaciones",
+    "tabsLabel": "Filtros del feed de la Plaza",
+    "liveNow": "En directo",
+    "railTitle": "Hay más en la Plaza",
+    "railBlurb": "Sigue a otros traders, únete a salas en directo y publica tus propias ideas.",
+    "emptyHint": "Aquí aparecen publicaciones, salas en directo e ideas de toda la plataforma.",
+    "emptyFollowingHint": "Sigue a algunos traders y sus publicaciones aparecerán aquí."
   }
 }

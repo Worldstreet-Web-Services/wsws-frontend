@@ -2,47 +2,88 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { AsyncEmpty, AsyncError, AsyncLoading } from "@/components/ui/async-state";
+import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { marketSquareHref } from "@/lib/market-square";
+import { fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareLiveStrip } from "@/features/square/components/square-live-strip";
 import { SquarePostCard } from "@/features/square/components/square-post-card";
-import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
-import type { SquareLane } from "@/lib/api/market-square";
+import { SquareRail } from "@/features/square/components/square-rail";
+import { SquareTabs, type SquareTab } from "@/features/square/components/square-tabs";
+import type { TradableSymbol } from "@/features/square/lib/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
-const LANES: readonly SquareLane[] = ["for-you", "following"] as const;
+/** Lane ids are prefixed so a lane and a topic can never collide. */
+const LANE_FOR_YOU = "lane:for-you";
+const LANE_FOLLOWING = "lane:following";
 
 /**
  * Market Square, met while scrolling the dashboard.
  *
  * The PRD makes the square the platform's connective tissue, but a link in the
- * nav is something you have to already want. Trading apps that feel social put
- * the conversation IN the surface people are already in, so it is discovered
- * by scrolling rather than by deciding to leave. This is that surface: real
- * posts and real live rooms from the square, inline, under the markets.
+ * nav is something you have to already want. Trading surfaces that feel social
+ * consolidate attention into ONE feed inside the app people are already in,
+ * rather than splitting it across products — so the square is found here by
+ * scrolling, not by deciding to leave.
  *
- * It is deliberately READ-ONLY here. Ark's proxy relays the feed and the write
- * that composes a post; it does not relay likes, comments or follows, and it
- * should not — Ark forwards the player's session, so every path opened here is
- * a path that acts as them. Reading is what makes the section feel inhabited;
- * every deeper action opens the square itself, where it works properly.
+ * ── Fitting the dashboard ───────────────────────────────────────────────────
+ * This sits in `ws-card`, the same raised panel every other section on the
+ * page uses. Without it the feed floated on the page background while the
+ * tables above sat on a surface, which is what made the section read as pasted
+ * in. The group is LEFT-aligned, not centred, so the feed's left edge lines up
+ * with every table above it.
+ *
+ * ── Width ───────────────────────────────────────────────────────────────────
+ * A feed reads at roughly 600px however wide the monitor is. Centring one
+ * column in a 1520px shell leaves two dead gutters; fanning it into a grid
+ * destroys the stream. So: feed at reading width, secondary content in a rail
+ * beside it, and the rail folded back into the single column below `lg`.
  */
-export function SquareSection({ onOpenBuy }: { onOpenBuy?: (buy: BuyPayload) => void }) {
+export function SquareSection({
+  onOpenBuy,
+  markets = [],
+}: {
+  onOpenBuy?: (buy: BuyPayload) => void;
+  /** Supplied by the dashboard, which owns both this and the trade slice. */
+  markets?: TradableSymbol[];
+}) {
   const t = useTranslations("square");
-  const [lane, setLane] = useState<SquareLane>("for-you");
-  const feed = useSquareFeed(lane);
-  // The tradeable universe, so a $TICKER in a post can open the real buy sheet
-  // instead of pretending to be a link. Already cached by the spot section
-  // above, so this costs nothing extra on the dashboard.
-  const { markets } = useSpotMarkets();
+  const [tab, setTab] = useState<string>(LANE_FOR_YOU);
   const squareHref = marketSquareHref();
+  const composeHref = marketSquareHref("compose");
 
-  const items = useMemo(
-    () => feed.data?.pages.flatMap((page) => page.items) ?? [],
-    [feed.data]
+  // A topic tab filters the for-you lane; the lane tabs carry no topic.
+  const lane: SquareLane = tab === LANE_FOLLOWING ? "following" : "for-you";
+  const topics = useMemo(
+    () => (tab.startsWith("lane:") ? undefined : [tab.replace(/^topic:/, "")]),
+    [tab]
   );
+
+  const feed = useSquareFeed(lane, topics);
+
+  const topicQuery = useQuery({
+    queryKey: ["market-square", "topics"],
+    queryFn: fetchSquareTopics,
+    enabled: squareHref !== null,
+    // The vocabulary changes about as often as a deploy does.
+    staleTime: 30 * 60_000,
+  });
+
+  const tabs = useMemo<SquareTab[]>(
+    () => [
+      { id: LANE_FOR_YOU, label: t("laneForYou") },
+      { id: LANE_FOLLOWING, label: t("laneFollowing") },
+      ...(topicQuery.data ?? []).map((topic) => ({
+        id: `topic:${topic.key}`,
+        label: topic.label,
+      })),
+    ],
+    [topicQuery.data, t]
+  );
+
+  const items = useMemo(() => feed.data?.pages.flatMap((page) => page.items) ?? [], [feed.data]);
   const posts = useMemo(
     () => items.flatMap((item) => (item.type === "post" && item.post ? [item.post] : [])),
     [items]
@@ -50,102 +91,98 @@ export function SquareSection({ onOpenBuy }: { onOpenBuy?: (buy: BuyPayload) => 
   const streams = useMemo(
     () =>
       items.flatMap((item) =>
-        item.type === "stream" && item.stream && item.stream.status === "live"
-          ? [item.stream]
-          : []
+        item.type === "stream" && item.stream && item.stream.status === "live" ? [item.stream] : []
       ),
     [items]
   );
 
-  // Without the square's URL there is no upstream to read, so the section
-  // does not exist rather than rendering a permanent error under the markets.
+  // Without the square's URL there is no upstream to read, so the section does
+  // not exist rather than sitting under the markets as a permanent error.
   if (!squareHref) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Eyebrow>{t("title")}</Eyebrow>
-        <a
-          href={squareHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-grey-500 hover:text-grey-200 text-xs font-medium transition-colors"
-        >
-          {t("openSquare")}
-        </a>
-      </div>
+    <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
+      <Eyebrow>{t("title")}</Eyebrow>
 
-      <div className="mt-3 flex gap-1.5">
-        {LANES.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => setLane(option)}
-            aria-pressed={lane === option}
-            className={
-              "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors " +
-              (lane === option
-                ? "bg-grey-800 text-white"
-                : "text-grey-500 hover:text-grey-300")
-            }
-          >
-            {t(option === "for-you" ? "laneForYou" : "laneFollowing")}
-          </button>
-        ))}
-      </div>
+      <div className="ws-card mt-4 flex gap-8 p-4 sm:p-5 lg:p-6">
+        <div className="w-full min-w-0 lg:max-w-[680px]">
+          <div className="border-grey-800 border-b">
+            <SquareTabs tabs={tabs} active={tab} onSelect={setTab} label={t("tabsLabel")} />
+          </div>
 
-      <div className="mt-4">
-        {feed.isPending ? <AsyncLoading label={t("loading")} rows={3} /> : null}
+          <div className="mt-4">
+            {feed.isPending ? <AsyncLoading label={t("loading")} rows={3} /> : null}
 
-        {feed.isError ? (
-          <AsyncError
-            error={feed.error}
-            subject={t("subject")}
-            unconfiguredDetail={t("unconfigured")}
-            onRetry={() => void feed.refetch()}
-          />
-        ) : null}
-
-        {!feed.isPending && !feed.isError ? (
-          <>
-            <SquareLiveStrip streams={streams} />
-            {posts.length === 0 ? (
-              <AsyncEmpty>
-                {lane === "following" ? t("emptyFollowing") : t("empty")}
-              </AsyncEmpty>
-            ) : (
-              // ONE column, at reading width. A feed is a stream you scroll,
-              // not a gallery you scan: multiple columns give the eye no single
-              // path, and the research on social layouts is consistent that
-              // attention consolidates into one column rather than splitting
-              // across several. The markets above are a grid because they are
-              // data to compare; this is people to read.
-              <div className="border-grey-800 border-t">
-                {posts.map((post) => (
-                  <SquarePostCard
-                    key={post.id}
-                    post={post}
-                    markets={markets}
-                    onOpenBuy={onOpenBuy}
-                  />
-                ))}
-              </div>
-            )}
-
-            {feed.hasNextPage ? (
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => void feed.fetchNextPage()}
-                  disabled={feed.isFetchingNextPage}
-                  className="border-grey-800 hover:bg-grey-900 text-grey-300 rounded-full border px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-50"
-                >
-                  {feed.isFetchingNextPage ? t("loadingMore") : t("loadMore")}
-                </button>
-              </div>
+            {feed.isError ? (
+              <AsyncError
+                error={feed.error}
+                subject={t("subject")}
+                unconfiguredDetail={t("unconfigured")}
+                onRetry={() => void feed.refetch()}
+              />
             ) : null}
-          </>
-        ) : null}
+
+            {!feed.isPending && !feed.isError ? (
+              <>
+                {/* Below lg the rail is not rendered, so live rooms appear here
+                    instead of stacking somewhere nobody scrolls. */}
+                <div className="lg:hidden">
+                  <SquareLiveStrip streams={streams} />
+                </div>
+
+                {posts.length === 0 ? (
+                  // A first-run surface, not an apology. An empty feed is the
+                  // most common state on a new deployment, and "nothing here"
+                  // with no way forward teaches people the section is broken.
+                  <div className="px-4 py-12 text-center">
+                    <p className="text-[14px] font-medium text-white">
+                      {tab === LANE_FOLLOWING ? t("emptyFollowing") : t("empty")}
+                    </p>
+                    <p className="text-grey-500 mx-auto mt-1 max-w-[320px] text-[12.5px] leading-[18px]">
+                      {tab === LANE_FOLLOWING ? t("emptyFollowingHint") : t("emptyHint")}
+                    </p>
+                    {composeHref ? (
+                      <a
+                        href={composeHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-accent text-ink mt-4 inline-flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold transition-[filter] hover:brightness-110"
+                      >
+                        {t("compose")}
+                      </a>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div>
+                    {posts.map((post) => (
+                      <SquarePostCard
+                        key={post.id}
+                        post={post}
+                        markets={markets}
+                        onOpenBuy={onOpenBuy}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {feed.hasNextPage ? (
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => void feed.fetchNextPage()}
+                      disabled={feed.isFetchingNextPage}
+                      className="border-grey-800 hover:bg-grey-900 text-grey-300 rounded-full border px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-50"
+                    >
+                      {feed.isFetchingNextPage ? t("loadingMore") : t("loadMore")}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        <SquareRail streams={streams} />
       </div>
     </div>
   );

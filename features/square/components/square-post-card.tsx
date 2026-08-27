@@ -5,9 +5,11 @@ import { useTranslations } from "next-intl";
 import { timeAgo } from "@/lib/format";
 import { marketSquareHref } from "@/lib/market-square";
 import { parseCashtags } from "@/lib/square/cashtags";
+import { useSquareLike } from "@/features/square/hooks/use-square-like";
+import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedPost } from "@/lib/api/market-square";
-import type { SpotMarket } from "@/features/trade/hooks/use-spot-markets";
+import type { TradableSymbol } from "@/features/square/lib/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
 /** The platform's tick. Small, and only ever drawn for a verified author. */
@@ -65,15 +67,16 @@ export function SquarePostCard({
   onOpenBuy,
 }: {
   post: MarketSquareFeedPost;
-  markets: SpotMarket[];
+  markets: TradableSymbol[];
   onOpenBuy?: (buy: BuyPayload) => void;
 }) {
   const t = useTranslations("square");
+  const like = useSquareLike();
   const author = post.author;
   const href = marketSquareHref(`post/${post.id}`);
 
   const bySymbol = useMemo(() => {
-    const map = new Map<string, SpotMarket>();
+    const map = new Map<string, TradableSymbol>();
     for (const market of markets) map.set(market.symbol.toUpperCase(), market);
     return map;
   }, [markets]);
@@ -94,7 +97,7 @@ export function SquarePostCard({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1">
             <span className="truncate text-[14px] leading-5 font-semibold text-white">
-              {author?.displayName ?? t("someone")}
+              {authorName(author, t("someone"))}
             </span>
             {author?.verification === "verified" ? (
               <VerifiedTick className="text-accent h-[14px] w-[14px] shrink-0" />
@@ -217,17 +220,35 @@ export function SquarePostCard({
       ) : null}
 
       <footer className="mt-3 flex items-center gap-5">
-        <Stat label={t("likesLabel")} count={post.likeCount}>
-          <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
-            <path
-              d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </Stat>
+        {/* The one engagement Ark relays — see use-square-like.ts and the
+            proxy allowlist. It is a real button with a pressed state, not a
+            tally, because a heart you cannot press is a heart that looks
+            broken. */}
+        <button
+          type="button"
+          aria-pressed={post.likedByMe}
+          aria-label={t("likesLabel")}
+          disabled={like.isPending}
+          onClick={() => like.mutate({ postId: post.id, liked: !post.likedByMe })}
+          className={
+            "flex items-center gap-1.5 rounded-full transition-colors disabled:opacity-60 " +
+            (post.likedByMe ? "text-down" : "text-grey-500 hover:text-grey-200")
+          }
+        >
+          <span className="h-[15px] w-[15px]" aria-hidden>
+            <svg viewBox="0 0 24 24" className="h-full w-full">
+              <path
+                d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
+                fill={post.likedByMe ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="tnum text-[12px]">{post.likeCount}</span>
+        </button>
+
         <Stat label={t("commentsLabel")} count={post.commentCount}>
           <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
             <path

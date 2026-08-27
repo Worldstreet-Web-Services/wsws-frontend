@@ -443,6 +443,8 @@ export interface MarketSquareFeedPost {
   likeCount: number;
   commentCount: number;
   repostCount: number;
+  /** Viewer state. Only meaningful for a signed-in reader; false when not. */
+  likedByMe: boolean;
   createdAt: string;
   author: MarketSquareAuthor | null;
 }
@@ -481,10 +483,14 @@ export type SquareLane = "for-you" | "following" | "live";
 export async function fetchSquareFeed(
   lane: SquareLane,
   cursor?: string | null,
-  limit = 10
+  limit = 10,
+  topics?: string[]
 ): Promise<MarketSquareFeedPage> {
   const params = new URLSearchParams({ lane, limit: String(limit) });
   if (cursor) params.set("cursor", cursor);
+  // Filters the lane rather than replacing it, which is why the tab strip can
+  // mix "For you" with a topic without the two meaning different lists.
+  if (topics && topics.length > 0) params.set("topics", topics.join(","));
   const page = await marketSquare.get<Partial<MarketSquareFeedPage>>(`/feed?${params.toString()}`);
   // A lane the deployment does not serve answers with an empty page rather
   // than an error; treat a malformed one the same way so the section renders
@@ -493,4 +499,41 @@ export async function fetchSquareFeed(
     items: Array.isArray(page?.items) ? page.items : [],
     nextCursor: page?.nextCursor ?? null,
   };
+}
+
+export interface MarketSquareTopic {
+  key: string;
+  label: string;
+}
+
+/**
+ * The square's topic vocabulary, for the feed's tab strip.
+ *
+ * Fetched rather than compiled in: a topic the square adds should appear here
+ * without a deploy, and a hard-coded list would quietly filter on keys that no
+ * longer exist.
+ */
+export async function fetchSquareTopics(): Promise<MarketSquareTopic[]> {
+  const topics = await marketSquare.get<MarketSquareTopic[] | { items?: MarketSquareTopic[] }>(
+    "/topics"
+  );
+  const list = Array.isArray(topics) ? topics : (topics?.items ?? []);
+  return list.filter((topic) => typeof topic?.key === "string" && topic.key !== "");
+}
+
+export interface LikeResult {
+  liked: boolean;
+  likeCount: number;
+}
+
+/**
+ * Like or unlike a post without leaving Ark.
+ *
+ * The only engagement Ark's proxy relays. Both directions are idempotent
+ * upstream, so a double tap settles rather than toggling twice, and the count
+ * rendered afterwards is the SERVER's — never one this client incremented.
+ */
+export async function setPostLike(postId: string, liked: boolean): Promise<LikeResult> {
+  const path = `/posts/${postId}/like`;
+  return liked ? marketSquare.post<LikeResult>(path, {}) : marketSquare.del<LikeResult>(path);
 }

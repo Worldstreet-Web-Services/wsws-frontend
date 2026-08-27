@@ -2479,6 +2479,12 @@
     "openPost": "Abrir esta publicação na Praça do Mercado",
     "likesLabel": "Gostos",
     "commentsLabel": "Comentários",
-    "repostsLabel": "Republicações"
+    "repostsLabel": "Republicações",
+    "tabsLabel": "Filtros do feed da Praça",
+    "liveNow": "Em direto",
+    "railTitle": "Há mais na Praça",
+    "railBlurb": "Siga traders, entre em salas em direto e publique as suas próprias análises.",
+    "emptyHint": "Publicações, salas em direto e análises de toda a plataforma aparecem aqui.",
+    "emptyFollowingHint": "Siga alguns traders e as publicações deles aparecerão aqui."
   }
 }

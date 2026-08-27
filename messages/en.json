@@ -2479,6 +2479,12 @@
     "openPost": "Open this post in Market Square",
     "likesLabel": "Likes",
     "commentsLabel": "Comments",
-    "repostsLabel": "Reposts"
+    "repostsLabel": "Reposts",
+    "tabsLabel": "Market Square feed filters",
+    "liveNow": "Live now",
+    "railTitle": "There's more in the Square",
+    "railBlurb": "Follow traders, join live rooms and post your own calls.",
+    "emptyHint": "Posts, live rooms and calls from across the platform land here.",
+    "emptyFollowingHint": "Follow a few traders and their posts will show up here."
   }
 }

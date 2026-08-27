@@ -89,11 +89,20 @@ export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] 
         </svg>
       </button>
 
-      {/* Posting happens HERE, in Ark. The plus used to link out to the
-          square's own composer, which meant leaving the dashboard and landing
-          on another deployment to say one sentence. Posting is the one write
-          Ark's proxy already relays, so there was never a reason to send
-          people away. */}
+      {/* The plus opens the square's entry sheet — who you are there, what is
+          waiting, and the ways in — rather than assuming writing is the only
+          reason anyone reaches for it. */}
+      <SquareActionsSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onCompose={() => {
+          setSheetOpen(false);
+          setComposing(true);
+        }}
+      />
+
+      {/* Composing happens HERE, in Ark, rather than on another deployment:
+          posting is a write the proxy already relays. */}
       <SquareComposer open={composing} onClose={() => setComposing(false)} markets={markets} />
     </>
   );

@@ -12,7 +12,8 @@ import { SquareLiveStrip } from "@/features/square/components/square-live-strip"
 import { SquarePostCard } from "@/features/square/components/square-post-card";
 import { SquareRail } from "@/features/square/components/square-rail";
 import { SquareTabs, type SquareTab } from "@/features/square/components/square-tabs";
-import type { TradableSymbol } from "@/features/square/lib/tradable";
+import { SquareComposer } from "@/components/share/square-composer";
+import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
 /** Lane ids are prefixed so a lane and a topic can never collide. */
@@ -52,7 +53,7 @@ export function SquareSection({
   const t = useTranslations("square");
   const [tab, setTab] = useState<string>(LANE_FOR_YOU);
   const squareHref = marketSquareHref();
-  const composeHref = marketSquareHref("compose");
+  const [composing, setComposing] = useState(false);
 
   // A topic tab filters the for-you lane; the lane tabs carry no topic.
   const lane: SquareLane = tab === LANE_FOLLOWING ? "following" : "for-you";
@@ -141,16 +142,13 @@ export function SquareSection({
                     <p className="text-grey-500 mx-auto mt-1 max-w-[320px] text-[12.5px] leading-[18px]">
                       {tab === LANE_FOLLOWING ? t("emptyFollowingHint") : t("emptyHint")}
                     </p>
-                    {composeHref ? (
-                      <a
-                        href={composeHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-accent text-ink mt-4 inline-flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold transition-[filter] hover:brightness-110"
-                      >
-                        {t("compose")}
-                      </a>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setComposing(true)}
+                      className="bg-accent text-ink mt-4 inline-flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold transition-[filter] hover:brightness-110"
+                    >
+                      {t("compose")}
+                    </button>
                   </div>
                 ) : (
                   <div>
@@ -184,6 +182,8 @@ export function SquareSection({
 
         <SquareRail streams={streams} />
       </div>
+
+      <SquareComposer open={composing} onClose={() => setComposing(false)} markets={markets} />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { useSquareLike } from "@/features/square/hooks/use-square-like";
 import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedPost } from "@/lib/api/market-square";
-import type { TradableSymbol } from "@/features/square/lib/tradable";
+import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
 /** The platform's tick. Small, and only ever drawn for a verified author. */

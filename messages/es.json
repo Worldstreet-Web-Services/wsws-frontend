@@ -2485,6 +2485,21 @@
     "railTitle": "Hay más en la Plaza",
     "railBlurb": "Sigue a otros traders, únete a salas en directo y publica tus propias ideas.",
     "emptyHint": "Aquí aparecen publicaciones, salas en directo e ideas de toda la plataforma.",
-    "emptyFollowingHint": "Sigue a algunos traders y sus publicaciones aparecerán aquí."
+    "emptyFollowingHint": "Sigue a algunos traders y sus publicaciones aparecerán aquí.",
+    "composeTitle": "Publicar en la Plaza del Mercado",
+    "composeBlurb": "Se publica como tú. Etiqueta una moneda para hacerla pulsable.",
+    "composePlaceholder": "Comparte tus ideas…",
+    "composeSubmit": "Publicar",
+    "composePosting": "Publicando…",
+    "composeCancel": "Cancelar",
+    "postFailed": "No se pudo publicar. No se envió nada — inténtalo de nuevo.",
+    "posted": "Publicado en la Plaza del Mercado.",
+    "viewPost": "Verlo",
+    "toolSymbol": "Etiquetar una moneda",
+    "toolTopic": "Añadir temas",
+    "symbolSearch": "Buscar monedas",
+    "symbolNone": "Ninguna moneda coincide.",
+    "topicsNone": "No hay temas disponibles.",
+    "topicsChosen": "{count, plural, one {# tema} other {# temas}}"
   }
 }

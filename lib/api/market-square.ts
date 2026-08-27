@@ -378,6 +378,25 @@ export interface MarketSquarePost {
 }
 
 /**
+ * Post to the square from Ark, in the author's own words.
+ *
+ * Distinct from `createPost` below, which SHARES an activity and therefore
+ * always carries a deep link and the card describing it. This one carries
+ * neither: a person writing a thought is not pointing at anything, and
+ * attaching a synthetic card ("On Ark", linking to whatever page they happened
+ * to be on) puts a claim in their post that they did not make.
+ */
+export async function createSquarePost(text: string, topics?: string[]): Promise<MarketSquarePost> {
+  return marketSquare.post<MarketSquarePost>("/posts", {
+    kind: "update",
+    text,
+    // Omitted rather than sent empty: the service treats an absent field and
+    // an empty array the same, and sending `[]` implies a choice was made.
+    ...(topics && topics.length > 0 ? { topics } : {}),
+  });
+}
+
+/**
  * Post an activity to Market Square.
  *
  * A deployment that has not shipped `preview` yet would drop it silently — the

@@ -2485,6 +2485,21 @@
     "railTitle": "Auf dem Marktplatz gibt es mehr",
     "railBlurb": "Folge Tradern, tritt Live-Räumen bei und teile deine eigenen Einschätzungen.",
     "emptyHint": "Beiträge, Live-Räume und Einschätzungen aus der ganzen Plattform landen hier.",
-    "emptyFollowingHint": "Folge ein paar Tradern, dann erscheinen ihre Beiträge hier."
+    "emptyFollowingHint": "Folge ein paar Tradern, dann erscheinen ihre Beiträge hier.",
+    "composeTitle": "Auf dem Marktplatz posten",
+    "composeBlurb": "Wird in deinem Namen gepostet. Markiere eine Coin, um sie antippbar zu machen.",
+    "composePlaceholder": "Teile deine Einschätzung…",
+    "composeSubmit": "Posten",
+    "composePosting": "Wird gepostet…",
+    "composeCancel": "Abbrechen",
+    "postFailed": "Posten fehlgeschlagen. Es wurde nichts gesendet — versuch es erneut.",
+    "posted": "Auf dem Marktplatz gepostet.",
+    "viewPost": "Ansehen",
+    "toolSymbol": "Coin markieren",
+    "toolTopic": "Themen hinzufügen",
+    "symbolSearch": "Coins suchen",
+    "symbolNone": "Keine passende Coin.",
+    "topicsNone": "Keine Themen verfügbar.",
+    "topicsChosen": "{count, plural, one {# Thema} other {# Themen}}"
   }
 }

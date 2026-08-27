@@ -2485,6 +2485,21 @@
     "railTitle": "There's more in the Square",
     "railBlurb": "Follow traders, join live rooms and post your own calls.",
     "emptyHint": "Posts, live rooms and calls from across the platform land here.",
-    "emptyFollowingHint": "Follow a few traders and their posts will show up here."
+    "emptyFollowingHint": "Follow a few traders and their posts will show up here.",
+    "composeTitle": "Post to Market Square",
+    "composeBlurb": "Posts as you. Tag a coin to make it tappable.",
+    "composePlaceholder": "Share your insights…",
+    "composeSubmit": "Post",
+    "composePosting": "Posting…",
+    "composeCancel": "Cancel",
+    "postFailed": "Couldn't post. Nothing was sent — try again.",
+    "posted": "Posted to Market Square.",
+    "viewPost": "View it",
+    "toolSymbol": "Tag a coin",
+    "toolTopic": "Add topics",
+    "symbolSearch": "Search coins",
+    "symbolNone": "No coins match that.",
+    "topicsNone": "No topics available.",
+    "topicsChosen": "{count, plural, one {# topic} other {# topics}}"
   }
 }

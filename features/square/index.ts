@@ -2,4 +2,4 @@
 // else imports into the slice.
 export { SquareSection } from "./components/square-section";
 export { SquareComposeFab } from "./components/square-compose-fab";
-export type { TradableSymbol } from "./lib/tradable";
+export type { TradableSymbol } from "@/lib/square/tradable";

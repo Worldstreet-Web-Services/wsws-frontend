@@ -2485,6 +2485,21 @@
     "railTitle": "Há mais na Praça",
     "railBlurb": "Siga traders, entre em salas em direto e publique as suas próprias análises.",
     "emptyHint": "Publicações, salas em direto e análises de toda a plataforma aparecem aqui.",
-    "emptyFollowingHint": "Siga alguns traders e as publicações deles aparecerão aqui."
+    "emptyFollowingHint": "Siga alguns traders e as publicações deles aparecerão aqui.",
+    "composeTitle": "Publicar na Praça do Mercado",
+    "composeBlurb": "Publicado em seu nome. Marque uma moeda para a tornar clicável.",
+    "composePlaceholder": "Partilhe a sua análise…",
+    "composeSubmit": "Publicar",
+    "composePosting": "A publicar…",
+    "composeCancel": "Cancelar",
+    "postFailed": "Não foi possível publicar. Nada foi enviado — tente novamente.",
+    "posted": "Publicado na Praça do Mercado.",
+    "viewPost": "Ver",
+    "toolSymbol": "Marcar uma moeda",
+    "toolTopic": "Adicionar tópicos",
+    "symbolSearch": "Procurar moedas",
+    "symbolNone": "Nenhuma moeda corresponde.",
+    "topicsNone": "Sem tópicos disponíveis.",
+    "topicsChosen": "{count, plural, one {# tópico} other {# tópicos}}"
   }
 }

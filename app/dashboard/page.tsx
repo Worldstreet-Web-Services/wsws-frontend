@@ -180,7 +180,7 @@ export default function DashboardPage() {
       </DashboardShell>
       {/* Outside the shell so it anchors to the viewport rather than the
           scrolling column. It reveals itself once the square is in reach. */}
-      <SquareComposeFab />
+      <SquareComposeFab markets={spotMarkets} />
 
       <ModalShell
         open={modal !== null}

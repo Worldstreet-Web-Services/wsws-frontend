@@ -2485,6 +2485,21 @@
     "railTitle": "Il y a plus sur la Place",
     "railBlurb": "Suivez des traders, rejoignez des salons en direct et publiez vos propres analyses.",
     "emptyHint": "Les messages, salons en direct et analyses de toute la plateforme arrivent ici.",
-    "emptyFollowingHint": "Suivez quelques traders et leurs messages apparaîtront ici."
+    "emptyFollowingHint": "Suivez quelques traders et leurs messages apparaîtront ici.",
+    "composeTitle": "Publier sur la Place du Marché",
+    "composeBlurb": "Publié en votre nom. Taguez une crypto pour la rendre cliquable.",
+    "composePlaceholder": "Partagez votre analyse…",
+    "composeSubmit": "Publier",
+    "composePosting": "Publication…",
+    "composeCancel": "Annuler",
+    "postFailed": "Publication impossible. Rien n'a été envoyé — réessayez.",
+    "posted": "Publié sur la Place du Marché.",
+    "viewPost": "Voir",
+    "toolSymbol": "Taguer une crypto",
+    "toolTopic": "Ajouter des sujets",
+    "symbolSearch": "Rechercher une crypto",
+    "symbolNone": "Aucune crypto ne correspond.",
+    "topicsNone": "Aucun sujet disponible.",
+    "topicsChosen": "{count, plural, one {# sujet} other {# sujets}}"
   }
 }

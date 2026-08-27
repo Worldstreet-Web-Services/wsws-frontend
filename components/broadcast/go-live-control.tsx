@@ -1,6 +1,6 @@
 "use client";
 
-import { ShareToSquare } from "@/components/share/share-to-square";
+import { SquareComposer } from "@/components/share/square-composer";
 
 // The Go Live control, in the two places the spec puts it.
 //
@@ -194,18 +194,14 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
       {sharing ? <ShareFlow target={target} onClose={() => setSharing(false)} /> : null}
 
       {/* Posting needs no camera and no capture, so it does not go through the
-          broadcast flow: it is the square's composer, reached from Ark. */}
-      {posting ? (
-        <ShareToSquare
-          draft={{
-            title: "On Ark",
-            deepLink: { kind: "external", ref: window.location.href },
-            suggestedText: "",
-          }}
-          open
-          onClose={() => setPosting(false)}
-        />
-      ) : null}
+          broadcast flow.
+          
+          This used to reuse the SHARE sheet with a synthetic draft — title
+          "On Ark", deep-linked to whatever page the author happened to be on.
+          That put a card in their post making a claim they never made, and
+          every such post pointed somewhere meaningless. The composer attaches
+          nothing unless the author attaches it. */}
+      <SquareComposer open={posting} onClose={() => setPosting(false)} />
     </div>
   );
 }

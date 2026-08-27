@@ -15,8 +15,7 @@
  */
 
 export type Segment =
-  | { kind: "text"; value: string }
-  | { kind: "cashtag"; value: string; symbol: string };
+  { kind: "text"; value: string } | { kind: "cashtag"; value: string; symbol: string };
 
 /**
  * `$` then 2–10 letters or digits, and NOT immediately followed by another

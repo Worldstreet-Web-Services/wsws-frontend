@@ -33,7 +33,15 @@ function VerifiedTick({ className = "" }: { className?: string }) {
   );
 }
 
-function Stat({ label, count, children }: { label: string; count: number; children: React.ReactNode }) {
+function Stat({
+  label,
+  count,
+  children,
+}: {
+  label: string;
+  count: number;
+  children: React.ReactNode;
+}) {
   return (
     <span className="text-grey-500 flex items-center gap-1.5" aria-label={label}>
       <span className="h-[15px] w-[15px]" aria-hidden>
@@ -83,11 +91,15 @@ export function SquarePostCard({
 
   // Only offer a chip when there is somewhere for it to go.
   const segments = useMemo(
-    () => (onOpenBuy ? parseCashtags(post.text, bySymbol.keys()) : [{ kind: "text" as const, value: post.text }]),
+    () =>
+      onOpenBuy
+        ? parseCashtags(post.text, bySymbol.keys())
+        : [{ kind: "text" as const, value: post.text }],
     [post.text, bySymbol, onOpenBuy]
   );
 
-  const isVideo = post.mediaKind === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(post.mediaUrl ?? "");
+  const isVideo =
+    post.mediaKind === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(post.mediaUrl ?? "");
   const poster = post.thumbnailUrl ?? (isVideo ? null : post.mediaUrl);
 
   return (

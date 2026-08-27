@@ -73,6 +73,11 @@ function Menu({
   const items = [
     { label: "Go Live", body: "Broadcast this view", action: onGoLive },
     { label: "Share screen", body: "Pick a tab or window", action: onShareScreen },
+    // Posting deliberately does NOT live here any more. This menu is about
+    // broadcasting — camera, screen, viewers — and a text composer sat in it
+    // as a fourth unrelated verb. Composing now belongs to the square's own
+    // plus control on the dashboard, which is where someone who wants to write
+    // something actually is.
     { label: "Invite viewers", body: "Copy a link to your stream", action: onInvite },
   ];
 
@@ -136,12 +141,21 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         aria-haspopup={live ? undefined : "menu"}
         aria-expanded={menuOpen}
         data-tour="go-live"
+        aria-label={label}
+        title={label}
         className={
           variant === "tab"
-            ? `pointer-events-auto flex h-[52px] cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-white shadow-[0_18px_50px_-16px_rgba(0,0,0,0.95)] ring-2 transition-colors ${
+            ? // Sits IN the bar at the same 44px height as every other tab.
+              // It was a raised 52px node breaking the pill's top edge, which
+              // overflowed the bar on a phone — the reason a raised node works
+              // elsewhere is a full-width bar with room above it, and this is a
+              // floating pill with neither. Distinction comes from the violet
+              // ring and fill rather than from size or elevation, so it reads
+              // as the one different thing in the row without leaving it.
+              `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-white ring-1 transition-colors ${
                 live
                   ? "bg-violet-500 ring-violet-300/70"
-                  : "bg-[#141416]/92 ring-violet-400/60 backdrop-blur-[18px] hover:bg-white/12"
+                  : "bg-violet-500/22 ring-violet-400/55 hover:bg-violet-500/32"
               }`
             : `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
                 live
@@ -151,11 +165,9 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         }
       >
         <span className="grid size-5 place-items-center">
-          <LiveIcon size={variant === "tab" ? 21 : 20} />
+          <LiveIcon size={variant === "tab" ? 22 : 20} />
         </span>
-        <span className={variant === "tab" ? "text-[12.5px] font-semibold" : "flex-1"}>
-          {label}
-        </span>
+        {variant === "tab" ? null : <span className="flex-1">{label}</span>}
       </button>
 
       {menuOpen ? (

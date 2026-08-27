@@ -15,12 +15,14 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { SuccessPanel } from "@/components/ui/success-panel";
 import { DetailModal } from "@/components/layout/modals/detail-modal";
 import { ConfirmModal } from "@/components/layout/modals/confirm-modal";
-import { FundsModal, WithdrawModal } from "@/features/funds";
+import { BankDepositAnalytics, FundsModal, WithdrawModal } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit";
 import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { SquareComposeFab, SquareSection } from "@/features/square";
+import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { useDashboardTour } from "@/features/tour";
@@ -79,6 +81,10 @@ export default function DashboardPage() {
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
   const scrollSectionIds = useMemo(() => nav.map((n) => n.id).filter(isScrollSection), [nav]);
   const activeSection = useScrollSpy(scrollSectionIds);
+  // The tradeable universe, so a $TICKER in a square post can open the real
+  // buy sheet. The spot section above already caches this, so it costs nothing
+  // extra; the square slice takes a plain shape and never imports trade.
+  const { markets: spotMarkets } = useSpotMarkets();
   useDashboardTour();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
@@ -150,6 +156,9 @@ export default function DashboardPage() {
             list that stood here; it is mounted on its own now that history
             lives only on its own page. */}
         <DepositAnalytics />
+        {/* Follows a bank deposit to settlement so the arrival above can be
+            reported as the Naira deposit it is, rather than as a chain one. */}
+        <BankDepositAnalytics />
         {scrollSectionIds.map((id, index) => (
           <Fragment key={id}>
             <section id={id} className={SECTION_CLASS}>
@@ -163,7 +172,15 @@ export default function DashboardPage() {
             ) : null}
           </Fragment>
         ))}
+        {/* The social floor of the dashboard. It sits AFTER the markets on
+            purpose: someone opening Ark came for their money, and the square
+            is what they scroll into once they are done reading it — met by
+            browsing rather than by deciding to leave for another deployment. */}
+        <SquareSection onOpenBuy={openBuy} markets={spotMarkets} />
       </DashboardShell>
+      {/* Outside the shell so it anchors to the viewport rather than the
+          scrolling column. It reveals itself once the square is in reach. */}
+      <SquareComposeFab markets={spotMarkets} />
 
       <ModalShell
         open={modal !== null}

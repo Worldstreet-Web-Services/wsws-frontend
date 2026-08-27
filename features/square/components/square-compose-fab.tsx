@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { squareLinks } from "@/lib/square/links";
 import { SquareComposer } from "@/components/share/square-composer";
+import { SquareActionsSheet } from "@/features/square/components/square-actions-sheet";
 import type { TradableSymbol } from "@/lib/square/tradable";
 
 /** How far down the page the square section starts mattering, in viewports. */
@@ -25,6 +26,7 @@ const REVEAL_AFTER_VIEWPORTS = 1.2;
 export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] }) {
   const t = useTranslations("square");
   const [shown, setShown] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   // Only the square being CONFIGURED matters now; the composer is local, so
   // there is no compose URL to navigate to.
@@ -57,7 +59,7 @@ export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] 
     <>
       <button
         type="button"
-        onClick={() => setComposing(true)}
+        onClick={() => setSheetOpen(true)}
         aria-label={t("compose")}
         // Kept mounted and faded so it does not pop into the layout mid-scroll;
         // `pointer-events-none` while hidden keeps it from catching taps meant

@@ -435,6 +435,8 @@ export interface MarketSquareAuthor {
   avatarUrl: string | null;
   verification: string;
   role: MarketSquareRole;
+  /** Viewer state, hydrated by the feed for a signed-in reader. */
+  isFollowing?: boolean;
 }
 
 /**
@@ -609,4 +611,42 @@ export async function addPostComment(postId: string, text: string): Promise<Mark
  */
 export async function recordPostView(postId: string): Promise<void> {
   await marketSquare.post(`/posts/${postId}/views`, {});
+}
+
+export interface FollowResult {
+  following: boolean;
+}
+
+/** Follow or unfollow an author. Idempotent upstream in both directions. */
+export async function setFollow(profileId: string, following: boolean): Promise<FollowResult> {
+  const path = `/profiles/${profileId}/follow`;
+  return following
+    ? marketSquare.post<FollowResult>(path, {})
+    : marketSquare.del<FollowResult>(path);
+}
+
+export interface MarketSquareMe {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verification: string;
+  role: MarketSquareRole;
+}
+
+/** The reader's own square identity, for the compose sheet's header. */
+export async function fetchSquareMe(): Promise<MarketSquareMe> {
+  return marketSquare.get<MarketSquareMe>("/me");
+}
+
+/**
+ * Unread counters for the square.
+ *
+ * Shapes vary by deployment, so anything unrecognised reads as zero rather
+ * than rendering a badge with NaN in it.
+ */
+export async function fetchSquareUnread(): Promise<number> {
+  const data = await marketSquare.get<Record<string, unknown>>("/me/unread");
+  const value = data?.notifications ?? data?.unread ?? data?.count ?? 0;
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
 }

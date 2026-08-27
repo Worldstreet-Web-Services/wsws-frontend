@@ -87,6 +87,26 @@ describe("market square proxy allowlist", () => {
     }
   });
 
+  // Ark's proxy demands a session by default, which turned the dashboard's
+  // square section into a 401 for signed-out readers even though the feed
+  // upstream answers anybody. Only the genuinely public reads are exempt.
+  it("exempts only the square's public reads from the session check", () => {
+    for (const path of ["feed", "topics", "posts/abc/comments"]) {
+      expect(marketSquareProxyPaths.isPublicGet(path), `${path} should be public`).toBe(true);
+    }
+    for (const path of [
+      "me",
+      "me/unread",
+      "me/notifications",
+      "me/creator-application",
+      "streams",
+      "streams/abc/speaker-requests/me",
+      "posts/abc/comments/extra",
+    ]) {
+      expect(marketSquareProxyPaths.isPublicGet(path), `${path} must need a session`).toBe(false);
+    }
+  });
+
   it("matches whole paths, so a lookalike prefix is not relayed", () => {
     expect(marketSquareProxyPaths.allows("POST", "posts/abc")).toBe(false);
     expect(marketSquareProxyPaths.allows("POST", "streams/abc/go-live/extra")).toBe(false);

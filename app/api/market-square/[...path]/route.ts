@@ -94,7 +94,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   const joined = path.join("/");
   if (!marketSquareProxyPaths.allows("GET", joined))
     return jsonError("NOT_FOUND", "Not found", 404);
-  if (!(await verifyRequest(req))) return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  // The square's public reads answer anybody upstream, so gating them here
+  // turned the dashboard's whole social section into a 401 for signed-out
+  // readers. The token is still forwarded when present, so viewer state keeps
+  // resolving for everyone else.
+  if (!marketSquareProxyPaths.isPublicGet(joined) && !(await verifyRequest(req))) {
+    return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  }
   return forward(req, joined, "GET");
 }
 

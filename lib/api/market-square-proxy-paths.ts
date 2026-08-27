@@ -88,6 +88,24 @@ function allowed(patterns: RegExp[], joined: string): boolean {
   return patterns.some((pattern) => pattern.test(joined));
 }
 
+/**
+ * Reads that need NO session, because the square serves them to anyone.
+ *
+ * Ark's proxy demands a verified session on every path by default, which is
+ * right for a relay that forwards the caller's identity — but it silently made
+ * the dashboard's whole square section a 401 for signed-out readers, and for
+ * signed-in ones during the moment before Privy warms up. The feed upstream is
+ * `optionalAuth`: it answers anybody, and enriches the answer when a token
+ * comes with it.
+ *
+ * So these three are exempt from OUR session check only. The caller's token is
+ * still forwarded whenever there is one, so `likedByMe` and the rest keep
+ * resolving — a signed-out reader simply sees the same posts without the
+ * viewer state. Everything else, including anything under /me, still requires
+ * a session here before a single byte is forwarded.
+ */
+const PUBLIC_GET_PATHS = [/^feed$/u, /^topics$/u, /^posts\/[^/]+\/comments$/u];
+
 export type ProxyMethod = "GET" | "POST" | "DELETE";
 
 const BY_METHOD: Record<ProxyMethod, RegExp[]> = {
@@ -98,6 +116,8 @@ const BY_METHOD: Record<ProxyMethod, RegExp[]> = {
 
 export const marketSquareProxyPaths = {
   get: GET_PATHS,
+  /** Whether a GET may be relayed without a verified session. */
+  isPublicGet: (joined: string): boolean => allowed(PUBLIC_GET_PATHS, joined),
   post: POST_PATHS,
   delete: DELETE_PATHS,
   allows: (method: ProxyMethod, joined: string): boolean => allowed(BY_METHOD[method], joined),

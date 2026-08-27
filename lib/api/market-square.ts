@@ -386,10 +386,35 @@ export interface MarketSquarePost {
  * attaching a synthetic card ("On Ark", linking to whatever page they happened
  * to be on) puts a claim in their post that they did not make.
  */
-export async function createSquarePost(text: string, topics?: string[]): Promise<MarketSquarePost> {
+export interface SquareUpload {
+  url: string;
+  kind: "image" | "video";
+  contentType: string;
+  bytes: number;
+}
+
+/**
+ * Upload a picture or clip for a post.
+ *
+ * Sent as multipart so the service sees the real bytes and judges the CONTENT
+ * TYPE itself — it never trusts a filename, and it caps size server-side. The
+ * proxy forwards the body and its boundary verbatim.
+ */
+export async function uploadSquareMedia(file: File): Promise<SquareUpload> {
+  const form = new FormData();
+  form.append("file", file);
+  return marketSquare.postForm<SquareUpload>("/uploads", form);
+}
+
+export async function createSquarePost(
+  text: string,
+  topics?: string[],
+  media?: { url: string; kind: "image" | "video" } | null
+): Promise<MarketSquarePost> {
   return marketSquare.post<MarketSquarePost>("/posts", {
     kind: "update",
     text,
+    ...(media ? { mediaUrl: media.url, mediaKind: media.kind } : {}),
     // Omitted rather than sent empty: the service treats an absent field and
     // an empty array the same, and sending `[]` implies a choice was made.
     ...(topics && topics.length > 0 ? { topics } : {}),

@@ -23,11 +23,18 @@ const REVEAL_AFTER_VIEWPORTS = 1.2;
  * phone, and it never sits over the sticky header because it is anchored to
  * the bottom.
  */
-export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] }) {
+export function SquareComposeFab({
+  markets = [],
+  onPickTopic,
+}: {
+  markets?: TradableSymbol[];
+  /** Lets the sheet's discussions steer the feed's tab strip. */
+  onPickTopic?: (key: string) => void;
+}) {
   const t = useTranslations("square");
   const [shown, setShown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [composing, setComposing] = useState(false);
+  const [composing, setComposing] = useState<false | "text" | "media">(false);
   // Only the square being CONFIGURED matters now; the composer is local, so
   // there is no compose URL to navigate to.
   const href = squareLinks.home();
@@ -97,13 +104,23 @@ export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] 
         onClose={() => setSheetOpen(false)}
         onCompose={() => {
           setSheetOpen(false);
-          setComposing(true);
+          setComposing("text");
         }}
+        onComposeMedia={() => {
+          setSheetOpen(false);
+          setComposing("media");
+        }}
+        onPickTopic={onPickTopic}
       />
 
       {/* Composing happens HERE, in Ark, rather than on another deployment:
           posting is a write the proxy already relays. */}
-      <SquareComposer open={composing} onClose={() => setComposing(false)} markets={markets} />
+      <SquareComposer
+        open={composing !== false}
+        onClose={() => setComposing(false)}
+        markets={markets}
+        withMedia={composing === "media"}
+      />
     </>
   );
 }

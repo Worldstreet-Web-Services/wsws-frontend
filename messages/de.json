@@ -2526,6 +2526,14 @@
     "notifications": "Benachrichtigungen",
     "notificationsWithCount": "{count, plural, one {# ungelesene Benachrichtigung} other {# ungelesene Benachrichtigungen}}",
     "discussions": "Diskussionen",
-    "openProfile": "Dein Marktplatz-Profil öffnen"
+    "openProfile": "Dein Marktplatz-Profil öffnen",
+    "tilePost": "Posten",
+    "tileMedia": "Medien",
+    "tileLive": "Live gehen",
+    "toolMedia": "Foto oder Clip anhängen",
+    "mediaUploading": "Wird hochgeladen…",
+    "mediaFailed": "Anhängen fehlgeschlagen. Nur Bilder und kurze Clips.",
+    "mediaRemove": "Anhang entfernen",
+    "joinDiscussion": "An der Diskussion teilnehmen"
   }
 }

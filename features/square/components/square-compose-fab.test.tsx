@@ -44,10 +44,22 @@ describe("SquareComposeFab", () => {
     window.dispatchEvent(new Event("scroll"));
 
     const plus = screen.getByRole("button", { name: "compose" });
-    expect(screen.queryByText("composeTitle")).toBeNull();
+    expect(screen.queryByText("tilePost")).toBeNull();
 
     fireEvent.click(plus);
-    expect(screen.getByText("composeTitle")).toBeInTheDocument();
+    // All three ways in, which is the whole point of the sheet existing
+    // rather than the plus jumping straight to the composer.
+    expect(screen.getByText("tilePost")).toBeInTheDocument();
+    expect(screen.getByText("tileMedia")).toBeInTheDocument();
+    expect(screen.getByText("tileLive")).toBeInTheDocument();
+  });
+
+  it("opens the composer from the sheet's Post tile", () => {
+    renderFab();
+    fireEvent.click(screen.getByRole("button", { name: "compose" }));
+    fireEvent.click(screen.getByText("tilePost"));
+    // The composer's own field, not the sheet's tile label.
+    expect(screen.getByPlaceholderText("composePlaceholder")).toBeInTheDocument();
   });
 
   it("renders nothing at all when the square is not configured", async () => {

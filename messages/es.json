@@ -2526,6 +2526,14 @@
     "notifications": "Notificaciones",
     "notificationsWithCount": "{count, plural, one {# notificación sin leer} other {# notificaciones sin leer}}",
     "discussions": "Debates",
-    "openProfile": "Abrir tu perfil de la Plaza"
+    "openProfile": "Abrir tu perfil de la Plaza",
+    "tilePost": "Publicar",
+    "tileMedia": "Multimedia",
+    "tileLive": "En directo",
+    "toolMedia": "Adjuntar una foto o un clip",
+    "mediaUploading": "Subiendo…",
+    "mediaFailed": "No se pudo adjuntar. Solo imágenes y clips cortos.",
+    "mediaRemove": "Quitar adjunto",
+    "joinDiscussion": "Únete al debate"
   }
 }

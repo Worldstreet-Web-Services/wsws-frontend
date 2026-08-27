@@ -74,6 +74,10 @@ const POST_PATHS = [
   // come back to. It is still the only such path: blocking, reporting and
   // deleting stay in the square, where the full context of the decision is.
   /^profiles\/[^/]+\/follow$/u,
+  // Attaching a picture or a clip to a post. The service caps size and
+  // sniffs the CONTENT TYPE rather than the filename, so what Ark relays here
+  // is judged upstream before a byte is stored.
+  /^uploads$/u,
 ];
 
 // Undoing a like or a repost is a DELETE upstream, so the relay has to speak

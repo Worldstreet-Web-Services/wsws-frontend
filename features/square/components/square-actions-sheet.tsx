@@ -22,15 +22,47 @@ import { SquareAvatar } from "@/features/square/components/square-avatar";
  * The one adjacent thing that IS real — applying to be a creator — is here
  * instead, and only for someone who is not one yet.
  */
+function Tile({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="ws-inset flex flex-col items-center gap-2 px-2 py-4 transition-colors hover:bg-white/5 disabled:opacity-40"
+    >
+      <span className="text-accent" aria-hidden>
+        <svg viewBox="0 0 24 24" className="h-6 w-6">
+          {children}
+        </svg>
+      </span>
+      <span className="text-[12.5px] font-semibold text-white">{label}</span>
+    </button>
+  );
+}
+
 export function SquareActionsSheet({
   open,
   onClose,
   onCompose,
+  onComposeMedia,
+  onGoLive,
   onPickTopic,
 }: {
   open: boolean;
   onClose: () => void;
   onCompose: () => void;
+  onComposeMedia: () => void;
+  onGoLive?: () => void;
   onPickTopic?: (key: string) => void;
 }) {
   const t = useTranslations("square");
@@ -109,48 +141,86 @@ export function SquareActionsSheet({
           ) : null}
         </header>
 
-        <button
-          type="button"
-          onClick={onCompose}
-          className="ws-inset mt-4 flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:bg-white/5"
-        >
-          <span className="bg-accent text-ink grid size-9 shrink-0 place-items-center rounded-xl">
-            <svg viewBox="0 0 24 24" aria-hidden className="h-[18px] w-[18px]">
+        {/* Post, Media, Go Live — the three ways in, all three backed by
+            something this platform actually has. Live is not a fourth idea
+            bolted on: Ark already broadcasts, and the square is where those
+            streams surface, so it belongs beside the other two. */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Tile label={t("tilePost")} onClick={onCompose}>
+            <path
+              d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </Tile>
+          <Tile label={t("tileMedia")} onClick={onComposeMedia}>
+            <path
+              d="M4 5h16v14H4zM4 15l4.5-4.5L13 15m2.5-2.5L20 17"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </Tile>
+          <Tile label={t("tileLive")} onClick={onGoLive} disabled={!onGoLive}>
+            <>
+              <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
               <path
-                d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"
+                d="M6.5 6.5a7.8 7.8 0 0 0 0 11M17.5 6.5a7.8 7.8 0 0 1 0 11"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
-                strokeLinejoin="round"
+                strokeLinecap="round"
               />
-            </svg>
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[14px] font-semibold text-white">{t("composeTitle")}</span>
-            <span className="text-grey-500 block text-[12.5px]">{t("composeBlurb")}</span>
-          </span>
-        </button>
+            </>
+          </Tile>
+        </div>
 
         {topics.data && topics.data.length > 0 ? (
           <section className="mt-4">
             <h3 className="text-grey-400 text-[11.5px] font-medium tracking-[0.14em] uppercase">
               {t("discussions")}
             </h3>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {topics.data.map((topic) => (
-                <button
-                  key={topic.key}
-                  type="button"
-                  onClick={() => {
-                    onPickTopic?.(topic.key);
-                    onClose();
-                  }}
-                  className="border-grey-800 text-grey-300 hover:bg-grey-800 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-                >
-                  #{topic.label}
-                </button>
+            {/* Each one opens the feed filtered to that topic — "join" means
+                you are reading and can post into it, which is the only thing
+                joining a discussion can mean when topics are the vocabulary.
+                No participant count is shown: a topic carries a key and a
+                label and nothing else, so any number here would be invented. */}
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {topics.data.slice(0, 4).map((topic) => (
+                <li key={topic.key}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPickTopic?.(topic.key);
+                      onClose();
+                    }}
+                    className="ws-inset flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13.5px] font-semibold text-white">
+                        #{topic.label}
+                      </span>
+                      <span className="text-grey-500 block text-[12px]">{t("joinDiscussion")}</span>
+                    </span>
+                    <span className="text-grey-600 shrink-0" aria-hidden>
+                      <svg viewBox="0 0 24 24" className="h-4 w-4">
+                        <path
+                          d="m9 6 6 6-6 6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </section>
         ) : null}
 

@@ -2526,6 +2526,14 @@
     "notifications": "Notifications",
     "notificationsWithCount": "{count, plural, one {# unread notification} other {# unread notifications}}",
     "discussions": "Discussions",
-    "openProfile": "Open your Square profile"
+    "openProfile": "Open your Square profile",
+    "tilePost": "Post",
+    "tileMedia": "Media",
+    "tileLive": "Go Live",
+    "toolMedia": "Attach a photo or clip",
+    "mediaUploading": "Uploading…",
+    "mediaFailed": "Couldn't attach that. Images and short clips only.",
+    "mediaRemove": "Remove attachment",
+    "joinDiscussion": "Join the discussion"
   }
 }

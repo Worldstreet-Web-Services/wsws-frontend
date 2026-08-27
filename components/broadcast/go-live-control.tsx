@@ -105,7 +105,14 @@ function Menu({
   );
 }
 
-export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
+/**
+ * `tile` is the square's entry sheet: a square button in a three-up grid
+ * beside Post and Media. It exists so that sheet reuses the REAL control —
+ * session state, the broadcast target derived from the route, the whole menu —
+ * rather than a lookalike button wired to a callback that has to be threaded
+ * down and, as shipped, never was.
+ */
+export function GoLiveControl({ variant }: { variant: "tab" | "rail" | "tile" }) {
   const session = useBroadcastSession();
   const pathname = usePathname() ?? "/";
   const { user } = usePrivy();
@@ -134,7 +141,7 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
   const label = live ? "Live" : "Go Live";
 
   return (
-    <div className={variant === "tab" ? "relative" : "relative w-full"}>
+    <div className={variant === "rail" ? "relative w-full" : "relative"}>
       <button
         type="button"
         onClick={onPress}
@@ -144,35 +151,53 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
         aria-label={label}
         title={label}
         className={
-          variant === "tab"
-            ? // Sits IN the bar at the same 44px height as every other tab.
-              // It was a raised 52px node breaking the pill's top edge, which
-              // overflowed the bar on a phone — the reason a raised node works
-              // elsewhere is a full-width bar with room above it, and this is a
-              // floating pill with neither. Distinction comes from the violet
-              // ring and fill rather than from size or elevation, so it reads
-              // as the one different thing in the row without leaving it.
-              `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-white ring-1 transition-colors ${
-                live
-                  ? "bg-violet-500 ring-violet-300/70"
-                  : "bg-violet-500/22 ring-violet-400/55 hover:bg-violet-500/32"
+          variant === "tile"
+            ? // The square's entry sheet: a square button matching Post and
+              // Media beside it, so the three read as one row of choices.
+              `ws-inset flex w-full cursor-pointer flex-col items-center gap-2 px-2 py-4 transition-colors hover:bg-white/5 ${
+                live ? "ring-1 ring-violet-400/50" : ""
               }`
-            : `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
-                live
-                  ? "bg-violet-500/22 text-white ring-1 ring-violet-400/50"
-                  : "text-white/75 hover:bg-white/6 hover:text-white"
-              }`
+            : variant === "tab"
+              ? // Sits IN the bar at the same 44px height as every other tab.
+                // It was a raised 52px node breaking the pill's top edge, which
+                // overflowed the bar on a phone — the reason a raised node works
+                // elsewhere is a full-width bar with room above it, and this is a
+                // floating pill with neither. Distinction comes from the violet
+                // ring and fill rather than from size or elevation, so it reads
+                // as the one different thing in the row without leaving it.
+                `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-white ring-1 transition-colors ${
+                  live
+                    ? "bg-violet-500 ring-violet-300/70"
+                    : "bg-violet-500/22 ring-violet-400/55 hover:bg-violet-500/32"
+                }`
+              : `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
+                  live
+                    ? "bg-violet-500/22 text-white ring-1 ring-violet-400/50"
+                    : "text-white/75 hover:bg-white/6 hover:text-white"
+                }`
         }
       >
-        <span className="grid size-5 place-items-center">
-          <LiveIcon size={variant === "tab" ? 22 : 20} />
+        <span
+          className={
+            variant === "tile"
+              ? "text-accent grid size-6 place-items-center"
+              : "grid size-5 place-items-center"
+          }
+        >
+          <LiveIcon size={variant === "tab" ? 22 : variant === "tile" ? 24 : 20} />
         </span>
-        {variant === "tab" ? null : <span className="flex-1">{label}</span>}
+        {variant === "tab" ? null : (
+          <span
+            className={variant === "tile" ? "text-[12.5px] font-semibold text-white" : "flex-1"}
+          >
+            {label}
+          </span>
+        )}
       </button>
 
       {menuOpen ? (
         <Menu
-          align={variant === "tab" ? "up" : "down"}
+          align={variant === "rail" ? "down" : "up"}
           onGoLive={openShare}
           onShareScreen={openShare}
           onInvite={() => {

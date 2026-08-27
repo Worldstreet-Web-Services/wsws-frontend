@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { timeAgo } from "@/lib/format";
 import { marketSquareHref } from "@/lib/market-square";
 import { parseCashtags } from "@/lib/square/cashtags";
-import { useSquareLike } from "@/features/square/hooks/use-square-like";
+import { formatCompact } from "@/lib/square/format-count";
+import { useSquareEngage } from "@/features/square/hooks/use-square-engage";
+import { useRecordView } from "@/features/square/hooks/use-record-view";
+import { SquareComments } from "@/features/square/components/square-comments";
 import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedPost } from "@/lib/api/market-square";
@@ -33,22 +36,61 @@ function VerifiedTick({ className = "" }: { className?: string }) {
   );
 }
 
-function Stat({
+/**
+ * One control in the action row.
+ *
+ * Rendered as a BUTTON when there is something to do and a plain tally when
+ * there is not — views are a fact about the post, not an action on it, so they
+ * must not look pressable. Everything shares one shape so the row reads as a
+ * row rather than as three buttons and a number.
+ */
+function Action({
   label,
   count,
+  active,
+  activeClass,
+  onClick,
+  disabled,
   children,
 }: {
   label: string;
   count: number;
+  active?: boolean;
+  activeClass?: string;
+  onClick?: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
-  return (
-    <span className="text-grey-500 flex items-center gap-1.5" aria-label={label}>
+  const body = (
+    <>
       <span className="h-[15px] w-[15px]" aria-hidden>
         {children}
       </span>
-      <span className="tnum text-[12px]">{count}</span>
-    </span>
+      <span className="tnum text-[12px]">{formatCompact(count)}</span>
+    </>
+  );
+  const tone = active ? (activeClass ?? "text-white") : "text-grey-500";
+
+  if (!onClick) {
+    return (
+      <span className={`flex items-center gap-1.5 ${tone}`} aria-label={label}>
+        {body}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full transition-colors disabled:opacity-60 ${
+        active ? tone : "text-grey-500 hover:text-grey-200"
+      }`}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -79,7 +121,9 @@ export function SquarePostCard({
   onOpenBuy?: (buy: BuyPayload) => void;
 }) {
   const t = useTranslations("square");
-  const like = useSquareLike();
+  const engage = useSquareEngage();
+  const [commenting, setCommenting] = useState(false);
+  const seenRef = useRecordView(post.id);
   const author = post.author;
   const href = marketSquareHref(`post/${post.id}`);
 
@@ -103,7 +147,7 @@ export function SquarePostCard({
   const poster = post.thumbnailUrl ?? (isVideo ? null : post.mediaUrl);
 
   return (
-    <article className="border-grey-800 border-b px-1 py-4 first:pt-0">
+    <article ref={seenRef} className="border-grey-800 border-b px-1 py-4 first:pt-0">
       <header className="flex items-center gap-2.5">
         <SquareAvatar src={author?.avatarUrl ?? null} seed={author?.id ?? post.id} size={40} />
         <div className="min-w-0 flex-1">
@@ -232,36 +276,15 @@ export function SquarePostCard({
       ) : null}
 
       <footer className="mt-3 flex items-center gap-5">
-        {/* The one engagement Ark relays — see use-square-like.ts and the
-            proxy allowlist. It is a real button with a pressed state, not a
-            tally, because a heart you cannot press is a heart that looks
-            broken. */}
-        <button
-          type="button"
-          aria-pressed={post.likedByMe}
-          aria-label={t("likesLabel")}
-          disabled={like.isPending}
-          onClick={() => like.mutate({ postId: post.id, liked: !post.likedByMe })}
-          className={
-            "flex items-center gap-1.5 rounded-full transition-colors disabled:opacity-60 " +
-            (post.likedByMe ? "text-down" : "text-grey-500 hover:text-grey-200")
-          }
+        {/* Comment, repost, like, views — the ordering people already read
+            from every other feed, so the row needs no learning. Views sit
+            last and are NOT a button: they are a fact about the post, not
+            something you can do to it. */}
+        <Action
+          label={t("commentsLabel")}
+          count={post.commentCount}
+          onClick={() => setCommenting(true)}
         >
-          <span className="h-[15px] w-[15px]" aria-hidden>
-            <svg viewBox="0 0 24 24" className="h-full w-full">
-              <path
-                d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
-                fill={post.likedByMe ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="tnum text-[12px]">{post.likeCount}</span>
-        </button>
-
-        <Stat label={t("commentsLabel")} count={post.commentCount}>
           <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
             <path
               d="M20 12a7 7 0 0 1-7 7H7l-3 2.5V12a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7Z"
@@ -271,8 +294,18 @@ export function SquarePostCard({
               strokeLinejoin="round"
             />
           </svg>
-        </Stat>
-        <Stat label={t("repostsLabel")} count={post.repostCount}>
+        </Action>
+
+        <Action
+          label={t("repostsLabel")}
+          count={post.repostCount}
+          active={post.repostedByMe}
+          activeClass="text-up"
+          disabled={engage.isPending}
+          onClick={() =>
+            engage.mutate({ postId: post.id, action: "repost", on: !post.repostedByMe })
+          }
+        >
           <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
             <path
               d="M4 8h11a4 4 0 0 1 4 4M4 8l3-3M4 8l3 3m13 5H9a4 4 0 0 1-4-4m15 4-3 3m3-3-3-3"
@@ -283,8 +316,41 @@ export function SquarePostCard({
               strokeLinejoin="round"
             />
           </svg>
-        </Stat>
+        </Action>
+
+        <Action
+          label={t("likesLabel")}
+          count={post.likeCount}
+          active={post.likedByMe}
+          activeClass="text-down"
+          disabled={engage.isPending}
+          onClick={() => engage.mutate({ postId: post.id, action: "like", on: !post.likedByMe })}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
+            <path
+              d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
+              fill={post.likedByMe ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Action>
+
+        <Action label={t("viewsLabel")} count={post.viewCount}>
+          <svg viewBox="0 0 24 24" aria-hidden className="h-full w-full">
+            <path
+              d="M4 20V10m5 10V4m5 16v-7m5 7V8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            />
+          </svg>
+        </Action>
       </footer>
+
+      {commenting ? <SquareComments post={post} onClose={() => setCommenting(false)} /> : null}
     </article>
   );
 }

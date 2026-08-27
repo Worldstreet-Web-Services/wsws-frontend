@@ -2500,6 +2500,16 @@
     "symbolSearch": "Procurar moedas",
     "symbolNone": "Nenhuma moeda corresponde.",
     "topicsNone": "Sem tópicos disponíveis.",
-    "topicsChosen": "{count, plural, one {# tópico} other {# tópicos}}"
+    "topicsChosen": "{count, plural, one {# tópico} other {# tópicos}}",
+    "viewsLabel": "Visualizações",
+    "toolEmoji": "Adicionar um emoji",
+    "commentsTitle": "Respostas",
+    "commentPlaceholder": "Escrever uma resposta…",
+    "commentSend": "Responder",
+    "commentSending": "A enviar…",
+    "commentFailed": "Não foi possível publicar a resposta. Nada foi enviado.",
+    "commentsLoading": "A carregar respostas…",
+    "commentsSubject": "as respostas",
+    "commentsEmpty": "Ainda não há respostas. Seja o primeiro."
   }
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { SquareComposer } from "@/components/share/square-composer";
-
 // The Go Live control, in the two places the spec puts it.
 //
 // Mobile: the centre node of the existing tab bar, a ringed circle breaking
@@ -43,14 +41,12 @@ function LiveIcon({ size = 20 }: { size?: number }) {
 function Menu({
   onGoLive,
   onShareScreen,
-  onPost,
   onInvite,
   onClose,
   align,
 }: {
   onGoLive: () => void;
   onShareScreen: () => void;
-  onPost: () => void;
   onInvite: () => void;
   onClose: () => void;
   align: "up" | "down";
@@ -77,10 +73,11 @@ function Menu({
   const items = [
     { label: "Go Live", body: "Broadcast this view", action: onGoLive },
     { label: "Share screen", body: "Pick a tab or window", action: onShareScreen },
-    // Not everything worth saying needs a camera. The square is the platform's
-    // social surface, so posting to it belongs beside going live rather than
-    // only inside the square itself.
-    { label: "Post to Market Square", body: "Write something", action: onPost },
+    // Posting deliberately does NOT live here any more. This menu is about
+    // broadcasting — camera, screen, viewers — and a text composer sat in it
+    // as a fourth unrelated verb. Composing now belongs to the square's own
+    // plus control on the dashboard, which is where someone who wants to write
+    // something actually is.
     { label: "Invite viewers", body: "Copy a link to your stream", action: onInvite },
   ];
 
@@ -113,7 +110,6 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
   const pathname = usePathname() ?? "/";
   const { user } = usePrivy();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [posting, setPosting] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   const target = arkBroadcastTarget(pathname, deriveProfile(user).name);
@@ -179,10 +175,6 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
           align={variant === "tab" ? "up" : "down"}
           onGoLive={openShare}
           onShareScreen={openShare}
-          onPost={() => {
-            setMenuOpen(false);
-            setPosting(true);
-          }}
           onInvite={() => {
             setMenuOpen(false);
             void navigator.clipboard?.writeText(window.location.href);
@@ -192,16 +184,6 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" }) {
       ) : null}
 
       {sharing ? <ShareFlow target={target} onClose={() => setSharing(false)} /> : null}
-
-      {/* Posting needs no camera and no capture, so it does not go through the
-          broadcast flow.
-          
-          This used to reuse the SHARE sheet with a synthetic draft — title
-          "On Ark", deep-linked to whatever page the author happened to be on.
-          That put a card in their post making a claim they never made, and
-          every such post pointed somewhere meaningless. The composer attaches
-          nothing unless the author attaches it. */}
-      <SquareComposer open={posting} onClose={() => setPosting(false)} />
     </div>
   );
 }

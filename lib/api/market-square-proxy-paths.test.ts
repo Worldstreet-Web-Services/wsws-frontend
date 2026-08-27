@@ -18,6 +18,9 @@ describe("market square proxy allowlist", () => {
       "streams/abc/speaker-token",
       "me/creator-application",
       "posts/abc/like",
+      "posts/abc/repost",
+      "posts/abc/comments",
+      "posts/abc/views",
     ]) {
       expect(marketSquareProxyPaths.allows("POST", path), `POST ${path} must be relayed`).toBe(
         true
@@ -52,8 +55,9 @@ describe("market square proxy allowlist", () => {
     expect(marketSquareProxyPaths.allows("GET", "feed/abc")).toBe(false);
   });
 
-  it("relays only the like DELETE, so undoing a like works and nothing else does", () => {
+  it("relays only the undo DELETEs, and nothing else", () => {
     expect(marketSquareProxyPaths.allows("DELETE", "posts/abc/like")).toBe(true);
+    expect(marketSquareProxyPaths.allows("DELETE", "posts/abc/repost")).toBe(true);
     for (const path of ["posts/abc", "posts", "streams/abc", "me", "posts/abc/bookmark"]) {
       expect(marketSquareProxyPaths.allows("DELETE", path), `DELETE ${path} must be refused`).toBe(
         false
@@ -64,13 +68,17 @@ describe("market square proxy allowlist", () => {
   // Ark forwards the player's session, so a relayed path acts AS them. Like is
   // the one engagement widened for the dashboard feed, because its entire
   // blast radius is a heart on a post. The rest stay in the square.
-  it("does not relay engagement beyond the like", () => {
+  // Engagement relayed here is scoped to ONE post the reader is looking at.
+  // Anything that reaches another account, or the reader's own settings, stays
+  // in the square — Ark forwards the session, so a relayed path acts as them.
+  it("does not relay anything that reaches beyond the post being read", () => {
     for (const path of [
       "posts/abc/bookmark",
-      "posts/abc/repost",
-      "posts/abc/comments",
       "profiles/abc/follow",
+      "profiles/abc/block",
       "reports",
+      "me/interests",
+      "admin/verification",
     ]) {
       expect(marketSquareProxyPaths.allows("POST", path), `POST ${path} must be refused`).toBe(
         false

@@ -2500,6 +2500,16 @@
     "symbolSearch": "Buscar monedas",
     "symbolNone": "Ninguna moneda coincide.",
     "topicsNone": "No hay temas disponibles.",
-    "topicsChosen": "{count, plural, one {# tema} other {# temas}}"
+    "topicsChosen": "{count, plural, one {# tema} other {# temas}}",
+    "viewsLabel": "Visualizaciones",
+    "toolEmoji": "Añadir un emoji",
+    "commentsTitle": "Respuestas",
+    "commentPlaceholder": "Escribe una respuesta…",
+    "commentSend": "Responder",
+    "commentSending": "Enviando…",
+    "commentFailed": "No se pudo publicar la respuesta. No se envió nada.",
+    "commentsLoading": "Cargando respuestas…",
+    "commentsSubject": "las respuestas",
+    "commentsEmpty": "Aún no hay respuestas. Sé el primero."
   }
 }

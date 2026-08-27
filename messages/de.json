@@ -2500,6 +2500,16 @@
     "symbolSearch": "Coins suchen",
     "symbolNone": "Keine passende Coin.",
     "topicsNone": "Keine Themen verfügbar.",
-    "topicsChosen": "{count, plural, one {# Thema} other {# Themen}}"
+    "topicsChosen": "{count, plural, one {# Thema} other {# Themen}}",
+    "viewsLabel": "Aufrufe",
+    "toolEmoji": "Emoji hinzufügen",
+    "commentsTitle": "Antworten",
+    "commentPlaceholder": "Antwort schreiben…",
+    "commentSend": "Antworten",
+    "commentSending": "Wird gesendet…",
+    "commentFailed": "Antwort konnte nicht gepostet werden. Es wurde nichts gesendet.",
+    "commentsLoading": "Antworten werden geladen…",
+    "commentsSubject": "die Antworten",
+    "commentsEmpty": "Noch keine Antworten. Sei der Erste."
   }
 }

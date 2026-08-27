@@ -2500,6 +2500,16 @@
     "symbolSearch": "Search coins",
     "symbolNone": "No coins match that.",
     "topicsNone": "No topics available.",
-    "topicsChosen": "{count, plural, one {# topic} other {# topics}}"
+    "topicsChosen": "{count, plural, one {# topic} other {# topics}}",
+    "viewsLabel": "Views",
+    "toolEmoji": "Add an emoji",
+    "commentsTitle": "Replies",
+    "commentPlaceholder": "Write a reply…",
+    "commentSend": "Reply",
+    "commentSending": "Sending…",
+    "commentFailed": "Couldn't post that reply. Nothing was sent.",
+    "commentsLoading": "Loading replies…",
+    "commentsSubject": "the replies",
+    "commentsEmpty": "No replies yet. Be the first."
   }
 }

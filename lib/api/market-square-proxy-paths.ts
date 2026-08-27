@@ -25,6 +25,8 @@ const GET_PATHS = [
   // fetched rather than hard-coded so a topic the square adds shows up here
   // instead of drifting out of sync with a compiled-in list.
   /^topics$/u,
+  // A post's comment thread, read in place on the dashboard.
+  /^posts\/[^/]+\/comments$/u,
   /^me\/creator-application$/u,
   /^streams$/u,
   /^streams\/[^/]+$/u,
@@ -49,16 +51,23 @@ const POST_PATHS = [
   /^streams\/[^/]+\/speaker-requests$/u,
   /^streams\/[^/]+\/speaker-requests\/[^/]+\/(approve|decline|remove|leave)$/u,
   /^streams\/[^/]+\/speaker-token$/u,
-  // Liking a post from Ark. Deliberately the ONLY engagement relayed: Ark
-  // forwards the player's session, so every path opened here acts as them, and
-  // a like is the one action whose entire blast radius is a heart on a post.
-  // Commenting, following and reporting stay in the square.
+  // Engagement on a post, from the dashboard feed. Each of these is scoped to
+  // ONE post the reader is looking at, and none of them can reach another
+  // user's account: like, repost, comment, and recording that it was seen.
+  //
+  // Ark forwards the player's session, so every path here acts AS them — which
+  // is why the list stops where it does. Following, blocking, reporting,
+  // deleting and everything under /me or /admin stay in the square, where the
+  // person can see the full context of what they are doing.
   /^posts\/[^/]+\/like$/u,
+  /^posts\/[^/]+\/repost$/u,
+  /^posts\/[^/]+\/comments$/u,
+  /^posts\/[^/]+\/views$/u,
 ];
 
-// Undoing a like is a DELETE upstream, so the relay has to speak it — for this
-// one path and nothing else.
-const DELETE_PATHS = [/^posts\/[^/]+\/like$/u];
+// Undoing a like or a repost is a DELETE upstream, so the relay has to speak
+// it — for those two paths and nothing else.
+const DELETE_PATHS = [/^posts\/[^/]+\/like$/u, /^posts\/[^/]+\/repost$/u];
 
 function allowed(patterns: RegExp[], joined: string): boolean {
   return patterns.some((pattern) => pattern.test(joined));

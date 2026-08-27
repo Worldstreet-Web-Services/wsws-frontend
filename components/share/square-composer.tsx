@@ -129,6 +129,17 @@ function ComposerBody({ onClose, markets }: { onClose: () => void; markets: Trad
           topics={topicQuery.data ?? []}
           selectedTopics={topics}
           disabled={posting}
+          onInsertText={(fragment) => {
+            const input = inputRef.current;
+            const at = input?.selectionStart ?? text.length;
+            setText(`${text.slice(0, at)}${fragment}${text.slice(at)}`);
+            const caret = at + fragment.length;
+            // Keep typing from where the insert ended, not from the end.
+            window.requestAnimationFrame(() => {
+              input?.focus();
+              input?.setSelectionRange(caret, caret);
+            });
+          }}
           onToggleTopic={(key) =>
             setTopics((current) =>
               current.includes(key)

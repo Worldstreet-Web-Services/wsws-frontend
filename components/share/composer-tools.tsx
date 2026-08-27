@@ -24,6 +24,26 @@ import type { TradableSymbol } from "@/lib/square/tradable";
  *  - **#** attaches topics from the square's own vocabulary, which is what the
  *    feed's tab strip filters on — so a tagged post is findable.
  */
+/** Reactions a market feed actually reaches for. */
+const EMOJI = [
+  "🚀",
+  "📈",
+  "📉",
+  "🔥",
+  "💎",
+  "🙌",
+  "👀",
+  "🤝",
+  "🧠",
+  "⚠️",
+  "😂",
+  "🎯",
+  "💰",
+  "🐂",
+  "🐻",
+  "✅",
+] as const;
+
 function ToolButton({
   label,
   active,
@@ -58,6 +78,7 @@ export function ComposerTools({
   selectedTopics,
   onToggleTopic,
   onInsertSymbol,
+  onInsertText,
   disabled,
 }: {
   markets: TradableSymbol[];
@@ -65,10 +86,11 @@ export function ComposerTools({
   selectedTopics: string[];
   onToggleTopic: (key: string) => void;
   onInsertSymbol: (symbol: string) => void;
+  onInsertText: (text: string) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("square");
-  const [panel, setPanel] = useState<"symbol" | "topic" | null>(null);
+  const [panel, setPanel] = useState<"symbol" | "topic" | "emoji" | null>(null);
   const [query, setQuery] = useState("");
 
   const matches = useMemo(() => {
@@ -86,6 +108,13 @@ export function ComposerTools({
   return (
     <div>
       <div className="flex items-center gap-1">
+        <ToolButton
+          label={t("toolEmoji")}
+          active={panel === "emoji"}
+          onClick={() => !disabled && setPanel(panel === "emoji" ? null : "emoji")}
+        >
+          <span aria-hidden>☺</span>
+        </ToolButton>
         <ToolButton
           label={t("toolSymbol")}
           active={panel === "symbol"}
@@ -107,6 +136,25 @@ export function ComposerTools({
           </span>
         ) : null}
       </div>
+
+      {panel === "emoji" ? (
+        // A fixed set, not a full picker. A composer for market takes lives on
+        // a dozen reactions; pulling in an emoji library for the rest would
+        // cost more bundle than the long tail is worth here.
+        <div className="border-grey-800 mt-2 flex flex-wrap gap-1 rounded-xl border bg-black/40 p-2.5">
+          {EMOJI.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onInsertText(emoji)}
+              aria-label={emoji}
+              className="hover:bg-grey-800 grid size-8 place-items-center rounded-lg text-[17px] transition-colors"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {panel === "symbol" ? (
         <div className="border-grey-800 mt-2 rounded-xl border bg-black/40 p-2">

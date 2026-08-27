@@ -2500,6 +2500,16 @@
     "symbolSearch": "Rechercher une crypto",
     "symbolNone": "Aucune crypto ne correspond.",
     "topicsNone": "Aucun sujet disponible.",
-    "topicsChosen": "{count, plural, one {# sujet} other {# sujets}}"
+    "topicsChosen": "{count, plural, one {# sujet} other {# sujets}}",
+    "viewsLabel": "Vues",
+    "toolEmoji": "Ajouter un emoji",
+    "commentsTitle": "Réponses",
+    "commentPlaceholder": "Écrire une réponse…",
+    "commentSend": "Répondre",
+    "commentSending": "Envoi…",
+    "commentFailed": "Impossible de publier cette réponse. Rien n'a été envoyé.",
+    "commentsLoading": "Chargement des réponses…",
+    "commentsSubject": "les réponses",
+    "commentsEmpty": "Aucune réponse. Soyez le premier."
   }
 }

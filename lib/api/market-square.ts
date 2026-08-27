@@ -462,8 +462,11 @@ export interface MarketSquareFeedPost {
   likeCount: number;
   commentCount: number;
   repostCount: number;
+  /** Distinct people who have seen it. Never raised by a re-watch. */
+  viewCount: number;
   /** Viewer state. Only meaningful for a signed-in reader; false when not. */
   likedByMe: boolean;
+  repostedByMe: boolean;
   createdAt: string;
   author: MarketSquareAuthor | null;
 }
@@ -555,4 +558,55 @@ export interface LikeResult {
 export async function setPostLike(postId: string, liked: boolean): Promise<LikeResult> {
   const path = `/posts/${postId}/like`;
   return liked ? marketSquare.post<LikeResult>(path, {}) : marketSquare.del<LikeResult>(path);
+}
+
+export interface RepostResult {
+  reposted: boolean;
+  repostCount: number;
+}
+
+/** Repost or undo it. Idempotent upstream in both directions. */
+export async function setPostRepost(postId: string, reposted: boolean): Promise<RepostResult> {
+  const path = `/posts/${postId}/repost`;
+  return reposted
+    ? marketSquare.post<RepostResult>(path, {})
+    : marketSquare.del<RepostResult>(path);
+}
+
+export interface MarketSquareComment {
+  id: string;
+  text: string;
+  createdAt: string;
+  author: MarketSquareAuthor | null;
+}
+
+export async function fetchPostComments(
+  postId: string,
+  cursor?: string | null
+): Promise<{ items: MarketSquareComment[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ limit: "25" });
+  if (cursor) params.set("cursor", cursor);
+  const page = await marketSquare.get<{
+    items?: MarketSquareComment[];
+    nextCursor?: string | null;
+  }>(`/posts/${postId}/comments?${params.toString()}`);
+  return {
+    items: Array.isArray(page?.items) ? page.items : [],
+    nextCursor: page?.nextCursor ?? null,
+  };
+}
+
+export async function addPostComment(postId: string, text: string): Promise<MarketSquareComment> {
+  return marketSquare.post<MarketSquareComment>(`/posts/${postId}/comments`, { text });
+}
+
+/**
+ * Record that this reader has seen the post.
+ *
+ * The service counts DISTINCT people and ignores a re-watch, so this is safe
+ * to call more than once — but the client still fires it once per post per
+ * session, because a request that changes nothing is still a request.
+ */
+export async function recordPostView(postId: string): Promise<void> {
+  await marketSquare.post(`/posts/${postId}/views`, {});
 }

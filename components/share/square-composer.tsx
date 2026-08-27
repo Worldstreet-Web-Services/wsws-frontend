@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { createSquarePost, fetchSquareTopics } from "@/lib/api/market-square";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import { COUNTER_VISIBLE_FROM, canPost, remaining } from "@/lib/square/compose";
 import { ComposerTools } from "@/components/share/composer-tools";
 import { insertSymbol } from "@/lib/square/insert-symbol";
@@ -99,7 +99,7 @@ function ComposerBody({ onClose, markets }: { onClose: () => void; markets: Trad
     }
   }
 
-  const postedHref = postedId ? marketSquareHref(`post/${postedId}`) : null;
+  const postedHref = postedId ? squareLinks.post(postedId) : null;
 
   return (
     <div className="p-5">

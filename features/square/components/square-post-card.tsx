@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { timeAgo } from "@/lib/format";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import { parseCashtags } from "@/lib/square/cashtags";
 import { formatCompact } from "@/lib/square/format-count";
 import { useSquareEngage } from "@/features/square/hooks/use-square-engage";
@@ -125,7 +125,7 @@ export function SquarePostCard({
   const [commenting, setCommenting] = useState(false);
   const seenRef = useRecordView(post.id);
   const author = post.author;
-  const href = marketSquareHref(`post/${post.id}`);
+  const href = squareLinks.post(post.id);
 
   const bySymbol = useMemo(() => {
     const map = new Map<string, TradableSymbol>();

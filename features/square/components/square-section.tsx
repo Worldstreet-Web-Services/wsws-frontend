@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import { fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareLiveStrip } from "@/features/square/components/square-live-strip";
@@ -52,7 +52,7 @@ export function SquareSection({
 }) {
   const t = useTranslations("square");
   const [tab, setTab] = useState<string>(LANE_FOR_YOU);
-  const squareHref = marketSquareHref();
+  const squareHref = squareLinks.home();
   const [composing, setComposing] = useState(false);
 
   // A topic tab filters the for-you lane; the lane tabs carry no topic.

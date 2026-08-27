@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import type { MarketSquareFeedStream } from "@/lib/api/market-square";
 
 /**
@@ -21,7 +21,7 @@ export function SquareLiveStrip({ streams }: { streams: MarketSquareFeedStream[]
   return (
     <div className="-mx-4 mb-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
       {streams.map((stream) => {
-        const href = marketSquareHref(`live/${stream.id}`);
+        const href = squareLinks.live(stream.id);
         const content = (
           <>
             <SquareAvatar

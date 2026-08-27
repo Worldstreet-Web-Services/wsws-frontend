@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedStream } from "@/lib/api/market-square";
 
@@ -19,7 +19,7 @@ import type { MarketSquareFeedStream } from "@/lib/api/market-square";
  */
 export function SquareRail({ streams }: { streams: MarketSquareFeedStream[] }) {
   const t = useTranslations("square");
-  const squareHref = marketSquareHref();
+  const squareHref = squareLinks.home();
 
   return (
     <aside className="hidden w-[300px] shrink-0 lg:block">
@@ -34,7 +34,7 @@ export function SquareRail({ streams }: { streams: MarketSquareFeedStream[] }) {
           </h3>
           <ul className="mt-3 flex flex-col gap-1">
             {streams.slice(0, 5).map((stream) => {
-              const href = marketSquareHref(`live/${stream.id}`);
+              const href = squareLinks.live(stream.id);
               const row = (
                 <>
                   <SquareAvatar

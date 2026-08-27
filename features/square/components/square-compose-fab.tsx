@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { marketSquareHref } from "@/lib/market-square";
+import { squareLinks } from "@/lib/square/links";
 import { SquareComposer } from "@/components/share/square-composer";
 import type { TradableSymbol } from "@/lib/square/tradable";
 
@@ -28,7 +28,7 @@ export function SquareComposeFab({ markets = [] }: { markets?: TradableSymbol[] 
   const [composing, setComposing] = useState(false);
   // Only the square being CONFIGURED matters now; the composer is local, so
   // there is no compose URL to navigate to.
-  const href = marketSquareHref();
+  const href = squareLinks.home();
 
   useEffect(() => {
     if (!href) return;

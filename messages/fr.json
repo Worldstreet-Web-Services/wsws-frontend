@@ -2457,5 +2457,28 @@
     "haveAccount": "J'ai déjà un compte",
     "goToSlide": "Aller à la diapositive {index}",
     "slides": "Diapositives de bienvenue"
+  },
+  "square": {
+    "title": "Place du Marché",
+    "openSquare": "Ouvrir la Place",
+    "laneForYou": "Pour vous",
+    "laneFollowing": "Abonnements",
+    "loading": "Chargement de la Place…",
+    "loadingMore": "Chargement…",
+    "loadMore": "Voir plus",
+    "subject": "la Place",
+    "unconfigured": "La Place du Marché n'est pas encore activée sur ce déploiement.",
+    "empty": "Rien sur la Place pour l'instant. Publiez le premier message.",
+    "emptyFollowing": "Rien pour l'instant de la part des personnes que vous suivez.",
+    "someone": "Quelqu'un",
+    "compose": "Publier sur la Place du Marché",
+    "watching": "{count, plural, one {# spectateur} other {# spectateurs}}",
+    "likes": "{count, plural, one {# j'aime} other {# j'aime}}",
+    "comments": "{count, plural, one {# commentaire} other {# commentaires}}",
+    "reposts": "{count, plural, one {# repartage} other {# repartages}}",
+    "openPost": "Ouvrir ce message sur la Place du Marché",
+    "likesLabel": "J'aime",
+    "commentsLabel": "Commentaires",
+    "repostsLabel": "Repartages"
   }
 }

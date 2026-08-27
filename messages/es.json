@@ -2457,5 +2457,28 @@
     "haveAccount": "Ya tengo una cuenta",
     "goToSlide": "Ir a la diapositiva {index}",
     "slides": "Diapositivas de bienvenida"
+  },
+  "square": {
+    "title": "Plaza del Mercado",
+    "openSquare": "Abrir la Plaza",
+    "laneForYou": "Para ti",
+    "laneFollowing": "Siguiendo",
+    "loading": "Cargando la Plaza…",
+    "loadingMore": "Cargando…",
+    "loadMore": "Ver más",
+    "subject": "la Plaza",
+    "unconfigured": "La Plaza del Mercado aún no está activada en esta instalación.",
+    "empty": "Todavía no hay nada en la Plaza. Publica tú primero.",
+    "emptyFollowing": "Todavía no hay nada de las personas que sigues.",
+    "someone": "Alguien",
+    "compose": "Publicar en la Plaza del Mercado",
+    "watching": "{count, plural, one {# viendo} other {# viendo}}",
+    "likes": "{count, plural, one {# me gusta} other {# me gusta}}",
+    "comments": "{count, plural, one {# comentario} other {# comentarios}}",
+    "reposts": "{count, plural, one {# republicación} other {# republicaciones}}",
+    "openPost": "Abrir esta publicación en la Plaza del Mercado",
+    "likesLabel": "Me gusta",
+    "commentsLabel": "Comentarios",
+    "repostsLabel": "Republicaciones"
   }
 }

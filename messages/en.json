@@ -2457,5 +2457,28 @@
     "haveAccount": "I already have an account",
     "goToSlide": "Go to slide {index}",
     "slides": "Welcome slides"
+  },
+  "square": {
+    "title": "Market Square",
+    "openSquare": "Open the Square",
+    "laneForYou": "For you",
+    "laneFollowing": "Following",
+    "loading": "Loading the Square…",
+    "loadingMore": "Loading…",
+    "loadMore": "Show more",
+    "subject": "the Square",
+    "unconfigured": "Market Square is not switched on for this deployment yet.",
+    "empty": "Nothing in the Square yet. Be the first to post.",
+    "emptyFollowing": "Nothing from the people you follow yet.",
+    "someone": "Someone",
+    "compose": "Post to Market Square",
+    "watching": "{count, plural, one {# watching} other {# watching}}",
+    "likes": "{count, plural, one {# like} other {# likes}}",
+    "comments": "{count, plural, one {# comment} other {# comments}}",
+    "reposts": "{count, plural, one {# repost} other {# reposts}}",
+    "openPost": "Open this post in Market Square",
+    "likesLabel": "Likes",
+    "commentsLabel": "Comments",
+    "repostsLabel": "Reposts"
   }
 }

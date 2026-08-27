@@ -2457,5 +2457,28 @@
     "haveAccount": "Ich habe bereits ein Konto",
     "goToSlide": "Zu Folie {index}",
     "slides": "Willkommensfolien"
+  },
+  "square": {
+    "title": "Marktplatz",
+    "openSquare": "Marktplatz öffnen",
+    "laneForYou": "Für dich",
+    "laneFollowing": "Folge ich",
+    "loading": "Marktplatz wird geladen…",
+    "loadingMore": "Wird geladen…",
+    "loadMore": "Mehr anzeigen",
+    "subject": "der Marktplatz",
+    "unconfigured": "Der Marktplatz ist für diese Installation noch nicht aktiviert.",
+    "empty": "Noch nichts auf dem Marktplatz. Sei der Erste.",
+    "emptyFollowing": "Noch nichts von den Leuten, denen du folgst.",
+    "someone": "Jemand",
+    "compose": "Auf dem Marktplatz posten",
+    "watching": "{count, plural, one {# Zuschauer} other {# Zuschauer}}",
+    "likes": "{count, plural, one {# Like} other {# Likes}}",
+    "comments": "{count, plural, one {# Kommentar} other {# Kommentare}}",
+    "reposts": "{count, plural, one {# Repost} other {# Reposts}}",
+    "openPost": "Diesen Beitrag im Marktplatz öffnen",
+    "likesLabel": "Likes",
+    "commentsLabel": "Kommentare",
+    "repostsLabel": "Reposts"
   }
 }

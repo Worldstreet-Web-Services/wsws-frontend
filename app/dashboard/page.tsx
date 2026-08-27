@@ -21,6 +21,7 @@ import { BuySheet, SellSheet, MemeTradeSheet } from "@/features/trade";
 import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { SquareComposeFab, SquareSection } from "@/features/square";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { useDashboardTour } from "@/features/tour";
@@ -166,7 +167,15 @@ export default function DashboardPage() {
             ) : null}
           </Fragment>
         ))}
+        {/* The social floor of the dashboard. It sits AFTER the markets on
+            purpose: someone opening Ark came for their money, and the square
+            is what they scroll into once they are done reading it — met by
+            browsing rather than by deciding to leave for another deployment. */}
+        <SquareSection onOpenBuy={openBuy} />
       </DashboardShell>
+      {/* Outside the shell so it anchors to the viewport rather than the
+          scrolling column. It reveals itself once the square is in reach. */}
+      <SquareComposeFab />
 
       <ModalShell
         open={modal !== null}

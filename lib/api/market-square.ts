@@ -405,3 +405,92 @@ export async function createPost(
     };
   }
 }
+
+// ── The square's feed, read for the Ark dashboard ───────────────────────────
+
+/** Who wrote a post, as the feed hydrates them. */
+export interface MarketSquareAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verification: string;
+  role: MarketSquareRole;
+}
+
+/**
+ * The card the author attached to a deep link.
+ *
+ * Market Square cannot resolve what a trade or a game result IS — those live
+ * in services it must not read — so whoever shared it supplied this. It is the
+ * author's CLAIM, not attested fact, and the dashboard renders it as their
+ * words rather than with platform authority.
+ */
+export interface MarketSquarePreview {
+  title: string;
+  subtitle: string | null;
+  imageUrl: string | null;
+}
+
+export interface MarketSquareFeedPost {
+  id: string;
+  text: string;
+  mediaUrl: string | null;
+  mediaKind: string | null;
+  thumbnailUrl: string | null;
+  deepLink: MarketSquareDeepLink | null;
+  preview: MarketSquarePreview | null;
+  likeCount: number;
+  commentCount: number;
+  repostCount: number;
+  createdAt: string;
+  author: MarketSquareAuthor | null;
+}
+
+export interface MarketSquareFeedStream {
+  id: string;
+  title: string;
+  status: StreamStatus;
+  thumbnailUrl: string | null;
+  peakViewers: number;
+  owner: MarketSquareAuthor | null;
+}
+
+export interface MarketSquareFeedItem {
+  id: string;
+  type: "post" | "stream" | "activity" | "platform_event";
+  occurredAt: string;
+  post?: MarketSquareFeedPost;
+  stream?: MarketSquareFeedStream;
+  repostedBy?: MarketSquareAuthor;
+}
+
+export interface MarketSquareFeedPage {
+  items: MarketSquareFeedItem[];
+  nextCursor: string | null;
+}
+
+export type SquareLane = "for-you" | "following" | "live";
+
+/**
+ * One page of the square's feed.
+ *
+ * Public upstream, so this resolves for a signed-out player too and the
+ * dashboard's social section is not a sign-in wall.
+ */
+export async function fetchSquareFeed(
+  lane: SquareLane,
+  cursor?: string | null,
+  limit = 10
+): Promise<MarketSquareFeedPage> {
+  const params = new URLSearchParams({ lane, limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  const page = await marketSquare.get<Partial<MarketSquareFeedPage>>(`/feed?${params.toString()}`);
+  // A lane the deployment does not serve answers with an empty page rather
+  // than an error; treat a malformed one the same way so the section renders
+  // its empty state instead of tearing down the dashboard around it.
+  return {
+    items: Array.isArray(page?.items) ? page.items : [],
+    nextCursor: page?.nextCursor ?? null,
+  };
+}

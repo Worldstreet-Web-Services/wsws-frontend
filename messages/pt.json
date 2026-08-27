@@ -2457,5 +2457,28 @@
     "haveAccount": "Já tenho uma conta",
     "goToSlide": "Ir para o slide {index}",
     "slides": "Slides de boas-vindas"
+  },
+  "square": {
+    "title": "Praça do Mercado",
+    "openSquare": "Abrir a Praça",
+    "laneForYou": "Para si",
+    "laneFollowing": "A seguir",
+    "loading": "A carregar a Praça…",
+    "loadingMore": "A carregar…",
+    "loadMore": "Ver mais",
+    "subject": "a Praça",
+    "unconfigured": "A Praça do Mercado ainda não está ativada nesta instalação.",
+    "empty": "Ainda não há nada na Praça. Seja o primeiro a publicar.",
+    "emptyFollowing": "Ainda não há nada de quem segue.",
+    "someone": "Alguém",
+    "compose": "Publicar na Praça do Mercado",
+    "watching": "{count, plural, one {# a assistir} other {# a assistir}}",
+    "likes": "{count, plural, one {# gosto} other {# gostos}}",
+    "comments": "{count, plural, one {# comentário} other {# comentários}}",
+    "reposts": "{count, plural, one {# republicação} other {# republicações}}",
+    "openPost": "Abrir esta publicação na Praça do Mercado",
+    "likesLabel": "Gostos",
+    "commentsLabel": "Comentários",
+    "repostsLabel": "Republicações"
   }
 }

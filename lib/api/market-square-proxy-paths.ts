@@ -17,6 +17,10 @@
 // which carries the publishing credentials once it is approved.
 const GET_PATHS = [
   /^me$/u,
+  // The square's feed, rendered inline on the Ark dashboard so the social
+  // surface is met while scrolling rather than only by leaving for another
+  // deployment. Public upstream — a signed-out player sees the same posts.
+  /^feed$/u,
   /^me\/creator-application$/u,
   /^streams$/u,
   /^streams\/[^/]+$/u,

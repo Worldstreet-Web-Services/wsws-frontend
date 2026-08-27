@@ -25,7 +25,7 @@ describe("market square proxy allowlist", () => {
   });
 
   it("relays the reads those flows depend on", () => {
-    for (const path of ["streams", "streams/abc", "streams/abc/speaker-requests/me"]) {
+    for (const path of ["feed", "streams", "streams/abc", "streams/abc/speaker-requests/me"]) {
       expect(marketSquareProxyPaths.allows("GET", path), `GET ${path} must be relayed`).toBe(true);
     }
   });
@@ -39,6 +39,11 @@ describe("market square proxy allowlist", () => {
       );
     }
     expect(marketSquareProxyPaths.allows("GET", "me/conversations")).toBe(false);
+    // The dashboard reads the feed; it has no business reading anyone's
+    // bookmarks or notifications through the same relay.
+    expect(marketSquareProxyPaths.allows("GET", "me/bookmarks")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "me/notifications")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "feed/abc")).toBe(false);
   });
 
   it("matches whole paths, so a lookalike prefix is not relayed", () => {

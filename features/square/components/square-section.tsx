@@ -45,13 +45,29 @@ const LANE_FOLLOWING = "lane:following";
 export function SquareSection({
   onOpenBuy,
   markets = [],
+  tab: controlledTab,
+  onTabChange,
 }: {
   onOpenBuy?: (buy: BuyPayload) => void;
   /** Supplied by the dashboard, which owns both this and the trade slice. */
   markets?: TradableSymbol[];
+  /**
+   * The selected tab, when something outside drives it — the plus sheet's
+   * discussions do, and they are a sibling of this section rather than a
+   * child, so the dashboard holds the state between them.
+   */
+  tab?: string;
+  onTabChange?: (tab: string) => void;
 }) {
   const t = useTranslations("square");
-  const [tab, setTab] = useState<string>(LANE_FOR_YOU);
+  const [ownTab, setOwnTab] = useState<string>(LANE_FOR_YOU);
+  // Controlled when the dashboard passes a tab, uncontrolled otherwise, so the
+  // section still works on its own.
+  const tab = controlledTab ?? ownTab;
+  const setTab = (next: string) => {
+    setOwnTab(next);
+    onTabChange?.(next);
+  };
   const squareHref = squareLinks.home();
   const [composing, setComposing] = useState(false);
 
@@ -111,7 +127,7 @@ export function SquareSection({
   if (!squareHref) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
+    <div id="market-square" className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <Eyebrow>{t("title")}</Eyebrow>
 
       <div className="ws-card mt-4 flex gap-8 p-4 sm:p-5 lg:p-6">

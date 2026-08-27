@@ -406,14 +406,23 @@ export async function uploadSquareMedia(file: File): Promise<SquareUpload> {
   return marketSquare.postForm<SquareUpload>("/uploads", form);
 }
 
+export interface SquareAttachment {
+  deepLink: MarketSquareDeepLink;
+  preview: { title: string; subtitle?: string | null; imageUrl?: string | null };
+}
+
 export async function createSquarePost(
   text: string,
   topics?: string[],
-  media?: { url: string; kind: "image" | "video" } | null
+  media?: { url: string; kind: "image" | "video" } | null,
+  attachment?: SquareAttachment | null
 ): Promise<MarketSquarePost> {
   return marketSquare.post<MarketSquarePost>("/posts", {
     kind: "update",
     text,
+    // A preview without a deep link is refused by the service — a card that
+    // leads nowhere is not a share — so the two always travel together.
+    ...(attachment ? { deepLink: attachment.deepLink, preview: attachment.preview } : {}),
     ...(media ? { mediaUrl: media.url, mediaKind: media.kind } : {}),
     // Omitted rather than sent empty: the service treats an absent field and
     // an empty array the same, and sending `[]` implies a choice was made.

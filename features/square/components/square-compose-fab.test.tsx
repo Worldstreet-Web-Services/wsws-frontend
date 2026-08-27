@@ -16,16 +16,16 @@ vi.mock("@/lib/square/links", () => ({
 }));
 vi.mock("@/lib/api/market-square", () => ({
   fetchSquareMe: vi.fn().mockResolvedValue(null),
-  fetchSquareTopics: vi.fn().mockResolvedValue([]),
+  fetchSquareTopics: vi.fn().mockResolvedValue([{ key: "crypto", label: "Crypto" }]),
   fetchSquareUnread: vi.fn().mockResolvedValue(0),
   createSquarePost: vi.fn(),
 }));
 
-function renderFab() {
+function renderFab(props: { onPickTopic?: (key: string) => void } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <SquareComposeFab />
+      <SquareComposeFab {...props} />
     </QueryClientProvider>
   );
 }
@@ -60,6 +60,22 @@ describe("SquareComposeFab", () => {
     fireEvent.click(screen.getByText("tilePost"));
     // The composer's own field, not the sheet's tile label.
     expect(screen.getByPlaceholderText("composePlaceholder")).toBeInTheDocument();
+  });
+
+  /**
+   * Tapping a discussion did nothing in production: the handler was optional
+   * and the dashboard never passed one, so the sheet closed and called into
+   * a `?.()` that was undefined. Nothing type-checks that a caller supplied an
+   * optional prop, so the wiring is asserted here instead.
+   */
+  it("reports the discussion that was tapped", async () => {
+    const onPickTopic = vi.fn();
+    renderFab({ onPickTopic });
+    fireEvent.click(screen.getByRole("button", { name: "compose" }));
+
+    const discussion = await screen.findByText("#Crypto");
+    fireEvent.click(discussion);
+    expect(onPickTopic).toHaveBeenCalledWith("crypto");
   });
 
   it("renders nothing at all when the square is not configured", async () => {

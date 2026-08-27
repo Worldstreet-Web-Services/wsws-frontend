@@ -35,7 +35,9 @@ export async function GET() {
       // Cached upstream too: this is a catalogue, not a price.
       revalidate,
     });
-    const rows = (Array.isArray(raw) ? raw : ((raw as { data?: unknown })?.data ?? [])) as BuyRoute[];
+    const rows = (
+      Array.isArray(raw) ? raw : ((raw as { data?: unknown })?.data ?? [])
+    ) as BuyRoute[];
     const symbols = [...new Set([...buyableSymbols(rows), ...swapRouteSymbols()])].sort();
 
     return NextResponse.json(
@@ -48,7 +50,7 @@ export async function GET() {
           // silently un-link every ticker on the square.
           "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
         },
-      },
+      }
     );
   } catch {
     // Never 500 for this. The caller renders tickers as plain text when the
@@ -56,7 +58,7 @@ export async function GET() {
     // that leads nowhere. An error here must not take a post render with it.
     return NextResponse.json(
       { symbols: [] },
-      { headers: { "Cache-Control": "public, s-maxage=30" } },
+      { headers: { "Cache-Control": "public, s-maxage=30" } }
     );
   }
 }

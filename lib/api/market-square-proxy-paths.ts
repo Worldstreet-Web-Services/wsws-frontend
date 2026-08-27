@@ -27,6 +27,11 @@ const GET_PATHS = [
   /^topics$/u,
   // A post's comment thread, read in place on the dashboard.
   /^posts\/[^/]+\/comments$/u,
+  // The reader's own square identity and inbox, for the compose sheet's
+  // header. Both are scoped to the caller by the service itself — there is no
+  // id in either path, so neither can be pointed at somebody else.
+  /^me\/notifications$/u,
+  /^me\/unread$/u,
   /^me\/creator-application$/u,
   /^streams$/u,
   /^streams\/[^/]+$/u,
@@ -63,11 +68,21 @@ const POST_PATHS = [
   /^posts\/[^/]+\/repost$/u,
   /^posts\/[^/]+\/comments$/u,
   /^posts\/[^/]+\/views$/u,
+  // Following an author from the feed. This one DOES reach another account,
+  // unlike the rest of this list — it is here because following is the whole
+  // point of a social surface and a feed you cannot build is a feed you never
+  // come back to. It is still the only such path: blocking, reporting and
+  // deleting stay in the square, where the full context of the decision is.
+  /^profiles\/[^/]+\/follow$/u,
 ];
 
 // Undoing a like or a repost is a DELETE upstream, so the relay has to speak
 // it — for those two paths and nothing else.
-const DELETE_PATHS = [/^posts\/[^/]+\/like$/u, /^posts\/[^/]+\/repost$/u];
+const DELETE_PATHS = [
+  /^posts\/[^/]+\/like$/u,
+  /^posts\/[^/]+\/repost$/u,
+  /^profiles\/[^/]+\/follow$/u,
+];
 
 function allowed(patterns: RegExp[], joined: string): boolean {
   return patterns.some((pattern) => pattern.test(joined));

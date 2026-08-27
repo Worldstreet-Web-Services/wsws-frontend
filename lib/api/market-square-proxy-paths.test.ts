@@ -21,6 +21,7 @@ describe("market square proxy allowlist", () => {
       "posts/abc/repost",
       "posts/abc/comments",
       "posts/abc/views",
+      "profiles/abc/follow",
     ]) {
       expect(marketSquareProxyPaths.allows("POST", path), `POST ${path} must be relayed`).toBe(
         true
@@ -46,18 +47,19 @@ describe("market square proxy allowlist", () => {
     // The dashboard reads the feed; it has no business reading anyone's
     // bookmarks or notifications through the same relay.
     expect(marketSquareProxyPaths.allows("GET", "me/bookmarks")).toBe(false);
-    expect(marketSquareProxyPaths.allows("GET", "me/notifications")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "me/conversations")).toBe(false);
     expect(marketSquareProxyPaths.allows("GET", "feed/abc")).toBe(false);
     // The dashboard reads the feed; it has no business reading anyone's
     // bookmarks or notifications through the same relay.
     expect(marketSquareProxyPaths.allows("GET", "me/bookmarks")).toBe(false);
-    expect(marketSquareProxyPaths.allows("GET", "me/notifications")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "me/conversations")).toBe(false);
     expect(marketSquareProxyPaths.allows("GET", "feed/abc")).toBe(false);
   });
 
   it("relays only the undo DELETEs, and nothing else", () => {
     expect(marketSquareProxyPaths.allows("DELETE", "posts/abc/like")).toBe(true);
     expect(marketSquareProxyPaths.allows("DELETE", "posts/abc/repost")).toBe(true);
+    expect(marketSquareProxyPaths.allows("DELETE", "profiles/abc/follow")).toBe(true);
     for (const path of ["posts/abc", "posts", "streams/abc", "me", "posts/abc/bookmark"]) {
       expect(marketSquareProxyPaths.allows("DELETE", path), `DELETE ${path} must be refused`).toBe(
         false
@@ -74,7 +76,6 @@ describe("market square proxy allowlist", () => {
   it("does not relay anything that reaches beyond the post being read", () => {
     for (const path of [
       "posts/abc/bookmark",
-      "profiles/abc/follow",
       "profiles/abc/block",
       "reports",
       "me/interests",

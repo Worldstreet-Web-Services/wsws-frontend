@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { squareLinks } from "@/lib/square/links";
-import { fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
+import { fetchSquareMe, fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareLiveStrip } from "@/features/square/components/square-live-strip";
 import { SquarePostCard } from "@/features/square/components/square-post-card";
@@ -63,6 +63,15 @@ export function SquareSection({
   );
 
   const feed = useSquareFeed(lane, topics);
+
+  // Only to suppress a self-follow button; a failure here costs nothing.
+  const meQuery = useQuery({
+    queryKey: ["market-square", "me"],
+    queryFn: fetchSquareMe,
+    enabled: squareHref !== null,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   const topicQuery = useQuery({
     queryKey: ["market-square", "topics"],
@@ -158,6 +167,7 @@ export function SquareSection({
                         post={post}
                         markets={markets}
                         onOpenBuy={onOpenBuy}
+                        meId={meQuery.data?.id}
                       />
                     ))}
                   </div>

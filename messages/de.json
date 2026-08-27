@@ -670,7 +670,9 @@
     "confirming": "Wird bestätigt…",
     "buyToken": "{name} kaufen",
     "sellToken": "{name} verkaufen",
-    "transactionFee": "Transaktionsgebühr"
+    "transactionFee": "Transaktionsgebühr",
+    "shareToSquare": "Share to Market Square",
+    "boughtShareTitle": "Bought {name}"
   },
   "rwa": {
     "eyebrow": "Reale Vermögenswerte",
@@ -2414,7 +2416,13 @@
     "newCount": "{count} neu",
     "prevPage": "Zurück",
     "nextPage": "Weiter",
-    "pageOf": "Seite {current} von {total}"
+    "pageOf": "Seite {current} von {total}",
+    "share": "Share",
+    "pnlHeading": "Results",
+    "onCost": "on {cost}",
+    "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
+    "pnlShareWin": "Closed {symbol} in profit",
+    "pnlShareLoss": "Closed {symbol} at a loss"
   },
   "launchGate": {
     "title": "Bald verfügbar",

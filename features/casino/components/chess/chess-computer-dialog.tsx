@@ -23,6 +23,7 @@ import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const STAKED_INITIAL_SECONDS = 600;
 
 // These are Lichess's time slider values. Keeping the same index mapping makes
 // the setup behave predictably for players already familiar with that dialog.
@@ -181,7 +182,7 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
         color: stakedGame ? "random" : setup.color,
         timeMode: stakedGame ? "real_time" : setup.timeMode,
         ...(stakedGame
-          ? { initialSeconds: 300, incrementSeconds: 0 }
+          ? { initialSeconds: STAKED_INITIAL_SECONDS, incrementSeconds: 0 }
           : setup.timeMode === "real_time"
             ? {
                 initialSeconds: Math.round(minutes * 60),
@@ -262,7 +263,7 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
 
           {stakedGame ? (
             <p className="mt-5 rounded-[3px] border border-white/10 bg-[#262421] px-4 py-3 text-center text-[13px] leading-6 text-white/62">
-              Every paid choice uses the maximum-strength level-8 engine with a fixed 5+0 clock.
+              Every paid choice uses the maximum-strength level-8 engine with a fixed 10+0 clock.
             </p>
           ) : setup.timeMode === "real_time" ? (
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)] items-end gap-3">

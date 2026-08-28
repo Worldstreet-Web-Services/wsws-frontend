@@ -20,6 +20,16 @@ import { swapRouteSymbols } from "@/lib/spot-swap";
  * secret — it is on the trade screen — and a signed-out reader sees the same
  * post as everybody else, so the markup must not depend on having a session.
  */
+/** The Dextopus row shape, as the buy catalogue reads it. */
+interface RawDestination {
+  destinationChainId: number;
+  blockchain?: string;
+  currency: string;
+  symbol: string;
+  decimals?: number;
+  logoUrl?: string | null;
+}
+
 export const revalidate = 300;
 
 export async function GET() {
@@ -35,10 +45,31 @@ export async function GET() {
       // Cached upstream too: this is a catalogue, not a price.
       revalidate,
     });
-    const rows = (
-      Array.isArray(raw) ? raw : ((raw as { data?: unknown })?.data ?? [])
-    ) as BuyRoute[];
-    const symbols = [...new Set([...buyableSymbols(rows), ...swapRouteSymbols()])].sort();
+    // Same shape and same normalisation the buy catalogue uses. Reading
+    // `data.data` and handing raw rows straight to `buyableSymbols` was wrong
+    // twice over: the payload nests under `destinations`, and `isOfferable`
+    // needs the MAPPED route (chainName from `blockchain`, asset from
+    // `currency`). Every symbol was filtered out, so the published list held
+    // only the hardcoded swap route.
+    const payload = raw as { destinations?: RawDestination[] };
+    const rows: RawDestination[] = Array.isArray(raw)
+      ? (raw as RawDestination[])
+      : Array.isArray(payload.destinations)
+        ? payload.destinations
+        : [];
+    const routes: BuyRoute[] = rows
+      .filter(
+        (d) => Boolean(d.currency) && Boolean(d.symbol) && Number.isFinite(d.destinationChainId)
+      )
+      .map((d) => ({
+        destinationChainId: d.destinationChainId,
+        chainName: d.blockchain ?? "",
+        asset: d.currency,
+        symbol: d.symbol,
+        decimals: d.decimals ?? 18,
+        logoUrl: d.logoUrl ?? null,
+      }));
+    const symbols = [...new Set([...buyableSymbols(routes), ...swapRouteSymbols()])].sort();
 
     return NextResponse.json(
       { symbols },

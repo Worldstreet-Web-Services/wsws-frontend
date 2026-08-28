@@ -102,6 +102,10 @@ export function SquarePostsPromo() {
             </div>
           </div>
 
+          {/* Clamped here too, but with no expand control: this card is a
+              LINK into the square, so the whole post is one tap away already.
+              A "show more" that expanded a promo card would grow the rail's
+              row height and shove the cards beside it out of alignment. */}
           <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-[18px] text-[#E5E5E5]">
             {post.text}
           </p>

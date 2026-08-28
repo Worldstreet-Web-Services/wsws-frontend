@@ -127,10 +127,11 @@ export function SquarePostsPromo() {
               single fact about the post rather than four competing numbers. */}
           {/* The pill as the design draws it: a white-3% ground with a full
               radius, hugging its contents rather than spanning the card, and
-              its four tallies CENTRED within it. Mine spread them across the
-              full width on a darker ground, which read as a toolbar rather
-              than as one quiet fact about the post. */}
-          <div className="mt-auto flex w-fit items-center justify-center gap-[11px] rounded-full bg-white/3 px-[5px] py-[5px]">
+              CENTRED in it. Two separate decisions — `w-fit` makes it hug,
+              `mx-auto` puts it in the middle. Left-aligned it read as a
+              toolbar bolted to the card's edge; centred it reads as one quiet
+              fact about the post, which is what it is. */}
+          <div className="mx-auto mt-auto flex w-fit items-center justify-center gap-[11px] rounded-full bg-white/3 px-[5px] py-[5px]">
             <Tally count={post.commentCount} label={t("commentsLabel")}>
               <IconComment className={GLYPH} />
             </Tally>

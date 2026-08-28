@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { closeFee, formatAmount, formatUsd } from "@/lib/trade/math";
+import { formatAmount } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import type { HlPositionView } from "@/features/trade/lib/hyperliquid-types";
 
@@ -40,11 +40,6 @@ export function HyperliquidClosePositionModal({
   };
 
   const pnl = position?.unrealizedPnlUsdc != null ? Number(position.unrealizedPnlUsdc) : null;
-  // Notional at the price the close will actually fill near — mark when it's
-  // live, entry as a fallback for a stale/missing mark.
-  const closeNotional = position
-    ? Number(position.size) * Number(position.markPrice ?? position.entryPrice)
-    : 0;
 
   return (
     <ModalShell open={position != null} onClose={busy ? () => {} : onClose}>
@@ -81,10 +76,6 @@ export function HyperliquidClosePositionModal({
               >
                 {pnl != null ? `${pnl >= 0 ? "+" : ""}${formatAmount(pnl)} USDC` : "—"}
               </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/55">Est. close fee (0.08%)</span>
-              <span className="tnum text-white">{formatUsd(closeFee(closeNotional))}</span>
             </div>
           </div>
 

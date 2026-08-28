@@ -58,11 +58,6 @@ vi.mock("@/hooks/use-withdraw", () => ({
   useReroutedWithdraw: () => ({ withdraw: reroutedWithdraw, quoting: false, sending: false }),
 }));
 
-const invalidateKash = vi.hoisted(() => vi.fn());
-vi.mock("@/hooks/use-kash-invalidate", () => ({
-  useInvalidateKash: () => invalidateKash,
-}));
-
 import { useHyperliquidActions } from "@/features/trade/lib/hyperliquid-actions";
 
 const WALLET_ID = "wallet-1";
@@ -102,8 +97,6 @@ describe("useHyperliquidActions.placeOrder", () => {
     expect(signer.signL1).toHaveBeenCalledWith(prepared.action, prepared.nonce);
     expect(api.submitOrder).toHaveBeenCalledWith(WALLET_ID, prepared, SIGNATURE);
     expect(output.entryOrder.id).toBe("order-1");
-    // A fee-bearing order was just accepted — Kash points should refresh.
-    expect(invalidateKash).toHaveBeenCalled();
   });
 
   it("throws without calling the API when the wallet is not ready", async () => {
@@ -113,7 +106,6 @@ describe("useHyperliquidActions.placeOrder", () => {
       result.current.placeOrder({ assetSymbol: "BTC", side: "buy", size: "1" })
     ).rejects.toThrow("Wallet is not ready");
     expect(api.prepareOrder).not.toHaveBeenCalled();
-    expect(invalidateKash).not.toHaveBeenCalled();
   });
 });
 
@@ -378,8 +370,6 @@ describe("useHyperliquidActions.closePosition", () => {
     expect(api.submitClosePosition).toHaveBeenCalledWith(WALLET_ID, prepared, SIGNATURE);
     expect(api.prepareCancelOrder).not.toHaveBeenCalled();
     expect(output.id).toBe("order-2");
-    // A fee-bearing close was just accepted — Kash points should refresh.
-    expect(invalidateKash).toHaveBeenCalled();
   });
 
   it("best-effort cancels leftover sibling TP/SL orders after a successful close", async () => {

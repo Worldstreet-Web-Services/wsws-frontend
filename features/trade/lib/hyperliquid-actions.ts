@@ -2,7 +2,6 @@
 
 import { useCallback } from "react";
 import { useEvmSend } from "@/hooks/use-evm-send";
-import { useInvalidateKash } from "@/hooks/use-kash-invalidate";
 import { useReroutedWithdraw } from "@/hooks/use-withdraw";
 import { useHyperliquidSigner } from "@/features/trade/lib/hyperliquid-signer";
 import {
@@ -63,10 +62,6 @@ const builderFeeApprovedWallets = new Set<string>();
 export function useHyperliquidActions(walletId: string | undefined, address: string | undefined) {
   const { signL1, signWithdrawal, signBuilderFeeApproval } = useHyperliquidSigner(address);
   const evmSend = useEvmSend();
-  // Both open and close charge Ark's builder fee (see resolveBuilderFee on
-  // the backend) — Kash accrues points off that fee, so both need to nudge
-  // the points read once the order is accepted.
-  const invalidateKash = useInvalidateKash();
   // Continues a withdrawal's last hop (HyperCore -> Arbitrum, Hyperliquid's
   // own withdraw3, which can only ever settle to Arbitrum) on to Base, the
   // chain funding actually originates from — reusing the same generic
@@ -137,14 +132,9 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
       await ensureBuilderFeeApproved(id);
       const prepared = await prepareOrder({ ...request, walletId: id });
       const signature = await signL1(prepared.action, prepared.nonce);
-      const result = await submitOrder(id, prepared, signature);
-      // Hyperliquid accepted the order — a market/IOC entry fills almost
-      // immediately, so this is close enough to "the fee was just charged"
-      // to nudge points now rather than wait for the next background poll.
-      invalidateKash();
-      return result;
+      return submitOrder(id, prepared, signature);
     },
-    [signL1, ensureBuilderFeeApproved, invalidateKash]
+    [signL1, ensureBuilderFeeApproved]
   );
 
   // `onStatus` exists purely so the UI can show something better than a
@@ -209,15 +199,12 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
       const prepared = await prepareClosePosition(walletId, positionId);
       const signature = await signL1(prepared.action, prepared.nonce);
       const { closeOrder } = await submitClosePosition(walletId, prepared, signature);
-      // Same reasoning as submitPreparedOrder above — a reduce-only IOC close
-      // fills almost immediately.
-      invalidateKash();
       for (const orderId of siblingOrderIdsToCancel) {
         await cancelOrder(orderId).catch(() => {});
       }
       return closeOrder;
     },
-    [walletId, signL1, cancelOrder, invalidateKash]
+    [walletId, signL1, cancelOrder]
   );
 
   // Adds a TP/SL to a position, or replaces one: Hyperliquid has no in-place

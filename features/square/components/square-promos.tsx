@@ -42,6 +42,15 @@ import { FollowButton } from "@/features/square/components/follow-button";
  * WHICH four, and the first version of this shipped exactly that. The design
  * pairs each count with its glyph for the same reason every feed does.
  */
+/**
+ * One tally in the engagement pill, at the design's own proportions.
+ *
+ * The design pairs a 15.44px glyph with 7.72px text and a 1.29px gap inside a
+ * FIXED 31.53px cell — a tight, deliberately small unit. Rounded to whole
+ * pixels here (16 / 8 / 1px) because sub-pixel type renders blurry, but the
+ * relationship is kept: the glyph is twice the type, and they sit almost
+ * touching rather than spaced apart.
+ */
 function Tally({
   count,
   label,
@@ -52,15 +61,15 @@ function Tally({
   children: React.ReactNode;
 }) {
   return (
-    <span className="flex items-center gap-1 text-white/70" aria-label={label}>
+    <span className="flex items-center gap-[1px] text-white" aria-label={label}>
       {children}
-      <span className="tnum text-[10.5px] leading-none">{formatCompact(count)}</span>
+      <span className="tnum text-[8px] leading-none">{formatCompact(count)}</span>
     </span>
   );
 }
 
-/** One size for all four, so nothing is optically larger than its neighbour. */
-const GLYPH = "h-[13px] w-[13px] shrink-0";
+/** The design's 15.44px glyph, rounded to a whole pixel. */
+const GLYPH = "h-4 w-4 shrink-0";
 
 /** Posts people are talking about. */
 export function SquarePostsPromo() {
@@ -116,7 +125,12 @@ export function SquarePostsPromo() {
 
           {/* The design holds the tallies in ONE soft pill, so they read as a
               single fact about the post rather than four competing numbers. */}
-          <div className="mt-auto flex items-center gap-3.5 rounded-full bg-white/3 px-3 py-2">
+          {/* The pill as the design draws it: a white-3% ground with a full
+              radius, hugging its contents rather than spanning the card, and
+              its four tallies CENTRED within it. Mine spread them across the
+              full width on a darker ground, which read as a toolbar rather
+              than as one quiet fact about the post. */}
+          <div className="mt-auto flex w-fit items-center justify-center gap-[11px] rounded-full bg-white/3 px-[5px] py-[5px]">
             <Tally count={post.commentCount} label={t("commentsLabel")}>
               <IconComment className={GLYPH} />
             </Tally>

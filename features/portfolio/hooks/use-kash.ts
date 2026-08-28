@@ -1,13 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
-import type { EIP1193Provider } from "viem";
+import { usePrivy } from "@privy-io/react-auth";
 import { getWalletAddress } from "@/lib/user";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useInvalidateKash } from "@/hooks/use-kash-invalidate";
 import {
-  claimSettlementMessage,
   getKashAccount,
   getKashConversionQuote,
   getKashLedger,
@@ -165,30 +163,11 @@ export function useKashSubscribe() {
   });
 }
 
-/**
- * Settle the wallet's points into KSH now; refreshes the card on success.
- *
- * The engine has no session of its own for this route (see
- * WalletSignatureVerifier on the backend), so the embedded wallet signs a
- * deterministic message (EIP-191 personal_sign) proving it really is the
- * caller before the claim is posted. No gas, no on-chain tx.
- */
+/** Settle the wallet's points into KSH now; refreshes the card on success. */
 export function useKashClaim() {
-  const { wallets } = useWallets();
   const invalidate = useInvalidateKash();
   return useMutation({
-    mutationFn: async ({ wallet }: { wallet: string }) => {
-      const signer = wallets.find((w) => w.address.toLowerCase() === wallet.toLowerCase());
-      if (!signer) throw new Error("Signing wallet is not connected.");
-      const timestamp = Date.now();
-      const message = claimSettlementMessage(wallet, timestamp);
-      const provider = (await signer.getEthereumProvider()) as unknown as EIP1193Provider;
-      const signature = (await provider.request({
-        method: "personal_sign",
-        params: [message as `0x${string}`, wallet as `0x${string}`],
-      })) as string;
-      return postKashClaim(wallet, signature, timestamp);
-    },
+    mutationFn: ({ wallet }: { wallet: string }) => postKashClaim(wallet),
     onSuccess: invalidate,
   });
 }

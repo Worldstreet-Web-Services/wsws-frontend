@@ -193,27 +193,11 @@ export interface KashLedgerEntry {
 }
 
 /**
- * The exact message a client must sign to claim — MUST match the backend's
- * WalletSignatureVerifier.claimSettlementMessage byte-for-byte, or the
- * signature won't recover to the signer and the engine rejects it. No
- * on-chain event proves who is claiming (unlike a purchase or a conversion's
- * permit), so this signature IS the authorization.
- */
-export function claimSettlementMessage(wallet: string, timestamp: number): string {
-  return [
-    "World Street — claim Kash settlement",
-    `wallet: ${wallet.toLowerCase()}`,
-    `ts: ${timestamp}`,
-  ].join("\n");
-}
-
-/**
  * Settle this wallet's accrued points into KSH now, instead of waiting for the
- * weekly batch. Only ever affects the caller's own wallet — `signature` must
- * recover to `wallet` over `claimSettlementMessage(wallet, timestamp)`.
+ * weekly batch. Only ever affects the caller's own wallet.
  */
-export const postKashClaim = (wallet: string, signature: string, timestamp: number) =>
-  kash.post<KashClaim>("/settlements/claim", { wallet, signature, timestamp });
+export const postKashClaim = (wallet: string) =>
+  kash.post<KashClaim>("/settlements/claim", { wallet });
 
 export const getKashStatus = () => kash.get<KashStatus>("/status");
 

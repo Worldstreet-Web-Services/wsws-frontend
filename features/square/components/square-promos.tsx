@@ -7,12 +7,19 @@ import { timeAgo } from "@/lib/format";
 import { formatCompact } from "@/lib/square/format-count";
 import { authorName } from "@/lib/square/author";
 import { distinctByAuthor } from "@/lib/square/distinct-authors";
+import { withFeaturedFirst } from "@/lib/square/featured";
 import { squareLinks } from "@/lib/square/links";
 import { fetchSuggestedProfiles } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import { PromoCard, PromoShell } from "@/features/square/components/promo-shell";
 import { VerifiedChip } from "@/features/square/components/verified-chip";
+import {
+  IconComment,
+  IconLike,
+  IconRepost,
+  IconViews,
+} from "@/features/square/components/square-icons";
 import { FollowButton } from "@/features/square/components/follow-button";
 
 /**
@@ -46,20 +53,14 @@ function Tally({
 }) {
   return (
     <span className="flex items-center gap-1 text-white/70" aria-label={label}>
-      <svg viewBox="0 0 24 24" aria-hidden className="h-[13px] w-[13px] shrink-0">
-        {children}
-      </svg>
-      <span className="tnum text-[10.5px]">{formatCompact(count)}</span>
+      {children}
+      <span className="tnum text-[10.5px] leading-none">{formatCompact(count)}</span>
     </span>
   );
 }
 
-const STROKE = {
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.8,
-  strokeLinejoin: "round" as const,
-};
+/** One size for all four, so nothing is optically larger than its neighbour. */
+const GLYPH = "h-[13px] w-[13px] shrink-0";
 
 /** Posts people are talking about. */
 export function SquarePostsPromo() {
@@ -110,30 +111,23 @@ export function SquarePostsPromo() {
             {post.text}
           </p>
 
+          {/* Pinned to the card's foot, so every pill in the rail sits on one
+              line however long the caption above it runs. */}
+
           {/* The design holds the tallies in ONE soft pill, so they read as a
               single fact about the post rather than four competing numbers. */}
-          <div className="mt-3 flex items-center gap-3.5 rounded-full bg-white/3 px-3 py-2">
+          <div className="mt-auto flex items-center gap-3.5 rounded-full bg-white/3 px-3 py-2">
             <Tally count={post.commentCount} label={t("commentsLabel")}>
-              <path
-                d="M20 12a7 7 0 0 1-7 7H7l-3 2.5V12a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7Z"
-                {...STROKE}
-              />
+              <IconComment className={GLYPH} />
             </Tally>
             <Tally count={post.repostCount} label={t("repostsLabel")}>
-              <path
-                d="M4 8h11a4 4 0 0 1 4 4M4 8l3-3M4 8l3 3m13 5H9a4 4 0 0 1-4-4m15 4-3 3m3-3-3-3"
-                {...STROKE}
-                strokeLinecap="round"
-              />
+              <IconRepost className={GLYPH} />
             </Tally>
             <Tally count={post.likeCount} label={t("likesLabel")}>
-              <path
-                d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
-                {...STROKE}
-              />
+              <IconLike className={GLYPH} />
             </Tally>
             <Tally count={post.viewCount} label={t("viewsLabel")}>
-              <path d="M4 20V10m5 10V4m5 16v-7m5 7V8" {...STROKE} strokeLinecap="round" />
+              <IconViews className={GLYPH} />
             </Tally>
           </div>
         </PromoCard>
@@ -195,7 +189,7 @@ export function SquareLivePromo() {
             {t("joinedCount", { count: stream.peakViewers })}
           </p>
 
-          <span className="mt-3 block rounded-full bg-[#34C759] py-2 text-center text-[12.5px] font-bold text-black">
+          <span className="mt-auto block rounded-full bg-[#34C759] py-2 text-center text-[12.5px] font-bold text-black">
             {t("joinLive")}
           </span>
         </PromoCard>
@@ -211,23 +205,32 @@ export function SquarePeoplePromo() {
 
   const people = useQuery({
     queryKey: ["market-square", "suggested-profiles"],
-    queryFn: () => fetchSuggestedProfiles(8),
+    // Fetched WIDER than the rail shows, because a pinned profile may not be
+    // in the top eight by followers — pinning cannot promote someone who was
+    // never fetched.
+    queryFn: () => fetchSuggestedProfiles(30),
     enabled: squareHref !== null,
     staleTime: 10 * 60_000,
     retry: false,
   });
 
-  const profiles = people.data ?? [];
+  const profiles = useMemo(
+    () => withFeaturedFirst(people.data ?? [], (profile) => profile.username).slice(0, 8),
+    [people.data]
+  );
   if (profiles.length === 0) return null;
 
   return (
     <PromoShell title={t("promoPeopleTitle")} action={t("openSquare")}>
       {profiles.map((profile) => (
-        <div key={profile.id} className="bg-grey-800 w-[210px] shrink-0 snap-start rounded-lg p-4">
+        <div
+          key={profile.id}
+          className="bg-grey-800 flex h-[252px] w-[210px] shrink-0 snap-start flex-col rounded-lg p-4"
+        >
           {/* Centred stack, as the design draws it: portrait, name, handle,
               reach, action. The avatar is deliberately large — on a card whose
               whole job is "follow this person", the face IS the content. */}
-          <div className="flex flex-col items-center text-center">
+          <div className="flex flex-1 flex-col items-center text-center">
             <a
               href={squareLinks.profile(profile.username) ?? undefined}
               target="_blank"
@@ -257,7 +260,7 @@ export function SquarePeoplePromo() {
 
             {/* A real Follow, not a link to go and do it elsewhere — the write
                 is already relayed, and a card that says Follow should follow. */}
-            <div className="mt-2.5 w-full">
+            <div className="mt-auto w-full pt-2.5">
               <FollowButton
                 author={{
                   id: profile.id,

@@ -116,7 +116,13 @@ export function SquarePostsPromo() {
               LINK into the square, so the whole post is one tap away already.
               A "show more" that expanded a promo card would grow the rail's
               row height and shove the cards beside it out of alignment. */}
-          <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-[18px] text-[#E5E5E5]">
+          {/* Leading is 1.6, not the 1.44 this started at, because CLAMPED
+              text hides overflow — and an emoji's glyph box is taller than a
+              Latin line box, so a tight leading slices the tops and bottoms
+              off 🚀 while leaving the words untouched. The extra headroom
+              costs one line of density and is the difference between emoji
+              rendering and emoji being visibly cut. */}
+          <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-[20px] text-[#E5E5E5]">
             {post.text}
           </p>
 
@@ -192,7 +198,8 @@ export function SquareLivePromo() {
             </span>
           </div>
 
-          <p className="mt-2.5 line-clamp-2 text-[13px] leading-[18px] font-semibold text-[#E5E5E5]">
+          {/* Same reason as the post body: stream titles carry emoji too. */}
+          <p className="mt-2.5 line-clamp-2 text-[13px] leading-[21px] font-semibold text-[#E5E5E5]">
             {stream.title}
           </p>
           <p className="mt-1.5 truncate text-[11.5px] text-white/50">

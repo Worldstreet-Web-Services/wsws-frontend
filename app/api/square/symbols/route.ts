@@ -38,7 +38,9 @@ export async function GET() {
       originChainId: String(BUY_ORIGIN.chainId),
       originAddress: BUY_ORIGIN.asset,
     });
-    const raw = await dextopusRequest("/trade/deposit/destinations", {
+    // No leading slash: dextopusRequest builds `${BASE}/${path}`, so "/trade/..."
+    // produced "api//trade/...". Every other caller passes a bare path.
+    const res = await dextopusRequest("trade/deposit/destinations", {
       method: "GET",
       purpose: "trade",
       query,
@@ -51,6 +53,13 @@ export async function GET() {
     // needs the MAPPED route (chainName from `blockchain`, asset from
     // `currency`). Every symbol was filtered out, so the published list held
     // only the hardcoded swap route.
+    // dextopusRequest returns a RESPONSE, not a parsed body. Reading
+    // `.destinations` off it gave undefined every time, so the list came back
+    // holding nothing but the hardcoded swap route. This was the actual cause
+    // of the DOGE-only list; the payload shape was a red herring.
+    if (!res.ok) throw new Error(`destinations ${res.status}`);
+    const raw: unknown = await res.json();
+
     const payload = raw as { destinations?: RawDestination[] };
     const rows: RawDestination[] = Array.isArray(raw)
       ? (raw as RawDestination[])

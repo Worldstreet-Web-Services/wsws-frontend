@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/format";
 import { formatCompact } from "@/lib/square/format-count";
 import { authorName } from "@/lib/square/author";
+import { distinctByAuthor } from "@/lib/square/distinct-authors";
 import { squareLinks } from "@/lib/square/links";
 import { fetchSuggestedProfiles } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
@@ -27,62 +28,109 @@ import { FollowButton } from "@/features/square/components/follow-button";
  * closes back up around it rather than rendering an empty shelf.
  */
 
-function Tally({ count, label }: { count: number; label: string }) {
+/**
+ * One tally in the engagement pill: the glyph, then the count.
+ *
+ * The icon is not decoration — a row of four bare numbers says nothing about
+ * WHICH four, and the first version of this shipped exactly that. The design
+ * pairs each count with its glyph for the same reason every feed does.
+ */
+function Tally({
+  count,
+  label,
+  children,
+}: {
+  count: number;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <span className="text-[9.5px] text-white/70" aria-label={label}>
-      {formatCompact(count)}
+    <span className="flex items-center gap-1 text-white/70" aria-label={label}>
+      <svg viewBox="0 0 24 24" aria-hidden className="h-[13px] w-[13px] shrink-0">
+        {children}
+      </svg>
+      <span className="tnum text-[10.5px]">{formatCompact(count)}</span>
     </span>
   );
 }
+
+const STROKE = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinejoin: "round" as const,
+};
 
 /** Posts people are talking about. */
 export function SquarePostsPromo() {
   const t = useTranslations("square");
   const feed = useSquareFeed("for-you");
 
-  const posts = useMemo(
-    () =>
-      (feed.data?.pages.flatMap((page) => page.items) ?? [])
-        .flatMap((item) => (item.type === "post" && item.post ? [item.post] : []))
-        .slice(0, 8),
-    [feed.data]
-  );
+  const posts = useMemo(() => {
+    const all = (feed.data?.pages.flatMap((page) => page.items) ?? []).flatMap((item) =>
+      item.type === "post" && item.post ? [item.post] : []
+    );
+    // ONE post per author, so the rail shows a room rather than one person's
+    // timeline. See lib/square/distinct-authors.ts for the fallback.
+    return distinctByAuthor(all, (post) => post.author?.id ?? post.authorId).slice(0, 8);
+  }, [feed.data]);
 
   if (posts.length === 0) return null;
 
   return (
     <PromoShell title={t("promoPostsTitle")} action={t("openSquare")}>
       {posts.map((post) => (
-        <PromoCard key={post.id} href={squareLinks.post(post.id)} width="w-[285px]">
+        <PromoCard key={post.id} href={squareLinks.post(post.id)} width="w-[320px]">
           <div className="flex items-center gap-2">
             <SquareAvatar
               src={post.author?.avatarUrl ?? null}
               seed={post.author?.id ?? post.id}
-              size={26}
+              name={post.author?.displayName}
+              size={34}
             />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1">
-                <span className="truncate text-[12px] font-bold text-white">
+                <span className="truncate text-[13.5px] font-bold text-white">
                   {authorName(post.author, t("someone"))}
                 </span>
                 <VerifiedChip verification={post.author?.verification} />
               </p>
-              <p className="truncate text-[10.5px] text-white/50">
+              <p className="truncate text-[11.5px] text-white/50">
                 {post.author ? `@${post.author.username} · ` : ""}
                 {timeAgo(post.createdAt)}
               </p>
             </div>
           </div>
 
-          <p className="mt-2 line-clamp-3 text-[11px] leading-[15px] text-[#E5E5E5]">{post.text}</p>
+          <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-[18px] text-[#E5E5E5]">
+            {post.text}
+          </p>
 
           {/* The design holds the tallies in ONE soft pill, so they read as a
               single fact about the post rather than four competing numbers. */}
-          <div className="mt-2.5 flex items-center gap-3 rounded-full bg-white/3 px-2.5 py-1.5">
-            <Tally count={post.commentCount} label={t("commentsLabel")} />
-            <Tally count={post.repostCount} label={t("repostsLabel")} />
-            <Tally count={post.likeCount} label={t("likesLabel")} />
-            <Tally count={post.viewCount} label={t("viewsLabel")} />
+          <div className="mt-3 flex items-center gap-3.5 rounded-full bg-white/3 px-3 py-2">
+            <Tally count={post.commentCount} label={t("commentsLabel")}>
+              <path
+                d="M20 12a7 7 0 0 1-7 7H7l-3 2.5V12a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7Z"
+                {...STROKE}
+              />
+            </Tally>
+            <Tally count={post.repostCount} label={t("repostsLabel")}>
+              <path
+                d="M4 8h11a4 4 0 0 1 4 4M4 8l3-3M4 8l3 3m13 5H9a4 4 0 0 1-4-4m15 4-3 3m3-3-3-3"
+                {...STROKE}
+                strokeLinecap="round"
+              />
+            </Tally>
+            <Tally count={post.likeCount} label={t("likesLabel")}>
+              <path
+                d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9Z"
+                {...STROKE}
+              />
+            </Tally>
+            <Tally count={post.viewCount} label={t("viewsLabel")}>
+              <path d="M4 20V10m5 10V4m5 16v-7m5 7V8" {...STROKE} strokeLinecap="round" />
+            </Tally>
           </div>
         </PromoCard>
       ))}
@@ -112,12 +160,13 @@ export function SquareLivePromo() {
   return (
     <PromoShell title={t("promoLiveTitle")} action={t("openSquare")}>
       {streams.map((stream) => (
-        <PromoCard key={stream.id} href={squareLinks.live(stream.id)} width="w-[285px]">
+        <PromoCard key={stream.id} href={squareLinks.live(stream.id)} width="w-[320px]">
           <div className="flex items-start justify-between gap-2">
             <SquareAvatar
               src={stream.owner?.avatarUrl ?? null}
               seed={stream.owner?.id ?? stream.id}
-              size={36}
+              name={stream.owner?.displayName}
+              size={42}
             />
             {/* Live is the one thing here that must be unmistakable, so it
                 keeps the square's red and a pulse — motion-safe, so it holds
@@ -130,19 +179,19 @@ export function SquareLivePromo() {
             </span>
           </div>
 
-          <p className="mt-2 line-clamp-2 text-[11.5px] leading-[15px] font-semibold text-[#E5E5E5]">
+          <p className="mt-2.5 line-clamp-2 text-[13px] leading-[18px] font-semibold text-[#E5E5E5]">
             {stream.title}
           </p>
-          <p className="mt-1 truncate text-[10.5px] text-white/50">
+          <p className="mt-1.5 truncate text-[11.5px] text-white/50">
             {stream.owner
               ? t("createdBy", { name: stream.owner.displayName })
               : t("createdInSquare")}
           </p>
-          <p className="mt-0.5 text-[10.5px] text-white/50">
+          <p className="mt-0.5 text-[11.5px] text-white/50">
             {t("joinedCount", { count: stream.peakViewers })}
           </p>
 
-          <span className="mt-2.5 block rounded-full bg-[#34C759] py-1.5 text-center text-[11.5px] font-bold text-black">
+          <span className="mt-3 block rounded-full bg-[#34C759] py-2 text-center text-[12.5px] font-bold text-black">
             {t("joinLive")}
           </span>
         </PromoCard>
@@ -170,7 +219,7 @@ export function SquarePeoplePromo() {
   return (
     <PromoShell title={t("promoPeopleTitle")} action={t("openSquare")}>
       {profiles.map((profile) => (
-        <div key={profile.id} className="bg-grey-800 w-[187px] shrink-0 snap-start rounded-lg p-3">
+        <div key={profile.id} className="bg-grey-800 w-[210px] shrink-0 snap-start rounded-lg p-4">
           {/* Centred stack, as the design draws it: portrait, name, handle,
               reach, action. The avatar is deliberately large — on a card whose
               whole job is "follow this person", the face IS the content. */}
@@ -181,19 +230,24 @@ export function SquarePeoplePromo() {
               rel="noopener noreferrer"
               className="transition-[filter] hover:brightness-110"
             >
-              <SquareAvatar src={profile.avatarUrl} seed={profile.id} size={84} />
+              <SquareAvatar
+                src={profile.avatarUrl}
+                seed={profile.id}
+                name={profile.displayName}
+                size={96}
+              />
             </a>
 
             <p className="mt-2.5 flex max-w-full items-center justify-center gap-1">
-              <span className="truncate text-[12.5px] font-bold text-white">
+              <span className="truncate text-[13.5px] font-bold text-white">
                 {profile.displayName || `@${profile.username}`}
               </span>
               <VerifiedChip verification={profile.verification} />
             </p>
-            <p className="mt-0.5 max-w-full truncate text-[11px] text-white/50">
+            <p className="mt-0.5 max-w-full truncate text-[12px] text-white/50">
               @{profile.username}
             </p>
-            <p className="mt-0.5 text-[10.5px] text-white/50">
+            <p className="mt-1 text-[11.5px] text-white/50">
               {t("followersCount", { count: profile.followerCount })}
             </p>
 

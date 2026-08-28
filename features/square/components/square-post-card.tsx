@@ -15,7 +15,7 @@ import { ExpandableText } from "@/features/square/components/expandable-text";
 import { FollowButton } from "@/features/square/components/follow-button";
 import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
-import type { MarketSquareFeedPost } from "@/lib/api/market-square";
+import type { MarketSquareAuthor, MarketSquareFeedPost } from "@/lib/api/market-square";
 import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
@@ -137,10 +137,31 @@ function SquareLink({ path, value }: { path: string; value: string }) {
   );
 }
 
+/**
+ * The avatar-and-names block, a button only when there is somewhere to go.
+ * Rendering a button with no handler would announce an action that does
+ * nothing to a screen reader.
+ */
+function IdentityBlock({ onOpen, children }: { onOpen?: () => void; children: React.ReactNode }) {
+  if (!onOpen) {
+    return <div className="flex min-w-0 flex-1 items-center gap-2.5">{children}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left transition-colors hover:bg-white/5"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function SquarePostCard({
   post,
   markets,
   onOpenBuy,
+  onOpenProfile,
   meId,
 }: {
   post: MarketSquareFeedPost;
@@ -148,6 +169,12 @@ export function SquarePostCard({
   meId?: string;
   markets: TradableSymbol[];
   onOpenBuy?: (buy: BuyPayload) => void;
+  /**
+   * Opens the author's profile in place. Optional so the card keeps working
+   * on surfaces with nowhere to put a profile; without it the header stays
+   * plain text, exactly as before.
+   */
+  onOpenProfile?: (author: MarketSquareAuthor) => void;
 }) {
   const t = useTranslations("square");
   const engage = useSquareEngage();
@@ -196,21 +223,26 @@ export function SquarePostCard({
   return (
     <article ref={seenRef} className="border-grey-800 border-b px-1 py-4 first:pt-0">
       <header className="flex items-center gap-2.5">
-        <SquareAvatar src={author?.avatarUrl ?? null} seed={author?.id ?? post.id} size={40} />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1">
-            <span className="truncate text-[14px] leading-5 font-semibold text-white">
-              {authorName(author, t("someone"))}
-            </span>
-            {author?.verification === "verified" ? (
-              <VerifiedTick className="text-accent h-[14px] w-[14px] shrink-0" />
-            ) : null}
-          </p>
-          <p className="text-grey-500 truncate text-[12px] leading-4">
-            {author ? `@${author.username} · ` : ""}
-            {timeAgo(post.createdAt)}
-          </p>
-        </div>
+        {/* The identity opens the profile when the surface can host one.
+            A button, not the whole header: Follow and the external arrow are
+            their own actions and must not become profile taps. */}
+        <IdentityBlock onOpen={author && onOpenProfile ? () => onOpenProfile(author) : undefined}>
+          <SquareAvatar src={author?.avatarUrl ?? null} seed={author?.id ?? post.id} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1">
+              <span className="truncate text-[14px] leading-5 font-semibold text-white">
+                {authorName(author, t("someone"))}
+              </span>
+              {author?.verification === "verified" ? (
+                <VerifiedTick className="text-accent h-[14px] w-[14px] shrink-0" />
+              ) : null}
+            </p>
+            <p className="text-grey-500 truncate text-[12px] leading-4">
+              {author ? `@${author.username} · ` : ""}
+              {timeAgo(post.createdAt)}
+            </p>
+          </div>
+        </IdentityBlock>
         {author && !isMe ? <FollowButton author={author} /> : null}
         {href ? (
           <a

@@ -6,10 +6,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { squareLinks } from "@/lib/square/links";
-import { fetchSquareMe, fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
+import {
+  fetchSquareMe,
+  fetchSquareTopics,
+  type MarketSquareAuthor,
+  type SquareLane,
+} from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareLiveStrip } from "@/features/square/components/square-live-strip";
 import { SquarePostCard } from "@/features/square/components/square-post-card";
+import { SquareProfileSheet } from "@/features/square/components/square-profile-sheet";
 import { SquareRail } from "@/features/square/components/square-rail";
 import { SquareTabs, type SquareTab } from "@/features/square/components/square-tabs";
 import { SquareComposer } from "@/components/share/square-composer";
@@ -61,6 +67,9 @@ export function SquareSection({
 }) {
   const t = useTranslations("square");
   const [ownTab, setOwnTab] = useState<string>(LANE_FOR_YOU);
+  // Whose profile is open, if any. The author payload travels whole because
+  // there is no per-profile read to refetch it from.
+  const [profileAuthor, setProfileAuthor] = useState<MarketSquareAuthor | null>(null);
   // Controlled when the dashboard passes a tab, uncontrolled otherwise, so the
   // section still works on its own.
   const tab = controlledTab ?? ownTab;
@@ -191,6 +200,7 @@ export function SquareSection({
                         post={post}
                         markets={markets}
                         onOpenBuy={onOpenBuy}
+                        onOpenProfile={setProfileAuthor}
                         meId={meQuery.data?.id}
                       />
                     ))}
@@ -218,6 +228,18 @@ export function SquareSection({
       </div>
 
       <SquareComposer open={composing} onClose={() => setComposing(false)} markets={markets} />
+      {profileAuthor ? (
+        <SquareProfileSheet
+          author={profileAuthor}
+          markets={markets}
+          onOpenBuy={onOpenBuy}
+          meId={meQuery.data?.id}
+          lane={lane}
+          topics={topics}
+          hashtag={hashtag}
+          onClose={() => setProfileAuthor(null)}
+        />
+      ) : null}
     </div>
   );
 }

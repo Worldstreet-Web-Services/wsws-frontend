@@ -456,10 +456,10 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                       chessLevelEightTerms
                     />
                     <p className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                      A reviewed win pays 1.1x your stake, returning your principal plus 10% profit.
-                      A draw or loss forfeits your stake to the computer. An abort or system
-                      cancellation returns 100%. After engine analysis, every winning payout stays
-                      held until a moderator clears it.
+                      A reviewed win pays 2x your stake. A draw or loss forfeits your stake to the
+                      computer. An abort or system cancellation returns 100%. After engine analysis,
+                      every win stays held until a moderator clears it. An approved win is credited
+                      to your chess balance and waits there if the cashier wallet needs funding.
                     </p>
                   </div>
                 ) : (

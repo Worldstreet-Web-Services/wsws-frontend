@@ -17,7 +17,7 @@ export const COMPUTER_WAGER_FEE_BPS = 800;
 export const MIN_STAKED_CHESS_COMPUTER_LEVEL = 5;
 export const MIN_STAKED_DRAUGHTS_COMPUTER_LEVEL = 4;
 export const COMPUTER_DRAW_RETURN_BPS = 5_000;
-export const CHESS_WIN_REWARD_BPS = 1_000;
+export const CHESS_WIN_REWARD_BPS = 10_000;
 
 const COMPUTER_REWARD_BPS: Readonly<Record<number, number>> = {
   4: 2_500,

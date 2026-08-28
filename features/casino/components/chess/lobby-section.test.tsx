@@ -333,14 +333,15 @@ describe("chess lobby", () => {
       target: { value: "10" },
     });
 
-    expect(screen.getByText("Win profit (10%)")).toBeInTheDocument();
-    expect(screen.getByText("11 USD")).toBeInTheDocument();
+    expect(screen.getByText("Win profit (100%)")).toBeInTheDocument();
+    expect(screen.getByText("20 USD")).toBeInTheDocument();
     expect(screen.getByText("Draw return")).toBeInTheDocument();
     expect(screen.getByText("0 USD")).toBeInTheDocument();
     expect(
       screen.getByText(/maximum-strength level-8 engine.*fixed 5\+0 clock/)
     ).toBeInTheDocument();
     expect(screen.getByText(/until a moderator clears it/)).toBeInTheDocument();
+    expect(screen.getByText(/waits there if the cashier wallet needs funding/)).toBeInTheDocument();
     expect(screen.getByText("Balance after stake")).toBeInTheDocument();
   });
 

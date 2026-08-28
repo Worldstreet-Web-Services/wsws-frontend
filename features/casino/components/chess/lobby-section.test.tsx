@@ -318,11 +318,11 @@ describe("chess lobby", () => {
     expect(screen.queryByRole("textbox", { name: "Computer stake in USD" })).toBeNull();
 
     for (const level of [5, 6, 7, 8]) {
-      fireEvent.click(screen.getByRole("button", { name: String(level) }));
+      fireEvent.click(screen.getByRole("button", { name: `Stockfish ${level}` }));
       expect(screen.getByRole("textbox", { name: "Computer stake in USD" })).toBeInTheDocument();
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "5" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stockfish 5" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Computer stake in USD" }), {
       target: { value: "0" },
     });

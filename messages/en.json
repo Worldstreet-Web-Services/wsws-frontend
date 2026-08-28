@@ -2253,7 +2253,7 @@
     "pointsDisclaimer": "Not KASH yet — it's your share of real KASH+, paid out monthly.",
     "pointsClaim": "Claim",
     "pointsClaiming": "Claiming…",
-    "pointsClaimBelowMin": "Keep earning to unlock your claim.",
+    "pointsClaimBelowMin": "Claim once you reach {min} KASH.",
     "pointsClaimSuccess": "Claimed! {kash} KASH is in your balance.",
     "pointsClaimFailed": "Couldn't claim right now. Try again.",
     "claimedSoFar": "Claimed so far",

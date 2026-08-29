@@ -2549,6 +2549,12 @@
     "followersCount": "{count, plural, one {# seguidor} other {# seguidores}}",
     "viewProfile": "Ver perfil",
     "showMore": "Ver más",
-    "showLess": "Ver menos"
+    "showLess": "Ver menos",
+    "profileRecentPosts": "Publicaciones recientes",
+    "profileRecentHint": "Sus publicaciones del feed reciente del Square. El historial completo está en Market Square.",
+    "profileNothingRecent": "Nada de esta persona en el feed reciente.",
+    "profileLookBack": "Mirar más atrás",
+    "profileLooking": "Buscando…",
+    "profileOpenSquare": "Abrir el perfil completo en Market Square"
   }
 }

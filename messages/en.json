@@ -2549,6 +2549,12 @@
     "followersCount": "{count, plural, one {# follower} other {# followers}}",
     "viewProfile": "View profile",
     "showMore": "Show more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "profileRecentPosts": "Recent posts",
+    "profileRecentHint": "Their posts from the Square's recent feed. The full history lives in Market Square.",
+    "profileNothingRecent": "Nothing from them in the recent feed.",
+    "profileLookBack": "Look further back",
+    "profileLooking": "Looking…",
+    "profileOpenSquare": "Open the full profile in Market Square"
   }
 }

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { HyperliquidAssetPicker } from "@/features/trade/components/hyperliquid-asset-picker";
 import { HyperliquidMarketHeader } from "@/features/trade/components/hyperliquid-market-header";
+import { HyperliquidChartPanel } from "@/features/trade/components/hyperliquid-chart-panel";
 import { HyperliquidMarketPanel } from "@/features/trade/components/hyperliquid-market-panel";
 import { HyperliquidWalletPanel } from "@/features/trade/components/hyperliquid-wallet-panel";
 import { HyperliquidAccountModePills } from "@/features/trade/components/hyperliquid-account-mode-pills";
@@ -13,7 +13,6 @@ import { HyperliquidPositionsList } from "@/features/trade/components/hyperliqui
 import { HyperliquidOrdersList } from "@/features/trade/components/hyperliquid-orders-list";
 import { useHyperliquidTrading } from "@/features/trade/hooks/use-hyperliquid-trading";
 import { useHyperliquidMarketContexts } from "@/features/trade/hooks/use-hyperliquid-market-contexts";
-import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
 import type {
   HlOrderRow,
   HlPositionView,
@@ -129,18 +128,7 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
             loading={trading.assetsLoading}
           />
           <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-[1fr_300px]">
-            <div className="ws-card p-4 sm:p-5">
-              {asset ? (
-                <TradingViewChart symbol={tradingViewSymbolForAsset(asset.symbol)} height={520} />
-              ) : (
-                <div
-                  style={{ height: 520 }}
-                  className="grid place-items-center text-[13.5px] font-normal text-white/45"
-                >
-                  No market selected
-                </div>
-              )}
-            </div>
+            <HyperliquidChartPanel assetSymbol={asset?.symbol ?? ""} />
             <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} />
           </div>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

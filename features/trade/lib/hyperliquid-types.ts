@@ -287,6 +287,34 @@ export interface PreparedBuilderFeeApproval {
   nonce: number;
 }
 
+// ── Account-abstraction mode (HyperCore's own mode, not EIP-7702) ───────
+// A wallet must be in "disabled" (Manual/Standard) mode before its orders
+// are eligible to carry Hyperliquid's builder fee — see HlBuilderFeeStatus.
+
+export type HlAbstractionMode = "disabled" | "unifiedAccount" | "portfolioMargin";
+
+// User-signed EIP-712 action — same family as approveBuilderFee/withdraw3,
+// see hyperliquid-signer.ts's signSetAbstractionMode.
+export interface HlSetAbstractionAction {
+  type: "userSetAbstraction";
+  signatureChainId: `0x${string}`;
+  hyperliquidChain: "Mainnet" | "Testnet";
+  user: string;
+  abstraction: HlAbstractionMode;
+  nonce: number;
+}
+
+export interface HlAbstractionModeStatus {
+  mode: HlAbstractionMode;
+  /** Whether this wallet is currently eligible to collect builder fees. */
+  eligibleForBuilderFees: boolean;
+}
+
+export interface PreparedAbstractionMode {
+  action: HlSetAbstractionAction;
+  nonce: number;
+}
+
 /** The insufficient-margin error the backend throws from `POST /hl/orders/prepare` (see apps/perp's TradingService). */
 export interface InsufficientMarginDetails {
   reason: "insufficient_margin";

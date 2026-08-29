@@ -31,7 +31,7 @@ export function rwaRevalidate(path: string): number | undefined {
 // model: every write is signed client-side, this backend never forwards a
 // private key).
 const PERP_ALLOWED =
-  /^(health|pairs|market|prices|snapshot|trades|orders|quote|build\/(approve-usdc|open-trade|close-trade|update-margin|update-tp-sl|cancel-order)|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|ark\/wallet\/[^/]+|ark\/assets|ark\/prices|ark\/market-contexts|ark\/account-state\/[^/]+|ark\/arbitrum-balance\/[^/]+|ark\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee)|ark\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|ark\/leverage\/(prepare|submit)|ark\/bridge\/(prepare|confirm)|ark\/withdrawals\/(prepare|submit)|ark\/positions\/close\/(prepare|submit)|ark\/builder-fee\/(prepare|submit))$/;
+  /^(health|pairs|market|prices|snapshot|trades|orders|quote|build\/(approve-usdc|open-trade|close-trade|update-margin|update-tp-sl|cancel-order)|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|ark\/wallet\/[^/]+|ark\/assets|ark\/prices|ark\/market-contexts|ark\/account-state\/[^/]+|ark\/arbitrum-balance\/[^/]+|ark\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee|abstraction-mode)|ark\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|ark\/leverage\/(prepare|submit)|ark\/bridge\/(prepare|confirm)|ark\/withdrawals\/(prepare|submit)|ark\/positions\/close\/(prepare|submit)|ark\/builder-fee\/(prepare|submit)|ark\/abstraction-mode\/(prepare|submit))$/;
 
 export function isAllowedPerpPath(path: string): boolean {
   // Same traversal guard as the RWA allowlist: a raw ".." or encoded segment

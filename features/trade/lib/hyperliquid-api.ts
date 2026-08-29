@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/api/service";
 import type {
   DepositAddress,
   DepositStatus,
+  HlAbstractionModeStatus,
   HlAllMids,
   HlApproveBuilderFeeAction,
   HlAsset,
@@ -12,6 +13,7 @@ import type {
   HlMarketContext,
   HlOrderRow,
   HlPositionView,
+  HlSetAbstractionAction,
   HlSignature,
   HlTriggerKind,
   HlWallet,
@@ -20,6 +22,7 @@ import type {
   PlaceOrderResult,
   PrepareBridgeResult,
   PrepareLeverageResult,
+  PreparedAbstractionMode,
   PreparedBuilderFeeApproval,
   PreparedCancel,
   PreparedClosePosition,
@@ -239,6 +242,34 @@ export async function submitBuilderFeeApproval(
   signature: HlSignature
 ): Promise<{ approved: true }> {
   return perp.post<{ approved: true }>("/ark/builder-fee/submit", { walletId, action, signature });
+}
+
+// ── Account-abstraction mode (HyperCore's own mode, not EIP-7702) ───────
+
+export async function getAbstractionModeStatus(walletId: string): Promise<HlAbstractionModeStatus> {
+  return perp.get<HlAbstractionModeStatus>(`/ark/wallets/${walletId}/abstraction-mode`);
+}
+
+export async function prepareAbstractionMode(
+  walletId: string,
+  abstraction: HlAbstractionModeStatus["mode"]
+): Promise<PreparedAbstractionMode> {
+  return perp.post<PreparedAbstractionMode>("/ark/abstraction-mode/prepare", {
+    walletId,
+    abstraction,
+  });
+}
+
+export async function submitAbstractionMode(
+  walletId: string,
+  action: HlSetAbstractionAction,
+  signature: HlSignature
+): Promise<{ mode: HlAbstractionModeStatus["mode"] }> {
+  return perp.post<{ mode: HlAbstractionModeStatus["mode"] }>("/ark/abstraction-mode/submit", {
+    walletId,
+    action,
+    signature,
+  });
 }
 
 // ── Dextopus funding (Base -> Arbitrum) ──────────────────────────────────

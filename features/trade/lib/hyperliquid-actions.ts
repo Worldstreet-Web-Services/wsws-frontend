@@ -7,9 +7,11 @@ import { useReroutedWithdraw } from "@/hooks/use-withdraw";
 import { useHyperliquidSigner } from "@/features/trade/lib/hyperliquid-signer";
 import {
   confirmBridge,
+  getAbstractionModeStatus,
   getAccountState,
   getArbitrumBalance,
   getBuilderFeeStatus,
+  prepareAbstractionMode,
   prepareBridge,
   prepareBuilderFeeApproval,
   prepareCancelOrder,
@@ -18,6 +20,7 @@ import {
   prepareOrder,
   prepareTriggerOrder,
   prepareWithdrawal,
+  submitAbstractionMode,
   submitBuilderFeeApproval,
   submitCancelOrder,
   submitClosePosition,
@@ -28,6 +31,7 @@ import {
 } from "@/features/trade/lib/hyperliquid-api";
 import {
   isInsufficientMarginDetails,
+  type HlAbstractionModeStatus,
   type HlMarginMode,
   type HlOrderRow,
   type HlTriggerKind,
@@ -61,7 +65,8 @@ const builderFeeApprovedWallets = new Set<string>();
  * their own signing silently. See apps/perp/src/signing/README.md.
  */
 export function useHyperliquidActions(walletId: string | undefined, address: string | undefined) {
-  const { signL1, signWithdrawal, signBuilderFeeApproval } = useHyperliquidSigner(address);
+  const { signL1, signWithdrawal, signBuilderFeeApproval, signSetAbstractionMode } =
+    useHyperliquidSigner(address);
   const evmSend = useEvmSend();
   // Both open and close charge Ark's builder fee (see resolveBuilderFee on
   // the backend) — Kash accrues points off that fee, so both need to nudge
@@ -313,6 +318,27 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
     [walletId, address, signWithdrawal, sendArbitrumBalanceToBase]
   );
 
+  // Reads the wallet's current HyperCore account-abstraction mode — the
+  // Manual/Unified/Portfolio pill in the order ticket uses this to show
+  // which one is active.
+  const getAbstractionMode = useCallback(async (): Promise<HlAbstractionModeStatus> => {
+    if (!walletId) throw new Error("Wallet is not ready yet.");
+    return getAbstractionModeStatus(walletId);
+  }, [walletId]);
+
+  // User-initiated, unlike ensureBuilderFeeApproved above: switching mode is
+  // a deliberate choice made from the order ticket's pill, so a failure here
+  // is thrown back to the UI rather than swallowed.
+  const setAbstractionMode = useCallback(
+    async (mode: HlAbstractionModeStatus["mode"]): Promise<void> => {
+      if (!walletId) throw new Error("Wallet is not ready yet.");
+      const prepared = await prepareAbstractionMode(walletId, mode);
+      const signature = await signSetAbstractionMode(prepared.action);
+      await submitAbstractionMode(walletId, prepared.action, signature);
+    },
+    [walletId, signSetAbstractionMode]
+  );
+
   return {
     placeOrder,
     updateLeverage,
@@ -321,5 +347,7 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
     cancelOrder,
     closePosition,
     updateTriggerOrder,
+    getAbstractionMode,
+    setAbstractionMode,
   };
 }

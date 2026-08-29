@@ -1,3 +1,4 @@
+import { marketSquareProxyPaths, type ProxyMethod } from "@/lib/api/market-square-proxy-paths";
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
 import { marketSquareSchemaFor } from "@/lib/api/schemas/market-square";
@@ -18,43 +19,6 @@ import { wsapiService } from "@/lib/wsapi-base";
 const BASE = wsapiService("market-square");
 const NO_STORE = "no-store, max-age=0, must-revalidate";
 
-// Reads. `me` tells us whether the player carries the creator role that
-// POST /streams demands; the stream read is how the panel reflects a status
-// the service changed underneath us, such as the orphan reaper ending a
-// stream after the host disconnected.
-// `streams` is the discovery read: given a deep-link ref it answers with every
-// live stream pointing at that activity, which is how a second player finds
-// the broadcast their opponent already started. `speaker-requests` is the
-// host's pending queue, and `speaker-requests/me` is the guest's own request,
-// which carries the publishing credentials once it is approved.
-const GET_PATHS = [
-  /^me$/u,
-  /^me\/creator-application$/u,
-  /^streams$/u,
-  /^streams\/[^/]+$/u,
-  /^streams\/[^/]+\/speaker-requests$/u,
-  /^streams\/[^/]+\/speaker-requests\/me$/u,
-];
-
-// Writes. Creating, going live and ending are the whole broadcast lifecycle.
-// The creator application is the honest exit for a player who is not a
-// creator yet: they can apply from where they hit the wall.
-const POST_PATHS = [
-  /^me\/creator-application$/u,
-  /^streams$/u,
-  /^streams\/[^/]+\/go-live$/u,
-  /^streams\/[^/]+\/end$/u,
-  // Co-publishing: the guest asks, the host approves or declines, the guest
-  // fetches a publisher token, and either side can step the guest down again.
-  /^streams\/[^/]+\/speaker-requests$/u,
-  /^streams\/[^/]+\/speaker-requests\/[^/]+\/(approve|decline|remove|leave)$/u,
-  /^streams\/[^/]+\/speaker-token$/u,
-];
-
-function allowed(patterns: RegExp[], joined: string): boolean {
-  return patterns.some((pattern) => pattern.test(joined));
-}
-
 function jsonError(code: string, message: string, status: number) {
   return NextResponse.json(
     { success: false, error: { code, message } },
@@ -74,15 +38,19 @@ function bearerOf(req: NextRequest): string | null {
 async function forward(
   req: NextRequest,
   joined: string,
-  method: "GET" | "POST",
-  body?: string
+  method: ProxyMethod,
+  body?: string | ArrayBuffer,
+  contentType?: string
 ): Promise<NextResponse> {
   const search = req.nextUrl.searchParams.toString();
   const url = `${BASE}/${joined}${search ? `?${search}` : ""}`;
   const authorization = bearerOf(req);
   const headers: Record<string, string> = { accept: "application/json" };
   if (authorization) headers.authorization = authorization;
-  if (method === "POST") headers["content-type"] = "application/json";
+  // Multipart carries its BOUNDARY in the content-type, so it is copied
+  // verbatim; rewriting or dropping it corrupts the payload as thoroughly as
+  // losing the bytes, and multer answers a boundary-less body with a bare 500.
+  if (body !== undefined) headers["content-type"] = contentType ?? "application/json";
 
   let res: Response;
   let text: string;
@@ -128,16 +96,44 @@ async function forward(
 export async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const joined = path.join("/");
-  if (!allowed(GET_PATHS, joined)) return jsonError("NOT_FOUND", "Not found", 404);
-  if (!(await verifyRequest(req))) return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  if (!marketSquareProxyPaths.allows("GET", joined))
+    return jsonError("NOT_FOUND", "Not found", 404);
+  // The square's public reads answer anybody upstream, so gating them here
+  // turned the dashboard's whole social section into a 401 for signed-out
+  // readers. The token is still forwarded when present, so viewer state keeps
+  // resolving for everyone else.
+  if (!marketSquareProxyPaths.isPublicGet(joined) && !(await verifyRequest(req))) {
+    return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  }
   return forward(req, joined, "GET");
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const joined = path.join("/");
-  if (!allowed(POST_PATHS, joined)) return jsonError("NOT_FOUND", "Not found", 404);
+  if (!marketSquareProxyPaths.allows("POST", joined))
+    return jsonError("NOT_FOUND", "Not found", 404);
   if (!(await verifyRequest(req))) return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  const incoming = req.headers.get("content-type") ?? "";
+  if (incoming.startsWith("multipart/form-data")) {
+    // Buffered rather than streamed: a streamed body arrives empty at the
+    // service on Vercel, and an empty multipart becomes an unhandled 500 there
+    // rather than a useful error here. Vercel caps request bodies at 4.5MB
+    // before this code runs, so this can never hold more than that.
+    if (!incoming.includes("boundary=")) {
+      return jsonError("VALIDATION_ERROR", "Malformed upload — no multipart boundary.", 400);
+    }
+    return forward(req, joined, "POST", await req.arrayBuffer(), incoming);
+  }
   const body = await req.text();
   return forward(req, joined, "POST", body || undefined);
+}
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  const { path } = await ctx.params;
+  const joined = path.join("/");
+  if (!marketSquareProxyPaths.allows("DELETE", joined))
+    return jsonError("NOT_FOUND", "Not found", 404);
+  if (!(await verifyRequest(req))) return jsonError("UNAUTHORIZED", "Sign in to continue.", 401);
+  return forward(req, joined, "DELETE");
 }

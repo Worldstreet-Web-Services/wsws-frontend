@@ -87,22 +87,25 @@ describe("computerWagerBreakdown", () => {
     }
   });
 
-  it("only quotes chess stakes at levels seven and eight", () => {
-    for (const level of [1, 2, 3, 4, 5, 6]) {
+  it("quotes chess levels five to eight at twice the stake", () => {
+    for (const level of [1, 2, 3, 4]) {
       expect(chessComputerWagerBreakdown("10", "20", level)).toBeNull();
     }
 
-    expect(chessComputerWagerBreakdown("10", "20", 7)).toMatchObject({
-      houseExposure: "8",
-      fee: "0.64",
-      potentialPayout: "17.36",
-      drawPayout: "5",
-    });
-    expect(chessComputerWagerBreakdown("10", "20", 8)).toMatchObject({
-      houseExposure: "10",
-      fee: "0.8",
-      potentialPayout: "19.2",
-      drawPayout: "5",
+    for (const level of [5, 6, 7, 8]) {
+      expect(chessComputerWagerBreakdown("10", "20", level)).toMatchObject({
+        houseExposure: "10",
+        fee: "0",
+        potentialPayout: "20",
+        drawPayout: "0",
+        rewardPercent: 100,
+      });
+    }
+    expect(chessComputerWagerBreakdown("0.000001", "20", 8)).toMatchObject({
+      youLock: "0.000001",
+      houseExposure: "0.000001",
+      potentialPayout: "0.000002",
+      drawPayout: "0",
     });
   });
 

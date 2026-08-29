@@ -2551,5 +2551,11 @@
     "viewProfile": "View profile",
     "showMore": "Show more",
     "showLess": "Show less"
+  },
+  "connection": {
+    "offline": "Can't reach the server.",
+    "retryIn": "Retrying in {seconds}s",
+    "retryNow": "Try now",
+    "reconnecting": "Reconnecting…"
   }
 }

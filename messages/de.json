@@ -2551,5 +2551,11 @@
     "viewProfile": "Profil ansehen",
     "showMore": "Mehr anzeigen",
     "showLess": "Weniger anzeigen"
+  },
+  "connection": {
+    "offline": "Server nicht erreichbar.",
+    "retryIn": "Neuer Versuch in {seconds} s",
+    "retryNow": "Jetzt versuchen",
+    "reconnecting": "Verbinde neu…"
   }
 }

@@ -2551,5 +2551,11 @@
     "viewProfile": "Voir le profil",
     "showMore": "Afficher plus",
     "showLess": "Afficher moins"
+  },
+  "connection": {
+    "offline": "Serveur injoignable.",
+    "retryIn": "Nouvel essai dans {seconds} s",
+    "retryNow": "Réessayer",
+    "reconnecting": "Reconnexion…"
   }
 }

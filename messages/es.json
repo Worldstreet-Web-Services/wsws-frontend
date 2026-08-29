@@ -2551,5 +2551,11 @@
     "viewProfile": "Ver perfil",
     "showMore": "Ver más",
     "showLess": "Ver menos"
+  },
+  "connection": {
+    "offline": "No se puede conectar con el servidor.",
+    "retryIn": "Reintentando en {seconds} s",
+    "retryNow": "Reintentar",
+    "reconnecting": "Reconectando…"
   }
 }

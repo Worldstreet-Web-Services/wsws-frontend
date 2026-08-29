@@ -115,7 +115,53 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     <div className="flex flex-col gap-4" data-sensitive="position">
       <HyperliquidMarketHeader symbol={asset?.symbol ?? ""} fallbackMarkPrice={markPrice} />
 
-      <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
+      {/* Chart + order book lead (wide, left) — the order ticket trails as a
+          narrow rail (right), matching Hyperliquid's own pro layout: a trader
+          reads price action first, transacts second. */}
+      <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[1fr_minmax(0,380px)]">
+        <div className="flex flex-col gap-4">
+          <HyperliquidAssetPicker
+            assets={trading.assets}
+            prices={trading.prices}
+            contexts={contexts}
+            selected={asset?.symbol ?? ""}
+            onSelect={setSelectedSymbol}
+            loading={trading.assetsLoading}
+          />
+          <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-[1fr_300px]">
+            <div className="ws-card p-4 sm:p-5">
+              {asset ? (
+                <TradingViewChart symbol={tradingViewSymbolForAsset(asset.symbol)} height={520} />
+              ) : (
+                <div
+                  style={{ height: 520 }}
+                  className="grid place-items-center text-[13.5px] font-normal text-white/45"
+                >
+                  No market selected
+                </div>
+              )}
+            </div>
+            <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <HyperliquidPositionsList
+              positions={trading.positions}
+              orders={trading.orders}
+              loading={trading.positionsLoading}
+              busy={busy}
+              walletId={trading.walletId}
+              onClosePosition={handleClosePosition}
+              onEditTrigger={handleEditTrigger}
+            />
+            <HyperliquidOrdersList
+              orders={trading.orders}
+              loading={trading.ordersLoading}
+              busy={busy}
+              onCancel={handleCancelOrder}
+            />
+          </div>
+        </div>
+
         <div className="flex flex-col gap-4">
           <HyperliquidWalletPanel
             walletId={trading.walletId}
@@ -159,49 +205,6 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
               withBusy(() => trading.actions.updateLeverage(assetSymbol, leverage, marginMode))
             }
           />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <HyperliquidAssetPicker
-            assets={trading.assets}
-            prices={trading.prices}
-            contexts={contexts}
-            selected={asset?.symbol ?? ""}
-            onSelect={setSelectedSymbol}
-            loading={trading.assetsLoading}
-          />
-          <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-[1fr_280px]">
-            <div className="ws-card p-4 sm:p-5">
-              {asset ? (
-                <TradingViewChart symbol={tradingViewSymbolForAsset(asset.symbol)} height={380} />
-              ) : (
-                <div
-                  style={{ height: 380 }}
-                  className="grid place-items-center text-[13.5px] font-normal text-white/45"
-                >
-                  No market selected
-                </div>
-              )}
-            </div>
-            <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} />
-          </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <HyperliquidPositionsList
-              positions={trading.positions}
-              orders={trading.orders}
-              loading={trading.positionsLoading}
-              busy={busy}
-              walletId={trading.walletId}
-              onClosePosition={handleClosePosition}
-              onEditTrigger={handleEditTrigger}
-            />
-            <HyperliquidOrdersList
-              orders={trading.orders}
-              loading={trading.ordersLoading}
-              busy={busy}
-              onCancel={handleCancelOrder}
-            />
-          </div>
         </div>
       </div>
     </div>

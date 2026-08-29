@@ -12,7 +12,7 @@ export default function PerpsPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-black text-white">
-        <div className="mx-auto w-full max-w-[1520px] px-4 pt-5 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-[1920px] px-4 pt-5 sm:px-6 lg:px-8">
           <PerpsBackLink href="/dashboard#portfolio" label="Portfolio" />
         </div>
         <PerpsSection />

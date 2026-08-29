@@ -7,6 +7,7 @@ import { HyperliquidAssetPicker } from "@/features/trade/components/hyperliquid-
 import { HyperliquidMarketHeader } from "@/features/trade/components/hyperliquid-market-header";
 import { HyperliquidMarketPanel } from "@/features/trade/components/hyperliquid-market-panel";
 import { HyperliquidWalletPanel } from "@/features/trade/components/hyperliquid-wallet-panel";
+import { HyperliquidAccountModePills } from "@/features/trade/components/hyperliquid-account-mode-pills";
 import { HyperliquidOrderForm } from "@/features/trade/components/hyperliquid-order-form";
 import { HyperliquidPositionsList } from "@/features/trade/components/hyperliquid-positions-list";
 import { HyperliquidOrdersList } from "@/features/trade/components/hyperliquid-orders-list";
@@ -19,14 +20,19 @@ import type {
   HlTriggerKind,
 } from "@/features/trade/lib/hyperliquid-types";
 
+interface HyperliquidProPerpsProps {
+  /** Deep-links to a specific market on mount, e.g. from /trade/:symbol. */
+  initialSymbol?: string;
+}
+
 // Full control: searchable market picker, chart, limit/TP/SL entry, leverage,
 // positions and orders. See apps/perp's README for the backend side and
 // apps/perp/src/signing/README.md for the signing model — every write below
 // is signed by the user's own embedded wallet, never this backend.
-export function HyperliquidProPerps() {
+export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsProps) {
   const trading = useHyperliquidTrading();
   const { contexts } = useHyperliquidMarketContexts(trading.authenticated);
-  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol);
   const [busy, setBusy] = useState(false);
   const portfolio = usePortfolio();
 
@@ -122,6 +128,14 @@ export function HyperliquidProPerps() {
               withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
             }
             onFunded={handleWalletChanged}
+          />
+
+          <HyperliquidAccountModePills
+            walletId={trading.walletId}
+            walletReady={!trading.walletLoading && trading.walletId != null}
+            busy={busy}
+            onGetMode={trading.actions.getAbstractionMode}
+            onSetMode={trading.actions.setAbstractionMode}
           />
 
           <HyperliquidOrderForm

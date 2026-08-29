@@ -6,7 +6,9 @@ import { WalletAddresses } from "./wallet-addresses";
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 
 const copied = vi.fn();
-vi.mock("@/lib/clipboard", () => ({ copyText: (value: string) => (copied(value), Promise.resolve(true)) }));
+vi.mock("@/lib/clipboard", () => ({
+  copyText: (value: string) => (copied(value), Promise.resolve(true)),
+}));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/ui/network-icon", () => ({ NetworkIcon: () => null }));
 

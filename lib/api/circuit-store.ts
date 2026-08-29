@@ -46,7 +46,9 @@ export function circuitAllows(now = Date.now()): boolean {
 
 export function recordCircuitFailure(status?: number, now = Date.now()): void {
   if (!isCircuitFailure(status)) return;
-  publish(onFailure({ ...snapshot, state: snapshot.state === "half-open" ? "open" : snapshot.state }, now));
+  publish(
+    onFailure({ ...snapshot, state: snapshot.state === "half-open" ? "open" : snapshot.state }, now)
+  );
 }
 
 export function recordCircuitSuccess(): void {

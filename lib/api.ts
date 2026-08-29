@@ -1,11 +1,7 @@
 "use client";
 
 import { resolveAuthTokens } from "@/lib/privy-token";
-import {
-  circuitAllows,
-  recordCircuitFailure,
-  recordCircuitSuccess,
-} from "@/lib/api/circuit-store";
+import { circuitAllows, recordCircuitFailure, recordCircuitSuccess } from "@/lib/api/circuit-store";
 
 // Fetch wrapper for our API routes. Attaches the Privy access token so the
 // server can verify the caller, plus the identity token when available so

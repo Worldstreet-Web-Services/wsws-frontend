@@ -6,8 +6,6 @@ import { HyperliquidAssetPicker } from "@/features/trade/components/hyperliquid-
 import { HyperliquidMarketHeader } from "@/features/trade/components/hyperliquid-market-header";
 import { HyperliquidChartPanel } from "@/features/trade/components/hyperliquid-chart-panel";
 import { HyperliquidMarketPanel } from "@/features/trade/components/hyperliquid-market-panel";
-import { HyperliquidWalletPanel } from "@/features/trade/components/hyperliquid-wallet-panel";
-import { HyperliquidAccountModePills } from "@/features/trade/components/hyperliquid-account-mode-pills";
 import { HyperliquidOrderForm } from "@/features/trade/components/hyperliquid-order-form";
 import { HyperliquidPositionsList } from "@/features/trade/components/hyperliquid-positions-list";
 import { HyperliquidOrdersList } from "@/features/trade/components/hyperliquid-orders-list";
@@ -62,6 +60,9 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     trading.assets[0] ??
     null;
   const markPrice = asset ? Number(trading.prices[asset.symbol] ?? 0) : 0;
+  const currentPosition = asset
+    ? (trading.positions.find((p) => p.assetId === asset.id && p.status === "open") ?? null)
+    : null;
 
   const withBusy = async <T,>(fn: () => Promise<T>): Promise<T> => {
     setBusy(true);
@@ -151,27 +152,6 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         </div>
 
         <div className="flex flex-col gap-4">
-          <HyperliquidWalletPanel
-            walletId={trading.walletId}
-            walletLoading={trading.walletLoading}
-            clearinghouse={trading.clearinghouse}
-            clearinghouseLoading={trading.clearinghouseLoading}
-            busy={busy}
-            onBridge={(requiredUsdc) => withBusy(() => trading.actions.bridge(requiredUsdc))}
-            onWithdraw={(amountUsdc, onStatus) =>
-              withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
-            }
-            onFunded={handleWalletChanged}
-          />
-
-          <HyperliquidAccountModePills
-            walletId={trading.walletId}
-            walletReady={!trading.walletLoading && trading.walletId != null}
-            busy={busy}
-            onGetMode={trading.actions.getAbstractionMode}
-            onSetMode={trading.actions.setAbstractionMode}
-          />
-
           <HyperliquidOrderForm
             assetSymbol={asset?.symbol ?? ""}
             maxLeverage={asset?.maxLeverage ?? 20}
@@ -180,6 +160,9 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
             availableMarginUsdc={
               trading.clearinghouse ? Number(trading.clearinghouse.withdrawable) : 0
             }
+            currentPosition={currentPosition}
+            walletId={trading.walletId}
+            clearinghouse={trading.clearinghouse}
             walletReady={!trading.assetsLoading && trading.walletId != null}
             busy={busy}
             onSubmit={(input, onStatus) =>
@@ -192,6 +175,13 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
             onUpdateLeverage={(assetSymbol, leverage, marginMode) =>
               withBusy(() => trading.actions.updateLeverage(assetSymbol, leverage, marginMode))
             }
+            onBridge={(requiredUsdc) => withBusy(() => trading.actions.bridge(requiredUsdc))}
+            onWithdraw={(amountUsdc, onStatus) =>
+              withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
+            }
+            onFunded={handleWalletChanged}
+            onGetMode={trading.actions.getAbstractionMode}
+            onSetMode={trading.actions.setAbstractionMode}
           />
         </div>
       </div>

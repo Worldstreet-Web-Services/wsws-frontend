@@ -17,7 +17,7 @@ const TV_LOCALE: Record<string, string> = {
 
 interface TradingViewChartProps {
   symbol: string;
-  height?: number;
+  height?: number | string;
 }
 
 export function TradingViewChart({ symbol, height = 380 }: TradingViewChartProps) {

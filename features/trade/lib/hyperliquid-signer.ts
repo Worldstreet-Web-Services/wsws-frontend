@@ -7,10 +7,15 @@ import {
   signUserSignedAction,
   type AbstractViemLocalAccount,
 } from "@nktkas/hyperliquid/signing";
-import { ApproveBuilderFeeTypes, Withdraw3Types } from "@nktkas/hyperliquid/api/exchange";
+import {
+  ApproveBuilderFeeTypes,
+  UserSetAbstractionTypes,
+  Withdraw3Types,
+} from "@nktkas/hyperliquid/api/exchange";
 import type {
   HlApproveBuilderFeeAction,
   HlL1Action,
+  HlSetAbstractionAction,
   HlSignature,
   HlWithdraw3Action,
 } from "@/features/trade/lib/hyperliquid-types";
@@ -91,5 +96,16 @@ export function useHyperliquidSigner(address: string | undefined) {
     [wallet]
   );
 
-  return { signL1, signWithdrawal, signBuilderFeeApproval };
+  const signSetAbstractionMode = useCallback(
+    async (action: HlSetAbstractionAction): Promise<HlSignature> => {
+      return signUserSignedAction({
+        wallet: wallet(),
+        action: action as unknown as Record<string, unknown> & { signatureChainId: `0x${string}` },
+        types: UserSetAbstractionTypes,
+      });
+    },
+    [wallet]
+  );
+
+  return { signL1, signWithdrawal, signBuilderFeeApproval, signSetAbstractionMode };
 }

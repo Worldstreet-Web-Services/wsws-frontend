@@ -555,7 +555,8 @@
     "addPasskey": "Ajouter une passkey pour se connecter plus vite",
     "inviteFriends": "Inviter des amis",
     "helpSupport": "Aide et assistance",
-    "signOut": "Se déconnecter"
+    "signOut": "Se déconnecter",
+    "wallets": "Portefeuilles"
   },
   "common": {
     "addressCopied": "Adresse copiée",

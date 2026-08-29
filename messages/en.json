@@ -555,7 +555,8 @@
     "addPasskey": "Add a passkey for faster sign-in",
     "inviteFriends": "Invite friends",
     "helpSupport": "Help & support",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "wallets": "Wallets"
   },
   "common": {
     "addressCopied": "Address copied",

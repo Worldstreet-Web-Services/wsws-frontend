@@ -1,27 +1,22 @@
 "use client";
 
-import { useMemo } from "react";
-import { useTranslations } from "next-intl";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { buildNav } from "@/components/layout/nav-items";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { PerpsSection } from "@/features/trade";
-import { loadInterest } from "@/lib/preferences";
+import { PerpsSection, PerpsBackLink } from "@/features/trade";
 
-// Perpetuals as its own page, like Earn and Prediction — reached from the
-// sidebar rather than a /dashboard scroll anchor. Hyperliquid-backed; see
-// apps/perp's README for the backend side. PerpsSection is the exact same
-// component the (now-removed) /dashboard scroll anchor used to mount, so the
-// header (title + simple/pro switch) and body are identical either way.
+// Perpetuals as its own immersive, full-viewport screen: no sidebar, no
+// topbar, just a back link to Portfolio (the account home) and the perps
+// desk itself. PerpsSection is the same component /dashboard's own portfolio
+// scroll-anchor mounts, so the body is identical either way — only the
+// chrome around it differs here.
 export default function PerpsPage() {
-  const tSections = useTranslations("sections");
-  const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
-
   return (
     <AuthGuard>
-      <DashboardShell nav={nav} activeSection="perps">
+      <div className="min-h-screen bg-black text-white">
+        <div className="mx-auto w-full max-w-[1520px] px-4 pt-5 sm:px-6 lg:px-8">
+          <PerpsBackLink href="/dashboard#portfolio" label="Portfolio" />
+        </div>
         <PerpsSection />
-      </DashboardShell>
+      </div>
     </AuthGuard>
   );
 }

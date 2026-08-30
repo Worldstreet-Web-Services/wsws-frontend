@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { AssetIcon } from "@/components/ui/asset-icon";
-import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { formatAmount, formatUsd } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { tokenBg } from "@/lib/trade/assets";
 import { HyperliquidWalletPanel } from "@/features/trade/components/hyperliquid-wallet-panel";
+import { HyperliquidChartPanel } from "@/features/trade/components/hyperliquid-chart-panel";
 import { HyperliquidPositionsList } from "@/features/trade/components/hyperliquid-positions-list";
 import { useHyperliquidTrading } from "@/features/trade/hooks/use-hyperliquid-trading";
 import {
   isBridgeMinimumDetails,
   isInsufficientMarginDetails,
+  isRestingOrder,
 } from "@/features/trade/lib/hyperliquid-types";
-import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
 import type {
   HlOrderSide,
   HlPositionView,
@@ -150,6 +150,17 @@ export function HyperliquidSimplePerps() {
       await trading.actions.closePosition(position.id, siblingOrderIdsToCancel);
     } finally {
       trading.refetchAll();
+      // See hyperliquid-pro-perps.tsx's handleClosePosition for why this
+      // background poll exists — the immediate refetch above can still be a
+      // couple of seconds ahead of Hyperliquid actually settling the close.
+      void trading.waitForPositionsChange((rows) => rows.every((p) => p.id !== position.id));
+      if (siblingOrderIdsToCancel.length > 0) {
+        void trading.waitForOrdersChange((rows) =>
+          rows
+            .filter((o) => siblingOrderIdsToCancel.includes(o.id))
+            .every((o) => !isRestingOrder(o))
+        );
+      }
       setBusy(false);
     }
   };
@@ -328,18 +339,7 @@ export function HyperliquidSimplePerps() {
           onWithdraw={(amountUsdc, onStatus) => trading.actions.withdraw(amountUsdc, onStatus)}
           onFunded={handleWalletChanged}
         />
-        <div className="ws-card p-4 sm:p-5">
-          {asset ? (
-            <TradingViewChart symbol={tradingViewSymbolForAsset(asset.symbol)} height={280} />
-          ) : (
-            <div
-              style={{ height: 280 }}
-              className="grid place-items-center text-[13.5px] font-normal text-white/45"
-            >
-              No market selected
-            </div>
-          )}
-        </div>
+        <HyperliquidChartPanel assetSymbol={asset?.symbol ?? ""} />
         <HyperliquidPositionsList
           positions={trading.positions}
           orders={trading.orders}

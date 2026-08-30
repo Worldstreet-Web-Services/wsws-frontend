@@ -11,6 +11,10 @@ interface HyperliquidMarketHeaderProps {
   // the header isn't blank on first paint — same REST price the rest of the
   // pro view already has on hand.
   fallbackMarkPrice: number;
+  /** HyperliquidAssetPicker rendered `compact`, as the header's own leading
+   *  market-select trigger — matches Hyperliquid's own single-strip layout
+   *  instead of a separate picker card above the chart. */
+  assetPicker: ReactNode;
 }
 
 // Hyperliquid settles funding hourly, on the hour — this is purely a
@@ -41,6 +45,7 @@ function useFundingCountdown(): string {
 export function HyperliquidMarketHeader({
   symbol,
   fallbackMarkPrice,
+  assetPicker,
 }: HyperliquidMarketHeaderProps) {
   const { context } = useHyperliquidAssetContext(symbol || null);
   const countdown = useFundingCountdown();
@@ -111,9 +116,13 @@ export function HyperliquidMarketHeader({
 
   return (
     <div className="ws-card flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-5">
+      {assetPicker}
+      <div className="hidden h-8 w-px bg-white/10 sm:block" />
       {stats.map((stat) => (
         <div key={stat.label} className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-normal text-white/55">{stat.label}</span>
+          <span className="text-[11px] font-normal text-white/55 underline decoration-dotted decoration-white/25 underline-offset-2">
+            {stat.label}
+          </span>
           {stat.value}
         </div>
       ))}

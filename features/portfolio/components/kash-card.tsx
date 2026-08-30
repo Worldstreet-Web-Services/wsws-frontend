@@ -75,7 +75,6 @@ export function KashCard({ onBuy, onSend, onConvert, onHistory, onUpgrade }: Kas
   const gateMet = account?.gate.met ?? false;
   const shortfall = account?.gate.shortfall ?? "0";
   const progress = account ? gateProgress(account) : 0;
-  const hasConvertible = Number(account?.convertible ?? "0") > 0;
 
   // This period's running total, not a lifetime total — see KashAccount.week.
   const unclaimed = account?.week.unclaimed ?? "0";
@@ -205,15 +204,13 @@ export function KashCard({ onBuy, onSend, onConvert, onHistory, onUpgrade }: Kas
         </button>
         <button
           onClick={onSend}
-          disabled={!hasConvertible}
-          className="flex-1 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white transition-colors hover:border-white/22 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white transition-colors hover:border-white/22 hover:bg-white/10"
         >
           {t("send")}
         </button>
         <button
           onClick={onConvert}
-          disabled={!hasConvertible}
-          className="flex-1 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white transition-colors hover:border-white/22 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-2.5 font-sans text-[13px] font-medium text-white transition-colors hover:border-white/22 hover:bg-white/10"
         >
           {t("convert")}
         </button>

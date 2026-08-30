@@ -19,6 +19,13 @@ interface HyperliquidAssetPickerProps {
   selected: string;
   onSelect: (symbol: string) => void;
   loading: boolean;
+  /** Renders as a bare trigger (no card chrome, no trailing price) so it can
+   *  sit inline inside HyperliquidMarketHeader's own stats row instead of
+   *  as its own standalone card above the chart. */
+  compact?: boolean;
+  /** Real measured width of the chart column (compact mode only) — the
+   *  dropdown matches it instead of a fixed guessed width. */
+  dropdownWidth?: number;
 }
 
 interface MarketRow {
@@ -57,6 +64,8 @@ export function HyperliquidAssetPicker({
   selected,
   onSelect,
   loading,
+  compact = false,
+  dropdownWidth,
 }: HyperliquidAssetPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -109,38 +118,52 @@ export function HyperliquidAssetPicker({
   };
 
   return (
-    <div className="ws-card relative p-4 sm:p-5">
+    <div className={compact ? "relative" : "ws-card relative p-4 sm:p-5"}>
       <div className="flex items-center gap-3">
         <AssetIcon
           sym={asset?.symbol ?? "?"}
           bg={tokenBg(asset?.symbol ?? "?")}
-          size={34}
+          size={compact ? 28 : 34}
           fallback="gradient"
         />
         <button
           onClick={() => setOpen((v) => !v)}
           disabled={assets.length === 0}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
+          className="flex min-w-0 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
         >
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 font-sans text-[16px] font-semibold">
-              {asset ? hlPairLabel(asset.symbol) : loading ? "Loading markets…" : "No markets"}
+          {compact ? (
+            <div className="flex items-center gap-1.5 font-sans text-[17px] font-semibold whitespace-nowrap">
+              {asset ? hlPairLabel(asset.symbol) : loading ? "Loading…" : "No markets"}
               {assets.length > 0 ? <span className="text-white/40">▾</span> : null}
             </div>
-            <div className="truncate text-xs font-normal text-white/50">
-              {asset ? `${asset.maxLeverage}x max leverage` : "—"}
+          ) : (
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 font-sans text-[16px] font-semibold">
+                {asset ? hlPairLabel(asset.symbol) : loading ? "Loading markets…" : "No markets"}
+                {assets.length > 0 ? <span className="text-white/40">▾</span> : null}
+              </div>
+              <div className="truncate text-xs font-normal text-white/50">
+                {asset ? `${asset.maxLeverage}x max leverage` : "—"}
+              </div>
             </div>
-          </div>
+          )}
         </button>
-        <div className="text-right">
-          <FlashPrice value={mark} className="ws-display tnum block text-[19px]">
-            {mark > 0 ? formatUsd(mark) : "—"}
-          </FlashPrice>
-        </div>
+        {compact ? null : (
+          <div className="ml-auto text-right">
+            <FlashPrice value={mark} className="ws-display tnum block text-[19px]">
+              {mark > 0 ? formatUsd(mark) : "—"}
+            </FlashPrice>
+          </div>
+        )}
       </div>
 
       {open ? (
-        <div className="bg-panel absolute inset-x-4 top-[calc(100%-8px)] z-20 mt-1 overflow-hidden rounded-2xl border border-white/12 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.9)]">
+        <div
+          style={compact && dropdownWidth ? { width: dropdownWidth } : undefined}
+          className={`bg-panel absolute top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/12 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.9)] ${
+            compact ? `left-0 max-w-[90vw] ${dropdownWidth ? "" : "w-[600px]"}` : "inset-x-4"
+          }`}
+        >
           <div className="flex items-center gap-2 border-b border-white/8 px-3.5 py-2.5">
             <SearchIcon />
             <input

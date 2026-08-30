@@ -9,6 +9,7 @@ import type {
   HlBuilderFeeStatus,
   HlClearinghouseState,
   HlClosedPositionView,
+  HlFundingHistoryEntry,
   HlL1Action,
   HlMarketContext,
   HlOrderRow,
@@ -50,6 +51,17 @@ export async function getPrices(): Promise<HlAllMids> {
 
 export async function getMarketContexts(): Promise<HlMarketContext[]> {
   return perp.get<HlMarketContext[]>("/ark/market-contexts");
+}
+
+export async function getFundingHistory(
+  symbol: string,
+  startTime: number,
+  endTime?: number
+): Promise<HlFundingHistoryEntry[]> {
+  return perp.get<HlFundingHistoryEntry[]>(`/ark/funding-history/${symbol}`, {
+    startTime,
+    ...(endTime !== undefined ? { endTime } : {}),
+  });
 }
 
 export async function getAccountState(address: string): Promise<HlClearinghouseState> {

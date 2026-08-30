@@ -579,6 +579,34 @@ export function CollapseIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function CameraIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="14" r="3.2" stroke={stroke} strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M20 11a8 8 0 1 0-2.34 5.66M20 5v6h-6"
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export const INTEREST_ICONS: Record<string, (props: IconProps) => React.ReactNode> = {
   "chart-bars": ChartBarsIcon,
   gold: GoldIcon,

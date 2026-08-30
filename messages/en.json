@@ -345,6 +345,7 @@
     "sendingCode": "Sending code…",
     "continueEmail": "Continue with email",
     "continueKingschat": "Continue with KingsChat",
+    "kingschatWaiting": "Waiting for KingsChat…",
     "comingSoon": "Coming soon",
     "stepOf": "Step {step} of {steps}",
     "creatingAccount": "Setting up your account…",

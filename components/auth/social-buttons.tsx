@@ -38,7 +38,14 @@ const BUTTON =
 
 export function SocialButtons() {
   const t = useTranslations("auth");
-  const { signInWithGoogle, googleLoading, canUsePasskey, signInWithPasskey } = useSocialAuth();
+  const {
+    signInWithGoogle,
+    googleLoading,
+    signInWithKingsChat,
+    kingschatLoading,
+    canUsePasskey,
+    signInWithPasskey,
+  } = useSocialAuth();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   const signIn = async () => {
@@ -67,6 +74,23 @@ export function SocialButtons() {
     }
   };
 
+  // KingsChat opens a consent popup that resolves in place (unlike Google's
+  // full-page redirect), so the click handler awaits it and surfaces failures
+  // as a toast. The kit invokes the popup synchronously, so no work precedes it.
+  const kingschatSignIn = async () => {
+    try {
+      recordAuthMethod("kingschat");
+      await signInWithKingsChat();
+    } catch (err) {
+      const name = (err as { name?: string })?.name;
+      // A user closing the KingsChat popup is a cancellation, not an error.
+      if (name !== "UserCancelledError") {
+        console.error("KingsChat login failed:", err);
+        toast.error(t("oauthError"));
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col gap-[11px]">
       {canUsePasskey ? (
@@ -78,18 +102,8 @@ export function SocialButtons() {
         <GoogleLogo />
         {t("continueGoogle")}
       </button>
-      {/* Not wired yet — announced ahead of the integration, so it renders
-          disabled with the tag rather than firing an OAuth flow that has no
-          provider behind it. */}
-      <button
-        className={`${BUTTON} cursor-default opacity-60 hover:border-white/14 hover:bg-white/6`}
-        disabled
-        aria-disabled
-      >
-        {t("continueKingschat")}
-        <span className="ml-1 rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-[10.5px] font-semibold tracking-[0.06em] text-white/55 uppercase">
-          {t("comingSoon")}
-        </span>
+      <button className={BUTTON} disabled={kingschatLoading} onClick={kingschatSignIn}>
+        {kingschatLoading ? t("kingschatWaiting") : t("continueKingschat")}
       </button>
     </div>
   );

@@ -55,7 +55,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         theme: "dark",
         social: {
           apiKey: DECANE_API_KEY,
-          authMethods: ["google", "email"],
+          authMethods: ["google", "email", "kingschat"],
           chains: DECANE_CHAINS,
           // The kit's own full-screen "Creating your wallet" overlay is off:
           // the sign-in page shows its branded busy panel for the creating

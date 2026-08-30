@@ -13,6 +13,7 @@ const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
   earn: "/earn",
   prediction: "/prediction",
   activity: "/activity",
+  perps: "/perps",
 };
 
 // The one place that knows how to move between app sections: a section listed

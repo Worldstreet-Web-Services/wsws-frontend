@@ -2189,6 +2189,7 @@
     "buySuccessBody": "Compraste {kash} KASH por ${usdc}. Ya está en tu saldo.",
     "convertTitle": "Convertir a USD",
     "convertSubtitle": "Cobra tu Kash+ en USD. Todo tu saldo está disponible, nada está bloqueado.",
+    "convertSubtitleNothing": "No tienes nada disponible para convertir en este momento.",
     "amountKash": "Cantidad (KASH)",
     "maxConvertible": "Máx. {amount}",
     "youReceiveUsdc": "Recibes",

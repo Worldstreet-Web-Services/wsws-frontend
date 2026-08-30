@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -171,8 +172,22 @@ export function KashConvertModal({ open, onClose }: KashConvertModalProps) {
           <div className="flex flex-col gap-3.5">
             <div>
               <div className="ws-display text-[22px]">{t("convertTitle")}</div>
-              <p className="mt-1 text-[13px] leading-[1.5] font-normal text-white/60">
-                {t("convertSubtitle")}
+              {/* The subtitle used to promise "your full balance is available,
+                  nothing is locked" unconditionally — directly above a Max of 0
+                  and a pause notice. Lead with the actual state instead: a
+                  promise the service cannot honour reads as a broken app, and
+                  the user learns the truth before typing an amount. */}
+              <p
+                className={cn(
+                  "mt-1 text-[13px] leading-[1.5] font-normal",
+                  paused || !hasConvertible ? "text-amber-200/80" : "text-white/60"
+                )}
+              >
+                {paused
+                  ? t("conversionsPaused")
+                  : hasConvertible
+                    ? t("convertSubtitle")
+                    : t("convertSubtitleNothing")}
               </p>
             </div>
 
@@ -269,11 +284,6 @@ export function KashConvertModal({ open, onClose }: KashConvertModalProps) {
               )}
             </div>
 
-            {paused && (
-              <p className="text-[12.5px] leading-[1.5] font-normal text-amber-200/80">
-                {t("conversionsPaused")}
-              </p>
-            )}
             {uncovered && (
               <p className="text-[12.5px] leading-[1.5] font-normal text-amber-200/80">
                 {t("reserveCannotCover")}

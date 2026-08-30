@@ -66,7 +66,14 @@ export function KashConvertModal({ open, onClose }: KashConvertModalProps) {
   // Survives re-renders and retries; see submit().
   const attemptKey = useRef<string | null>(null);
 
-  const convertible = account?.convertible ?? "0";
+  // The desk redeems against the wallet's real on-chain KASH+ balance, gated
+  // only by its own reserve (see `uncovered` below) — it has no notion of the
+  // ledger's `convertible`, which floors at what the LEGACY backend-mediated
+  // flow itself minted (see accounts.service.ts's profile()). Using that
+  // floor here under-reports the max the desk will actually let you redeem,
+  // e.g. for a wallet that bought KASH+ directly through the on-chain sale
+  // desk rather than through the legacy purchase flow.
+  const convertible = deskLive ? (account?.balance ?? "0") : (account?.convertible ?? "0");
   const hasConvertible = Number(convertible) > 0;
   const paused = deskConfigured ? deskPaused : quote.data?.coverageState === "paused";
   // The desk refuses a payout its reserve cannot cover; surfacing it before

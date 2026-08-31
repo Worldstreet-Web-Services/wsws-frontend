@@ -15,6 +15,7 @@ async function loadRoute() {
   vi.resetModules();
   process.env.ALCHEMY_API_KEY = "test-key";
   process.env.ALCHEMY_GAS_POLICY_ID = "test-policy";
+  process.env.ALCHEMY_POLYGON_GAS_POLICY_ID = "test-polygon-policy";
   return import("@/app/api/bundler/route");
 }
 
@@ -69,7 +70,10 @@ describe("bundler proxy route", () => {
 });
 
 describe("chain routing", () => {
-  it("forwards to the chain asked for, with the one policy that covers both", async () => {
+  // An Alchemy sponsorship policy is scoped to one network, so each chain sends
+  // ITS OWN id. Sending Base's on Polygon is what the bundler rejected as
+  // "Invalid fields set on User Operation" when a user tried to sell pUSD.
+  it("forwards to the chain asked for, each with its own policy", async () => {
     const { POST } = await loadRoute();
     verifyRequest.mockResolvedValue({ sub: "u" });
     const fetchMock = vi.fn<(url: unknown, init?: RequestInit) => Promise<Response>>(
@@ -83,10 +87,27 @@ describe("chain routing", () => {
     await POST(makeReq({ method: "eth_chainId", params: [] }, "base"));
     expect(String(fetchMock.mock.calls[1][0])).toContain("base-mainnet");
 
-    for (const call of fetchMock.mock.calls) {
-      const headers = (call[1]?.headers ?? {}) as Record<string, string>;
-      expect(headers["x-alchemy-policy-id"]).toBe("test-policy");
-    }
+    const policyOf = (i: number) =>
+      ((fetchMock.mock.calls[i][1]?.headers ?? {}) as Record<string, string>)[
+        "x-alchemy-policy-id"
+      ];
+    expect(policyOf(0)).toBe("test-polygon-policy");
+    expect(policyOf(1)).toBe("test-policy");
+  });
+
+  it("refuses a sponsored send on a chain with no policy, instead of failing at the bundler", async () => {
+    vi.resetModules();
+    process.env.ALCHEMY_API_KEY = "test-key";
+    process.env.ALCHEMY_GAS_POLICY_ID = "test-policy";
+    delete process.env.ALCHEMY_POLYGON_GAS_POLICY_ID;
+    const { POST } = await import("@/app/api/bundler/route");
+    verifyRequest.mockResolvedValue({ sub: "u" });
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST(makeReq({ method: "eth_sendUserOperation", params: [] }, "polygon"));
+    expect(res.status).toBe(503);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("defaults to Base when no chain is given, so an older client keeps working", async () => {

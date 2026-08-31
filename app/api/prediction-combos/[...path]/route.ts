@@ -10,8 +10,14 @@ import {
 } from "../response-cache";
 
 const LOCAL_PREDICTION_API = "http://127.0.0.1:8086";
-const BASE =
-  process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : wsapiService("prediction");
+
+// The prediction service (Combo RFQ, sports, singles) is not on the shared
+// gateway yet, so it can be pointed elsewhere while it is being stood up. It
+// falls back to the gateway once deployed there. Note this is a different
+// service from prediction-market, which app/api/prediction/ proxies and which
+// the gateway already serves.
+const PREDICTION_BASE = process.env.PREDICTION_API_BASE_URL ?? wsapiService("prediction");
+const BASE = process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : PREDICTION_BASE;
 const ALLOWED_PATHS = new Set([
   "sports/combo-filters",
   "sports/combo-events",

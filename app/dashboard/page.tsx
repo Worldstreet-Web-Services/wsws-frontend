@@ -8,7 +8,9 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
 import { SpotSection } from "@/features/trade/components/spot-section";
-import { PerpsSection } from "@/features/trade/components/perps-section";
+// Perps has moved off the inline scroll flow to its own page — see
+// ROUTED_SECTIONS below and app/perps/page.tsx.
+// import { PerpsSection } from "@/features/trade/components/perps-section";
 import { MemeSection } from "@/features/trade/components/meme-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { DepositAnalytics } from "@/features/activity";
@@ -81,10 +83,13 @@ const INTERLEAVED_SQUARE: readonly ("live" | "posts" | "people" | undefined)[] =
   "people",
 ];
 
-// The scroll-spy sections mounted inline on this page. Prediction, earn and
-// casino live on their own routes and are never one of these — the dashboard
-// points at them through the explore banners instead.
-const ROUTED_SECTIONS = ["casino", "earn", "prediction", "activity"] as const;
+// The scroll-spy sections mounted inline on this page. Prediction, earn,
+// casino and perps live on their own routes and are never one of these — the
+// dashboard points at them through the explore banners / sidebar instead.
+// Perps still has a sidebar entry (SECTION_ROUTES in use-app-navigate.ts
+// already sends it to /perps); it just no longer renders inline here, so the
+// prediction banner is immediately followed by memecoins in the scroll flow.
+const ROUTED_SECTIONS = ["casino", "earn", "prediction", "activity", "perps"] as const;
 type RoutedSectionId = (typeof ROUTED_SECTIONS)[number];
 type ScrollSectionId = Exclude<SectionId, RoutedSectionId>;
 
@@ -98,7 +103,6 @@ function isScrollSection(id: SectionId): id is ScrollSectionId {
 // on its own data.
 const Portfolio = memo(PortfolioView);
 const Spot = memo(SpotSection);
-const Perps = memo(PerpsSection);
 const Meme = memo(MemeSection);
 const Rwa = memo(RwaSection);
 
@@ -232,7 +236,6 @@ export default function DashboardPage() {
       />
     ),
     spot: <Spot onOpenDetail={openDetail} onOpenBuy={openBuy} />,
-    perps: <Perps />,
     meme: <Meme />,
     rwa: <Rwa onOpenDetail={openDetail} onOpenConfirm={openConfirm} onAddFunds={openFunds} />,
   };

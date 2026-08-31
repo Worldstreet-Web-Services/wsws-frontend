@@ -33,8 +33,15 @@ export interface KashStatus {
    */
   points: {
     pointValueUsd: number;
-    tierBoundsUsd: number[];
-    tierRatesPer10Usd: number[];
+    /**
+     * Revenue share per subscription tier, in whole percent.
+     *
+     * Replaced `tierBoundsUsd` / `tierRatesPer10Usd` when the engine moved to
+     * the points-first model: there are no volume brackets any more, and a
+     * tier now earns a share of the fees it generates rather than a rate per
+     * $10 traded.
+     */
+    tierRevenueSharePct?: number[];
   };
   subscriptions: { periodDays: number; tiers: { tier: number; priceUsd: number }[] };
   desk: {
@@ -128,29 +135,6 @@ export interface KashPurchase {
   paymentTxHash?: string;
 }
 
-export interface KashConversionQuote {
-  kashAmount: string;
-  usdcPayout: string;
-  marketPriceUsd: string;
-  redemptionPriceUsd: string;
-  feePct: number;
-  /** Fee in dollars, priced by the engine — never re-derived on the client. */
-  feeUsd: string;
-  coverageState: "normal" | "throttled" | "paused";
-  epochCapRemainingUsd: string;
-}
-
-export interface KashConversion {
-  id: string;
-  wallet: string;
-  kashBurned: string;
-  usdcPaid: string;
-  redemptionPriceUsd: string;
-  createdAt: string;
-  burnTxHash?: string;
-  payoutTxHash?: string;
-}
-
 /** Result of settling a wallet's points into KSH. */
 export interface KashClaim {
   weekKey: string;
@@ -186,11 +170,27 @@ export interface KashLedgerEntry {
 }
 
 /**
+ * The exact message the wallet must sign to claim. Mirrors
+ * WalletSignatureVerifier.claimSettlementMessage() on the backend
+ * byte-for-byte — the server recovers the signer over this same string, so
+ * drifting the format here is an auth failure, not a lint issue.
+ */
+export const claimSettlementMessage = (wallet: string, timestamp: number) =>
+  ["World Street — claim Kash settlement", `wallet: ${wallet.toLowerCase()}`, `ts: ${timestamp}`].join(
+    "\n"
+  );
+
+/**
  * Settle this wallet's accrued points into KSH now, instead of waiting for the
  * weekly batch. Only ever affects the caller's own wallet.
+ *
+ * No on-chain event proves who is claiming (unlike a purchase or a
+ * conversion's permit), so the wallet signs `claimSettlementMessage` and the
+ * backend recovers the signer before settling — otherwise anyone could name
+ * an arbitrary wallet in the body and force its claim.
  */
-export const postKashClaim = (wallet: string) =>
-  kash.post<KashClaim>("/settlements/claim", { wallet });
+export const postKashClaim = (wallet: string, signature: string, timestamp: number) =>
+  kash.post<KashClaim>("/settlements/claim", { wallet, signature, timestamp });
 
 export const getKashStatus = () => kash.get<KashStatus>("/status");
 
@@ -212,35 +212,8 @@ export const postKashSubscribe = (wallet: string, tier: number, paymentTxHash?: 
 export const getKashPurchaseQuote = (usdcAmount: string) =>
   kash.get<KashPurchaseQuote>("/purchases/quote", { amount: usdcAmount });
 
-export const getKashConversionQuote = (kashAmount: string) =>
-  kash.get<KashConversionQuote>("/conversions/quote", { amount: kashAmount });
-
 export const postKashPurchase = (wallet: string, usdcAmount: string, paymentTxHash?: string) =>
   kash.post<KashPurchase>("/purchases", { wallet, usdcAmount, paymentTxHash });
-
-// `idempotencyKey` is not optional in practice, only in the type: a conversion
-// is three sequential Base transactions (permit, burn, payout) measuring ~7s
-// against the gateway's 10s proxy timeout. A caller can therefore receive a
-// timeout for a conversion that ALREADY burned and ALREADY paid, and a retry
-// without a key burns a second time. Same key ⇒ the engine returns the
-// original conversion instead.
-export const postKashConversion = (
-  wallet: string,
-  kashAmount: string,
-  permit?: { deadline: number; v: number; r: string; s: string },
-  idempotencyKey?: string
-) => kash.post<KashConversion>("/conversions", { wallet, kashAmount, permit, idempotencyKey });
-
-/**
- * A retry key for one conversion ATTEMPT.
- *
- * Must be generated where the user's intent begins, not inside the request:
- * a key minted per request changes on every retry, which is precisely the
- * behaviour it exists to prevent.
- */
-export function newConversionKey(): string {
-  return `convert-${globalThis.crypto.randomUUID()}`;
-}
 
 // Progress toward the holding gate as a 0..1 fraction, from the account's own
 // decimal strings. Used for the progress bar, so it clamps rather than throws:
@@ -304,33 +277,35 @@ function trimZeros(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
-/** One volume band: what it covers, what it pays, and what unlocks it. */
-export interface VolumeBand {
-  /** 1-based, and the subscription tier that unlocks this band's rate. */
+/** One subscription tier and the revenue share it earns. */
+export interface RevenueShareTier {
+  /** 1-based, matching the engine's tier numbering. */
   tier: number;
-  fromUsd: number;
-  /** null on the final, open-ended band. */
-  toUsd: number | null;
-  ratePer10Usd: number;
+  /** Share of generated fees this tier earns, in whole percent. */
+  sharePct: number;
 }
 
 /**
- * The volume ladder, derived from the engine's bounds and rates.
+ * What each subscription tier earns, as published by the engine.
  *
- * Volume is split across these bands like tax brackets, so the first slice
- * always earns the tier-1 rate no matter how large the trade. A wallet's
- * SUBSCRIPTION tier caps how high the later bands may reach: trade into band 3
- * on tier 1 and that slice still pays the tier-1 rate.
+ * A tier takes a share of the fees its holder generates; upgrading raises that
+ * share. This replaced the old volume ladder — bounds and per-$10 rates — when
+ * the engine moved to the points-first model, and reading it from the engine
+ * rather than restating it here is what stops the modal quoting a number that
+ * is not what pays out.
+ *
+ * EMPTY rather than a guess whenever the field is absent or not an array. The
+ * previous version destructured it and called `.map`, so the day the engine
+ * renamed it the whole portfolio page died with
+ * `Cannot read properties of undefined (reading 'map')`. A ladder nobody can
+ * read is a missing row; it is not a broken dashboard.
  */
-export function volumeBands(points: KashStatus["points"] | undefined): VolumeBand[] {
-  if (!points) return [];
-  const { tierBoundsUsd: bounds, tierRatesPer10Usd: rates } = points;
-  return rates.map((ratePer10Usd, index) => ({
-    tier: index + 1,
-    fromUsd: index === 0 ? 0 : (bounds[index - 1] ?? 0),
-    toUsd: bounds[index] ?? null,
-    ratePer10Usd,
-  }));
+export function revenueShareTiers(points: KashStatus["points"] | undefined): RevenueShareTier[] {
+  const shares = points?.tierRevenueSharePct;
+  if (!Array.isArray(shares)) return [];
+  return shares.flatMap((sharePct, index) =>
+    typeof sharePct === "number" && Number.isFinite(sharePct) ? [{ tier: index + 1, sharePct }] : []
+  );
 }
 
 export function gateProgress(account: {

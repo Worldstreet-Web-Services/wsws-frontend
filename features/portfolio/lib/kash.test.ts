@@ -1,10 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// `post` goes through apiFetch, which demands a Privy token and never reaches
-// the network in a unit test. Mocking the transport keeps the assertion on what
-// this module is responsible for: what it puts on the wire.
-const apiFetchMock = vi.fn();
-vi.mock("@/lib/api", () => ({ apiFetch: (...args: unknown[]) => apiFetchMock(...args) }));
+import { describe, expect, it } from "vitest";
 import {
   formatUsdMicro,
   spendableUsdcMicro,
@@ -13,11 +7,9 @@ import {
   formatKashAmount,
   gateProgress,
   isValidKashAmount,
-  newConversionKey,
   pointsToKash,
-  postKashConversion,
   settlesIn,
-  volumeBands,
+  revenueShareTiers,
 } from "./kash";
 
 const account = (balance: string, min: string) => ({
@@ -81,54 +73,6 @@ describe("settlesIn", () => {
   });
 });
 
-describe("newConversionKey", () => {
-  it("is unique per call", () => {
-    const keys = new Set(Array.from({ length: 50 }, () => newConversionKey()));
-    expect(keys.size).toBe(50);
-  });
-
-  it("meets the engine's minimum key length", () => {
-    // The engine rejects anything under 8 characters, and a rejected key means
-    // the conversion runs with no retry protection at all.
-    expect(newConversionKey().length).toBeGreaterThanOrEqual(8);
-  });
-});
-
-describe("postKashConversion", () => {
-  function bodyOf(call: number): Record<string, unknown> {
-    const init = apiFetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
-    return JSON.parse(String(init?.body));
-  }
-
-  beforeEach(() => {
-    apiFetchMock.mockClear();
-    // A fresh Response per call: a body can only be read once, so a shared
-    // instance makes the second call fail on an already-consumed stream.
-    apiFetchMock.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ success: true, data: { id: "1" } }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })
-      )
-    );
-  });
-
-  it("puts the idempotency key on the wire", async () => {
-    // Without this the engine cannot recognise a retry, and a conversion that
-    // timed out after burning would burn a second time.
-    await postKashConversion("0xabc", "500", undefined, "convert-fixed-key");
-    expect(bodyOf(0).idempotencyKey).toBe("convert-fixed-key");
-  });
-
-  it("sends the SAME key when the caller retries the same attempt", async () => {
-    const key = newConversionKey();
-    await postKashConversion("0xabc", "500", undefined, key);
-    await postKashConversion("0xabc", "500", undefined, key);
-    expect(bodyOf(0).idempotencyKey).toBe(bodyOf(1).idempotencyKey);
-  });
-});
-
 describe("formatKashAmount", () => {
   it("separates thousands so a large balance is readable", () => {
     expect(formatKashAmount("1994")).toBe("1,994");
@@ -164,30 +108,49 @@ describe("pointsToKash", () => {
   });
 });
 
-describe("volumeBands", () => {
+describe("revenueShareTiers", () => {
+  // The shape the engine actually publishes today.
   const points = {
     pointValueUsd: 0.001,
-    tierBoundsUsd: [50, 100, 150, 200],
-    tierRatesPer10Usd: [1, 1.5, 2, 2.5, 3],
+    tierRevenueSharePct: [3, 5, 7, 9, 10],
   };
 
-  it("derives one band per rate, the last open-ended", () => {
-    const bands = volumeBands(points);
-    expect(bands).toHaveLength(5);
-    expect(bands[0]).toEqual({ tier: 1, fromUsd: 0, toUsd: 50, ratePer10Usd: 1 });
-    expect(bands[2]).toEqual({ tier: 3, fromUsd: 100, toUsd: 150, ratePer10Usd: 2 });
-    expect(bands[4]).toEqual({ tier: 5, fromUsd: 200, toUsd: null, ratePer10Usd: 3 });
-  });
-
-  it("leaves no gap between bands", () => {
-    // A gap would be volume that earns nothing, and the ladder is contiguous
-    // by construction in the engine.
-    const bands = volumeBands(points);
-    bands.slice(1).forEach((band, i) => expect(band.fromUsd).toBe(bands[i]!.toUsd));
+  it("derives one tier per published share, numbered from 1", () => {
+    const tiers = revenueShareTiers(points);
+    expect(tiers).toHaveLength(5);
+    expect(tiers[0]).toEqual({ tier: 1, sharePct: 3 });
+    expect(tiers[4]).toEqual({ tier: 5, sharePct: 10 });
   });
 
   it("is empty until the engine has answered", () => {
-    expect(volumeBands(undefined)).toEqual([]);
+    expect(revenueShareTiers(undefined)).toEqual([]);
+  });
+
+  it("SURVIVES the engine renaming or dropping the field", () => {
+    // This is the regression. `tierRatesPer10Usd` was destructured and mapped,
+    // so the day the engine replaced it the whole portfolio page died with
+    // "Cannot read properties of undefined (reading 'map')". A ladder nobody
+    // can read is a missing row, not a broken dashboard.
+    expect(revenueShareTiers({ pointValueUsd: 0.001 })).toEqual([]);
+    expect(revenueShareTiers({ pointValueUsd: 0.001, tierRevenueSharePct: undefined })).toEqual([]);
+    // Not an array at all — a shape change, not just an absence.
+    expect(
+      revenueShareTiers({
+        pointValueUsd: 0.001,
+        tierRevenueSharePct: 7,
+      } as unknown as Parameters<typeof revenueShareTiers>[0])
+    ).toEqual([]);
+  });
+
+  it("drops a share that is not a usable number rather than rendering NaN", () => {
+    const tiers = revenueShareTiers({
+      pointValueUsd: 0.001,
+      tierRevenueSharePct: [3, Number.NaN, 7],
+    });
+    expect(tiers).toEqual([
+      { tier: 1, sharePct: 3 },
+      { tier: 3, sharePct: 7 },
+    ]);
   });
 });
 

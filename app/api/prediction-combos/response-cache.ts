@@ -13,10 +13,10 @@ export interface PredictionCachePolicy {
 }
 
 export function predictionCachePolicy(path: string): PredictionCachePolicy {
-  if (path === "sports/combo-filters" || path === "sports/teams") {
+  if (path === "sports/combo-filters" || path === "sports/filters" || path === "sports/teams") {
     return { freshMs: 5 * 60_000, staleMs: 24 * 60 * 60_000 };
   }
-  if (/^sports\/combo-events\/\d+$/.test(path)) {
+  if (/^sports\/(?:combo-)?events\/\d+$/.test(path)) {
     return { freshMs: 5_000, staleMs: 60_000 };
   }
   if (/^markets\/events\/\d+$/.test(path)) {

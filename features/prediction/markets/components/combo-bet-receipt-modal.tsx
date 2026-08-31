@@ -27,7 +27,7 @@ export function ComboBetReceiptModal({ receipt, onClose }: ComboBetReceiptModalP
             Combo confirmed
           </p>
           <h2 className="mt-1 text-[25px] leading-8 font-black tracking-[-0.03em] text-white">
-            Bet placed
+            Order placed
           </h2>
           <p className="mt-2 text-[11px] leading-5 text-white/42">
             Keep this booking code to identify the Combo and its onchain settlement.

@@ -25,10 +25,16 @@ export function DiscoveryMarketBoard({
   const categoryLabel = marketCategoryLabel(category);
 
   return (
-    <section className="overflow-hidden rounded-[12px] border border-white/8 bg-[#09090b]">
+    <section className="border-y border-white/8 bg-[#09090b] sm:overflow-hidden sm:rounded-[12px] sm:border">
       <DiscoverySortTabs value={sort} onChange={setSort} />
 
-      <div className="space-y-3 p-3 sm:p-4">
+      <div className="sticky top-[108px] z-40 grid grid-cols-[minmax(0,1fr)_72px_72px] items-center gap-1.5 border-y border-white/8 bg-[#20232a]/[0.97] px-3 py-2 text-[9px] font-extrabold tracking-[0.08em] text-white/45 uppercase shadow-[0_5px_14px_rgba(0,0,0,0.28)] backdrop-blur-md sm:hidden">
+        <span>Market</span>
+        <span className="text-center">Yes</span>
+        <span className="text-center">No</span>
+      </div>
+
+      <div className="space-y-2 p-2.5 sm:space-y-3 sm:p-4">
         {events.loading ? <MarketBoardSkeleton /> : null}
 
         {events.error ? (

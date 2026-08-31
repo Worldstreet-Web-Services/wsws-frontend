@@ -7,9 +7,9 @@ import {
   type EventMarketTab,
   type EventOutcomeView,
 } from "../event-detail-presenter";
-import { useComboEvent } from "../hooks/use-combo-markets";
+import { useSportsEvent } from "../hooks/use-sports-markets";
+import type { NormalSport } from "../api";
 import type { BoardSelection } from "../presenter";
-import type { SportsNavKey } from "../types";
 import { EventDetailHeader } from "./event-detail-header";
 import { EventMarketCard } from "./event-market-card";
 import { EventMarketTabs } from "./event-market-tabs";
@@ -17,17 +17,15 @@ import { MarketBoardSkeleton } from "./market-board-skeleton";
 
 interface SportsEventDetailProps {
   eventId: string;
-  activeSportsNav: SportsNavKey;
+  sport: NormalSport;
+  activeLeague: string;
 }
 
-export function SportsEventDetail({ eventId, activeSportsNav }: SportsEventDetailProps) {
-  const query = useComboEvent(eventId);
+export function SportsEventDetail({ eventId, sport, activeLeague }: SportsEventDetailProps) {
+  const query = useSportsEvent(eventId);
   const [activeTab, setActiveTab] = useState<EventMarketTab>("all");
   const [selected, setSelected] = useState<BoardSelection | null>(null);
-  const backHref =
-    activeSportsNav === "home"
-      ? "/prediction/markets"
-      : `/prediction/markets?sport=${activeSportsNav}`;
+  const backHref = `/prediction/markets?category=${sport}${activeLeague ? `&league=${activeLeague}` : ""}`;
 
   if (query.loading) return <MarketBoardSkeleton />;
 

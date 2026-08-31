@@ -1,9 +1,14 @@
-import type { MarketCategory, MarketNavItem, SportsNavKey } from "./types";
+import type { MarketCategory, MarketNavItem } from "./types";
 
 export const CATEGORY_LINKS: Array<MarketNavItem<MarketCategory>> = [
-  // Re-enable after Polymarket grants Combo Builder Gateway access.
-  // { key: "sports", label: "Sports", href: "/prediction/markets?category=sports" },
-  { key: "politics", label: "Politics", href: "/prediction/markets" },
+  { key: "trending", label: "Trending", href: "/prediction/markets" },
+  { key: "football", label: "Football", href: "/prediction/markets?category=football" },
+  {
+    key: "basketball",
+    label: "Basketball",
+    href: "/prediction/markets?category=basketball",
+  },
+  { key: "politics", label: "Politics", href: "/prediction/markets?category=politics" },
   { key: "crypto", label: "Crypto", href: "/prediction/markets?category=crypto" },
   { key: "esports", label: "Esports", href: "/prediction/markets?category=esports" },
   { key: "iran", label: "Iran", href: "/prediction/markets?category=iran" },
@@ -24,17 +29,3 @@ export const CATEGORY_LINKS: Array<MarketNavItem<MarketCategory>> = [
 export function marketCategoryLabel(category: MarketCategory) {
   return CATEGORY_LINKS.find((item) => item.key === category)?.label ?? category;
 }
-
-export const SPORTS_LINKS: Array<MarketNavItem<SportsNavKey>> = [
-  { key: "home", label: "Home", href: "/prediction/markets" },
-  { key: "football", label: "Football", href: "/prediction/markets?sport=football" },
-  {
-    key: "basketball",
-    label: "Basketball",
-    href: "/prediction/markets?sport=basketball",
-  },
-  { key: "tennis", label: "Tennis", href: "/prediction/markets?sport=tennis" },
-  { key: "cricket", label: "Cricket", href: "/prediction/markets?sport=cricket" },
-  { key: "mlb", label: "MLB", href: "/prediction/markets?sport=mlb" },
-  { key: "more", label: "More Sports", href: "/prediction/markets?sport=more" },
-];

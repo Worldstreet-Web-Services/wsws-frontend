@@ -8,6 +8,7 @@ import {
   parseUsdE6,
   referenceReturnE6,
   resolveBetSlipMode,
+  summedReferenceOddsE6,
   toggleSlipSelection,
   totalStakeE6,
   type MarketSlipSelection,
@@ -88,6 +89,7 @@ describe("prediction market bet slip", () => {
     const stake = parseUsdE6("1.25");
     expect(stake).toBe(1_250_000n);
     expect(combinedReferenceOddsE6(selections)).toBe(6_000_000n);
+    expect(summedReferenceOddsE6(selections)).toBe(5_000_000n);
     expect(totalStakeE6(selections, stake!, "combo")).toBe(1_250_000n);
     expect(totalStakeE6(selections, stake!, "singles")).toBe(2_500_000n);
     expect(referenceReturnE6(selections, stake!, "combo")).toBe(7_500_000n);

@@ -11,10 +11,13 @@ import {
 
 const LOCAL_PREDICTION_API = "http://127.0.0.1:8086";
 const BASE =
-  process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : wsapiService("prediction");
+  process.env.PREDICTION_COMBOS_API_URL ??
+  (process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : wsapiService("prediction"));
 const ALLOWED_PATHS = new Set([
   "sports/combo-filters",
   "sports/combo-events",
+  "sports/filters",
+  "sports/events",
   "sports/teams",
   "markets/events",
 ]);
@@ -44,6 +47,7 @@ function isAllowedPath(path: string): boolean {
   return (
     (ALLOWED_PATHS.has(path) ||
       /^sports\/combo-events\/\d+$/.test(path) ||
+      /^sports\/events\/\d+$/.test(path) ||
       /^markets\/events\/\d+$/.test(path)) &&
     !path.includes("..") &&
     !path.includes("%") &&

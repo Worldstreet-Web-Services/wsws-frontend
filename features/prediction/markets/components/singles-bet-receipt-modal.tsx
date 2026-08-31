@@ -19,10 +19,10 @@ const STATUS_STYLES: Record<SinglesOrderStatus, string> = {
 };
 
 function receiptHeading(receipt: SinglesBetReceipt) {
-  if (receipt.status === "filled") return "Bet Successful";
+  if (receipt.status === "filled") return "Order successful";
   if (receipt.status === "partial") return "Ticket partially filled";
   if (receipt.status === "pending") return "Orders submitted";
-  return "No bets filled";
+  return "No orders filled";
 }
 
 export function SinglesBetReceiptModal({
@@ -44,7 +44,7 @@ export function SinglesBetReceiptModal({
             <CheckIcon size={23} />
           </div>
           <p className="mt-5 text-[10px] font-black tracking-[0.16em] text-white/38 uppercase">
-            Bet confirmation
+            Order confirmation
           </p>
           <h2 className="mt-1 text-[25px] leading-8 font-black tracking-[-0.03em] text-white">
             {receiptHeading(receipt)}
@@ -174,7 +174,7 @@ export function SinglesBetReceiptModal({
               onClick={onViewActiveBets}
               className="h-12 cursor-pointer rounded-[9px] bg-[linear-gradient(180deg,#dedee2_0%,#aaaab0_100%)] text-[11px] font-black text-black hover:opacity-90"
             >
-              View active bets
+              View positions
             </button>
           </div>
         </div>

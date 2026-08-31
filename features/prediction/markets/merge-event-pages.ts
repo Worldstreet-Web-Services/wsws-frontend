@@ -1,4 +1,4 @@
-import type { ComboEvent, ComboEventsPage, ComboMarket } from "./api";
+import type { ComboEvent, ComboMarket } from "./api";
 
 function mergeMarkets(current: ComboMarket[], incoming: ComboMarket[]): ComboMarket[] {
   return Array.from(
@@ -6,7 +6,7 @@ function mergeMarkets(current: ComboMarket[], incoming: ComboMarket[]): ComboMar
   );
 }
 
-export function mergeComboEventPages(pages: ComboEventsPage[]): ComboEvent[] {
+export function mergeComboEventPages(pages: Array<{ events: ComboEvent[] }>): ComboEvent[] {
   const events = new Map<string, ComboEvent>();
 
   for (const event of pages.flatMap((page) => page.events)) {

@@ -1,6 +1,9 @@
-import type { MarketCategory, SportsNavKey } from "./types";
+import type { MarketCategory, SportsLeagueKey } from "./types";
 
 const MARKET_CATEGORIES = new Set<MarketCategory>([
+  "trending",
+  "football",
+  "basketball",
   "politics",
   "crypto",
   "esports",
@@ -15,29 +18,18 @@ const MARKET_CATEGORIES = new Set<MarketCategory>([
   "elections",
 ]);
 
-const SPORTS_NAV_KEYS = new Set<SportsNavKey>([
-  "home",
-  "football",
-  "basketball",
-  "tennis",
-  "cricket",
-  "mlb",
-  "more",
-]);
-
 function readParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export function resolveMarketNavigation(params: Record<string, string | string[] | undefined>) {
   const requestedCategory = readParam(params.category);
-  const requestedSport = readParam(params.sport);
+  const requestedLeague = readParam(params.league);
   const activeCategory = MARKET_CATEGORIES.has(requestedCategory as MarketCategory)
     ? (requestedCategory as MarketCategory)
-    : "politics";
-  const activeSportsNav = SPORTS_NAV_KEYS.has(requestedSport as SportsNavKey)
-    ? (requestedSport as SportsNavKey)
-    : "home";
+    : "trending";
+  const activeLeague: SportsLeagueKey =
+    requestedLeague && /^[a-z0-9-]{1,64}$/u.test(requestedLeague) ? requestedLeague : "";
 
-  return { activeCategory, activeSportsNav };
+  return { activeCategory, activeLeague };
 }

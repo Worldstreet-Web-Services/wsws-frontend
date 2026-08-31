@@ -11,12 +11,12 @@ export default async function PredictionMarketsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { activeCategory, activeSportsNav } = resolveMarketNavigation(await searchParams);
+  const { activeCategory, activeLeague } = resolveMarketNavigation(await searchParams);
 
   return (
     <main className="min-h-screen bg-black">
-      <MarketsHeader activeCategory={activeCategory} activeSportsNav={activeSportsNav} />
-      <MarketsWorkspace activeCategory={activeCategory} activeSportsNav={activeSportsNav} />
+      <MarketsHeader activeCategory={activeCategory} activeLeague={activeLeague} />
+      <MarketsWorkspace activeCategory={activeCategory} activeLeague={activeLeague} />
     </main>
   );
 }

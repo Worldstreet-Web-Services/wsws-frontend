@@ -107,12 +107,16 @@ export function DiscoveryEventDetail({ category, eventId }: DiscoveryEventDetail
             Markets &middot; {event.marketCount}
           </h2>
         </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_72px_72px] items-center gap-1.5 border-b border-white/8 bg-[#20232a] px-3.5 py-2 text-[9px] font-extrabold tracking-[0.08em] text-white/45 uppercase sm:hidden">
+          <span>Market</span>
+          <span className="text-center">Yes</span>
+          <span className="text-center">No</span>
+        </div>
         <div className="px-3.5 sm:px-4">
           {event.markets.map((market) => (
             <DiscoveryMarketRow
               key={market.id}
               market={market}
-              compact={false}
               selectedIds={new Set(selected ? [selected.id] : [])}
               onSelect={(selection) =>
                 setSelected((current) => (current?.id === selection.id ? null : selection))

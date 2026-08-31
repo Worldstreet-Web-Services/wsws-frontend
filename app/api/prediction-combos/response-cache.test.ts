@@ -30,11 +30,23 @@ describe("prediction response cache", () => {
       freshMs: 300_000,
       staleMs: 86_400_000,
     });
+    expect(predictionCachePolicy("sports/filters")).toEqual({
+      freshMs: 300_000,
+      staleMs: 86_400_000,
+    });
     expect(predictionCachePolicy("sports/combo-events")).toEqual({
       freshMs: 15_000,
       staleMs: 300_000,
     });
     expect(predictionCachePolicy("sports/combo-events/845463")).toEqual({
+      freshMs: 5_000,
+      staleMs: 60_000,
+    });
+    expect(predictionCachePolicy("sports/events")).toEqual({
+      freshMs: 15_000,
+      staleMs: 300_000,
+    });
+    expect(predictionCachePolicy("sports/events/845463")).toEqual({
       freshMs: 5_000,
       staleMs: 60_000,
     });

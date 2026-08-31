@@ -1,24 +1,14 @@
-import type { ComboSport } from "./api";
-import type { SportsNavKey } from "./types";
+import type { SportsLeagueKey } from "./types";
 
-export interface ComboSportSource {
-  sport: ComboSport;
-  label: string;
-}
-
-const SPORTS_NAV_TO_COMBO: Partial<Record<SportsNavKey, readonly ComboSportSource[]>> = {
-  home: [{ sport: "soccer", label: "Football" }],
-  football: [{ sport: "soccer", label: "Football" }],
-  basketball: [{ sport: "basketball", label: "Basketball" }],
-  tennis: [{ sport: "tennis", label: "Tennis" }],
-  cricket: [{ sport: "cricket", label: "Cricket" }],
-  mlb: [{ sport: "mlb", label: "MLB" }],
-  more: [
-    { sport: "nfl", label: "NFL" },
-    { sport: "ufc", label: "UFC" },
-  ],
+const SPORTS_LEAGUE_TO_PROVIDER: Record<SportsLeagueKey, string | undefined> = {
+  top: undefined,
+  epl: "epl",
+  laliga: "laliga",
+  "serie-a": "serie-a",
+  bundesliga: "bundesliga",
+  "ligue-1": "ligue-1",
 };
 
-export function comboSportsForNavigation(key: SportsNavKey): readonly ComboSportSource[] {
-  return SPORTS_NAV_TO_COMBO[key] ?? [];
+export function comboLeagueForNavigation(key: SportsLeagueKey): string | undefined {
+  return SPORTS_LEAGUE_TO_PROVIDER[key];
 }

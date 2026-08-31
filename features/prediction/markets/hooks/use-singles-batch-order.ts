@@ -170,7 +170,7 @@ export function useSinglesBatchOrder() {
 
   async function placeBets(selections: MarketSlipSelection[], stakeE6: bigint) {
     if (submissionReview) {
-      const cause = new Error("Review the previous order attempt before placing more bets.");
+      const cause = new Error("Review the previous order attempt before submitting more orders.");
       setError(cause.message);
       throw cause;
     }
@@ -336,10 +336,10 @@ export function useSinglesBatchOrder() {
         clearMarketSlipSubmissionReview();
       }
       const message = uncertain
-        ? "Order submission was interrupted. Review your active bets before trying again."
+        ? "Order submission was interrupted. Review your open positions before trying again."
         : cause instanceof SinglesOrderValidationError
           ? cause.message
-          : friendlyError(cause, "Couldn't place these bets. Try again.");
+          : friendlyError(cause, "Couldn't submit these orders. Try again.");
       setError(message);
       throw cause;
     } finally {

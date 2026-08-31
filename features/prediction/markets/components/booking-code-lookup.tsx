@@ -33,14 +33,23 @@ export function BookingCodeLookup({ onLoaded }: BookingCodeLookupProps) {
   }
 
   return (
-    <form onSubmit={(event) => void loadTicket(event)} className="border-b border-white/8 p-3">
+    <form
+      onSubmit={(event) => void loadTicket(event)}
+      className="border-t border-white/8 bg-[#111114] px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))]"
+    >
       <label
         htmlFor={inputId}
-        className="text-[9px] font-black tracking-[0.12em] text-white/35 uppercase"
+        className="flex items-center gap-2 text-[15px] leading-5 font-bold text-white/90"
       >
-        Booking code
+        Please insert booking code
+        <span
+          aria-hidden="true"
+          className="grid size-[14px] place-items-center rounded-full border border-current text-[9px] font-black text-white/70"
+        >
+          i
+        </span>
       </label>
-      <div className="mt-2 flex h-11 overflow-hidden rounded-[8px] border border-white/11 bg-black/30 focus-within:border-white/28">
+      <div className="mt-4 flex h-11 overflow-hidden rounded-[6px] border border-white/12 bg-black/30 focus-within:border-white/30">
         <input
           id={inputId}
           value={code}
@@ -53,14 +62,14 @@ export function BookingCodeLookup({ onLoaded }: BookingCodeLookupProps) {
           spellCheck={false}
           inputMode="text"
           maxLength={BOOKING_CODE_LENGTH}
-          placeholder="e.g. YN65GR"
+          placeholder="Booking Code"
           aria-invalid={error != null}
-          className="min-w-0 flex-1 bg-transparent px-3 text-[14px] font-black tracking-[0.14em] text-white uppercase outline-none placeholder:text-[10px] placeholder:tracking-normal placeholder:text-white/22"
+          className="min-w-0 flex-1 bg-transparent px-4 text-[15px] font-black tracking-[0.14em] text-white uppercase outline-none placeholder:text-[14px] placeholder:font-semibold placeholder:tracking-normal placeholder:text-white/42 placeholder:normal-case"
         />
         <button
           type="submit"
           disabled={!isBookingCode(code) || loading}
-          className="m-1 min-w-16 cursor-pointer rounded-[6px] bg-[linear-gradient(180deg,#dedee2_0%,#aaaab0_100%)] px-3 text-[10px] font-black text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+          className="min-w-[76px] cursor-pointer border-l border-white/12 bg-[linear-gradient(180deg,#dedee2_0%,#aaaab0_100%)] px-3 text-[14px] font-black text-black hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
         >
           {loading ? "Loading..." : "Load"}
         </button>

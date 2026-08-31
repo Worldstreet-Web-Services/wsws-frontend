@@ -12,6 +12,8 @@ export type ComboSport =
 
 export type ComboMarketType = "moneyline" | "spread" | "total";
 
+export type NormalSport = "football" | "basketball";
+
 export interface ComboLeague {
   slug: string;
   providerSlug: string;
@@ -81,6 +83,7 @@ export interface ComboEvent {
 export interface ComboFilters {
   sports: Array<{ slug: ComboSport; label: string }>;
   selectedSport: ComboSport;
+  featuredLeagues: ComboLeague[];
   leagues: ComboLeague[];
   marketTypes: ComboMarketType[];
 }
@@ -94,6 +97,31 @@ export interface ComboEventsPage {
 
 export interface ComboEventsParams {
   sport: ComboSport;
+  league?: string;
+  search?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface SportsFilters {
+  sports: Array<{ slug: NormalSport; label: string }>;
+  selectedSport: NormalSport;
+  selectedLeague: string;
+  leagues: ComboLeague[];
+  marketTypes: ComboMarketType[];
+}
+
+export type SportsEvent = ComboEvent;
+
+export interface SportsEventsPage {
+  sport: NormalSport;
+  league: ComboLeague | null;
+  events: SportsEvent[];
+  nextCursor: string | null;
+}
+
+export interface SportsEventsParams {
+  sport: NormalSport;
   league?: string;
   search?: string;
   cursor?: string;
@@ -137,6 +165,7 @@ export interface ComboQuote {
 }
 
 export type DiscoveryCategory =
+  | "trending"
   | "politics"
   | "crypto"
   | "esports"

@@ -5,6 +5,9 @@ export {
   fetchComboTeams,
   fetchDiscoveryEvent,
   fetchDiscoveryEvents,
+  fetchSportsEvent,
+  fetchSportsEvents,
+  fetchSportsFilters,
 } from "./client";
 export { buildComboBuyQuoteBody, requestComboBuyQuote } from "./quote-client";
 export {
@@ -37,4 +40,9 @@ export type {
   SinglesTicket,
   SinglesTicketOrder,
   SinglesTicketStatus,
+  NormalSport,
+  SportsEvent,
+  SportsEventsPage,
+  SportsEventsParams,
+  SportsFilters,
 } from "./types";

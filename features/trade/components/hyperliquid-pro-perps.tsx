@@ -244,7 +244,7 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
             onUpdateLeverage={(assetSymbol, leverage, marginMode) =>
               withBusy(() => trading.actions.updateLeverage(assetSymbol, leverage, marginMode))
             }
-            onBridge={(requiredUsdc) => withBusy(() => trading.actions.bridge(requiredUsdc))}
+            onBridge={() => withBusy(() => trading.actions.bridge())}
             onWithdraw={(amountUsdc, onStatus) =>
               withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
             }

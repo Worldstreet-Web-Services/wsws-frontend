@@ -276,20 +276,25 @@ export interface PreparedTriggerOrder {
 // ── Bridge (Arbitrum -> HyperCore) ───────────────────────────────────────
 
 export interface PreparedBridge {
-  needed: true;
   to: string;
   data: string;
   value: string;
   amountUsdc: string;
 }
 
-export type PrepareBridgeResult = PreparedBridge | { needed: false };
-
 // ── Withdrawal (HyperCore -> Arbitrum) ───────────────────────────────────
 
 export interface PreparedWithdrawal {
   action: HlWithdraw3Action;
   nonce: number;
+}
+
+/** A withdrawal that landed on Arbitrum but never finished forwarding on to
+ *  Base — see WithdrawalService.getPendingWithdrawal on the backend. */
+export interface PendingWithdrawal {
+  treasuryMovementId: string;
+  amountUsdc: string;
+  status: "pending" | "confirmed" | "failed" | "stuck";
 }
 
 // ── Builder fee (Hyperliquid's own revenue-collection mechanism) ────────

@@ -19,9 +19,10 @@ import type {
   HlTriggerKind,
   HlWallet,
   HlWithdraw3Action,
+  PendingWithdrawal,
   PlaceOrderRequest,
   PlaceOrderResult,
-  PrepareBridgeResult,
+  PreparedBridge,
   PrepareLeverageResult,
   PreparedAbstractionMode,
   PreparedBuilderFeeApproval,
@@ -33,7 +34,7 @@ import type {
 } from "@/features/trade/lib/hyperliquid-types";
 
 // Same BFF proxy the legacy Avantis perp client uses (app/api/perp/[...path]/route.ts) —
-// it is the SAME backend service, just the /hl/* sub-paths. One transport,
+// it is the SAME backend service, just the /ark/* sub-paths. One transport,
 // per this app's architecture rules.
 const perp = createServiceClient("/api/perp", "The perp service is unavailable right now.");
 
@@ -198,11 +199,8 @@ export async function submitTriggerOrder(
   return perp.post<HlOrderRow>("/hl/orders/trigger/submit", { walletId, prepared, signature });
 }
 
-export async function prepareBridge(
-  walletId: string,
-  requiredUsdc: string
-): Promise<PrepareBridgeResult> {
-  return perp.post<PrepareBridgeResult>("/hl/bridge/prepare", { walletId, requiredUsdc });
+export async function prepareBridge(walletId: string): Promise<PreparedBridge> {
+  return perp.post<PreparedBridge>("/hl/bridge/prepare", { walletId });
 }
 
 export async function confirmBridge(
@@ -234,6 +232,10 @@ export async function submitWithdrawal(
     action,
     signature,
   });
+}
+
+export async function getPendingWithdrawal(walletId: string): Promise<PendingWithdrawal | null> {
+  return perp.get<PendingWithdrawal | null>(`/hl/wallets/${walletId}/withdrawals/pending`);
 }
 
 // ── Builder fee (the venue's own revenue-collection mechanism) ────────

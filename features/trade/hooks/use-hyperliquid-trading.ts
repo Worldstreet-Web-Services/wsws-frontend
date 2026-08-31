@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useHyperliquidWallet } from "@/features/trade/hooks/use-hyperliquid-wallet";
 import {
@@ -37,6 +38,20 @@ export function useHyperliquidTrading() {
     waitForChange: waitForOrdersChange,
   } = useHyperliquidOrders(walletId, authenticated);
   const actions = useHyperliquidActions(walletId ?? undefined, address ?? undefined);
+
+  // One check per wallet, on load — not a running poll. Picks up a
+  // withdrawal that landed on Arbitrum but never made it on to Base (see
+  // resumeWithdrawal on the actions hook); a no-op for everyone else.
+  const resumedWalletRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!walletId || resumedWalletRef.current === walletId) return;
+    resumedWalletRef.current = walletId;
+    void actions.resumeWithdrawal();
+    // actions is recreated every render (useHyperliquidActions isn't memoized
+    // as a whole) — depending on walletId alone is what keeps this to one
+    // call per wallet instead of one per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletId]);
 
   const refetchAll = () => {
     void refetchClearinghouse();

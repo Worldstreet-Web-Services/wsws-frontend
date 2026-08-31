@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
+import type { PendingWithdrawal } from "@/features/trade/lib/hyperliquid-types";
 
 const api = vi.hoisted(() => ({
   prepareOrder: vi.fn(),
@@ -10,6 +11,7 @@ const api = vi.hoisted(() => ({
   confirmBridge: vi.fn(),
   prepareWithdrawal: vi.fn(),
   submitWithdrawal: vi.fn(),
+  getPendingWithdrawal: vi.fn(async (): Promise<PendingWithdrawal | null> => null),
   prepareCancelOrder: vi.fn(),
   submitCancelOrder: vi.fn(),
   prepareClosePosition: vi.fn(),
@@ -209,9 +211,8 @@ describe("useHyperliquidActions.updateLeverage", () => {
 });
 
 describe("useHyperliquidActions.bridge", () => {
-  it("sends the sponsored transfer and confirms it when a bridge is needed", async () => {
+  it("sends the sponsored transfer and confirms it, unconditionally — eager, not gated on existing margin", async () => {
     api.prepareBridge.mockResolvedValue({
-      needed: true,
       to: "0xUsdc",
       data: "0xdata",
       value: "0",
@@ -220,8 +221,9 @@ describe("useHyperliquidActions.bridge", () => {
     evmSend.mockResolvedValue("0xTxHash");
 
     const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
-    const output = await result.current.bridge("10");
+    await result.current.bridge();
 
+    expect(api.prepareBridge).toHaveBeenCalledWith(WALLET_ID);
     expect(evmSend).toHaveBeenCalledWith({
       to: "0xUsdc",
       data: "0xdata",
@@ -230,18 +232,17 @@ describe("useHyperliquidActions.bridge", () => {
       address: ADDRESS,
     });
     expect(api.confirmBridge).toHaveBeenCalledWith(WALLET_ID, "0xTxHash", "10");
-    expect(output).toEqual({ bridged: true });
   });
 
-  it("does nothing on-chain when margin already covers the amount", async () => {
-    api.prepareBridge.mockResolvedValue({ needed: false });
+  it("propagates a rejection (e.g. below Hyperliquid's minimum deposit) rather than swallowing it", async () => {
+    const belowMinimum = new Error("below minimum");
+    api.prepareBridge.mockRejectedValue(belowMinimum);
 
     const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
-    const output = await result.current.bridge("10");
 
+    await expect(result.current.bridge()).rejects.toBe(belowMinimum);
     expect(evmSend).not.toHaveBeenCalled();
     expect(api.confirmBridge).not.toHaveBeenCalled();
-    expect(output).toEqual({ bridged: false });
   });
 });
 
@@ -297,7 +298,7 @@ describe("useHyperliquidActions.withdraw", () => {
     expect(output.treasuryMovementId).toBe("movement-1");
     expect(onStatus.mock.calls.map((call) => call[0])).toEqual([
       "Withdrawing…",
-      "Waiting for funds to land — this can take a couple of minutes…",
+      "Waiting for funds…",
       "Moving funds to your main wallet…",
     ]);
   });
@@ -329,6 +330,87 @@ describe("useHyperliquidActions.withdraw", () => {
 
     expect(reroutedWithdraw).toHaveBeenCalled();
     expect(output.treasuryMovementId).toBe("movement-1");
+  });
+});
+
+describe("useHyperliquidActions.resumeWithdrawal", () => {
+  it("does nothing when the backend has no unresolved withdrawal for this wallet", async () => {
+    api.getPendingWithdrawal.mockResolvedValueOnce(null);
+
+    const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
+    await result.current.resumeWithdrawal();
+
+    expect(api.getPendingWithdrawal).toHaveBeenCalledWith(WALLET_ID);
+    expect(api.getArbitrumBalance).not.toHaveBeenCalled();
+    expect(reroutedWithdraw).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when a wallet or address isn't ready yet, without calling the backend", async () => {
+    const { result } = renderHook(() => useHyperliquidActions(undefined, undefined));
+    await result.current.resumeWithdrawal();
+
+    expect(api.getPendingWithdrawal).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when there's a pending withdrawal but the funds haven't actually landed on Arbitrum yet", async () => {
+    api.getPendingWithdrawal.mockResolvedValueOnce({
+      treasuryMovementId: "movement-1",
+      amountUsdc: "18",
+      status: "stuck",
+    });
+    api.getArbitrumBalance.mockResolvedValueOnce("0");
+
+    const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
+    await result.current.resumeWithdrawal();
+
+    expect(reroutedWithdraw).not.toHaveBeenCalled();
+  });
+
+  it("forwards the full Arbitrum balance on to the user's main wallet when a withdrawal is stuck there", async () => {
+    api.getPendingWithdrawal.mockResolvedValueOnce({
+      treasuryMovementId: "movement-1",
+      amountUsdc: "18",
+      status: "stuck",
+    });
+    api.getArbitrumBalance.mockResolvedValueOnce("18");
+
+    const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
+    await result.current.resumeWithdrawal();
+
+    expect(reroutedWithdraw).toHaveBeenCalledWith({
+      originNetwork: "arb-mainnet",
+      originChainId: 42161,
+      originTokenAddress: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      originDecimals: 6,
+      destinationChainId: 8453,
+      destinationAsset: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      to: ADDRESS,
+      amount: 18_000_000n,
+      refundTo: ADDRESS,
+    });
+  });
+
+  it("fails soft when the backend lookup itself errors", async () => {
+    api.getPendingWithdrawal.mockRejectedValueOnce(new Error("network error"));
+
+    const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
+
+    await expect(result.current.resumeWithdrawal()).resolves.toBeUndefined();
+    expect(reroutedWithdraw).not.toHaveBeenCalled();
+  });
+
+  it("fails soft when forwarding the funds itself fails", async () => {
+    api.getPendingWithdrawal.mockResolvedValueOnce({
+      treasuryMovementId: "movement-1",
+      amountUsdc: "18",
+      status: "stuck",
+    });
+    api.getArbitrumBalance.mockResolvedValueOnce("18");
+    reroutedWithdraw.mockRejectedValueOnce(new Error("quote failed"));
+
+    const { result } = renderHook(() => useHyperliquidActions(WALLET_ID, ADDRESS));
+
+    await expect(result.current.resumeWithdrawal()).resolves.toBeUndefined();
   });
 });
 

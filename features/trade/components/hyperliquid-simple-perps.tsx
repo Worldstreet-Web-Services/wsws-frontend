@@ -335,7 +335,7 @@ export function HyperliquidSimplePerps() {
           clearinghouse={trading.clearinghouse}
           clearinghouseLoading={trading.clearinghouseLoading}
           busy={busy}
-          onBridge={(requiredUsdc) => trading.actions.bridge(requiredUsdc)}
+          onBridge={() => trading.actions.bridge()}
           onWithdraw={(amountUsdc, onStatus) => trading.actions.withdraw(amountUsdc, onStatus)}
           onFunded={handleWalletChanged}
         />

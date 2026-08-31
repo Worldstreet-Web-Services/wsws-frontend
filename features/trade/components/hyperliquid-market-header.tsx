@@ -120,7 +120,7 @@ export function HyperliquidMarketHeader({
       <div className="hidden h-8 w-px bg-white/10 sm:block" />
       {stats.map((stat) => (
         <div key={stat.label} className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-normal text-white/55 underline decoration-dotted decoration-white/25 underline-offset-2">
+          <span className="text-[11px] font-normal text-white/55 underline decoration-white/25 decoration-dotted underline-offset-2">
             {stat.label}
           </span>
           {stat.value}

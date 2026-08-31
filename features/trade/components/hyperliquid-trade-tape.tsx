@@ -37,10 +37,7 @@ export function HyperliquidTradeTape({ symbol }: HyperliquidTradeTapeProps) {
       </div>
       <div className="ws-no-scrollbar min-h-0 flex-1 overflow-y-auto">
         {trades.map((trade) => (
-          <div
-            key={trade.id}
-            className="flex items-center justify-between px-3 py-1 text-[11.5px]"
-          >
+          <div key={trade.id} className="flex items-center justify-between px-3 py-1 text-[11.5px]">
             <span className={`tnum ${trade.side === "buy" ? "text-up" : "text-down"}`}>
               {formatAmount(Number(trade.price))}
             </span>

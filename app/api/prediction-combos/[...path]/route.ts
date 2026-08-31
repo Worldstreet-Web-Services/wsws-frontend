@@ -12,12 +12,22 @@ import {
 const LOCAL_PREDICTION_API = "http://127.0.0.1:8086";
 
 // The prediction service (Combo RFQ, sports, singles) is not on the shared
-// gateway yet, so it can be pointed elsewhere while it is being stood up. It
-// falls back to the gateway once deployed there. Note this is a different
-// service from prediction-market, which app/api/prediction/ proxies and which
-// the gateway already serves.
-const PREDICTION_BASE = process.env.PREDICTION_API_BASE_URL ?? wsapiService("prediction");
-const BASE = process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : PREDICTION_BASE;
+// gateway yet, so it can be pointed elsewhere while it is being stood up, and
+// falls back to the gateway once deployed there. This is a different service
+// from prediction-market, which app/api/prediction/ proxies.
+//
+// PREDICTION_API_BASE_URL is a gateway HOST, not a full service URL: the
+// /v1/prediction prefix is appended here, the same way lib/server/wsapi.ts
+// appends /v1/perp to PERP_API_BASE_URL. An explicit host wins everywhere,
+// development included, so a local run can point at a deployed service rather
+// than needing the Docker one on 8086.
+const PREDICTION_HOST = process.env.PREDICTION_API_BASE_URL;
+const BASE = PREDICTION_HOST
+  ? `${PREDICTION_HOST}/v1/prediction`
+  : process.env.NODE_ENV === "development"
+    ? LOCAL_PREDICTION_API
+    : wsapiService("prediction");
+
 const ALLOWED_PATHS = new Set([
   "sports/combo-filters",
   "sports/combo-events",

@@ -386,10 +386,44 @@ export interface MarketSquarePost {
  * attaching a synthetic card ("On Ark", linking to whatever page they happened
  * to be on) puts a claim in their post that they did not make.
  */
-export async function createSquarePost(text: string, topics?: string[]): Promise<MarketSquarePost> {
+export interface SquareUpload {
+  url: string;
+  kind: "image" | "video";
+  contentType: string;
+  bytes: number;
+}
+
+/**
+ * Upload a picture or clip for a post.
+ *
+ * Sent as multipart so the service sees the real bytes and judges the CONTENT
+ * TYPE itself — it never trusts a filename, and it caps size server-side. The
+ * proxy forwards the body and its boundary verbatim.
+ */
+export async function uploadSquareMedia(file: File): Promise<SquareUpload> {
+  const form = new FormData();
+  form.append("file", file);
+  return marketSquare.postForm<SquareUpload>("/uploads", form);
+}
+
+export interface SquareAttachment {
+  deepLink: MarketSquareDeepLink;
+  preview: { title: string; subtitle?: string | null; imageUrl?: string | null };
+}
+
+export async function createSquarePost(
+  text: string,
+  topics?: string[],
+  media?: { url: string; kind: "image" | "video" } | null,
+  attachment?: SquareAttachment | null
+): Promise<MarketSquarePost> {
   return marketSquare.post<MarketSquarePost>("/posts", {
     kind: "update",
     text,
+    // A preview without a deep link is refused by the service — a card that
+    // leads nowhere is not a share — so the two always travel together.
+    ...(attachment ? { deepLink: attachment.deepLink, preview: attachment.preview } : {}),
+    ...(media ? { mediaUrl: media.url, mediaKind: media.kind } : {}),
     // Omitted rather than sent empty: the service treats an absent field and
     // an empty array the same, and sending `[]` implies a choice was made.
     ...(topics && topics.length > 0 ? { topics } : {}),
@@ -435,6 +469,8 @@ export interface MarketSquareAuthor {
   avatarUrl: string | null;
   verification: string;
   role: MarketSquareRole;
+  /** Viewer state, hydrated by the feed for a signed-in reader. */
+  isFollowing?: boolean;
 }
 
 /**
@@ -453,6 +489,8 @@ export interface MarketSquarePreview {
 
 export interface MarketSquareFeedPost {
   id: string;
+  /** Present even when the author is not hydrated — used to group by person. */
+  authorId?: string;
   text: string;
   mediaUrl: string | null;
   mediaKind: string | null;
@@ -506,10 +544,14 @@ export async function fetchSquareFeed(
   lane: SquareLane,
   cursor?: string | null,
   limit = 10,
-  topics?: string[]
+  topics?: string[],
+  hashtag?: string
 ): Promise<MarketSquareFeedPage> {
   const params = new URLSearchParams({ lane, limit: String(limit) });
   if (cursor) params.set("cursor", cursor);
+  // A hashtag REPLACES the lane upstream — it serves that one discussion
+  // rather than narrowing the lane, so a quiet tag is not an empty page.
+  if (hashtag) params.set("hashtag", hashtag);
   // Filters the lane rather than replacing it, which is why the tab strip can
   // mix "For you" with a topic without the two meaning different lists.
   if (topics && topics.length > 0) params.set("topics", topics.join(","));
@@ -609,4 +651,99 @@ export async function addPostComment(postId: string, text: string): Promise<Mark
  */
 export async function recordPostView(postId: string): Promise<void> {
   await marketSquare.post(`/posts/${postId}/views`, {});
+}
+
+export interface FollowResult {
+  following: boolean;
+}
+
+/** Follow or unfollow an author. Idempotent upstream in both directions. */
+export async function setFollow(profileId: string, following: boolean): Promise<FollowResult> {
+  const path = `/profiles/${profileId}/follow`;
+  return following
+    ? marketSquare.post<FollowResult>(path, {})
+    : marketSquare.del<FollowResult>(path);
+}
+
+export interface MarketSquareMe {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verification: string;
+  role: MarketSquareRole;
+}
+
+/** The reader's own square identity, for the compose sheet's header. */
+export async function fetchSquareMe(): Promise<MarketSquareMe> {
+  return marketSquare.get<MarketSquareMe>("/me");
+}
+
+/**
+ * Unread counters for the square.
+ *
+ * Shapes vary by deployment, so anything unrecognised reads as zero rather
+ * than rendering a badge with NaN in it.
+ */
+export async function fetchSquareUnread(): Promise<number> {
+  const data = await marketSquare.get<Record<string, unknown>>("/me/unread");
+  const value = data?.notifications ?? data?.unread ?? data?.count ?? 0;
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
+export interface TrendingDiscussion {
+  tag: string;
+  /** `#tag`, ready to render. */
+  label: string;
+  postCount: number;
+  /** Distinct authors — what makes it a discussion rather than one person. */
+  participantCount: number;
+  /**
+   * Reach: the sum of the posts' view tallies.
+   *
+   * NOT a number of people. Each post counts a reader once, but someone who
+   * reads three posts in a discussion counts three times — so it is labelled
+   * "views" and never "people", unlike participants. Defaults to 0 so a
+   * deployment without the field renders no figure instead of NaN.
+   */
+  viewCount?: number;
+}
+
+/**
+ * Hashtags people are actually using right now.
+ *
+ * Ranked by distinct participants rather than post volume, so one person
+ * repeating a tag cannot climb the list. Public, like the rest of discovery.
+ */
+export async function fetchTrendingDiscussions(limit = 6): Promise<TrendingDiscussion[]> {
+  const page = await marketSquare.get<{ items?: TrendingDiscussion[] }>(
+    `/hashtags/trending?limit=${limit}`
+  );
+  return Array.isArray(page?.items) ? page.items : [];
+}
+
+export interface SuggestedProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verification: string;
+  role: MarketSquareRole;
+  followerCount: number;
+  /** Omitted entirely for anonymous readers — never a misleading `false`. */
+  isFollowing?: boolean;
+}
+
+/**
+ * People worth following, busiest first.
+ *
+ * Public, like the rest of discovery. The service omits `isFollowing` for an
+ * anonymous caller rather than sending false, so the button can tell "not
+ * following" apart from "we cannot know".
+ */
+export async function fetchSuggestedProfiles(limit = 8): Promise<SuggestedProfile[]> {
+  const page = await marketSquare.get<{ items?: SuggestedProfile[] }>(
+    `/profiles?sort=followers&limit=${limit}`
+  );
+  return Array.isArray(page?.items) ? page.items : [];
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -22,12 +23,14 @@ import { RwaSection, RwaTradeModal } from "@/features/rwa";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SquareComposeFab, SquareSection } from "@/features/square";
+import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { useDashboardTour } from "@/features/tour";
 import type { DepositPrefill } from "@/lib/voice/intent";
 import { loadInterest } from "@/lib/preferences";
+import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { MemeToken } from "@/lib/meme/api";
 import type {
@@ -51,6 +54,31 @@ const INTERLEAVED_BANNERS: readonly ("prediction" | "earn" | "casino" | undefine
   "prediction",
   "earn",
   "casino",
+];
+
+/**
+ * Market Square blocks, by the same index — a SECOND track rather than entries
+ * in the one above.
+ *
+ * Keeping them separate is the point: a square block can sit in a gap that
+ * already has a product doorway without evicting it, and a new dashboard
+ * section brings a new gap that either track can fill without renumbering the
+ * other. The alternative — one array where a slot holds exactly one thing —
+ * means every square block costs a doorway, which is a trade nobody wanted to
+ * make.
+ *
+ * Live leads because it is perishable: it earns an early position that a post
+ * does not. Posts follow it, a whole section down and three sections clear of
+ * the full feed at the bottom — near enough the top to be seen, far enough
+ * from the real feed that the two are not read as the same shelf twice.
+ * People sit mid-page. Each block renders nothing when it has nothing, so a
+ * quiet deployment simply closes back up.
+ */
+const INTERLEAVED_SQUARE: readonly ("live" | "posts" | "people" | undefined)[] = [
+  "live",
+  "posts",
+  undefined,
+  "people",
 ];
 
 // The scroll-spy sections mounted inline on this page. Prediction, earn and
@@ -85,6 +113,19 @@ export default function DashboardPage() {
   // buy sheet. The spot section above already caches this, so it costs nothing
   // extra; the square slice takes a plain shape and never imports trade.
   const { markets: spotMarkets } = useSpotMarkets();
+  // The square's feed tab lives here because two siblings drive it: the
+  // section's own strip, and the plus sheet's discussions.
+  const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
+  const openTopic = useCallback((key: string) => {
+    setSquareTab(`topic:${key}`);
+    // Otherwise the tab changes off-screen and the tap reads as doing nothing.
+    document.getElementById("market-square")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+  const openDiscussion = useCallback((tag: string) => {
+    setSquareTab(`tag:${tag}`);
+    // Otherwise the tab changes off-screen and the tap reads as doing nothing.
+    document.getElementById("market-square")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
   useDashboardTour();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
@@ -104,7 +145,54 @@ export default function DashboardPage() {
 
   // Stable handler identities so the memoized section views below don't
   // re-render when this page re-renders (modal open/close, active-section scroll).
-  const close = useCallback(() => setModal(null), []);
+  /**
+   * `?buy=ETH` opens the buy sheet for that symbol.
+   *
+   * Market Square posts are full of $TICKER, and tapping one should land where
+   * Ark would put you: the sheet that buys it. Without a URL for that, a
+   * cross-product link could only drop somebody on a page and leave them to
+   * find the coin themselves.
+   *
+   * DERIVED, not set in an effect. The catalogue arrives asynchronously, so an
+   * effect would have to setState once it lands and trigger a second render
+   * pass; deriving means the sheet is simply part of what this render already
+   * knows. Dismissal is explicit rather than implied by clearing state, or the
+   * derivation would immediately reopen what was just closed.
+   *
+   * An unknown symbol opens nothing: the square cannot know what this
+   * deployment lists, and an empty sheet is worse than no sheet.
+   */
+  const buyParam = useSearchParams().get("buy");
+  const [deepLinkDismissed, setDeepLinkDismissed] = useState(false);
+  const deepLinkBuy = useMemo((): DashboardModal => {
+    if (!buyParam || deepLinkDismissed) return null;
+    const wanted = buyParam.toUpperCase();
+    const market = spotMarkets.find((m) => m.symbol.toUpperCase() === wanted);
+    if (!market) return null;
+    return {
+      type: "buy",
+      buy: {
+        symbol: market.symbol,
+        name: market.name,
+        priceUsd: market.priceUsd,
+        logo: market.logo,
+      },
+    };
+  }, [buyParam, deepLinkDismissed, spotMarkets]);
+
+  // Strips the parameter so a refresh or a back does not reopen a sheet
+  // somebody already dismissed. No setState here, only history.
+  useEffect(() => {
+    if (buyParam) window.history.replaceState(null, "", window.location.pathname);
+  }, [buyParam]);
+
+  // The deep-linked sheet only shows when nothing else is open.
+  const active = modal ?? deepLinkBuy;
+
+  const close = useCallback(() => {
+    setModal(null);
+    setDeepLinkDismissed(true);
+  }, []);
   const openDetail = useCallback(
     (detail: DetailPayload) => setModal({ type: "detail", detail }),
     []
@@ -114,6 +202,7 @@ export default function DashboardPage() {
     []
   );
   const openBuy = useCallback((buy: BuyPayload) => setModal({ type: "buy", buy }), []);
+
   const openSell = useCallback((sell: SellPayload) => setModal({ type: "sell", sell }), []);
   const openMemeSell = useCallback(
     (memeSell: MemeToken) => setModal({ type: "memeSell", memeSell }),
@@ -170,56 +259,79 @@ export default function DashboardPage() {
             {INTERLEAVED_BANNERS[index] ? (
               <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
             ) : null}
+            {/* Hidden for now, so the gaps close up and the doorway track
+                above is unaffected. */}
+            {MARKET_SQUARE_HIDDEN ? null : (
+              <>
+                {INTERLEAVED_SQUARE[index] === "live" ? <SquareLivePromo /> : null}
+                {INTERLEAVED_SQUARE[index] === "posts" ? <SquarePostsPromo /> : null}
+                {INTERLEAVED_SQUARE[index] === "people" ? <SquarePeoplePromo /> : null}
+              </>
+            )}
           </Fragment>
         ))}
         {/* The social floor of the dashboard. It sits AFTER the markets on
             purpose: someone opening Ark came for their money, and the square
             is what they scroll into once they are done reading it — met by
-            browsing rather than by deciding to leave for another deployment. */}
-        <SquareSection onOpenBuy={openBuy} markets={spotMarkets} />
+            browsing rather than by deciding to leave for another deployment.
+            Hidden for now: see MARKET_SQUARE_HIDDEN in lib/market-square.ts. */}
+        {MARKET_SQUARE_HIDDEN ? null : (
+          <SquareSection
+            onOpenBuy={openBuy}
+            markets={spotMarkets}
+            tab={squareTab}
+            onTabChange={setSquareTab}
+          />
+        )}
       </DashboardShell>
       {/* Outside the shell so it anchors to the viewport rather than the
           scrolling column. It reveals itself once the square is in reach. */}
-      <SquareComposeFab markets={spotMarkets} />
+      {MARKET_SQUARE_HIDDEN ? null : (
+        <SquareComposeFab
+          markets={spotMarkets}
+          onPickTopic={openTopic}
+          onPickDiscussion={openDiscussion}
+        />
+      )}
 
       <ModalShell
         open={modal !== null}
         onClose={close}
         contentKey={modal?.type ?? "none"}
-        size={modal?.type === "funds" || modal?.type === "withdraw" ? "lg" : "md"}
+        size={active?.type === "funds" || active?.type === "withdraw" ? "lg" : "md"}
       >
-        {modal?.type === "detail" ? <DetailModal detail={modal.detail} /> : null}
-        {modal?.type === "confirm" ? (
+        {active?.type === "detail" ? <DetailModal detail={active.detail} /> : null}
+        {active?.type === "confirm" ? (
           <ConfirmModal
-            confirm={modal.confirm}
+            confirm={active.confirm}
             onConfirm={() =>
               setModal({
                 type: "done",
-                title: modal.confirm.successTitle,
-                msg: modal.confirm.successMsg,
+                title: active.confirm.successTitle,
+                msg: active.confirm.successMsg,
               })
             }
           />
         ) : null}
-        {modal?.type === "buy" ? <BuySheet payload={modal.buy} onClose={close} /> : null}
-        {modal?.type === "sell" ? <SellSheet payload={modal.sell} onClose={close} /> : null}
-        {modal?.type === "memeSell" ? (
+        {active?.type === "buy" ? <BuySheet payload={active.buy} onClose={close} /> : null}
+        {active?.type === "sell" ? <SellSheet payload={active.sell} onClose={close} /> : null}
+        {active?.type === "memeSell" ? (
           <MemeTradeSheet
-            token={modal.memeSell}
+            token={active.memeSell}
             defaultSide="SELL"
             onClose={close}
             showRisk={false}
           />
         ) : null}
-        {modal?.type === "rwaTrade" ? (
-          <RwaTradeModal payload={modal.rwaTrade} onContinueInBackground={close} />
+        {active?.type === "rwaTrade" ? (
+          <RwaTradeModal payload={active.rwaTrade} onContinueInBackground={close} />
         ) : null}
-        {modal?.type === "funds" ? <FundsModal onClose={close} deposit={modal.deposit} /> : null}
-        {modal?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}
-        {modal?.type === "account" ? <AccountModal onClose={close} /> : null}
-        {modal?.type === "done" ? (
-          <SuccessPanel title={modal.title} onDone={close}>
-            {modal.msg}
+        {active?.type === "funds" ? <FundsModal onClose={close} deposit={active.deposit} /> : null}
+        {active?.type === "withdraw" ? <WithdrawModal onClose={close} /> : null}
+        {active?.type === "account" ? <AccountModal onClose={close} /> : null}
+        {active?.type === "done" ? (
+          <SuccessPanel title={active.title} onDone={close}>
+            {active.msg}
           </SuccessPanel>
         ) : null}
       </ModalShell>

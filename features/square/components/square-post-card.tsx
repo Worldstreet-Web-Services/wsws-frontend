@@ -5,10 +5,14 @@ import { useTranslations } from "next-intl";
 import { timeAgo } from "@/lib/format";
 import { squareLinks } from "@/lib/square/links";
 import { parseCashtags } from "@/lib/square/cashtags";
+import { marketSquareHref } from "@/lib/market-square";
 import { formatCompact } from "@/lib/square/format-count";
 import { useSquareEngage } from "@/features/square/hooks/use-square-engage";
 import { useRecordView } from "@/features/square/hooks/use-record-view";
 import { SquareComments } from "@/features/square/components/square-comments";
+import { CoinChip } from "@/features/square/components/coin-chip";
+import { ExpandableText } from "@/features/square/components/expandable-text";
+import { FollowButton } from "@/features/square/components/follow-button";
 import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedPost } from "@/lib/api/market-square";
@@ -111,12 +115,37 @@ function Action({
  * their own actions — nesting those in an anchor would make a tap ambiguous.
  * The author and the timestamp carry the link instead.
  */
+/**
+ * A tag or a handle, pointing at the square.
+ *
+ * Renders as plain text when no Market Square origin is configured, which is
+ * the same rule every other cross-product link follows: a link with nowhere to
+ * go is worse than no link.
+ */
+function SquareLink({ path, value }: { path: string; value: string }) {
+  const href = marketSquareHref(path);
+  if (!href) return <span>{value}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-accent hover:underline"
+    >
+      {value}
+    </a>
+  );
+}
+
 export function SquarePostCard({
   post,
   markets,
   onOpenBuy,
+  meId,
 }: {
   post: MarketSquareFeedPost;
+  /** The reader's own square id, so the card never offers self-follow. */
+  meId?: string;
   markets: TradableSymbol[];
   onOpenBuy?: (buy: BuyPayload) => void;
 }) {
@@ -125,6 +154,8 @@ export function SquarePostCard({
   const [commenting, setCommenting] = useState(false);
   const seenRef = useRecordView(post.id);
   const author = post.author;
+  // Never offer to follow yourself.
+  const isMe = meId !== undefined && author?.id === meId;
   const href = squareLinks.post(post.id);
 
   const bySymbol = useMemo(() => {
@@ -141,6 +172,22 @@ export function SquarePostCard({
         : [{ kind: "text" as const, value: post.text }],
     [post.text, bySymbol, onOpenBuy]
   );
+
+  // Every tradeable coin the post names, in the order it names them, once each.
+  // The chips answer the question the sentence raises — "is it moving?" —
+  // without the reader leaving the post to go and look.
+  const mentioned = useMemo(() => {
+    const seen = new Set<string>();
+    const out: typeof markets = [];
+    for (const segment of segments) {
+      if (segment.kind !== "cashtag" || seen.has(segment.symbol)) continue;
+      const market = bySymbol.get(segment.symbol);
+      if (!market) continue;
+      seen.add(segment.symbol);
+      out.push(market);
+    }
+    return out;
+  }, [segments, bySymbol]);
 
   const isVideo =
     post.mediaKind === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(post.mediaUrl ?? "");
@@ -164,6 +211,7 @@ export function SquarePostCard({
             {timeAgo(post.createdAt)}
           </p>
         </div>
+        {author && !isMe ? <FollowButton author={author} /> : null}
         {href ? (
           <a
             href={href}
@@ -187,7 +235,10 @@ export function SquarePostCard({
       </header>
 
       {post.text ? (
-        <p className="mt-2.5 text-[14px] leading-[22px] whitespace-pre-wrap text-white/85">
+        <ExpandableText
+          className="mt-2.5 text-[14px] leading-[22px] whitespace-pre-wrap text-white/85"
+          clampClass="line-clamp-6"
+        >
           {segments.map((segment, index) =>
             segment.kind === "cashtag" ? (
               <button
@@ -208,11 +259,53 @@ export function SquarePostCard({
               >
                 {segment.value}
               </button>
+            ) : segment.kind === "hashtag" ? (
+              // Opens the discussion on the square. Ark shows the square's
+              // posts; it does not host its discussion pages.
+              <SquareLink key={index} path={`t/${segment.tag}`} value={segment.value} />
+            ) : segment.kind === "mention" ? (
+              <SquareLink key={index} path={`u/${segment.handle}`} value={segment.value} />
+            ) : segment.kind === "url" ? (
+              <a
+                key={index}
+                href={segment.href}
+                target="_blank"
+                // The destination is author-supplied: it must not get a handle
+                // on this tab, and a feed anybody can write to is otherwise a
+                // link farm.
+                rel="noopener noreferrer nofollow"
+                title={segment.href}
+                className="text-accent hover:underline"
+              >
+                {segment.label}
+              </a>
             ) : (
               <span key={index}>{segment.value}</span>
             )
           )}
-        </p>
+        </ExpandableText>
+      ) : null}
+
+      {mentioned.length > 0 ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {mentioned.map((market) => (
+            <CoinChip
+              key={market.symbol}
+              market={market}
+              onOpen={
+                onOpenBuy
+                  ? () =>
+                      onOpenBuy({
+                        symbol: market.symbol,
+                        name: market.name,
+                        priceUsd: market.priceUsd,
+                        logo: market.logo,
+                      })
+                  : undefined
+              }
+            />
+          ))}
+        </div>
       ) : null}
 
       {/* The author's card for a deep link — a trade, a result, a position.
@@ -253,7 +346,7 @@ export function SquarePostCard({
           href={href ?? undefined}
           target="_blank"
           rel="noopener noreferrer"
-          className="border-grey-800 relative mt-3 block overflow-hidden rounded-xl border"
+          className="border-grey-800 relative mt-3 block overflow-hidden rounded-xl border bg-black/40"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- author-supplied host is unknown */}
           <img
@@ -261,7 +354,11 @@ export function SquarePostCard({
             alt=""
             loading="lazy"
             decoding="async"
-            className="max-h-[320px] w-full object-cover"
+            // CONTAIN, not cover: a screenshot of a chart or a P&L is the
+            // whole point of the post, and cropping it to fill a box slices
+            // exactly the numbers someone posted it for. Letterboxing on a
+            // neutral ground looks deliberate; a beheaded chart looks broken.
+            className="max-h-[420px] w-full bg-black/40 object-contain"
           />
           {isVideo ? (
             <span className="absolute inset-0 grid place-items-center bg-black/25">

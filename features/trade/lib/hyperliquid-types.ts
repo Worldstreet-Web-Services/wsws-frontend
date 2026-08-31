@@ -56,6 +56,16 @@ export interface HlMarketContext {
   fundingRate: string;
 }
 
+// Market-wide funding sample — NOT a wallet's own funding payments (that's
+// a different, user-scoped Hyperliquid read this app doesn't currently
+// surface). Drives the chart panel's Funding tab.
+export interface HlFundingHistoryEntry {
+  coin: string;
+  fundingRate: string;
+  premium: string;
+  time: number;
+}
+
 interface HlMarginSummary {
   accountValue: string;
   totalNtlPos: string;
@@ -125,6 +135,14 @@ export type HlOrderType = "market" | "limit" | "take_profit" | "stop_loss" | "cl
 export type HlOrderSide = "buy" | "sell";
 export type HlOrderStatus =
   "submitted" | "open" | "partially_filled" | "filled" | "cancelled" | "rejected";
+
+// Mirrors apps/perp's own RESTING_STATUSES — listOrders returns every order
+// for a wallet, not just resting ones, so "is this order still pending" is a
+// status check, not a presence check.
+const RESTING_ORDER_STATUSES = new Set<HlOrderStatus>(["submitted", "open", "partially_filled"]);
+export function isRestingOrder(order: HlOrderRow): boolean {
+  return RESTING_ORDER_STATUSES.has(order.status);
+}
 
 export interface HlOrderRow {
   id: string;
@@ -284,6 +302,34 @@ export interface HlBuilderFeeStatus {
 
 export interface PreparedBuilderFeeApproval {
   action: HlApproveBuilderFeeAction;
+  nonce: number;
+}
+
+// ── Account-abstraction mode (HyperCore's own mode, not EIP-7702) ───────
+// A wallet must be in "disabled" (Manual/Standard) mode before its orders
+// are eligible to carry Hyperliquid's builder fee — see HlBuilderFeeStatus.
+
+export type HlAbstractionMode = "disabled" | "unifiedAccount" | "portfolioMargin";
+
+// User-signed EIP-712 action — same family as approveBuilderFee/withdraw3,
+// see hyperliquid-signer.ts's signSetAbstractionMode.
+export interface HlSetAbstractionAction {
+  type: "userSetAbstraction";
+  signatureChainId: `0x${string}`;
+  hyperliquidChain: "Mainnet" | "Testnet";
+  user: string;
+  abstraction: HlAbstractionMode;
+  nonce: number;
+}
+
+export interface HlAbstractionModeStatus {
+  mode: HlAbstractionMode;
+  /** Whether this wallet is currently eligible to collect builder fees. */
+  eligibleForBuilderFees: boolean;
+}
+
+export interface PreparedAbstractionMode {
+  action: HlSetAbstractionAction;
   nonce: number;
 }
 

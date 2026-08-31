@@ -61,7 +61,7 @@ async function proxy(req: NextRequest, path: string[], method: "GET" | "POST", b
   // "not yours".
   const addressMatch =
     method === "GET"
-      ? /^(?:ark\/(?:wallet|account-state|arbitrum-balance)|funding\/deposit-address)\/([^/]+)$/.exec(
+      ? /^(?:hl\/(?:wallet|clearinghouse|arbitrum-balance)|funding\/deposit-address)\/([^/]+)$/.exec(
           joined
         )
       : null;

@@ -31,7 +31,7 @@ export function rwaRevalidate(path: string): number | undefined {
 // model: every write is signed client-side, this backend never forwards a
 // private key).
 const PERP_ALLOWED =
-  /^(health|pairs|market|prices|snapshot|trades|orders|quote|build\/(approve-usdc|open-trade|close-trade|update-margin|update-tp-sl|cancel-order)|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|ark\/wallet\/[^/]+|ark\/assets|ark\/prices|ark\/market-contexts|ark\/account-state\/[^/]+|ark\/arbitrum-balance\/[^/]+|ark\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee)|ark\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|ark\/leverage\/(prepare|submit)|ark\/bridge\/(prepare|confirm)|ark\/withdrawals\/(prepare|submit)|ark\/positions\/close\/(prepare|submit)|ark\/builder-fee\/(prepare|submit))$/;
+  /^(health|pairs|market|prices|snapshot|trades|orders|quote|build\/(approve-usdc|open-trade|close-trade|update-margin|update-tp-sl|cancel-order)|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|hl\/wallet\/[^/]+|hl\/assets|hl\/prices|hl\/market-contexts|hl\/funding-history\/[^/]+|hl\/candles\/[^/]+|hl\/clearinghouse\/[^/]+|hl\/arbitrum-balance\/[^/]+|hl\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee|abstraction-mode)|hl\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|hl\/leverage\/(prepare|submit)|hl\/bridge\/(prepare|confirm)|hl\/withdrawals\/(prepare|submit)|hl\/positions\/close\/(prepare|submit)|hl\/builder-fee\/(prepare|submit)|hl\/abstraction-mode\/(prepare|submit))$/;
 
 export function isAllowedPerpPath(path: string): boolean {
   // Same traversal guard as the RWA allowlist: a raw ".." or encoded segment
@@ -47,8 +47,8 @@ export function isAllowedPerpPath(path: string): boolean {
 // asset registry is as static as `pairs`; everything else in that surface
 // (live prices, margin, positions, orders) must never be stale.
 export function perpRevalidate(path: string): number | undefined {
-  if (path === "pairs" || path === "ark/assets") return 300;
-  if (path === "prices" || path === "market" || path === "ark/prices") return 3;
+  if (path === "pairs" || path === "hl/assets") return 300;
+  if (path === "prices" || path === "market" || path === "hl/prices") return 3;
   if (path === "snapshot") return 60;
   return undefined;
 }

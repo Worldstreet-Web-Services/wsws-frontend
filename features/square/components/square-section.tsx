@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { AsyncError, AsyncLoading } from "@/components/ui/async-state";
 import { squareLinks } from "@/lib/square/links";
-import { fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
+import { fetchSquareMe, fetchSquareTopics, type SquareLane } from "@/lib/api/market-square";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import { SquareLiveStrip } from "@/features/square/components/square-live-strip";
 import { SquarePostCard } from "@/features/square/components/square-post-card";
@@ -37,32 +37,62 @@ const LANE_FOLLOWING = "lane:following";
  * with every table above it.
  *
  * ── Width ───────────────────────────────────────────────────────────────────
- * A feed reads at roughly 600px however wide the monitor is. Centring one
- * column in a 1520px shell leaves two dead gutters; fanning it into a grid
- * destroys the stream. So: feed at reading width, secondary content in a rail
- * beside it, and the rail folded back into the single column below `lg`.
+ * A feed reads at roughly 600px, so up to `lg` this is one reading column with
+ * the rail folded underneath it. On a wide monitor that column left most of a
+ * 1520px shell empty, so from `xl` the posts fan into two, which fills the
+ * shell without ever making a single column longer than it reads well at.
  */
 export function SquareSection({
   onOpenBuy,
   markets = [],
+  tab: controlledTab,
+  onTabChange,
 }: {
   onOpenBuy?: (buy: BuyPayload) => void;
   /** Supplied by the dashboard, which owns both this and the trade slice. */
   markets?: TradableSymbol[];
+  /**
+   * The selected tab, when something outside drives it — the plus sheet's
+   * discussions do, and they are a sibling of this section rather than a
+   * child, so the dashboard holds the state between them.
+   */
+  tab?: string;
+  onTabChange?: (tab: string) => void;
 }) {
   const t = useTranslations("square");
-  const [tab, setTab] = useState<string>(LANE_FOR_YOU);
+  const [ownTab, setOwnTab] = useState<string>(LANE_FOR_YOU);
+  // Controlled when the dashboard passes a tab, uncontrolled otherwise, so the
+  // section still works on its own.
+  const tab = controlledTab ?? ownTab;
+  const setTab = (next: string) => {
+    setOwnTab(next);
+    onTabChange?.(next);
+  };
   const squareHref = squareLinks.home();
   const [composing, setComposing] = useState(false);
 
   // A topic tab filters the for-you lane; the lane tabs carry no topic.
   const lane: SquareLane = tab === LANE_FOLLOWING ? "following" : "for-you";
+  // Three kinds of tab now: a lane, a curated topic, and a discussion.
   const topics = useMemo(
-    () => (tab.startsWith("lane:") ? undefined : [tab.replace(/^topic:/, "")]),
+    () => (tab.startsWith("topic:") ? [tab.slice("topic:".length)] : undefined),
+    [tab]
+  );
+  const hashtag = useMemo(
+    () => (tab.startsWith("tag:") ? tab.slice("tag:".length) : undefined),
     [tab]
   );
 
-  const feed = useSquareFeed(lane, topics);
+  const feed = useSquareFeed(lane, topics, hashtag);
+
+  // Only to suppress a self-follow button; a failure here costs nothing.
+  const meQuery = useQuery({
+    queryKey: ["market-square", "me"],
+    queryFn: fetchSquareMe,
+    enabled: squareHref !== null,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   const topicQuery = useQuery({
     queryKey: ["market-square", "topics"],
@@ -76,12 +106,15 @@ export function SquareSection({
     () => [
       { id: LANE_FOR_YOU, label: t("laneForYou") },
       { id: LANE_FOLLOWING, label: t("laneFollowing") },
+      // A discussion the reader jumped into from the sheet gets its own tab,
+      // so the strip shows where they are rather than looking unchanged.
+      ...(hashtag ? [{ id: `tag:${hashtag}`, label: `#${hashtag}` }] : []),
       ...(topicQuery.data ?? []).map((topic) => ({
         id: `topic:${topic.key}`,
         label: topic.label,
       })),
     ],
-    [topicQuery.data, t]
+    [topicQuery.data, hashtag, t]
   );
 
   const items = useMemo(() => feed.data?.pages.flatMap((page) => page.items) ?? [], [feed.data]);
@@ -102,11 +135,11 @@ export function SquareSection({
   if (!squareHref) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
+    <div id="market-square" className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <Eyebrow>{t("title")}</Eyebrow>
 
       <div className="ws-card mt-4 flex gap-8 p-4 sm:p-5 lg:p-6">
-        <div className="w-full min-w-0 lg:max-w-[680px]">
+        <div className="w-full min-w-0 lg:max-w-[680px] xl:max-w-none">
           <div className="border-grey-800 border-b">
             <SquareTabs tabs={tabs} active={tab} onSelect={setTab} label={t("tabsLabel")} />
           </div>
@@ -151,13 +184,14 @@ export function SquareSection({
                     </button>
                   </div>
                 ) : (
-                  <div>
+                  <div className="grid gap-x-6 xl:grid-cols-2">
                     {posts.map((post) => (
                       <SquarePostCard
                         key={post.id}
                         post={post}
                         markets={markets}
                         onOpenBuy={onOpenBuy}
+                        meId={meQuery.data?.id}
                       />
                     ))}
                   </div>

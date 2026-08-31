@@ -1,34 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { HyperliquidAssetPicker } from "@/features/trade/components/hyperliquid-asset-picker";
 import { HyperliquidMarketHeader } from "@/features/trade/components/hyperliquid-market-header";
+import { HyperliquidChartPanel } from "@/features/trade/components/hyperliquid-chart-panel";
 import { HyperliquidMarketPanel } from "@/features/trade/components/hyperliquid-market-panel";
-import { HyperliquidWalletPanel } from "@/features/trade/components/hyperliquid-wallet-panel";
 import { HyperliquidOrderForm } from "@/features/trade/components/hyperliquid-order-form";
 import { HyperliquidPositionsList } from "@/features/trade/components/hyperliquid-positions-list";
 import { HyperliquidOrdersList } from "@/features/trade/components/hyperliquid-orders-list";
 import { useHyperliquidTrading } from "@/features/trade/hooks/use-hyperliquid-trading";
 import { useHyperliquidMarketContexts } from "@/features/trade/hooks/use-hyperliquid-market-contexts";
-import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
-import type {
-  HlOrderRow,
-  HlPositionView,
-  HlTriggerKind,
+import {
+  isRestingOrder,
+  type HlOrderRow,
+  type HlPositionView,
+  type HlTriggerKind,
 } from "@/features/trade/lib/hyperliquid-types";
+
+interface HyperliquidProPerpsProps {
+  /** Deep-links to a specific market on mount, e.g. from /trade/:symbol. */
+  initialSymbol?: string;
+}
 
 // Full control: searchable market picker, chart, limit/TP/SL entry, leverage,
 // positions and orders. See apps/perp's README for the backend side and
 // apps/perp/src/signing/README.md for the signing model — every write below
 // is signed by the user's own embedded wallet, never this backend.
-export function HyperliquidProPerps() {
+export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsProps) {
   const trading = useHyperliquidTrading();
   const { contexts } = useHyperliquidMarketContexts(trading.authenticated);
-  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol);
   const [busy, setBusy] = useState(false);
   const portfolio = usePortfolio();
+
+  // The three-panel row's height is set ONCE, here, on the grid itself — not
+  // derived from any panel's own content. Each panel then fills that row
+  // (h-full) and scrolls its own content internally, so no panel's natural
+  // size can push the others around, and nothing overflows the viewport.
+  //
+  // The height is "however much viewport is left below this grid" — measured
+  // via getBoundingClientRect().top rather than hand-maintained CSS tokens
+  // for the header/stat-strip/padding above it, because those tokens would
+  // just be guessed pixel values with no way to verify them without a
+  // browser, and they silently go stale the moment any of that chrome
+  // changes. Measuring the real offset can't drift out of sync — it's asking
+  // the DOM directly, not reproducing what the DOM already knows.
+  //
+  // Only engaged at the min-[1400px] breakpoint where the grid actually goes
+  // three-column (see className below) — below that everything stacks and
+  // should scroll as a normal page, not lock to viewport height.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [rowHeight, setRowHeight] = useState<number | undefined>(undefined);
+  const BOTTOM_BREATHING_ROOM_PX = 24;
+
+  useEffect(() => {
+    const node = gridRef.current;
+    if (!node) return;
+    const recalc = () => {
+      if (window.innerWidth < 1400) {
+        setRowHeight(undefined);
+        return;
+      }
+      const top = node.getBoundingClientRect().top;
+      setRowHeight(Math.max(320, window.innerHeight - top - BOTTOM_BREATHING_ROOM_PX));
+    };
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, []);
+
+  // The compact market picker's search dropdown matches the chart column's
+  // real rendered width, so it doesn't look like an undersized popover next
+  // to a much wider chart. Same measured-not-guessed approach as rowHeight.
+  const chartColumnRef = useRef<HTMLDivElement>(null);
+  const [chartColumnWidth, setChartColumnWidth] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const node = chartColumnRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setChartColumnWidth(Math.round(width));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   // A top-up or withdrawal moves the user's main (spot) balance too — refresh
   // it the moment the perps side confirms, instead of leaving it to catch up
@@ -57,6 +114,9 @@ export function HyperliquidProPerps() {
     trading.assets[0] ??
     null;
   const markPrice = asset ? Number(trading.prices[asset.symbol] ?? 0) : 0;
+  const currentPosition = asset
+    ? (trading.positions.find((p) => p.assetId === asset.id && p.status === "open") ?? null)
+    : null;
 
   const withBusy = async <T,>(fn: () => Promise<T>): Promise<T> => {
     setBusy(true);
@@ -79,6 +139,21 @@ export function HyperliquidProPerps() {
         await trading.actions.closePosition(position.id, siblingOrderIdsToCancel);
       } finally {
         trading.refetchAll();
+        // The immediate refetch above usually already shows the close (a
+        // reduce-only IOC fills almost instantly), but Hyperliquid can lag
+        // behind that by a couple of seconds — this keeps polling in the
+        // background (not blocking the busy state) so a still-stale
+        // position, or a sibling TP/SL still shown as resting after being
+        // cancelled, self-corrects within a few seconds instead of sitting
+        // there until the next unrelated refetch.
+        void trading.waitForPositionsChange((rows) => rows.every((p) => p.id !== position.id));
+        if (siblingOrderIdsToCancel.length > 0) {
+          void trading.waitForOrdersChange((rows) =>
+            rows
+              .filter((o) => siblingOrderIdsToCancel.includes(o.id))
+              .every((o) => !isRestingOrder(o))
+          );
+        }
       }
     });
 
@@ -107,24 +182,46 @@ export function HyperliquidProPerps() {
 
   return (
     <div className="flex flex-col gap-4" data-sensitive="position">
-      <HyperliquidMarketHeader symbol={asset?.symbol ?? ""} fallbackMarkPrice={markPrice} />
-
-      <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
-        <div className="flex flex-col gap-4">
-          <HyperliquidWalletPanel
-            walletId={trading.walletId}
-            walletLoading={trading.walletLoading}
-            clearinghouse={trading.clearinghouse}
-            clearinghouseLoading={trading.clearinghouseLoading}
-            busy={busy}
-            onBridge={(requiredUsdc) => withBusy(() => trading.actions.bridge(requiredUsdc))}
-            onWithdraw={(amountUsdc, onStatus) =>
-              withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
-            }
-            onFunded={handleWalletChanged}
+      <HyperliquidMarketHeader
+        symbol={asset?.symbol ?? ""}
+        fallbackMarkPrice={markPrice}
+        assetPicker={
+          <HyperliquidAssetPicker
+            assets={trading.assets}
+            prices={trading.prices}
+            contexts={contexts}
+            selected={asset?.symbol ?? ""}
+            onSelect={setSelectedSymbol}
+            loading={trading.assetsLoading}
+            compact
+            dropdownWidth={chartColumnWidth}
           />
+        }
+      />
 
+      {/* One three-column row: chart, order book/trades, order ticket — all
+          three fill the SAME row height (rowHeight, computed above) and
+          scroll their own content internally rather than growing the row.
+          min-h-0 on the grid and every column is load-bearing: grid/flex
+          items default to min-height:auto, which refuses to shrink below
+          content size — that default is what let a panel's content dictate
+          the row's height in every earlier version of this layout. Below
+          1400px everything stacks and scrolls as a normal page instead
+          (rowHeight is unset there — see the effect above). */}
+      <div
+        ref={gridRef}
+        style={rowHeight ? { height: rowHeight } : undefined}
+        className="grid min-h-0 grid-cols-1 gap-4 min-[1400px]:grid-cols-[minmax(0,1fr)_300px_420px]"
+      >
+        <div ref={chartColumnRef} className="min-h-0">
+          <HyperliquidChartPanel assetSymbol={asset?.symbol ?? ""} height={rowHeight} />
+        </div>
+        <div className="min-h-0">
+          <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} height={rowHeight} />
+        </div>
+        <div className="min-h-0">
           <HyperliquidOrderForm
+            height={rowHeight}
             assetSymbol={asset?.symbol ?? ""}
             maxLeverage={asset?.maxLeverage ?? 20}
             markPrice={markPrice}
@@ -132,6 +229,9 @@ export function HyperliquidProPerps() {
             availableMarginUsdc={
               trading.clearinghouse ? Number(trading.clearinghouse.withdrawable) : 0
             }
+            currentPosition={currentPosition}
+            walletId={trading.walletId}
+            clearinghouse={trading.clearinghouse}
             walletReady={!trading.assetsLoading && trading.walletId != null}
             busy={busy}
             onSubmit={(input, onStatus) =>
@@ -144,51 +244,34 @@ export function HyperliquidProPerps() {
             onUpdateLeverage={(assetSymbol, leverage, marginMode) =>
               withBusy(() => trading.actions.updateLeverage(assetSymbol, leverage, marginMode))
             }
+            onBridge={(requiredUsdc) => withBusy(() => trading.actions.bridge(requiredUsdc))}
+            onWithdraw={(amountUsdc, onStatus) =>
+              withBusy(() => trading.actions.withdraw(amountUsdc, onStatus))
+            }
+            onFunded={handleWalletChanged}
           />
         </div>
+      </div>
 
-        <div className="flex flex-col gap-4">
-          <HyperliquidAssetPicker
-            assets={trading.assets}
-            prices={trading.prices}
-            contexts={contexts}
-            selected={asset?.symbol ?? ""}
-            onSelect={setSelectedSymbol}
-            loading={trading.assetsLoading}
-          />
-          <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-[1fr_280px]">
-            <div className="ws-card p-4 sm:p-5">
-              {asset ? (
-                <TradingViewChart symbol={tradingViewSymbolForAsset(asset.symbol)} height={380} />
-              ) : (
-                <div
-                  style={{ height: 380 }}
-                  className="grid place-items-center text-[13.5px] font-normal text-white/45"
-                >
-                  No market selected
-                </div>
-              )}
-            </div>
-            <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} />
-          </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <HyperliquidPositionsList
-              positions={trading.positions}
-              orders={trading.orders}
-              loading={trading.positionsLoading}
-              busy={busy}
-              walletId={trading.walletId}
-              onClosePosition={handleClosePosition}
-              onEditTrigger={handleEditTrigger}
-            />
-            <HyperliquidOrdersList
-              orders={trading.orders}
-              loading={trading.ordersLoading}
-              busy={busy}
-              onCancel={handleCancelOrder}
-            />
-          </div>
-        </div>
+      {/* Positions/orders, full width below — matches Hyperliquid's own
+          layout, where the bottom panel spans the whole terminal rather
+          than being squeezed under just the chart column. */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <HyperliquidPositionsList
+          positions={trading.positions}
+          orders={trading.orders}
+          loading={trading.positionsLoading}
+          busy={busy}
+          walletId={trading.walletId}
+          onClosePosition={handleClosePosition}
+          onEditTrigger={handleEditTrigger}
+        />
+        <HyperliquidOrdersList
+          orders={trading.orders}
+          loading={trading.ordersLoading}
+          busy={busy}
+          onCancel={handleCancelOrder}
+        />
       </div>
     </div>
   );

@@ -39,6 +39,14 @@ export interface ServiceClient {
   postRawJson<T>(path: string, body: string, headers?: HeadersInit): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
   del<T>(path: string, body?: unknown): Promise<T>;
+  /**
+   * POST a FormData body.
+   *
+   * Separate from `post` because the browser must set `content-type` ITSELF —
+   * it is the only party that knows the multipart boundary it generated, and
+   * setting the header by hand produces a body no parser can read.
+   */
+  postForm<T>(path: string, form: FormData): Promise<T>;
 }
 
 export function createServiceClient(basePath: string, fallbackMessage: string): ServiceClient {
@@ -58,5 +66,8 @@ export function createServiceClient(basePath: string, fallbackMessage: string): 
       authed<T>(url(path), rawJsonBodyInit("POST", body, headers)),
     put: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("PUT", body)),
     del: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("DELETE", body)),
+    // No `headers` on purpose — see the interface.
+    postForm: <T>(path: string, form: FormData) =>
+      authed<T>(url(path), { method: "POST", body: form }),
   };
 }

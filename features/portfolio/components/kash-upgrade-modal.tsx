@@ -12,8 +12,8 @@ import { usdcAmountForPrice, usdcTransferData } from "@/features/portfolio/lib/k
 import {
   formatUsdMicro,
   spendableUsdcMicro,
-  tierShares,
   usdToMicro,
+  revenueShareTiers,
 } from "@/features/portfolio/lib/kash";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import {
@@ -36,9 +36,9 @@ interface KashUpgradeModalProps {
 export function KashUpgradeModal({ open, onClose }: KashUpgradeModalProps) {
   const t = useTranslations("kash");
   const { data: status } = useKashStatus();
-  // The reward ladder is engine config; deriving it here keeps the prices and
-  // shares from ever disagreeing with what actually pays out.
-  const shares = tierShares(status?.points);
+  // Read from the engine, never restated here, so the number on a tier row is
+  // always the number that actually pays out.
+  const shares = revenueShareTiers(status?.points);
   const { wallet } = useKashAccount();
   const { data: subscription } = useKashSubscription();
   const tiers = useKashSubscriptionTiers(open);
@@ -196,9 +196,11 @@ export function KashUpgradeModal({ open, onClose }: KashUpgradeModalProps) {
                     )}
                   </div>
 
-                  {/* This tier's flat share of the fee its activity produces.
-                      Without this a price is just a price — the whole reason
-                      to upgrade is earning a bigger share of your own fee. */}
+                  {/* What this tier actually earns. Without it a price is just
+                      a price — the whole reason to upgrade is the larger share
+                      of the fees you generate. Absent when the engine does not
+                      publish a ladder, which is a missing row rather than a
+                      broken page. */}
                   {share && (
                     <div className="mt-2.5 flex items-center justify-between border-t border-white/8 pt-2.5">
                       <span className="tnum text-[12px] font-normal text-white/45">
@@ -209,7 +211,7 @@ export function KashUpgradeModal({ open, onClose }: KashUpgradeModalProps) {
                           reachable ? "text-amber-200/90" : "text-white/35"
                         }`}
                       >
-                        {t("tierShareRate", { pct: share.sharePct })}
+                        {t("tierShare", { pct: share.sharePct })}
                         {!reachable && <span className="ml-1.5">{t("tierLockedRate")}</span>}
                       </span>
                     </div>

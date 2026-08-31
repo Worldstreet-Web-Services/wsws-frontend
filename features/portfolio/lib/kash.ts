@@ -34,7 +34,15 @@ export interface KashStatus {
    */
   points: {
     pointValueUsd: number;
-    tierRevenueSharePct: number[];
+    /**
+     * Revenue share per subscription tier, in whole percent.
+     *
+     * Replaced `tierBoundsUsd` / `tierRatesPer10Usd` when the engine moved to
+     * the points-first model: there are no volume brackets any more, and a
+     * tier now earns a share of the fees it generates rather than a rate per
+     * $10 traded.
+     */
+    tierRevenueSharePct?: number[];
   };
   /**
    * A self-serve claim (POST /settlements/claim) below `minClaimKash` mints
@@ -327,27 +335,35 @@ function trimZeros(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
-/** One subscription tier's flat reward rate. */
-export interface TierShare {
-  /** 1-based subscription tier. */
+/** One subscription tier and the revenue share it earns. */
+export interface RevenueShareTier {
+  /** 1-based, matching the engine's tier numbering. */
   tier: number;
-  /** Share of the fee an activity produced that this tier pays out, e.g. 3 = 3%. */
+  /** Share of generated fees this tier earns, in whole percent. */
   sharePct: number;
 }
 
 /**
- * The reward ladder, derived from the engine's per-tier shares.
+ * What each subscription tier earns, as published by the engine.
  *
- * Flat, not banded: every dollar of fee at a given tier earns that tier's
- * share, whatever the trade size — `reward = fee × tier's sharePct`. A
- * wallet's subscription tier is simply which flat rate it earns at.
+ * A tier takes a share of the fees its holder generates; upgrading raises that
+ * share. This replaced the old volume ladder — bounds and per-$10 rates — when
+ * the engine moved to the points-first model, and reading it from the engine
+ * rather than restating it here is what stops the modal quoting a number that
+ * is not what pays out.
+ *
+ * EMPTY rather than a guess whenever the field is absent or not an array. The
+ * previous version destructured it and called `.map`, so the day the engine
+ * renamed it the whole portfolio page died with
+ * `Cannot read properties of undefined (reading 'map')`. A ladder nobody can
+ * read is a missing row; it is not a broken dashboard.
  */
-export function tierShares(points: KashStatus["points"] | undefined): TierShare[] {
-  if (!points) return [];
-  return points.tierRevenueSharePct.map((sharePct, index) => ({
-    tier: index + 1,
-    sharePct,
-  }));
+export function revenueShareTiers(points: KashStatus["points"] | undefined): RevenueShareTier[] {
+  const shares = points?.tierRevenueSharePct;
+  if (!Array.isArray(shares)) return [];
+  return shares.flatMap((sharePct, index) =>
+    typeof sharePct === "number" && Number.isFinite(sharePct) ? [{ tier: index + 1, sharePct }] : []
+  );
 }
 
 export function gateProgress(account: {

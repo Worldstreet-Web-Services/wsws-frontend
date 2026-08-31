@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
+import { resolveGasPolicyId } from "@/lib/server/gas-policy";
 
 // Server-side proxy for Alchemy's bundler/Gas Manager. Keeps the Alchemy key
 // and the gas-sponsorship policy id off the client: the client only ever posts
@@ -7,14 +8,15 @@ import { verifyRequest } from "@/lib/server/auth";
 // policy header. Used for the EIP-7702 sponsored transaction flow (see
 // lib/trade/sponsor.ts) so transactions never need the wallet to hold gas.
 //
-// One Gas Manager policy covers every chain listed here, so a new chain is a
-// line in this map rather than a second policy.
+// A new chain is a line in this map AND its own Gas Manager policy. An Alchemy
+// sponsorship policy is scoped to one network, so this map used to be paired
+// with a single shared policy id on the belief that "one Gas Manager policy
+// covers every chain listed here" — which is why sponsored Polygon sends were
+// rejected outright. See lib/server/gas-policy.
 const ALCHEMY_HOST: Record<string, string> = {
   base: "base-mainnet",
   polygon: "polygon-mainnet",
 };
-
-const POLICY_ID = process.env.ALCHEMY_GAS_POLICY_ID;
 
 // Every JSON-RPC method this flow's viem bundler/public client can call. Kept
 // tight so this route can't be used as a general-purpose paid RPC proxy: each
@@ -60,12 +62,23 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Only the sponsored send spends the policy; plain reads must not be gated on
+  // one, or a chain without sponsorship loses its node reads too.
+  const needsPolicy = calls.some((call) => call?.method === "eth_sendUserOperation");
+  const policyId = resolveGasPolicyId(host);
+  if (needsPolicy && !policyId) {
+    return NextResponse.json(
+      { error: `Gas sponsorship is not configured for ${host}` },
+      { status: 503 }
+    );
+  }
+
   try {
     const res = await fetch(`https://${host}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(POLICY_ID ? { "x-alchemy-policy-id": POLICY_ID } : {}),
+        ...(policyId ? { "x-alchemy-policy-id": policyId } : {}),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30000),

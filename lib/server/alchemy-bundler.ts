@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
 import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
+import { resolveGasPolicyId } from "@/lib/server/gas-policy";
 
-const POLICY_ID = process.env.ALCHEMY_GAS_POLICY_ID;
 const API_KEY = process.env.ALCHEMY_API_KEY;
 
 // Every JSON-RPC method this flow's viem bundler/public client can call. Kept
@@ -56,8 +56,13 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     }
   }
   const needsPolicy = calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
-  if (needsPolicy && !POLICY_ID) {
-    return NextResponse.json({ error: "Alchemy gas policy is missing" }, { status: 503 });
+  // Per network, never one id for every chain — see lib/server/gas-policy.
+  const policyId = resolveGasPolicyId(target.network);
+  if (needsPolicy && !policyId) {
+    return NextResponse.json(
+      { error: `Gas sponsorship is not configured for ${target.network}` },
+      { status: 503 }
+    );
   }
 
   try {
@@ -65,7 +70,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(needsPolicy && POLICY_ID ? { "x-alchemy-policy-id": POLICY_ID } : {}),
+        ...(needsPolicy && policyId ? { "x-alchemy-policy-id": policyId } : {}),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30000),

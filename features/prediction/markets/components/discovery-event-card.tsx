@@ -17,16 +17,15 @@ export function DiscoveryEventCard({
   selectedIds,
   onSelect,
 }: DiscoveryEventCardProps) {
-  const compact = event.marketCount > 1;
   const hiddenMarkets = Math.max(0, event.marketCount - event.markets.length);
   const href = `/prediction/markets/${event.id}?category=${category}`;
 
   return (
-    <article className="relative overflow-hidden rounded-[10px] border border-white/8 bg-[#111114] transition-colors hover:border-white/14">
+    <article className="relative overflow-hidden rounded-[12px] border border-white/8 bg-[linear-gradient(145deg,#15171b_0%,#101114_72%)] shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-colors hover:border-white/14">
       <Link href={href} aria-label={`Open ${event.title}`} className="absolute inset-0 z-0" />
 
-      <header className="pointer-events-none relative z-[1] flex gap-3 border-b border-white/7 p-3.5 sm:p-4">
-        <div className="size-12 shrink-0 overflow-hidden rounded-[9px] border border-white/10 bg-[#242428]">
+      <header className="pointer-events-none relative z-[1] flex gap-2.5 border-b border-white/7 p-3 sm:gap-3 sm:p-4">
+        <div className="size-10 shrink-0 overflow-hidden rounded-[9px] border border-white/10 bg-[#242428] sm:size-12">
           {event.imageUrl || event.iconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -42,20 +41,23 @@ export function DiscoveryEventCard({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-2.5 sm:gap-3">
             <div className="min-w-0">
               <span className="text-[9px] font-extrabold tracking-[0.1em] text-white/35 uppercase">
                 {eventTopic(event)}
               </span>
-              <h2 className="mt-0.5 line-clamp-2 text-[14px] leading-[1.3] font-bold text-white/86">
+              <h2 className="mt-0.5 line-clamp-2 text-[13px] leading-[1.32] font-bold text-white/90 sm:text-[14px]">
                 {event.title}
               </h2>
             </div>
-            <span className="shrink-0 rounded-[6px] border border-white/9 bg-white/[0.045] px-2 py-1 text-[9px] font-bold text-white/45">
-              {event.marketCount} {event.marketCount === 1 ? "market" : "markets"}
+            <span className="shrink-0 rounded-full border border-white/9 bg-white/[0.045] px-2 py-1 text-[9px] font-bold text-white/45">
+              {event.marketCount}
+              <span className="hidden sm:inline">
+                {event.marketCount === 1 ? " market" : " markets"}
+              </span>
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold text-white/35">
+          <div className="mt-1.5 flex min-w-0 gap-x-2.5 overflow-hidden text-[9px] font-semibold whitespace-nowrap text-white/38 sm:mt-2 sm:flex-wrap sm:gap-x-3 sm:gap-y-1 sm:text-[10px]">
             <span>{compactUsd(event.volume24h)} 24h</span>
             <span>{compactUsd(event.liquidity)} liquidity</span>
             <span>{closingLabel(event.endDate)}</span>
@@ -63,19 +65,18 @@ export function DiscoveryEventCard({
         </div>
       </header>
 
-      <div className="px-3.5 sm:px-4">
+      <div className="px-3 sm:px-4">
         {event.markets.map((market) => (
           <DiscoveryMarketRow
             key={market.id}
             market={market}
-            compact={compact}
             selectedIds={selectedIds}
             onSelect={(selection) => onSelect(discoverySlipSelection(event, selection))}
           />
         ))}
       </div>
 
-      <footer className="pointer-events-none relative z-[1] flex items-center justify-between border-t border-white/7 bg-black/15 px-4 py-2.5 text-[10px] font-bold text-white/38">
+      <footer className="pointer-events-none relative z-[1] flex items-center justify-between border-t border-white/7 bg-black/15 px-3 py-2 text-[9px] font-bold text-white/38 sm:px-4 sm:py-2.5 sm:text-[10px]">
         <span>{hiddenMarkets > 0 ? `+${hiddenMarkets} more markets` : "View market details"}</span>
         <span aria-hidden="true">&rarr;</span>
       </footer>

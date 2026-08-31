@@ -1,129 +1,101 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { ArkMark } from "@/components/ui/ark-mark";
-import { Avatar } from "@/components/ui/avatar";
-import { CloseIcon } from "@/components/ui/icons";
-import { deriveProfile } from "@/lib/user";
-import { CATEGORY_LINKS, SPORTS_LINKS } from "../navigation-config";
-import type { MarketCategory, SportsNavKey } from "../types";
+import { useMoney } from "@/components/ui/currency-select";
+import { usePortfolio } from "@/hooks/use-portfolio";
+import { useSportsFilters } from "../hooks/use-sports-markets";
+import { CATEGORY_LINKS } from "../navigation-config";
+import { isNormalSportCategory, type MarketCategory, type SportsLeagueKey } from "../types";
 import { NavigationRail } from "./navigation-rail";
 
 interface MarketsHeaderProps {
   activeCategory: MarketCategory;
-  activeSportsNav: SportsNavKey;
+  activeLeague: SportsLeagueKey;
 }
 
 const FRAME_CLASS = "mx-auto w-full max-w-[1340px] px-4 sm:px-5 xl:px-0";
+const NAV_FRAME_CLASS = "mx-auto w-full max-w-[1340px] px-0 sm:px-5 xl:px-0";
 
-function MenuIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M3 6h14M3 14h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
+function leagueBadge(name: string, slug: string): string {
+  const initials = name
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+  return initials.length >= 2 ? initials : slug.slice(0, 3).toUpperCase();
 }
 
-export function MarketsHeader({ activeCategory, activeSportsNav }: MarketsHeaderProps) {
-  const { authenticated, user } = usePrivy();
-  const profile = deriveProfile(user);
-  const [menuOpen, setMenuOpen] = useState(false);
+export function MarketsHeader({ activeCategory, activeLeague }: MarketsHeaderProps) {
+  const { authenticated } = usePrivy();
+  const portfolio = usePortfolio();
+  const money = useMoney();
+  const sportsCategory = isNormalSportCategory(activeCategory) ? activeCategory : "football";
+  const sportsActive = isNormalSportCategory(activeCategory);
+  const sportsFilters = useSportsFilters(sportsCategory, activeLeague || undefined, sportsActive);
+  const leagueLinks = [
+    {
+      key: "all",
+      label: `All ${sportsCategory === "football" ? "Football" : "Basketball"}`,
+      badge: "ALL",
+      href: `/prediction/markets?category=${sportsCategory}`,
+    },
+    ...sportsFilters.leagues.map((league) => ({
+      key: league.slug,
+      label: league.name,
+      badge: leagueBadge(league.name, league.slug),
+      href: `/prediction/markets?category=${sportsCategory}&league=${league.slug}`,
+    })),
+  ];
+  const selectedLeague = activeLeague || "all";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/8 bg-black">
-      <div className="bg-black">
-        <div className={`${FRAME_CLASS} flex min-h-[72px] items-center py-[18px]`}>
+    <header className="sticky top-0 z-50 w-full border-b border-white/8 bg-[#08090a]/95 backdrop-blur-xl">
+      <div className="bg-[#08090a]">
+        <div
+          className={`${FRAME_CLASS} flex min-h-16 items-center py-3.5 sm:min-h-[72px] sm:py-[18px]`}
+        >
           <Link
-            href="/"
-            aria-label="Ark home"
+            href="/dashboard"
+            aria-label="Open dashboard"
             className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60"
           >
             <ArkMark
-              className="h-[24px] w-auto sm:h-[27px]"
+              className="h-[22px] w-auto sm:h-[27px]"
               style={{ width: undefined, height: undefined }}
             />
           </Link>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Link
-              href="/prediction#how"
-              className="hidden px-3 py-2 text-[13px] font-semibold text-white/52 transition-colors hover:text-white md:block"
-            >
-              How it works
-            </Link>
-
+          <Link
+            href={authenticated ? "/dashboard" : "/auth"}
+            aria-label={authenticated ? "Open portfolio balance" : "Log in"}
+            className="ml-auto flex h-10 shrink-0 items-center gap-2 rounded-[9px] border border-white/12 bg-white/[0.055] px-3 transition-colors hover:bg-white/[0.085]"
+          >
             {authenticated ? (
               <>
-                <Link
-                  href="/dashboard"
-                  className="hidden rounded-[10px] border border-white/12 bg-white/[0.055] px-3.5 py-2 text-[13px] font-semibold text-white/75 transition-colors hover:bg-white/[0.085] md:block"
-                >
-                  Portfolio
-                </Link>
-                <Link
-                  href="/dashboard"
-                  aria-label="Open account"
-                  className="flex h-10 max-w-[190px] items-center gap-2 rounded-[10px] border border-white/12 bg-white/[0.055] p-1.5 pr-3 transition-colors hover:bg-white/[0.085]"
-                >
-                  <Avatar seed={profile.avatarSeed} size={28} />
-                  <span className="hidden truncate text-[12.5px] font-semibold text-white/75 sm:block">
-                    {profile.name}
-                  </span>
-                </Link>
+                <span className="text-[9px] font-bold tracking-[0.08em] text-white/38 uppercase">
+                  {money.currency.code}
+                </span>
+                <span className="text-[12px] font-extrabold text-white tabular-nums">
+                  {portfolio.loading
+                    ? "…"
+                    : portfolio.error
+                      ? "—"
+                      : money.format(portfolio.totalUsd)}
+                </span>
               </>
             ) : (
-              <>
-                <Link
-                  href="/auth"
-                  className="hidden rounded-[10px] border border-white/12 px-3.5 py-2 text-[13px] font-semibold text-white/75 hover:bg-white/6 sm:block"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/auth"
-                  className="rounded-[10px] bg-white px-3.5 py-2 text-[13px] font-semibold text-black transition-opacity hover:opacity-88"
-                >
-                  Sign up
-                </Link>
-              </>
+              <span className="text-[12px] font-bold text-white/78">Log in</span>
             )}
-
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
-              className="grid size-10 cursor-pointer place-items-center rounded-[10px] border border-white/12 bg-white/[0.055] text-white/70 hover:bg-white/[0.085] lg:hidden"
-            >
-              {menuOpen ? <CloseIcon size={17} /> : <MenuIcon />}
-            </button>
-          </div>
+          </Link>
         </div>
       </div>
 
-      {menuOpen ? (
-        <div className="border-t border-white/7 bg-[#0d0d0f] lg:hidden">
-          <div className={`${FRAME_CLASS} grid grid-cols-2 gap-2 py-3`}>
-            <Link
-              href="/prediction#how"
-              className="rounded-[10px] bg-white/5 px-3.5 py-3 text-[13px] font-semibold text-white/70"
-            >
-              How it works
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-[10px] bg-white/5 px-3.5 py-3 text-[13px] font-semibold text-white/70"
-            >
-              Portfolio
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="border-t border-white/7 bg-[#121214]">
-        <div className={FRAME_CLASS}>
+      <div className="border-t border-white/7 bg-[#101114]">
+        <div className={NAV_FRAME_CLASS}>
           <NavigationRail
             activeKey={activeCategory}
             ariaLabel="Market categories"
@@ -133,15 +105,26 @@ export function MarketsHeader({ activeCategory, activeSportsNav }: MarketsHeader
         </div>
       </div>
 
-      {activeCategory === "sports" ? (
+      {sportsActive ? (
         <div className="border-t border-white/8 bg-[#09090a]">
-          <div className={FRAME_CLASS}>
-            <NavigationRail
-              activeKey={activeSportsNav}
-              ariaLabel="Sports navigation"
-              items={SPORTS_LINKS}
-              variant="secondary"
-            />
+          <div className={NAV_FRAME_CLASS}>
+            {leagueLinks.length > 0 ? (
+              <NavigationRail
+                activeKey={selectedLeague}
+                ariaLabel={`${sportsCategory} leagues`}
+                items={leagueLinks}
+                variant="secondary"
+              />
+            ) : (
+              <div className="flex min-h-[58px] items-center gap-2 overflow-hidden py-2">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <span
+                    key={index}
+                    className="h-[42px] w-32 shrink-0 animate-pulse rounded-full border border-white/7 bg-white/[0.035]"
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : null}

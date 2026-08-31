@@ -1,78 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import type { ComboSport } from "../api";
+import type { NormalSport } from "../api";
 import { COMBO_EVENT_PAGE_SIZE } from "../cache-policy";
 import { mergeLeagueArtwork } from "../merge-league-artwork";
 import type { BoardSelection, MarketWindow } from "../presenter";
 import { filterEventsByWindow, groupLeagueFixtures } from "../presenter";
-import { comboSportsForNavigation } from "../sport-navigation";
-import type { SportsNavKey } from "../types";
-import { useComboEvents, useComboFilters } from "../hooks/use-combo-markets";
 import { useComboTeamArtwork } from "../hooks/use-combo-team-artwork";
+import { useSportsEvents, useSportsFilters } from "../hooks/use-sports-markets";
 import { LeagueSection } from "./league-section";
 import { MarketBoardFilters } from "./market-board-filters";
 import { MarketBoardSkeleton } from "./market-board-skeleton";
-import { ProviderSportTabs } from "./provider-sport-tabs";
 
 interface SportsMarketBoardProps {
-  activeSportsNav: SportsNavKey;
+  sport: NormalSport;
+  activeLeague: string;
   selectedIds: ReadonlySet<string>;
   onSelect: (selection: BoardSelection) => void;
   onRemoveSelection: (selectionId: string) => void;
 }
 
 export function SportsMarketBoard({
-  activeSportsNav,
+  sport,
+  activeLeague,
   selectedIds,
   onSelect,
   onRemoveSelection,
 }: SportsMarketBoardProps) {
-  const sportOptions = comboSportsForNavigation(activeSportsNav);
-  const [sport, setSport] = useState<ComboSport>(sportOptions[0]?.sport ?? "soccer");
   const [window, setWindow] = useState<MarketWindow>("upcoming");
-  const [league, setLeague] = useState("");
-  const supported = sportOptions.length > 0;
-  const filters = useComboFilters(sport, supported);
-  const events = useComboEvents(
-    { sport, league: league || undefined, limit: COMBO_EVENT_PAGE_SIZE },
-    supported
+  const filters = useSportsFilters(sport, activeLeague || undefined);
+  const selectedLeague = activeLeague;
+  const events = useSportsEvents(
+    { sport, league: selectedLeague || undefined, limit: COMBO_EVENT_PAGE_SIZE },
+    true
   );
   const eventsWithArtwork = useComboTeamArtwork(events.events);
   const eventsWithProviderArtwork = mergeLeagueArtwork(eventsWithArtwork, filters.leagues);
 
-  if (!supported) {
-    return (
-      <div className="rounded-[10px] border border-white/8 bg-[#111114] px-6 py-16 text-center">
-        <p className="text-[14px] font-bold text-white/75">This sport is not available yet.</p>
-        <p className="mt-2 text-[12px] text-white/42">
-          Polymarket does not currently provide this virtual sport as a Combo feed.
-        </p>
-      </div>
-    );
-  }
-
   const groups = groupLeagueFixtures(filterEventsByWindow(eventsWithProviderArtwork, window));
 
   return (
-    <section className="overflow-hidden rounded-[12px] border border-white/8 bg-[#09090b]">
-      <ProviderSportTabs
-        options={sportOptions}
-        sport={sport}
-        onChange={(nextSport) => {
-          setSport(nextSport);
-          setLeague("");
-        }}
-      />
-      <MarketBoardFilters
-        window={window}
-        onWindowChange={setWindow}
-        leagues={filters.leagues}
-        league={league}
-        onLeagueChange={setLeague}
-      />
+    <section className="overflow-hidden border-y border-white/8 bg-[#09090b] sm:rounded-[12px] sm:border">
+      <MarketBoardFilters window={window} onWindowChange={setWindow} />
 
-      <div className="space-y-4 p-3 sm:p-4">
+      <div className="space-y-2 py-2 sm:space-y-4 sm:p-4">
         {events.loading ? <MarketBoardSkeleton /> : null}
 
         {events.error ? (
@@ -102,7 +73,8 @@ export function SportsMarketBoard({
             selectedIds={selectedIds}
             onSelect={onSelect}
             onRemoveSelection={onRemoveSelection}
-            activeSportsNav={activeSportsNav}
+            sport={sport}
+            activeLeague={selectedLeague}
           />
         ))}
 

@@ -37,7 +37,7 @@ export function CashoutBetsPanel({
     <div className="border-b border-amber-200/12 bg-amber-200/[0.055] px-4 py-3">
       <p className="text-[10px] leading-4 font-semibold text-amber-100/75">
         The previous submission has an unknown result. Compare the positions below with your
-        Polymarket account before placing those bets again.
+        Polymarket account before submitting those orders again.
       </p>
       {positions.loaded && !positions.loading ? (
         <button
@@ -58,7 +58,7 @@ export function CashoutBetsPanel({
   async function sell(position: PolymarketPosition) {
     const slip = betSlip(position);
     if (!isCashoutable(slip.redeemable, slip.shares, slip.tokenId)) return;
-    const toastId = toast.loading("Cashing out active bet...");
+    const toastId = toast.loading("Cashing out position...");
     try {
       const result = await cashout.cashOut({
         tokenId: slip.tokenId as string,
@@ -86,14 +86,16 @@ export function CashoutBetsPanel({
           settlementError instanceof SettleError
             ? settlementError.message
             : "The Base transfer couldn't start.";
-        toast.error(`The bet sold for ${money.formatExact(result.proceedsUsd)} pUSD. ${reason}`, {
-          id: toastId,
-        });
+        toast.error(
+          `The position sold for ${money.formatExact(result.proceedsUsd)} pUSD. ${reason}`,
+          { id: toastId }
+        );
       }
     } catch (error) {
-      toast.error(error instanceof CashoutError ? error.message : "Couldn't cash out this bet.", {
-        id: toastId,
-      });
+      toast.error(
+        error instanceof CashoutError ? error.message : "Couldn't cash out this position.",
+        { id: toastId }
+      );
     }
   }
 
@@ -156,9 +158,7 @@ export function CashoutBetsPanel({
     return (
       <>
         {reviewNotice}
-        <div className="px-5 py-12 text-center text-[12px] text-white/38">
-          Loading active bets...
-        </div>
+        <div className="px-5 py-12 text-center text-[12px] text-white/38">Loading positions...</div>
       </>
     );
   }
@@ -170,7 +170,7 @@ export function CashoutBetsPanel({
         {balancePanel}
         <div className="px-5 py-12 text-center">
           <div className="mx-auto h-px w-10 bg-white/12" />
-          <p className="mt-4 text-[13px] font-bold text-white/62">No active bet currently</p>
+          <p className="mt-4 text-[13px] font-bold text-white/62">No open positions</p>
           <p className="mx-auto mt-1.5 max-w-[220px] text-[10px] leading-4 text-white/30">
             Open positions that can be sold before settlement will appear here.
           </p>
@@ -234,7 +234,7 @@ export function CashoutBetsPanel({
             { label: "Current value", value: money.formatExact(betSlip(confirming).currentValue) },
           ]}
           warning="This sells the full position at the live market price. The final proceeds can change before the order fills."
-          cancelLabel="Keep bet"
+          cancelLabel="Keep position"
           continueLabel="Cash out"
           onCancel={() => setConfirming(null)}
           onContinue={() => {

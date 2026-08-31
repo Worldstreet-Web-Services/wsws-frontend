@@ -13,6 +13,8 @@ export const comboSportSchema = z.enum([
   "nfl",
 ]);
 
+export const normalSportSchema = z.enum(["football", "basketball"]);
+
 const marketTypeSchema = z.enum(["moneyline", "spread", "total"]);
 
 const leagueSchema = z.object({
@@ -88,6 +90,21 @@ export const comboFiltersSchema = z.object({
 
 export const comboEventsSchema = z.object({
   sport: comboSportSchema,
+  league: leagueSchema.nullable(),
+  events: z.array(comboEventSchema),
+  nextCursor: z.string().nullable(),
+});
+
+export const sportsFiltersSchema = z.object({
+  sports: z.array(z.object({ slug: normalSportSchema, label: z.string() })),
+  selectedSport: normalSportSchema,
+  selectedLeague: z.string(),
+  leagues: z.array(leagueSchema),
+  marketTypes: z.array(marketTypeSchema),
+});
+
+export const sportsEventsSchema = z.object({
+  sport: normalSportSchema,
   league: leagueSchema.nullable(),
   events: z.array(comboEventSchema),
   nextCursor: z.string().nullable(),
@@ -217,6 +234,8 @@ export const discoveryEventSchema = z.object({
 
 export const discoveryEventsSchema = z.object({
   category: z.enum([
+    "trending",
+    "sports",
     "politics",
     "crypto",
     "esports",
@@ -238,6 +257,8 @@ export const discoveryEventsSchema = z.object({
 const SCHEMAS: Record<string, z.ZodType> = {
   "sports/combo-filters": comboFiltersSchema,
   "sports/combo-events": comboEventsSchema,
+  "sports/filters": sportsFiltersSchema,
+  "sports/events": sportsEventsSchema,
   "sports/teams": z.array(comboTeamSchema),
   "markets/events": discoveryEventsSchema,
   "combos/quotes": comboQuoteSchema,
@@ -246,6 +267,7 @@ const SCHEMAS: Record<string, z.ZodType> = {
 
 export function predictionComboSchemaFor(path: string): z.ZodType | null {
   if (/^sports\/combo-events\/\d+$/.test(path)) return comboEventSchema;
+  if (/^sports\/events\/\d+$/.test(path)) return comboEventSchema;
   if (/^markets\/events\/\d+$/.test(path)) return discoveryEventSchema;
   if (/^singles\/tickets\/[A-Z0-9]{6}$/iu.test(path)) return singlesTicketSchema;
   return SCHEMAS[path] ?? null;

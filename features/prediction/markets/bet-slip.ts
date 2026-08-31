@@ -108,6 +108,10 @@ export function combinedReferenceOddsE6(selections: MarketSlipSelection[]): bigi
   );
 }
 
+export function summedReferenceOddsE6(selections: MarketSlipSelection[]): bigint {
+  return selections.reduce((total, selection) => total + oddsE6(selection.decimalOdds), 0n);
+}
+
 export function totalStakeE6(
   selections: MarketSlipSelection[],
   stakeE6: bigint,

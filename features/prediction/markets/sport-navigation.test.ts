@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { comboSportsForNavigation } from "./sport-navigation";
+import { comboLeagueForNavigation } from "./sport-navigation";
 
 describe("prediction sport navigation", () => {
-  it("maps Polymarket sports to their provider categories", () => {
-    expect(comboSportsForNavigation("cricket")).toEqual([{ sport: "cricket", label: "Cricket" }]);
-    expect(comboSportsForNavigation("mlb")).toEqual([{ sport: "mlb", label: "MLB" }]);
+  it("maps Europe's top-five league tabs to provider slugs", () => {
+    expect(comboLeagueForNavigation("epl")).toBe("epl");
+    expect(comboLeagueForNavigation("serie-a")).toBe("serie-a");
+    expect(comboLeagueForNavigation("ligue-1")).toBe("ligue-1");
   });
 
-  it("groups the remaining real sports under More Sports", () => {
-    expect(comboSportsForNavigation("more").map(({ sport }) => sport)).toEqual(["nfl", "ufc"]);
+  it("does not force a league for the top-football tab", () => {
+    expect(comboLeagueForNavigation("top")).toBeUndefined();
   });
 });

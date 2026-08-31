@@ -8,6 +8,8 @@ import {
   discoveryEventsSchema,
   predictionComboSchemaFor,
   singlesTicketSchema,
+  sportsEventsSchema,
+  sportsFiltersSchema,
 } from "./prediction-combos";
 
 describe("prediction Combo schemas", () => {
@@ -33,6 +35,10 @@ describe("prediction Combo schemas", () => {
     ).toBe(true);
     expect(comboTeamSchema.safeParse({ name: "Incomplete" }).success).toBe(false);
     expect(predictionComboSchemaFor("sports/combo-events/not-an-id")).toBeNull();
+    expect(predictionComboSchemaFor("sports/filters")).toBe(sportsFiltersSchema);
+    expect(predictionComboSchemaFor("sports/events")).toBe(sportsEventsSchema);
+    expect(predictionComboSchemaFor("sports/events/831378")).toBe(comboEventSchema);
+    expect(predictionComboSchemaFor("sports/events/not-an-id")).toBeNull();
     expect(predictionComboSchemaFor("combos/quotes")).toBe(comboQuoteSchema);
     expect(predictionComboSchemaFor("singles/tickets")).toBe(singlesTicketSchema);
     expect(predictionComboSchemaFor("singles/tickets/YN65GR")).toBe(singlesTicketSchema);
@@ -160,6 +166,8 @@ describe("prediction Combo schemas", () => {
 
   it("accepts every supported discovery category", () => {
     const categories = [
+      "trending",
+      "sports",
       "politics",
       "crypto",
       "esports",
@@ -189,6 +197,47 @@ describe("prediction Combo schemas", () => {
       discoveryEventsSchema.safeParse({
         category: "unsupported",
         sort: "volume_24h",
+        events: [],
+        nextCursor: null,
+      }).success
+    ).toBe(false);
+  });
+
+  it("accepts football and basketball navigation contracts", () => {
+    const league = {
+      slug: "epl",
+      providerSlug: "epl",
+      name: "Premier League",
+      imageUrl: null,
+      seriesId: "10188",
+      primaryTagId: 306,
+      teamOrdering: "home",
+    };
+
+    expect(
+      sportsFiltersSchema.safeParse({
+        sports: [
+          { slug: "football", label: "Football" },
+          { slug: "basketball", label: "Basketball" },
+        ],
+        selectedSport: "football",
+        selectedLeague: "epl",
+        leagues: [league],
+        marketTypes: ["moneyline", "spread", "total"],
+      }).success
+    ).toBe(true);
+    expect(
+      sportsEventsSchema.safeParse({
+        sport: "football",
+        league: null,
+        events: [],
+        nextCursor: null,
+      }).success
+    ).toBe(true);
+    expect(
+      sportsEventsSchema.safeParse({
+        sport: "soccer",
+        league,
         events: [],
         nextCursor: null,
       }).success

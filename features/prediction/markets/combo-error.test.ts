@@ -10,7 +10,9 @@ describe("Combo errors", () => {
       "Couldn't get a Combo quote. Try again."
     );
 
-    expect(message).toBe("Combo betting is awaiting activation for this app. No bet was placed.");
+    expect(message).toBe(
+      "Combo trading is awaiting activation for this app. No order was submitted."
+    );
     expect(message).not.toContain("polymarket.com");
   });
 

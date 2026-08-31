@@ -8,6 +8,11 @@ import type {
   DiscoveryEventsPage,
   DiscoveryEventsParams,
   DiscoveryMarketEvent,
+  NormalSport,
+  SportsEvent,
+  SportsEventsPage,
+  SportsEventsParams,
+  SportsFilters,
 } from "./types";
 import { predictionCombos } from "./service";
 
@@ -33,6 +38,24 @@ export function fetchComboTeams(names: string[]): Promise<ComboTeam[]> {
   return predictionCombos.get<ComboTeam[]>("/sports/teams", {
     names: names.join("|"),
   });
+}
+
+export function fetchSportsFilters(sport: NormalSport, league?: string): Promise<SportsFilters> {
+  return predictionCombos.get<SportsFilters>("/sports/filters", { sport, league });
+}
+
+export function fetchSportsEvents(params: SportsEventsParams): Promise<SportsEventsPage> {
+  return predictionCombos.get<SportsEventsPage>("/sports/events", {
+    sport: params.sport,
+    league: params.league,
+    search: params.search,
+    cursor: params.cursor,
+    limit: params.limit,
+  });
+}
+
+export function fetchSportsEvent(eventId: string): Promise<SportsEvent> {
+  return predictionCombos.get<SportsEvent>(`/sports/events/${eventId}`);
 }
 
 export function fetchDiscoveryEvents(params: DiscoveryEventsParams): Promise<DiscoveryEventsPage> {

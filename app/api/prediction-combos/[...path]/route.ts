@@ -10,27 +10,14 @@ import {
 } from "../response-cache";
 
 const LOCAL_PREDICTION_API = "http://127.0.0.1:8086";
-
-// The prediction service (Combo RFQ, sports, singles) is not on the shared
-// gateway yet, so it can be pointed elsewhere while it is being stood up, and
-// falls back to the gateway once deployed there. This is a different service
-// from prediction-market, which app/api/prediction/ proxies.
-//
-// PREDICTION_API_BASE_URL is a gateway HOST, not a full service URL: the
-// /v1/prediction prefix is appended here, the same way lib/server/wsapi.ts
-// appends /v1/perp to PERP_API_BASE_URL. An explicit host wins everywhere,
-// development included, so a local run can point at a deployed service rather
-// than needing the Docker one on 8086.
-const PREDICTION_HOST = process.env.PREDICTION_API_BASE_URL;
-const BASE = PREDICTION_HOST
-  ? `${PREDICTION_HOST}/v1/prediction`
-  : process.env.NODE_ENV === "development"
-    ? LOCAL_PREDICTION_API
-    : wsapiService("prediction");
-
+const BASE =
+  process.env.PREDICTION_COMBOS_API_URL ??
+  (process.env.NODE_ENV === "development" ? LOCAL_PREDICTION_API : wsapiService("prediction"));
 const ALLOWED_PATHS = new Set([
   "sports/combo-filters",
   "sports/combo-events",
+  "sports/filters",
+  "sports/events",
   "sports/teams",
   "markets/events",
 ]);
@@ -60,6 +47,7 @@ function isAllowedPath(path: string): boolean {
   return (
     (ALLOWED_PATHS.has(path) ||
       /^sports\/combo-events\/\d+$/.test(path) ||
+      /^sports\/events\/\d+$/.test(path) ||
       /^markets\/events\/\d+$/.test(path)) &&
     !path.includes("..") &&
     !path.includes("%") &&

@@ -8,7 +8,7 @@ function errorMessage(error: unknown): string {
 
 export function comboErrorMessage(error: unknown, fallback: string): string {
   if (/builder code not found/iu.test(errorMessage(error))) {
-    return "Combo betting is awaiting activation for this app. No bet was placed.";
+    return "Combo trading is awaiting activation for this app. No order was submitted.";
   }
 
   return friendlyError(error, fallback);

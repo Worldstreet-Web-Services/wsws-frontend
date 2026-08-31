@@ -80,7 +80,7 @@ export function useComboBuyQuote() {
   const placeQuote = useCallback(
     async (requestKey: string) => {
       if (!result || result.requestKey !== requestKey) {
-        throw new Error("Get a fresh Combo quote before placing this bet.");
+        throw new Error("Get a fresh Combo quote before submitting this order.");
       }
       if (Date.now() >= result.quote.expiresAt) {
         setResult(null);

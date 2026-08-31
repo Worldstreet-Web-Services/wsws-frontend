@@ -11,7 +11,7 @@ interface HyperliquidWalletPanelProps {
   walletLoading: boolean;
   clearinghouse: HlClearinghouseState | null;
   clearinghouseLoading: boolean;
-  onBridge: (requiredUsdc: string) => Promise<{ bridged: boolean }>;
+  onBridge: () => Promise<void>;
   onWithdraw: (
     amountUsdc: string,
     onStatus?: (status: string) => void

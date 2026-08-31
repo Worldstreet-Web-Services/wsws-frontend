@@ -28,6 +28,12 @@ const DECIMAL_INPUT = /^\d*\.?\d*$/;
 const STATUS_POLL_TIMEOUT_MS = 5 * 60_000;
 const STATUS_POLL_INTERVAL_MS = 3_000;
 const PERCENTS = [25, 50, 75, 100];
+// Hyperliquid's own bridge floor is $5 (HYPERLIQUID_MIN_DEPOSIT_USDC on the
+// backend), but Dextopus takes a cut in between — a $5.00 top-up has landed
+// on Arbitrum as low as $4.96 in practice. Blocking below $5 exactly would
+// still let a doomed top-up through; this buffers well above the observed
+// loss so a submitted amount reliably clears the real floor after fees.
+const MIN_TOPUP_USDC = 6;
 
 // The one bridge failure worth naming specifically: BridgeService rejects a
 // bridge below Hyperliquid's own minimum deposit floor. Everything else
@@ -56,7 +62,7 @@ interface HyperliquidFundModalProps {
   open: boolean;
   onClose: () => void;
   walletId: string | null;
-  onBridge: (requiredUsdc: string) => Promise<{ bridged: boolean }>;
+  onBridge: () => Promise<void>;
   onFunded: () => void;
 }
 
@@ -99,7 +105,9 @@ export function HyperliquidFundModal({
   // that's already underway. The amount was already validated against the
   // balance the moment the user confirmed, so freeze the check there.
   const withinBalance = validAmount && (busy || amountNum <= balance);
-  const canSubmit = Boolean(walletId) && Boolean(walletAddress) && withinBalance && !busy;
+  const aboveMinimum = validAmount && (busy || amountNum >= MIN_TOPUP_USDC);
+  const canSubmit =
+    Boolean(walletId) && Boolean(walletAddress) && withinBalance && aboveMinimum && !busy;
 
   const close = () => {
     setStage({ name: "form" });
@@ -175,8 +183,8 @@ export function HyperliquidFundModal({
       setStage({ name: "bridging", amount });
       let bridgeResult: BridgeResult;
       try {
-        const result = await onBridge(amount);
-        bridgeResult = { bridged: result.bridged };
+        await onBridge();
+        bridgeResult = { bridged: true };
       } catch (error) {
         const belowMinimum = belowBridgeMinimum(error);
         bridgeResult = belowMinimum ? { bridged: false, belowMinimum } : { bridged: false };
@@ -191,7 +199,7 @@ export function HyperliquidFundModal({
 
   const stageMessage: Record<Stage["name"], string> = {
     form: "",
-    sending: "Sending…",
+    sending: "Moving…",
     confirming: "Confirming…",
     bridging: "Moving into your perps wallet…",
     done: "",
@@ -205,10 +213,10 @@ export function HyperliquidFundModal({
           <SuccessPanel title="Perps wallet funded" onDone={close}>
             {formatAmount(Number(stage.amount))} USDC has arrived
             {stage.bridged
-              ? " and is ready in your perps wallet."
+              ? " and is on its way into your perps wallet — should be ready within a minute."
               : stage.belowMinimum
                 ? ` — it's sitting safely in your account, but you need at least $${formatAmount(stage.belowMinimum.minUsdc)} total to activate your perps margin (you have $${formatAmount(stage.belowMinimum.haveUsdc)}). Top up a bit more and it activates automatically.`
-                : " — it activates as margin automatically the moment a trade needs it."}
+                : " — it's safely on Arbitrum and will move into your perps wallet automatically; check back in a moment."}
           </SuccessPanel>
         ) : stage.name === "stuck" ? (
           <SuccessPanel title="Still on its way" onDone={close}>
@@ -220,7 +228,8 @@ export function HyperliquidFundModal({
             <div className="text-center">
               <div className="ws-display text-[18px]">Top up</div>
               <p className="mt-1 text-[12.5px] font-normal text-white/50">
-                Signed silently, no popup — moves straight into your perps wallet.
+                Signed silently, no popup — usually lands in your perps wallet within a couple of
+                minutes.
               </p>
             </div>
 
@@ -246,6 +255,10 @@ export function HyperliquidFundModal({
               {validAmount && !withinBalance ? (
                 <p className="text-down text-[12px] font-normal">
                   Exceeds your available {formatAmount(balance)} USDC.
+                </p>
+              ) : validAmount && !aboveMinimum ? (
+                <p className="text-down text-[12px] font-normal">
+                  Minimum top-up is ${formatAmount(MIN_TOPUP_USDC)}.
                 </p>
               ) : null}
             </div>

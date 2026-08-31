@@ -48,7 +48,7 @@ interface HyperliquidOrderFormProps {
     leverage: number,
     marginMode: HlMarginMode
   ) => Promise<void>;
-  onBridge: (requiredUsdc: string) => Promise<{ bridged: boolean }>;
+  onBridge: () => Promise<void>;
   onWithdraw: (
     amountUsdc: string,
     onStatus?: (status: string) => void

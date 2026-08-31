@@ -19,9 +19,10 @@ import type {
   HlTriggerKind,
   HlWallet,
   HlWithdraw3Action,
+  PendingWithdrawal,
   PlaceOrderRequest,
   PlaceOrderResult,
-  PrepareBridgeResult,
+  PreparedBridge,
   PrepareLeverageResult,
   PreparedAbstractionMode,
   PreparedBuilderFeeApproval,
@@ -198,11 +199,8 @@ export async function submitTriggerOrder(
   return perp.post<HlOrderRow>("/ark/orders/trigger/submit", { walletId, prepared, signature });
 }
 
-export async function prepareBridge(
-  walletId: string,
-  requiredUsdc: string
-): Promise<PrepareBridgeResult> {
-  return perp.post<PrepareBridgeResult>("/ark/bridge/prepare", { walletId, requiredUsdc });
+export async function prepareBridge(walletId: string): Promise<PreparedBridge> {
+  return perp.post<PreparedBridge>("/ark/bridge/prepare", { walletId });
 }
 
 export async function confirmBridge(
@@ -234,6 +232,10 @@ export async function submitWithdrawal(
     action,
     signature,
   });
+}
+
+export async function getPendingWithdrawal(walletId: string): Promise<PendingWithdrawal | null> {
+  return perp.get<PendingWithdrawal | null>(`/ark/wallets/${walletId}/withdrawals/pending`);
 }
 
 // ── Builder fee (the venue's own revenue-collection mechanism) ────────

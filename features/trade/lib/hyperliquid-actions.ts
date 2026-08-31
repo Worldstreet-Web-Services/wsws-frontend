@@ -11,6 +11,7 @@ import {
   getAccountState,
   getArbitrumBalance,
   getBuilderFeeStatus,
+  getPendingWithdrawal,
   prepareAbstractionMode,
   prepareBridge,
   prepareBuilderFeeApproval,
@@ -51,6 +52,10 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // bridge deposit typically shows up in clearinghouseState in under a minute.
 const MARGIN_POLL_TIMEOUT_MS = 120_000;
 const MARGIN_POLL_INTERVAL_MS = 4_000;
+// Withdrawals settle slower than deposits in practice (matches the backend's
+// own ARK_WITHDRAWAL_CONFIRMATION_TIMEOUT_MS) — a shorter shared timeout here
+// would give up on a withdrawal that's still genuinely in flight.
+const WITHDRAWAL_POLL_TIMEOUT_MS = 240_000;
 
 // Wallets confirmed to have approved the platform's builder fee (see
 // ensureBuilderFeeApproved below) — module-scoped so it's checked at most
@@ -78,17 +83,18 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
   // deposit-pipeline-in-reverse the funds page already ships with.
   const { withdraw: sendArbitrumBalanceToBase } = useReroutedWithdraw("withdrawal");
 
-  // Bridges the wallet's full Arbitrum USDC balance to HyperCore if margin is
-  // short (the deferred-bridge principle — see BridgeService on the backend).
-  // Returns bridged:false when no bridge was needed. Throws when Arbitrum's
-  // balance is below Hyperliquid's own minimum deposit floor — a real,
-  // temporary block, not something retrying fixes (see
-  // hyperliquid-types.ts's isBridgeMinimumDetails).
+  // Bridges the wallet's full Arbitrum USDC balance to HyperCore — eager, not
+  // deferred (see BridgeService on the backend): the only caller is the
+  // funding flow, right after a deposit lands on Arbitrum, so this always
+  // has something to bridge. Throws when Arbitrum's balance is below
+  // Hyperliquid's own minimum deposit floor — a real, temporary block, not
+  // something retrying fixes (see hyperliquid-types.ts's
+  // isBridgeMinimumDetails) — or on any other failure; the caller decides
+  // how to present that.
   const bridge = useCallback(
-    async (requiredUsdc: string): Promise<{ bridged: boolean }> => {
+    async (): Promise<void> => {
       if (!walletId || !address) throw new Error("Wallet is not ready yet.");
-      const prepared = await prepareBridge(walletId, requiredUsdc);
-      if (!prepared.needed) return { bridged: false };
+      const prepared = await prepareBridge(walletId);
       const txHash = await evmSend({
         to: prepared.to as `0x${string}`,
         data: prepared.data as `0x${string}`,
@@ -97,7 +103,6 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
         address,
       });
       await confirmBridge(walletId, txHash, prepared.amountUsdc);
-      return { bridged: true };
     },
     [walletId, address, evmSend]
   );
@@ -173,7 +178,7 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
         // `bridge` throws its own clear error here and this propagates
         // instead of retrying — there is nothing a retry would fix.
         onStatus?.("Perps wallet balance is short — bridging more in automatically…");
-        await bridge(details.requiredUsdc);
+        await bridge();
         // A bridge deposit takes a real amount of time (~1 minute typical)
         // to actually land in clearinghouseState — retrying immediately
         // would just reproduce the same error. Poll until it's there or
@@ -256,10 +261,13 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
   );
 
   // `onStatus` mirrors placeOrder's own progress callback — this can run for
-  // up to a couple of minutes (Hyperliquid's own withdrawal confirmation
-  // window, ARK_WITHDRAWAL_CONFIRMATION_TIMEOUT_MS on the backend, matched
-  // here by MARGIN_POLL_TIMEOUT_MS) before it continues on to Base, so the
-  // UI needs something better to show than a static spinner.
+  // up to several minutes (Hyperliquid's own withdrawal confirmation window,
+  // ARK_WITHDRAWAL_CONFIRMATION_TIMEOUT_MS on the backend, matched here by
+  // WITHDRAWAL_POLL_TIMEOUT_MS) before it continues on to Base, so the UI
+  // needs something better to show than a static spinner. If this window
+  // still isn't enough, useWithdrawalResume picks the withdrawal back up
+  // the next time the wallet panel loads — see hyperliquid-actions.ts's
+  // own note there.
   const withdraw = useCallback(
     async (
       amountUsdc: string,
@@ -280,9 +288,9 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
       // times out, the money is still safe, just one hop short of home, so
       // none of this is allowed to throw back out of `withdraw`.
       if (address && startingArbitrumBalance !== null) {
-        onStatus?.("Waiting for funds to land — this can take a couple of minutes…");
+        onStatus?.("Waiting for funds…");
         const startingRaw = toBaseUnits(startingArbitrumBalance, SETTLE_CHAINS.arbitrum.decimals);
-        const deadline = Date.now() + MARGIN_POLL_TIMEOUT_MS;
+        const deadline = Date.now() + WITHDRAWAL_POLL_TIMEOUT_MS;
         let creditedRaw = 0n;
         while (Date.now() < deadline) {
           const current = await getArbitrumBalance(address).catch(() => null);
@@ -318,6 +326,43 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
     [walletId, address, signWithdrawal, sendArbitrumBalanceToBase]
   );
 
+  // Catches up a withdrawal whose Arbitrum -> Base leg never finished (see
+  // WithdrawalService.getPendingWithdrawal on the backend) — `withdraw`'s
+  // own poll above only continues the leg if it catches the credit live;
+  // closing the tab, or the credit simply taking longer than the poll
+  // window, leaves funds sitting on Arbitrum with nothing left to move
+  // them. Meant to be called once when the wallet loads (see
+  // useWithdrawalResume). Deliberately gated on the backend already
+  // knowing about an unresolved WITHDRAWAL-direction movement, never on
+  // "there happens to be an Arbitrum balance" alone — a wallet mid-FUNDING
+  // (a different movement type) also has a nonzero Arbitrum balance, and
+  // this must never redirect that to Base instead of letting it bridge to
+  // HyperCore. Silent no-op otherwise; never surfaces an error, since a
+  // background catch-up check failing is not something a page load should
+  // interrupt the user over — the funds are exactly as safe as before.
+  const resumeWithdrawal = useCallback(async (): Promise<void> => {
+    if (!walletId || !address) return;
+    try {
+      const pending = await getPendingWithdrawal(walletId);
+      if (!pending) return;
+      const balance = await getArbitrumBalance(address).catch(() => null);
+      if (balance === null || Number(balance) <= 0) return;
+      await sendArbitrumBalanceToBase({
+        originNetwork: SETTLE_CHAINS.arbitrum.alchemyNetwork,
+        originChainId: SETTLE_CHAINS.arbitrum.chainId,
+        originTokenAddress: SETTLE_CHAINS.arbitrum.usdc,
+        originDecimals: SETTLE_CHAINS.arbitrum.decimals,
+        destinationChainId: SETTLE_CHAINS.base.chainId,
+        destinationAsset: SETTLE_CHAINS.base.usdc,
+        to: address,
+        amount: toBaseUnits(balance, SETTLE_CHAINS.arbitrum.decimals),
+        refundTo: address,
+      });
+    } catch {
+      // Best-effort — see the comment above.
+    }
+  }, [walletId, address, sendArbitrumBalanceToBase]);
+
   // Reads the wallet's current HyperCore account-abstraction mode — the
   // Manual/Unified/Portfolio pill in the order ticket uses this to show
   // which one is active.
@@ -344,6 +389,7 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
     updateLeverage,
     bridge,
     withdraw,
+    resumeWithdrawal,
     cancelOrder,
     closePosition,
     updateTriggerOrder,

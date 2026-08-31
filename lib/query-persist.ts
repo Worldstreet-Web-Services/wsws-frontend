@@ -19,6 +19,9 @@ export const PERSISTED_PREFIXES = new Set([
   "rwa-categories",
   "fx-rates",
   "predictions",
+  "prediction-combo-filters",
+  "prediction-combo-events",
+  "prediction-combo-event",
 ]);
 
 export const RQ_PERSIST_KEY = "wsws.rq-cache.v1";

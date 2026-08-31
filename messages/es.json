@@ -175,6 +175,7 @@
     "breakdownTitle": "Dónde está tu dinero",
     "assetsHeld": "activos",
     "breakdownEmpty": "Aún no tienes nada.",
+    "portfolioAllocation": "Distribución de la cartera",
     "slice_cash": "Efectivo",
     "slice_coins": "Monedas",
     "slice_realAssets": "Activos reales",
@@ -583,6 +584,7 @@
   "portfolio": {
     "eyebrow": "Portafolio",
     "yourHoldings": "Tus posiciones",
+    "goToCard": "Ir a la tarjeta {number}",
     "hideZeroValue": "Ocultar valores cero",
     "searchPlaceholder": "Buscar",
     "asset": "Activo",
@@ -628,7 +630,8 @@
     "pageOf": "Página {page} de {pages}",
     "prev": "Ant.",
     "next": "Sig.",
-    "buyToken": "Comprar {name}"
+    "buyToken": "Comprar {name}",
+    "customise": "Personalizar portafolio"
   },
   "buySell": {
     "buy": "Comprar",
@@ -1640,6 +1643,7 @@
       "gamesCount": "{count} activas",
       "starterPitchTitle": "Inicia tu propia partida",
       "starterPitchBody": "Fija la apuesta. Cada jugador que entra hace crecer el bote, y tú te llevas el 10% cuando acabe el tiempo.",
+      "playNow": "Jugar",
       "startCtaShort": "Iniciar partida · {amount}",
       "lobbyError": "No se pudieron cargar las partidas.",
       "retry": "Reintentar",
@@ -2176,6 +2180,9 @@
     "bannerTitle": "¡Consigue Kash+ y empieza a ganar dinero extra con lo que haces!",
     "bannerSub": "Opera, juega y refiere. Cada actividad te recompensa en Kash+.",
     "bannerCta": "Comprar Kash+",
+    "bannerLead": "¡Consigue Kash+",
+    "bannerTail": "y empieza a ganar dinero extra con lo que haces!",
+    "bannerCtaShort": "Comprar",
     "balanceTitle": "Saldo de Kash+",
     "balanceUnavailable": "No pudimos cargar tu saldo. Está seguro; reintentando…",
     "balanceNoWallet": "Tu monedero aún se está configurando. Tu saldo aparecerá cuando esté listo.",
@@ -2489,6 +2496,10 @@
     "slides": "Diapositivas de bienvenida"
   },
   "square": {
+    "bannerAria": "Explore Market Square",
+    "bannerLine1": "Build <hi>your audience</hi> live",
+    "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",
+    "bannerCta": "explore market",
     "title": "Plaza del Mercado",
     "openSquare": "Abrir la Plaza",
     "laneForYou": "Para ti",
@@ -2509,6 +2520,8 @@
     "openPost": "Abrir esta publicación en la Plaza del Mercado",
     "likesLabel": "Me gusta",
     "commentsLabel": "Comentarios",
+    "commentHere": "Comenta aquí...",
+    "othersJoined": "{name} y otros se unieron",
     "repostsLabel": "Republicaciones",
     "tabsLabel": "Filtros del feed de la Plaza",
     "liveNow": "En directo",

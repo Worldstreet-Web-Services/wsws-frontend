@@ -7,11 +7,10 @@ import { toast } from "@/lib/toast";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
-import { SectionOverview } from "@/components/ui/section-overview";
-import { SpotOverview } from "@/features/trade/components/spot-overview";
-import { PerpsOverview } from "@/features/trade/components/perps-overview";
-import { MemeOverview } from "@/features/trade/components/meme-overview";
-import { RwaOverview } from "@/features/rwa/components/rwa-overview";
+import { SpotSection } from "@/features/trade/components/spot-section";
+import { SpotSimpleView } from "@/features/trade/components/spot-simple-view";
+import { PerpsSection } from "@/features/trade/components/perps-section";
+import { MemeSection } from "@/features/trade/components/meme-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { DepositAnalytics } from "@/features/activity";
 import { SectionVisibility } from "@/components/ui/section-visibility";
@@ -20,10 +19,11 @@ import { BankDepositAnalytics } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { SquareComposeFab, SquareSection } from "@/features/square";
+import { SquareComposeFab, SquareMobile, SquareSection } from "@/features/square";
 import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { useDashboardTour } from "@/features/tour";
 import { loadInterest } from "@/lib/preferences";
@@ -117,9 +117,11 @@ export default function DashboardPage() {
   const tOverview = useTranslations("overview");
   const tRemit = useTranslations("remitBanner");
   const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
-  const activeSection = useScrollSpy(SCROLL_SECTIONS);
-  // The services briefed on this page, in the nav's own order.
-  const briefs = useMemo(() => nav.map((n) => n.id).filter(isBriefed), [nav]);
+  const scrollSectionIds = useMemo(() => nav.map((n) => n.id).filter(isScrollSection), [nav]);
+  const activeSection = useScrollSpy(scrollSectionIds);
+  // The square renders as a phone carousel or the desktop feed, never both, so
+  // the #market-square scroll anchor stays unique.
+  const isMobile = useIsMobile();
   // The tradeable universe, so a $TICKER in a square post can open the real
   // buy sheet. The spot brief above already caches this, so it costs nothing
   // extra; the square slice takes a plain shape and never imports trade.
@@ -211,6 +213,26 @@ export default function DashboardPage() {
   // says so rather than opening a flow that cannot complete.
   const openCrossBorder = useCallback(() => toast.info(tRemit("comingSoonToast")), [tRemit]);
 
+  const sections: Record<ScrollSectionId, React.ReactNode> = {
+    portfolio: (
+      <Portfolio
+        onOpenFunds={openFunds}
+        onOpenWithdraw={openWithdraw}
+        crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
+        exploreTokensSlot={<SpotSimpleView onOpenDetail={openDetail} onOpenBuy={openBuy} />}
+        onOpenDetail={openDetail}
+        onOpenBuy={openBuy}
+        onOpenSell={openSell}
+        onOpenMemeSell={openMemeSell}
+        onOpenRwaTrade={openRwaTrade}
+      />
+    ),
+    spot: <Spot onOpenDetail={openDetail} onOpenBuy={openBuy} />,
+    perps: <Perps />,
+    meme: <Meme />,
+    rwa: <Rwa onOpenDetail={openDetail} onOpenConfirm={openConfirm} onAddFunds={openFunds} />,
+  };
+
   return (
     <AuthGuard>
       <DashboardShell nav={nav} activeSection={activeSection}>
@@ -287,7 +309,12 @@ export default function DashboardPage() {
             is what they scroll into once they are done reading it — met by
             browsing rather than by deciding to leave for another deployment.
             Hidden for now: see MARKET_SQUARE_HIDDEN in lib/market-square.ts. */}
-        {MARKET_SQUARE_HIDDEN ? null : (
+        {MARKET_SQUARE_HIDDEN ? null : isMobile ? (
+          // The phone gets the horizontal preview carousel; from md up the full
+          // desktop feed stands. One or the other renders, so the scroll anchor
+          // id is never duplicated.
+          <SquareMobile onOpenBuy={openBuy} markets={spotMarkets} />
+        ) : (
           <SquareSection
             onOpenBuy={modals.openBuy}
             markets={spotMarkets}

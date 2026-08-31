@@ -175,6 +175,7 @@
     "breakdownTitle": "Onde está o seu dinheiro",
     "assetsHeld": "ativos",
     "breakdownEmpty": "Ainda não tem nada.",
+    "portfolioAllocation": "Distribuição da carteira",
     "slice_cash": "Dinheiro",
     "slice_coins": "Moedas",
     "slice_realAssets": "Ativos reais",
@@ -583,6 +584,7 @@
   "portfolio": {
     "eyebrow": "Portfólio",
     "yourHoldings": "Os seus ativos",
+    "goToCard": "Ir para o cartão {number}",
     "hideZeroValue": "Ocultar valores a zero",
     "searchPlaceholder": "Pesquisar",
     "asset": "Ativo",
@@ -628,7 +630,8 @@
     "pageOf": "Página {page} de {pages}",
     "prev": "Ant.",
     "next": "Seg.",
-    "buyToken": "Comprar {name}"
+    "buyToken": "Comprar {name}",
+    "customise": "Personalizar portfólio"
   },
   "buySell": {
     "buy": "Comprar",
@@ -1640,6 +1643,7 @@
       "gamesCount": "{count} a decorrer",
       "starterPitchTitle": "Inicie o seu próprio jogo",
       "starterPitchBody": "Defina a aposta. Cada jogador que entra faz o pote crescer, e você fica com 10% quando o tempo acabar.",
+      "playNow": "Jogar",
       "startCtaShort": "Iniciar jogo · {amount}",
       "lobbyError": "Não foi possível carregar os jogos.",
       "retry": "Tentar de novo",
@@ -2176,6 +2180,9 @@
     "bannerTitle": "Pegue Kash+ e comece a ganhar dinheiro extra com o que você faz!",
     "bannerSub": "Negocie, jogue e indique. Cada atividade recompensa você em Kash+.",
     "bannerCta": "Comprar Kash+",
+    "bannerLead": "Pegue Kash+",
+    "bannerTail": "e comece a ganhar dinheiro extra com o que você faz!",
+    "bannerCtaShort": "Comprar",
     "balanceTitle": "Saldo de Kash+",
     "balanceUnavailable": "Não foi possível carregar o seu saldo. Ele está seguro; tentando de novo…",
     "balanceNoWallet": "A sua carteira ainda está sendo configurada. O seu saldo aparece assim que ela estiver pronta.",
@@ -2489,6 +2496,10 @@
     "slides": "Slides de boas-vindas"
   },
   "square": {
+    "bannerAria": "Explore Market Square",
+    "bannerLine1": "Build <hi>your audience</hi> live",
+    "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",
+    "bannerCta": "explore market",
     "title": "Praça do Mercado",
     "openSquare": "Abrir a Praça",
     "laneForYou": "Para si",
@@ -2509,6 +2520,8 @@
     "openPost": "Abrir esta publicação na Praça do Mercado",
     "likesLabel": "Gostos",
     "commentsLabel": "Comentários",
+    "commentHere": "Comente aqui...",
+    "othersJoined": "{name} e outros entraram",
     "repostsLabel": "Republicações",
     "tabsLabel": "Filtros do feed da Praça",
     "liveNow": "Em direto",

@@ -175,6 +175,7 @@
     "breakdownTitle": "Où est votre argent",
     "assetsHeld": "actifs",
     "breakdownEmpty": "Rien en portefeuille.",
+    "portfolioAllocation": "Répartition du portefeuille",
     "slice_cash": "Liquidités",
     "slice_coins": "Cryptos",
     "slice_realAssets": "Actifs réels",
@@ -583,6 +584,7 @@
   "portfolio": {
     "eyebrow": "Portefeuille",
     "yourHoldings": "Vos avoirs",
+    "goToCard": "Aller à la carte {number}",
     "hideZeroValue": "Masquer les soldes nuls",
     "searchPlaceholder": "Rechercher",
     "asset": "Actif",
@@ -628,7 +630,8 @@
     "pageOf": "Page {page} sur {pages}",
     "prev": "Préc.",
     "next": "Suiv.",
-    "buyToken": "Acheter {name}"
+    "buyToken": "Acheter {name}",
+    "customise": "Personnaliser le portefeuille"
   },
   "buySell": {
     "buy": "Acheter",
@@ -1640,6 +1643,7 @@
       "gamesCount": "{count} en cours",
       "starterPitchTitle": "Lancez votre propre partie",
       "starterPitchBody": "Fixez la mise. Chaque joueur qui entre fait grossir le pot, et vous en prenez 10% à la fin du temps.",
+      "playNow": "Jouer",
       "startCtaShort": "Lancer une partie · {amount}",
       "lobbyError": "Impossible de charger les parties.",
       "retry": "Réessayer",
@@ -2176,6 +2180,9 @@
     "bannerTitle": "Prenez du Kash+ et gagnez de l'argent en plus avec ce que vous faites !",
     "bannerSub": "Tradez, jouez et parrainez. Chaque activité vous récompense en Kash+.",
     "bannerCta": "Acheter du Kash+",
+    "bannerLead": "Prenez du Kash+",
+    "bannerTail": "et gagnez de l'argent en plus avec ce que vous faites !",
+    "bannerCtaShort": "Acheter",
     "balanceTitle": "Solde Kash+",
     "balanceUnavailable": "Impossible de charger votre solde. Il est en sécurité ; nouvelle tentative…",
     "balanceNoWallet": "Votre portefeuille est en cours de configuration. Votre solde s'affichera dès qu'il sera prêt.",
@@ -2489,6 +2496,10 @@
     "slides": "Diapositives de bienvenue"
   },
   "square": {
+    "bannerAria": "Explore Market Square",
+    "bannerLine1": "Build <hi>your audience</hi> live",
+    "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",
+    "bannerCta": "explore market",
     "title": "Place du Marché",
     "openSquare": "Ouvrir la Place",
     "laneForYou": "Pour vous",
@@ -2509,6 +2520,8 @@
     "openPost": "Ouvrir ce message sur la Place du Marché",
     "likesLabel": "J'aime",
     "commentsLabel": "Commentaires",
+    "commentHere": "Commentez ici...",
+    "othersJoined": "{name} et d'autres ont rejoint",
     "repostsLabel": "Repartages",
     "tabsLabel": "Filtres du fil de la Place",
     "liveNow": "En direct",

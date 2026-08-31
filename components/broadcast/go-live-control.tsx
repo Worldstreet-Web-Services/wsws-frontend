@@ -36,6 +36,34 @@ function LiveIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+// The 2.0 broadcast icon for the mobile tab bar: a stylised camera/screen with
+// a purple gradient fill and three white status dots. Exact paths from the
+// Figma export, viewBox framed to the icon content.
+function BroadcastTabIcon({ size = 21 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="247.9 43.4 28 28" fill="none" aria-hidden>
+      <path
+        d="M263.801 46.9995L247.878 48.9492V67.7965H264.126H275.824V48.9492L263.801 46.9995Z"
+        fill="url(#ws-broadcast-grad)"
+      />
+      <path
+        d="M249.503 64.222V51.2239L263.476 49.5991V66.8216L259.902 63.897L249.503 64.222Z"
+        fill="#1F1F1F"
+      />
+      <path
+        d="M258.536 56.1661C257.999 56.2037 257.579 56.6702 257.597 57.2082C257.616 57.7463 258.067 58.1527 258.604 58.1151C259.141 58.0775 259.561 57.6101 259.543 57.0722C259.524 56.5343 259.073 56.1287 258.536 56.1661ZM255.943 56.3475C255.406 56.385 254.986 56.8516 255.005 57.3895C255.024 57.9275 255.474 58.334 256.011 58.2965C256.548 58.2589 256.968 57.7915 256.949 57.2535C256.93 56.7157 256.48 56.31 255.943 56.3475ZM253.35 56.5288C252.813 56.5664 252.393 57.0328 252.412 57.5708C252.43 58.1089 252.881 58.5144 253.418 58.4768C253.955 58.4393 254.375 57.9729 254.356 57.4348C254.337 56.8969 253.887 56.4913 253.35 56.5288Z"
+        fill="white"
+      />
+      <defs>
+        <linearGradient id="ws-broadcast-grad" x1="262.501" y1="62.5973" x2="278.099" y2="62.5973" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#C19CFE" />
+          <stop offset="0.171352" stopColor="#7E3BEB" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 // Two to six items, laid out as a menu rather than a speed dial: mini-FAB
 // stacks are unlabelled by nature and the spec rules them out.
 /**
@@ -95,16 +123,11 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" | "tile" })
               }`
             : variant === "tab"
               ? // Sits IN the bar at the same 44px height as every other tab.
-                // It was a raised 52px node breaking the pill's top edge, which
-                // overflowed the bar on a phone — the reason a raised node works
-                // elsewhere is a full-width bar with room above it, and this is a
-                // floating pill with neither. Distinction comes from the violet
-                // ring and fill rather than from size or elevation, so it reads
-                // as the one different thing in the row without leaving it.
-                `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-white ring-1 transition-colors ${
-                  live
-                    ? "bg-violet-500 ring-violet-300/70"
-                    : "bg-violet-500/22 ring-violet-400/55 hover:bg-violet-500/32"
+                // The 2.0 design removes the violet circle; the broadcast icon
+                // carries its own purple gradient, so it reads as the one
+                // different thing in the row through colour alone.
+                `pointer-events-auto grid size-11 shrink-0 cursor-pointer place-items-center rounded-full transition-colors ${
+                  live ? "bg-white/14" : "hover:bg-white/6"
                 }`
               : `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
                   live
@@ -120,7 +143,11 @@ export function GoLiveControl({ variant }: { variant: "tab" | "rail" | "tile" })
               : "grid size-5 place-items-center"
           }
         >
-          <LiveIcon size={variant === "tab" ? 22 : variant === "tile" ? 24 : 20} />
+          {variant === "tab" ? (
+            <BroadcastTabIcon size={21} />
+          ) : (
+            <LiveIcon size={variant === "tile" ? 24 : 20} />
+          )}
         </span>
         {variant === "tab" ? null : (
           <span

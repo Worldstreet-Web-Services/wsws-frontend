@@ -280,7 +280,7 @@ export function FeatureMarquee({ navIds, onNavigate, onAddFunds, onInvite }: Fea
 
   return (
     <div
-      className="ws-marquee relative flex h-9 items-stretch overflow-hidden border-b border-black/15"
+      className="ws-marquee relative hidden h-9 items-stretch overflow-hidden border-b border-black/15 md:flex"
       style={{
         background: "linear-gradient(180deg, #ffffff 0%, #ededf0 45%, #c9c9cf 82%, #f2f2f5 100%)",
       }}

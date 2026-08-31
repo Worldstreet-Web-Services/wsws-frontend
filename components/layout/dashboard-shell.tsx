@@ -101,7 +101,6 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
         activeSection={activeSection}
         onNavigate={navigate}
         onOpenMore={() => setMenuOpen(true)}
-        onAddFunds={() => setFundsOpen(true)}
       />
 
       {/* The live indicator and the minimised self-view. Docked, never

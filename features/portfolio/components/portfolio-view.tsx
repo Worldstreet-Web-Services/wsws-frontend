@@ -15,6 +15,10 @@ import {
 } from "@tanstack/react-table";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
+import { LastManBanner } from "@/features/portfolio/components/last-man-banner";
+import { SquareLiveBannerCard } from "@/components/ui/square-live-banner";
+import { PromoDeck } from "@/components/ui/promo-deck";
+import { marketSquareHref } from "@/lib/market-square";
 import { KashCard } from "@/features/portfolio/components/kash-card";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
 import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
@@ -24,6 +28,7 @@ import { KashSendModal } from "@/features/portfolio/components/kash-send-modal";
 import { useKashAccount, useKashClaim } from "@/features/portfolio/hooks/use-kash";
 import { Switch } from "@/components/ui/switch";
 import { HoldingsMobile } from "@/features/portfolio/components/holdings-mobile";
+import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
 import { TypeChip } from "@/features/portfolio/components/type-chip";
 import { displayNetworkIconKey, displayNetworkLabel } from "@/features/portfolio/lib/network-label";
 import { AssetIcon } from "@/components/ui/asset-icon";
@@ -46,6 +51,8 @@ interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
   crossBorderSlot: ReactNode;
+  /** The Explore tokens card, rendered on mobile above Customise Portfolio. */
+  exploreTokensSlot?: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -89,6 +96,7 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   // crossBorderSlot is unused while the section below is commented out.
+  exploreTokensSlot,
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
@@ -246,7 +254,10 @@ export function PortfolioView({
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="mb-4">
+      {/* On desktop the Kash+ promo leads the section. On a phone it moves
+          below the balance card, per the mobile comp (the sm:hidden copy
+          further down). */}
+      <div className="mb-4 hidden sm:block">
         <KashBanner onBuy={() => setKashModal("buy")} />
       </div>
       <KashBuyModal
@@ -259,9 +270,40 @@ export function PortfolioView({
       <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
       <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
 
-      <Eyebrow>{t("eyebrow")}</Eyebrow>
+      <div className="hidden md:block">
+        <Eyebrow>{t("eyebrow")}</Eyebrow>
+      </div>
 
-      <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      {/* Phone: the balance and Kash+ cards ride a swipe carousel with a
+          position indicator, per the mobile comp. From `sm` up the original
+          side-by-side grid stands unchanged. Both compose the same two cards. */}
+      <div className="mt-3.5 sm:hidden">
+        <BalanceCarousel>
+          <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+          <KashCard
+            onBuy={() => setKashModal("buy")}
+            onClaim={
+              kashWallet
+                ? () =>
+                    claimPoints.mutate(
+                      { wallet: kashWallet },
+                      {
+                        onSuccess: (result) =>
+                          track("kash_earned", { kash_amount: Number(result.kashMinted) }),
+                      }
+                    )
+                : undefined
+            }
+            claiming={claimPoints.isPending}
+            onSend={() => setKashModal("send")}
+            onConvert={() => setKashModal("convert")}
+            onHistory={() => setKashModal("history")}
+            onUpgrade={() => setKashModal("upgrade")}
+          />
+        </BalanceCarousel>
+      </div>
+
+      <div className="mt-3.5 hidden gap-3 sm:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
         <KashCard
           onBuy={() => setKashModal("buy")}
@@ -285,6 +327,17 @@ export function PortfolioView({
           onHistory={() => setKashModal("history")}
           onUpgrade={() => setKashModal("upgrade")}
         />
+      </div>
+
+      {/* The promos ride a rotating deck below the balance on a phone, per the
+          mobile comp: each holds the front for five seconds, then slides to the
+          back. On desktop the Kash+ promo stays at the top of the section. */}
+      <div className="mt-8 sm:hidden">
+        <PromoDeck>
+          <KashBanner onBuy={() => setKashModal("buy")} />
+          <SquareLiveBannerCard href={marketSquareHref() ?? "#"} />
+          <LastManBanner />
+        </PromoDeck>
       </div>
 
       {/* Commented out for now, at explicit request — cross-border is still
@@ -321,7 +374,9 @@ export function PortfolioView({
         </div>
       ) : (
         <>
-          <div className="mt-[18px] md:hidden">
+          {/* Mobile holdings list hidden per the 2.0 mobile design. The desktop
+              holdings card below (md:block) is unaffected. */}
+          <div className="hidden">
             <HoldingsMobile
               rows={holdingRows.map((row) => row.original)}
               loading={loading}
@@ -338,7 +393,8 @@ export function PortfolioView({
               onOpenToken={openToken}
             />
           </div>
-          <div className="ws-card mt-[18px] hidden overflow-hidden md:block">
+          {/* Desktop holdings card hidden per the 2.0 design. */}
+          <div className="ws-card mt-[18px] hidden overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-5 pb-3.5 sm:px-6">
               <span className="ws-display text-[22px]">{t("yourHoldings")}</span>
               <div className="flex items-center gap-3">
@@ -468,6 +524,23 @@ export function PortfolioView({
           </div>
         </>
       )}
+
+      {/* Explore tokens card — the spot simple view, mobile only. */}
+      {exploreTokensSlot ? (
+        <div className="mt-10 md:hidden">{exploreTokensSlot}</div>
+      ) : null}
+
+      {/* Customise Portfolio — links to the interest picker so the user
+          can reorder their dashboard sections. Mobile only. */}
+      <div className="mt-10 flex justify-center md:hidden">
+        <a
+          href="/customise"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 bg-[rgba(105,102,102,0.25)] px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-white/10"
+        >
+          Customise Portfolio
+          <span>›</span>
+        </a>
+      </div>
     </div>
   );
 }

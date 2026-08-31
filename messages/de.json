@@ -175,6 +175,7 @@
     "breakdownTitle": "Wo dein Geld liegt",
     "assetsHeld": "Werte",
     "breakdownEmpty": "Noch nichts im Bestand.",
+    "portfolioAllocation": "Portfolio-Aufteilung",
     "slice_cash": "Bargeld",
     "slice_coins": "Coins",
     "slice_realAssets": "Reale Werte",
@@ -583,6 +584,7 @@
   "portfolio": {
     "eyebrow": "Portfolio",
     "yourHoldings": "Ihre Bestände",
+    "goToCard": "Zu Karte {number}",
     "hideZeroValue": "Nullwerte ausblenden",
     "searchPlaceholder": "Suchen",
     "asset": "Asset",
@@ -628,7 +630,8 @@
     "pageOf": "Seite {page} von {pages}",
     "prev": "Zurück",
     "next": "Weiter",
-    "buyToken": "{name} kaufen"
+    "buyToken": "{name} kaufen",
+    "customise": "Portfolio anpassen"
   },
   "buySell": {
     "buy": "Kaufen",
@@ -1640,6 +1643,7 @@
       "gamesCount": "{count} laufen",
       "starterPitchTitle": "Starte dein eigenes Spiel",
       "starterPitchBody": "Lege den Einsatz fest. Jeder Mitspieler lässt den Pot wachsen, und du bekommst 10% davon, wenn die Zeit abläuft.",
+      "playNow": "Spielen",
       "startCtaShort": "Spiel starten · {amount}",
       "lobbyError": "Spiele konnten nicht geladen werden.",
       "retry": "Erneut versuchen",
@@ -2176,6 +2180,9 @@
     "bannerTitle": "Hol dir Kash+ und verdiene extra Geld mit allem, was du tust!",
     "bannerSub": "Handeln, spielen, empfehlen. Jede Aktivität zahlt sich in Kash+ aus.",
     "bannerCta": "Kash+ kaufen",
+    "bannerLead": "Hol dir Kash+",
+    "bannerTail": "und verdiene extra Geld mit allem, was du tust!",
+    "bannerCtaShort": "Kaufen",
     "balanceTitle": "Kash+ Guthaben",
     "balanceUnavailable": "Dein Guthaben konnte nicht geladen werden. Es ist sicher; neuer Versuch…",
     "balanceNoWallet": "Deine Wallet wird noch eingerichtet. Dein Guthaben erscheint, sobald sie bereit ist.",
@@ -2489,6 +2496,10 @@
     "slides": "Willkommensfolien"
   },
   "square": {
+    "bannerAria": "Explore Market Square",
+    "bannerLine1": "Build <hi>your audience</hi> live",
+    "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",
+    "bannerCta": "explore market",
     "title": "Marktplatz",
     "openSquare": "Marktplatz öffnen",
     "laneForYou": "Für dich",
@@ -2509,6 +2520,8 @@
     "openPost": "Diesen Beitrag im Marktplatz öffnen",
     "likesLabel": "Likes",
     "commentsLabel": "Kommentare",
+    "commentHere": "Hier kommentieren...",
+    "othersJoined": "{name} und weitere sind dabei",
     "repostsLabel": "Reposts",
     "tabsLabel": "Filter für den Marktplatz-Feed",
     "liveNow": "Jetzt live",

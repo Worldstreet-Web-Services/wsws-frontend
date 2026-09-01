@@ -3,9 +3,12 @@ import {
   displayLink,
   inviteLink,
   referralGoal,
+  referralHandle,
   referralProgress,
   sanitizeUsernameInput,
+  splitReferrals,
   usernameProblem,
+  type ReferralEntry,
 } from "./referrals";
 import { readRefCode } from "./ref-cookie";
 
@@ -92,5 +95,45 @@ describe("readRefCode", () => {
 
   it("refuses a value that fails to decode", () => {
     expect(readRefCode("ark_ref=%zz")).toBeNull();
+  });
+});
+
+describe("splitReferrals", () => {
+  const counted: ReferralEntry = { username: "micahdi", status: "counted" };
+  const pending: ReferralEntry = { username: "jackol", status: "deposit_pending" };
+
+  it("sends counted referrals to the active tab and the rest to inactive", () => {
+    expect(splitReferrals([counted, pending])).toEqual({
+      active: [counted],
+      inactive: [pending],
+    });
+  });
+
+  it("returns two empty lists when the engine sends no referrals", () => {
+    expect(splitReferrals(undefined)).toEqual({ active: [], inactive: [] });
+  });
+
+  it("keeps an unrecognised status out of the active tab", () => {
+    // The active tab is the one that claims a referral has paid out, so a
+    // status we do not know must never land there.
+    const unknown = { username: "newcomer", status: "queued" } as unknown as ReferralEntry;
+    const { active, inactive } = splitReferrals([counted, unknown]);
+    expect(active).toEqual([counted]);
+    expect(inactive).toEqual([unknown]);
+  });
+
+  it("preserves the order the engine sent within each tab", () => {
+    const second: ReferralEntry = { username: "tonyareos", status: "counted" };
+    expect(splitReferrals([counted, pending, second]).active).toEqual([counted, second]);
+  });
+});
+
+describe("referralHandle", () => {
+  it("prefixes a claimed username with @", () => {
+    expect(referralHandle({ username: "jackol", status: "counted" })).toBe("@jackol");
+  });
+
+  it("has no handle to show for an invitee who never claimed a username", () => {
+    expect(referralHandle({ username: null, status: "deposit_pending" })).toBeNull();
   });
 });

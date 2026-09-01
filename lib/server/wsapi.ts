@@ -25,13 +25,12 @@ export function rwaRevalidate(path: string): number | undefined {
   return undefined;
 }
 
-// The perp surface: reads plus the quote and the non-custodial build calls that
-// return unsigned transaction steps (legacy path), plus Ark's own reads and
+// The perp surface: funding (Base -> Arbitrum) plus Ark's own reads and
 // prepare/submit write pairs (see apps/perp's own README for the signing
 // model: every write is signed client-side, this backend never forwards a
 // private key).
 const PERP_ALLOWED =
-  /^(health|pairs|market|prices|snapshot|trades|orders|quote|build\/(approve-usdc|open-trade|close-trade|update-margin|update-tp-sl|cancel-order)|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|ark\/wallet\/[^/]+|ark\/assets|ark\/prices|ark\/market-contexts|ark\/funding-history\/[^/]+|ark\/candles\/[^/]+|ark\/account-state\/[^/]+|ark\/arbitrum-balance\/[^/]+|ark\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee|abstraction-mode)|ark\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|ark\/leverage\/(prepare|submit)|ark\/bridge\/(prepare|confirm)|ark\/withdrawals\/(prepare|submit)|ark\/positions\/close\/(prepare|submit)|ark\/builder-fee\/(prepare|submit)|ark\/abstraction-mode\/(prepare|submit))$/;
+  /^(health|funding\/deposit-address\/[^/]+|funding\/deposit-status\/[^/]+|ark\/wallet\/[^/]+|ark\/assets|ark\/prices|ark\/market-contexts|ark\/funding-history\/[^/]+|ark\/candles\/[^/]+|ark\/account-state\/[^/]+|ark\/arbitrum-balance\/[^/]+|ark\/wallets\/[^/]+\/(positions|positions\/closed|orders|builder-fee|abstraction-mode)|ark\/orders\/(prepare|submit|cancel\/(prepare|submit)|trigger\/(prepare|submit))|ark\/leverage\/(prepare|submit)|ark\/bridge\/(prepare|confirm)|ark\/withdrawals\/(prepare|submit)|ark\/positions\/close\/(prepare|submit)|ark\/builder-fee\/(prepare|submit)|ark\/abstraction-mode\/(prepare|submit))$/;
 
 export function isAllowedPerpPath(path: string): boolean {
   // Same traversal guard as the RWA allowlist: a raw ".." or encoded segment
@@ -40,16 +39,13 @@ export function isAllowedPerpPath(path: string): boolean {
   return PERP_ALLOWED.test(path);
 }
 
-// Pair config barely changes; live prices and per-market metrics turn over in
-// seconds, so a short shared cache collapses concurrent users into one upstream
-// call without serving stale marks. Trades and pending orders are polled after
-// keeper-executed fills and cancels, so they must always be fresh. Ark's
-// asset registry is as static as `pairs`; everything else in that surface
-// (live prices, margin, positions, orders) must never be stale.
+// Ark's asset registry barely changes; live prices and per-market metrics turn
+// over in seconds, so a short shared cache collapses concurrent users into one
+// upstream call without serving stale marks. Everything else in the surface
+// (margin, positions, orders) must never be stale.
 export function perpRevalidate(path: string): number | undefined {
-  if (path === "pairs" || path === "ark/assets") return 300;
-  if (path === "prices" || path === "market" || path === "ark/prices") return 3;
-  if (path === "snapshot") return 60;
+  if (path === "ark/assets") return 300;
+  if (path === "ark/prices") return 3;
   return undefined;
 }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
-import { ArkMark } from "@/components/ui/ark-mark";
+import { MarketLogo } from "@/components/ui/market-logo";
 import { useMoney } from "@/components/ui/currency-select";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useDiscoveryEvents } from "../hooks/use-discovery-markets";
@@ -76,10 +76,7 @@ export function MarketsHeader({ activeCategory, activeLeague }: MarketsHeaderPro
             aria-label="Open dashboard"
             className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60"
           >
-            <ArkMark
-              className="h-[22px] w-auto sm:h-[27px]"
-              style={{ width: undefined, height: undefined }}
-            />
+            <MarketLogo className="h-[21px] w-auto sm:h-6" />
           </Link>
 
           <Link

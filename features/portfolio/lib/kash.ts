@@ -27,9 +27,10 @@ export interface KashStatus {
   /**
    * Points economics, straight from the engine.
    *
-   * `tierBoundsUsd` are the VOLUME band edges and `tierRatesPer10Usd` the rate
-   * inside each band — one more rate than bounds, the last being open-ended.
-   * Both are config; restating them in the UI would let the two drift.
+   * Flat per-tier share of the fee an activity produced — no volume banding.
+   * `tierRevenueSharePct[0]` is tier 1 (free)'s share, as a percentage
+   * (3 means 3%). One entry per subscription tier; restating it in the UI
+   * would let the two drift.
    */
   points: {
     pointValueUsd: number;
@@ -43,6 +44,13 @@ export interface KashStatus {
      */
     tierRevenueSharePct?: number[];
   };
+  /**
+   * A self-serve claim (POST /settlements/claim) below `minClaimKash` mints
+   * for less KSH than the gas is worth — the engine skips it rather than
+   * spending the holder's money on a dust transaction, so the "Claim" control
+   * must gate on this instead of any wallet holding > 0.
+   */
+  settlement: { periodSeconds: number; minClaimKash: string };
   subscriptions: { periodDays: number; tiers: { tier: number; priceUsd: number }[] };
   desk: {
     purchaseMinUsdc: number;
@@ -193,11 +201,27 @@ export interface KashLedgerEntry {
 }
 
 /**
- * Settle this wallet's accrued points into KSH now, instead of waiting for the
- * weekly batch. Only ever affects the caller's own wallet.
+ * The exact message a client must sign to claim — MUST match the backend's
+ * WalletSignatureVerifier.claimSettlementMessage byte-for-byte, or the
+ * signature won't recover to the signer and the engine rejects it. No
+ * on-chain event proves who is claiming (unlike a purchase or a conversion's
+ * permit), so this signature IS the authorization.
  */
-export const postKashClaim = (wallet: string) =>
-  kash.post<KashClaim>("/settlements/claim", { wallet });
+export function claimSettlementMessage(wallet: string, timestamp: number): string {
+  return [
+    "World Street — claim Kash settlement",
+    `wallet: ${wallet.toLowerCase()}`,
+    `ts: ${timestamp}`,
+  ].join("\n");
+}
+
+/**
+ * Settle this wallet's accrued points into KSH now, instead of waiting for the
+ * weekly batch. Only ever affects the caller's own wallet — `signature` must
+ * recover to `wallet` over `claimSettlementMessage(wallet, timestamp)`.
+ */
+export const postKashClaim = (wallet: string, signature: string, timestamp: number) =>
+  kash.post<KashClaim>("/settlements/claim", { wallet, signature, timestamp });
 
 export const getKashStatus = () => kash.get<KashStatus>("/status");
 

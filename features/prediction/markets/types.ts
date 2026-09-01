@@ -4,8 +4,10 @@ export type MarketCategory = NormalSport | DiscoveryCategory;
 
 export type SportsLeagueKey = string;
 
-export function isNormalSportCategory(category: MarketCategory): category is NormalSport {
-  return category === "football" || category === "basketball";
+export function isNormalSportCategory(
+  category: MarketCategory
+): category is Extract<NormalSport, "football"> {
+  return category === "football";
 }
 
 export interface MarketNavItem<Key extends string> {

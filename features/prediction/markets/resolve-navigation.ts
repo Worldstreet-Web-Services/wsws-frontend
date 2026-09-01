@@ -4,6 +4,7 @@ const MARKET_CATEGORIES = new Set<MarketCategory>([
   "trending",
   "football",
   "basketball",
+  "nfl",
   "politics",
   "crypto",
   "esports",
@@ -29,7 +30,9 @@ export function resolveMarketNavigation(params: Record<string, string | string[]
     ? (requestedCategory as MarketCategory)
     : "trending";
   const activeLeague: SportsLeagueKey =
-    requestedLeague && /^[a-z0-9-]{1,64}$/u.test(requestedLeague) ? requestedLeague : "";
+    activeCategory === "football" && requestedLeague && /^[a-z0-9-]{1,64}$/u.test(requestedLeague)
+      ? requestedLeague
+      : "";
 
   return { activeCategory, activeLeague };
 }

@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { sportsSlipSelection, toggleSlipSelection } from "../bet-slip";
 import {
   eventMarketGroups,
   type EventMarketTab,
   type EventOutcomeView,
 } from "../event-detail-presenter";
 import { useSportsEvent } from "../hooks/use-sports-markets";
+import { updateMarketSlip, usePersistedMarketSlip } from "../market-slip-storage";
 import type { NormalSport } from "../api";
-import type { BoardSelection } from "../presenter";
 import { EventDetailHeader } from "./event-detail-header";
 import { EventMarketCard } from "./event-market-card";
 import { EventMarketTabs } from "./event-market-tabs";
@@ -24,7 +25,8 @@ interface SportsEventDetailProps {
 export function SportsEventDetail({ eventId, sport, activeLeague }: SportsEventDetailProps) {
   const query = useSportsEvent(eventId);
   const [activeTab, setActiveTab] = useState<EventMarketTab>("all");
-  const [selected, setSelected] = useState<BoardSelection | null>(null);
+  const { selections } = usePersistedMarketSlip();
+  const selectedIds = new Set(selections.map(({ id }) => id));
   const backHref = `/prediction/markets?category=${sport}${activeLeague ? `&league=${activeLeague}` : ""}`;
 
   if (query.loading) return <MarketBoardSkeleton />;
@@ -57,7 +59,12 @@ export function SportsEventDetail({ eventId, sport, activeLeague }: SportsEventD
     activeTab === "all" ? groups : groups.filter((group) => group.key === activeTab);
 
   function selectOutcome(outcome: EventOutcomeView) {
-    setSelected((current) => (current?.id === outcome.selection.id ? null : outcome.selection));
+    const candidate = sportsSlipSelection(outcome.selection);
+    if (!candidate) return;
+    updateMarketSlip((current) => ({
+      ...current,
+      selections: toggleSlipSelection(current.selections, candidate),
+    }));
   }
 
   return (
@@ -88,7 +95,10 @@ export function SportsEventDetail({ eventId, sport, activeLeague }: SportsEventD
                   <EventMarketCard
                     key={card.id}
                     card={card}
-                    selectedId={selected?.id ?? null}
+                    selectedId={
+                      card.outcomes.find((outcome) => selectedIds.has(outcome.selection.id))
+                        ?.selection.id ?? null
+                    }
                     onSelect={selectOutcome}
                   />
                 ))}

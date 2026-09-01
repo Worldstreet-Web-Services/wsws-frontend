@@ -15,11 +15,21 @@ import { nextEventCursor } from "../pagination";
 
 const EMPTY_EVENTS: DiscoveryMarketEvent[] = [];
 
-export function useDiscoveryEvents(category: DiscoveryCategory, sort: DiscoveryMarketSort) {
-  const params: DiscoveryEventsParams = { category, sort, limit: 12 };
+interface DiscoveryEventsOptions {
+  enabled?: boolean;
+  limit?: number;
+}
+
+export function useDiscoveryEvents(
+  category: DiscoveryCategory,
+  sort: DiscoveryMarketSort,
+  options: DiscoveryEventsOptions = {}
+) {
+  const params: DiscoveryEventsParams = { category, sort, limit: options.limit ?? 12 };
   const query = useInfiniteQuery({
     queryKey: ["prediction-discovery-events", params.category, sort, params.limit],
     queryFn: ({ pageParam }) => fetchDiscoveryEvents({ ...params, cursor: pageParam ?? undefined }),
+    enabled: options.enabled ?? true,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage, _pages, _lastPageParam, pageParams) =>
       nextEventCursor(lastPage, pageParams),

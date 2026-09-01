@@ -6,10 +6,16 @@ interface MarketBoardFiltersProps {
 }
 
 export function MarketBoardFilters({ window, onWindowChange }: MarketBoardFiltersProps) {
+  const options: Array<{ value: MarketWindow; compact: string; label: string }> = [
+    { value: "today", compact: "Today", label: "Today Games" },
+    { value: "next-24h", compact: "24h", label: "Next 24h" },
+    { value: "upcoming", compact: "Later", label: "Upcoming Games" },
+  ];
+
   return (
     <div className="flex items-center gap-2 border-b border-white/8 bg-[#0d0d0f] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
       <div className="flex shrink-0 rounded-[9px] border border-white/9 bg-black p-1">
-        {(["today", "upcoming"] as const).map((value) => (
+        {options.map(({ value, compact, label }) => (
           <button
             key={value}
             type="button"
@@ -20,10 +26,8 @@ export function MarketBoardFilters({ window, onWindowChange }: MarketBoardFilter
                 : "text-white/45 hover:bg-white/5 hover:text-white/75"
             }`}
           >
-            <span className="sm:hidden">{value === "today" ? "Today" : "Next"}</span>
-            <span className="hidden sm:inline">
-              {value === "today" ? "Today Games" : "Upcoming Games"}
-            </span>
+            <span className="sm:hidden">{compact}</span>
+            <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </div>

@@ -166,6 +166,9 @@ export interface ComboQuote {
 
 export type DiscoveryCategory =
   | "trending"
+  | "sports"
+  | "basketball"
+  | "nfl"
   | "politics"
   | "crypto"
   | "esports"

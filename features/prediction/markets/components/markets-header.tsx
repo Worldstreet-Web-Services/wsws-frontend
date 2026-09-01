@@ -5,6 +5,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { ArkMark } from "@/components/ui/ark-mark";
 import { useMoney } from "@/components/ui/currency-select";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useDiscoveryEvents } from "../hooks/use-discovery-markets";
 import { useSportsFilters } from "../hooks/use-sports-markets";
 import { CATEGORY_LINKS } from "../navigation-config";
 import { isNormalSportCategory, type MarketCategory, type SportsLeagueKey } from "../types";
@@ -36,6 +37,18 @@ export function MarketsHeader({ activeCategory, activeLeague }: MarketsHeaderPro
   const sportsCategory = isNormalSportCategory(activeCategory) ? activeCategory : "football";
   const sportsActive = isNormalSportCategory(activeCategory);
   const sportsFilters = useSportsFilters(sportsCategory, activeLeague || undefined, sportsActive);
+  const basketballAvailability = useDiscoveryEvents("basketball", "volume_24h", { limit: 1 });
+  const nflAvailability = useDiscoveryEvents("nfl", "volume_24h", { limit: 1 });
+  const categoryLinks = CATEGORY_LINKS.filter((item) => {
+    const availability =
+      item.key === "basketball"
+        ? basketballAvailability
+        : item.key === "nfl"
+          ? nflAvailability
+          : null;
+    if (!availability || item.key === activeCategory) return true;
+    return availability.loading || availability.error || availability.events.length > 0;
+  });
   const leagueLinks = [
     {
       key: "all",
@@ -99,7 +112,7 @@ export function MarketsHeader({ activeCategory, activeLeague }: MarketsHeaderPro
           <NavigationRail
             activeKey={activeCategory}
             ariaLabel="Market categories"
-            items={CATEGORY_LINKS}
+            items={categoryLinks}
             variant="primary"
           />
         </div>

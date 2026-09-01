@@ -6,6 +6,7 @@
 // invited wallet makes its first deposit after claiming.
 
 import { createServiceClient } from "@/lib/api/service";
+import { truncateAddress } from "@/lib/format";
 
 const kash = createServiceClient("/api/kash", "Referrals are unavailable right now.");
 
@@ -89,6 +90,8 @@ export type ReferralStatus = "counted" | "deposit_pending";
 export interface ReferralEntry {
   /** The invitee's claimed username, absent until they claim one. */
   username: string | null;
+  /** The invitee's wallet, which is what names the row when there is no username. */
+  wallet: string;
   status: ReferralStatus;
 }
 
@@ -110,9 +113,14 @@ export function splitReferrals(entries: readonly ReferralEntry[] | undefined): {
   };
 }
 
-/** The comp writes a handle as `@name`; an unclaimed invitee has none. */
-export function referralHandle(entry: ReferralEntry): string | null {
-  return entry.username ? `@${entry.username}` : null;
+/**
+ * What names a row. The comp writes a handle as `@name`, but an invitee who
+ * never claimed a username has no name to write, so the row falls back to
+ * their truncated wallet. Truncated, not full: 42 characters do not fit the
+ * row and the short form is enough to tell two invitees apart.
+ */
+export function referralHandle(entry: ReferralEntry): string {
+  return entry.username ? `@${entry.username}` : truncateAddress(entry.wallet);
 }
 
 export function getUsernameAvailability(username: string): Promise<UsernameAvailability> {

@@ -44,30 +44,14 @@ function StatusPill({ tab, label }: { tab: Tab; label: string }) {
   );
 }
 
-function Row({
-  entry,
-  tab,
-  fallback,
-  status,
-}: {
-  entry: ReferralEntry;
-  tab: Tab;
-  fallback: string;
-  status: string;
-}) {
-  const handle = referralHandle(entry);
+function Row({ entry, tab, status }: { entry: ReferralEntry; tab: Tab; status: string }) {
   return (
     <li className="flex min-h-[49px] items-center justify-between gap-3 px-2 py-4">
-      {/* An invitee who has not claimed a username has no handle to draw, and
-          the comp has no state for it. Naming them by wallet would put someone
-          else's address on screen, so they read as an unnamed friend. */}
-      <span
-        className={cn(
-          "min-w-0 truncate text-[12px] leading-[15.6px] font-medium",
-          handle ? "text-white" : "text-white/45"
-        )}
-      >
-        {handle ?? fallback}
+      {/* A handle when the invitee claimed one, their truncated wallet when
+          they did not. The comp draws only the handle case, since it does not
+          show an invitee who never picked a name. */}
+      <span className="tnum min-w-0 truncate text-[12px] leading-[15.6px] font-medium text-white">
+        {referralHandle(entry)}
       </span>
       <StatusPill tab={tab} label={status} />
     </li>
@@ -133,10 +117,9 @@ export function ReferralListCard({
           <ul>
             {rows.map((entry, i) => (
               <Row
-                key={entry.username ?? `${tab}-${i}`}
+                key={entry.wallet || `${tab}-${i}`}
                 entry={entry}
                 tab={tab}
-                fallback={t("unnamedFriend")}
                 status={tab === "active" ? t("counted") : t("depositPending")}
               />
             ))}

@@ -2314,7 +2314,6 @@
     "inactiveTab": "Parrainages inactifs",
     "counted": "Comptabilisé",
     "depositPending": "Dépôt en attente",
-    "unnamedFriend": "Ami invité",
     "noActive": "Aucun parrainage n'a encore été comptabilisé.",
     "noInactive": "Personne n'est en attente d'un premier dépôt.",
     "listUnavailable": "{count, plural, one {# parrainage s'affichera ici lorsque les noms seront disponibles.} other {# parrainages s'afficheront ici lorsque les noms seront disponibles.}}",

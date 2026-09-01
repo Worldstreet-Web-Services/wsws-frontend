@@ -2314,7 +2314,6 @@
     "inactiveTab": "Inactive Referrals",
     "counted": "Counted",
     "depositPending": "Deposit Pending",
-    "unnamedFriend": "Invited friend",
     "noActive": "No referrals have counted yet.",
     "noInactive": "Nobody is waiting on a first deposit.",
     "listUnavailable": "{count, plural, one {# referral to show here once names are available.} other {# referrals to show here once names are available.}}",

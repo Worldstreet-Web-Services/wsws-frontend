@@ -11,9 +11,21 @@ vi.mock("next-intl", () => ({
     values && "count" in values ? `${key}:${values.count}` : key,
 }));
 
-const counted: ReferralEntry = { username: "micahdi", status: "counted" };
-const alsoCounted: ReferralEntry = { username: "tonyareos", status: "counted" };
-const waiting: ReferralEntry = { username: "jackol", status: "deposit_pending" };
+const counted: ReferralEntry = {
+  username: "micahdi",
+  wallet: "0xaaaa1111bbbb2222cccc3333dddd4444eeee5555",
+  status: "counted",
+};
+const alsoCounted: ReferralEntry = {
+  username: "tonyareos",
+  wallet: "0x1111222233334444555566667777888899990000",
+  status: "counted",
+};
+const waiting: ReferralEntry = {
+  username: "jackol",
+  wallet: "0xffff6666aaaa7777bbbb8888cccc9999dddd0000",
+  status: "deposit_pending",
+};
 
 describe("ReferralListCard", () => {
   it("opens on Active and lists only the referrals that counted", () => {
@@ -72,14 +84,27 @@ describe("ReferralListCard", () => {
     expect(screen.getByText("noActive")).toBeInTheDocument();
   });
 
-  it("names an invitee who never claimed a username without exposing anything else", () => {
+  it("names an invitee who never claimed a username by their truncated wallet", () => {
     render(
       <ReferralListCard
-        referrals={[{ username: null, status: "counted" }]}
+        referrals={[
+          { username: null, wallet: "0x1234567890abcdef1234567890abcdefabcd", status: "counted" },
+        ]}
         referred={1}
         pending={0}
       />
     );
-    expect(screen.getByText("unnamedFriend")).toBeInTheDocument();
+    expect(screen.getByText("0x1234…abcd")).toBeInTheDocument();
+  });
+
+  it("keeps a referral that has not deposited out of Active and in Inactive", () => {
+    // The engine encodes this as qualifiedAt: null, meaning the deposit probe
+    // has not seen money arrive, so the referral has not counted.
+    render(<ReferralListCard referrals={[waiting]} referred={0} pending={1} />);
+    expect(screen.queryByText("@jackol")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "inactiveTab" }));
+    expect(screen.getByText("@jackol")).toBeInTheDocument();
+    expect(screen.getByText("depositPending")).toBeInTheDocument();
   });
 });

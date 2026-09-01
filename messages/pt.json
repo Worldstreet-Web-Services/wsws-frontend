@@ -2314,7 +2314,6 @@
     "inactiveTab": "Indicações inativas",
     "counted": "Contabilizado",
     "depositPending": "Depósito pendente",
-    "unnamedFriend": "Amigo convidado",
     "noActive": "Ainda não há indicações contabilizadas.",
     "noInactive": "Ninguém está a aguardar um primeiro depósito.",
     "listUnavailable": "{count, plural, one {# indicação aparecerá aqui quando houver nomes disponíveis.} other {# indicações aparecerão aqui quando houver nomes disponíveis.}}",

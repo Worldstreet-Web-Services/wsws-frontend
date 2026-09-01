@@ -86,21 +86,18 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
   // something retrying fixes (see hyperliquid-types.ts's
   // isBridgeMinimumDetails) — or on any other failure; the caller decides
   // how to present that.
-  const bridge = useCallback(
-    async (): Promise<void> => {
-      if (!walletId || !address) throw new Error("Wallet is not ready yet.");
-      const prepared = await prepareBridge(walletId);
-      const txHash = await evmSend({
-        to: prepared.to as `0x${string}`,
-        data: prepared.data as `0x${string}`,
-        value: BigInt(prepared.value),
-        chainId: ARBITRUM_CHAIN_ID,
-        address,
-      });
-      await confirmBridge(walletId, txHash, prepared.amountUsdc);
-    },
-    [walletId, address, evmSend]
-  );
+  const bridge = useCallback(async (): Promise<void> => {
+    if (!walletId || !address) throw new Error("Wallet is not ready yet.");
+    const prepared = await prepareBridge(walletId);
+    const txHash = await evmSend({
+      to: prepared.to as `0x${string}`,
+      data: prepared.data as `0x${string}`,
+      value: BigInt(prepared.value),
+      chainId: ARBITRUM_CHAIN_ID,
+      address,
+    });
+    await confirmBridge(walletId, txHash, prepared.amountUsdc);
+  }, [walletId, address, evmSend]);
 
   // Grants the platform treasury permission to attach its builder fee to
   // this wallet's orders (TradingService.prepareOrder skips the fee

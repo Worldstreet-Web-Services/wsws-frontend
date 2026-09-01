@@ -145,9 +145,7 @@ export function KashHistoryModal({ open, onClose }: KashHistoryModalProps) {
                 onClick={() => setView(v)}
                 onKeyDown={onTabKeyDown}
                 className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
-                  selected
-                    ? "bg-white/12 text-white/90"
-                    : "text-white/45 hover:text-white/70"
+                  selected ? "bg-white/12 text-white/90" : "text-white/45 hover:text-white/70"
                 }`}
               >
                 {t(VIEW_LABEL_KEY[v])}
@@ -236,9 +234,7 @@ export function KashHistoryModal({ open, onClose }: KashHistoryModalProps) {
           </div>
         ) : (
           <div className="mt-5 rounded-[14px] border border-white/8 bg-white/3 px-4 py-6 text-center">
-            <p className="text-[13px] font-normal text-white/55">
-              {t(VIEW_EMPTY_KEY[view].title)}
-            </p>
+            <p className="text-[13px] font-normal text-white/55">{t(VIEW_EMPTY_KEY[view].title)}</p>
             <p className="mt-1 text-[12px] font-normal text-white/35">
               {t(VIEW_EMPTY_KEY[view].hint)}
             </p>

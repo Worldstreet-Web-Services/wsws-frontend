@@ -176,9 +176,11 @@ export interface KashLedgerEntry {
  * drifting the format here is an auth failure, not a lint issue.
  */
 export const claimSettlementMessage = (wallet: string, timestamp: number) =>
-  ["World Street — claim Kash settlement", `wallet: ${wallet.toLowerCase()}`, `ts: ${timestamp}`].join(
-    "\n"
-  );
+  [
+    "World Street — claim Kash settlement",
+    `wallet: ${wallet.toLowerCase()}`,
+    `ts: ${timestamp}`,
+  ].join("\n");
 
 /**
  * Settle this wallet's accrued points into KSH now, instead of waiting for the

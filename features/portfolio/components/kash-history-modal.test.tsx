@@ -154,7 +154,9 @@ describe("KashHistoryModal — transactions vs activity points split", () => {
     });
     render(<KashHistoryModal open onClose={() => {}} />, { wrapper });
 
-    expect(screen.getByText("Nothing here yet. Purchases, rewards and conversions will appear here.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Nothing here yet. Purchases, rewards and conversions will appear here.")
+    ).toBeInTheDocument();
   });
 
   it("shows the points-specific empty state when there are only transaction rows", () => {

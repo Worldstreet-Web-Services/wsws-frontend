@@ -8,6 +8,7 @@ export const CATEGORY_LINKS: Array<MarketNavItem<MarketCategory>> = [
     label: "Basketball",
     href: "/prediction/markets?category=basketball",
   },
+  { key: "nfl", label: "NFL", href: "/prediction/markets?category=nfl" },
   { key: "politics", label: "Politics", href: "/prediction/markets?category=politics" },
   { key: "crypto", label: "Crypto", href: "/prediction/markets?category=crypto" },
   { key: "esports", label: "Esports", href: "/prediction/markets?category=esports" },

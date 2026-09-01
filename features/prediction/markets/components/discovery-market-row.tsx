@@ -18,7 +18,7 @@ export function DiscoveryMarketRow({ market, selectedIds, onSelect }: DiscoveryM
   const outcomes = yes || no ? [yes, no] : [market.outcomes[0] ?? null, market.outcomes[1] ?? null];
 
   return (
-    <div className="pointer-events-none relative z-[1] grid min-w-0 grid-cols-[minmax(0,1fr)_150px] items-center gap-1.5 border-t border-white/7 py-2 first:border-t-0 sm:grid-cols-[minmax(0,1fr)_minmax(190px,0.72fr)] sm:gap-2 sm:py-2.5">
+    <div className="pointer-events-none relative z-[1] grid min-w-0 grid-cols-[minmax(0,1fr)_150px] items-center gap-1.5 border-t border-white/7 py-2 first:border-t-0 sm:grid-cols-[minmax(0,1fr)_320px] sm:gap-2 sm:py-2.5">
       <div className="min-w-0 sm:pr-2">
         <p className="line-clamp-2 text-[11px] leading-[1.3] font-semibold text-white/78 sm:truncate sm:text-[12px]">
           {discoveryMarketLabel(market)}

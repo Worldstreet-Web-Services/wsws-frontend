@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NormalSport } from "../api";
 import { COMBO_EVENT_PAGE_SIZE } from "../cache-policy";
 import { mergeLeagueArtwork } from "../merge-league-artwork";
@@ -36,15 +36,28 @@ export function SportsMarketBoard({
   );
   const eventsWithArtwork = useComboTeamArtwork(events.events);
   const eventsWithProviderArtwork = mergeLeagueArtwork(eventsWithArtwork, filters.leagues);
+  const visibleEvents = filterEventsByWindow(eventsWithProviderArtwork, window);
+  const groups = groupLeagueFixtures(visibleEvents);
+  const shouldFindNextWindowPage =
+    !events.loading &&
+    !events.error &&
+    visibleEvents.length === 0 &&
+    events.hasMore &&
+    !events.loadingMore &&
+    !events.loadMoreError;
+  const waitingForVisibleGames =
+    groups.length === 0 && (events.loading || events.loadingMore || shouldFindNextWindowPage);
 
-  const groups = groupLeagueFixtures(filterEventsByWindow(eventsWithProviderArtwork, window));
+  useEffect(() => {
+    if (shouldFindNextWindowPage) void events.loadMore();
+  }, [events, shouldFindNextWindowPage]);
 
   return (
     <section className="overflow-hidden border-y border-white/8 bg-[#09090b] sm:rounded-[12px] sm:border">
       <MarketBoardFilters window={window} onWindowChange={setWindow} />
 
       <div className="space-y-2 py-2 sm:space-y-4 sm:p-4">
-        {events.loading ? <MarketBoardSkeleton /> : null}
+        {waitingForVisibleGames ? <MarketBoardSkeleton /> : null}
 
         {events.error ? (
           <div className="rounded-[10px] border border-red-400/20 bg-red-400/5 px-5 py-12 text-center">
@@ -59,7 +72,7 @@ export function SportsMarketBoard({
           </div>
         ) : null}
 
-        {!events.loading && !events.error && groups.length === 0 ? (
+        {!waitingForVisibleGames && !events.error && groups.length === 0 ? (
           <div className="rounded-[10px] border border-white/8 bg-white/[0.025] px-5 py-14 text-center">
             <p className="text-[13px] font-bold text-white/70">No matching games right now.</p>
             <p className="mt-2 text-[11px] text-white/38">Change the date or league filter.</p>
@@ -78,7 +91,7 @@ export function SportsMarketBoard({
           />
         ))}
 
-        {events.hasMore ? (
+        {events.hasMore && !shouldFindNextWindowPage ? (
           <div className="flex flex-col items-center gap-2 py-2">
             <button
               type="button"

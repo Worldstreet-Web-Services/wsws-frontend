@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import type { DiscoveryCategory } from "../api";
-import {
-  closingLabel,
-  compactUsd,
-  eventTopic,
-  type DiscoverySelection,
-} from "../discovery-presenter";
+import { discoverySlipSelection, toggleSlipSelection } from "../bet-slip";
+import { closingLabel, compactUsd, eventTopic } from "../discovery-presenter";
 import { useDiscoveryEvent } from "../hooks/use-discovery-markets";
+import { updateMarketSlip, usePersistedMarketSlip } from "../market-slip-storage";
 import { marketCategoryLabel } from "../navigation-config";
 import { DiscoveryMarketRow } from "./discovery-market-row";
 import { MarketBoardSkeleton } from "./market-board-skeleton";
@@ -21,7 +17,8 @@ interface DiscoveryEventDetailProps {
 
 export function DiscoveryEventDetail({ category, eventId }: DiscoveryEventDetailProps) {
   const query = useDiscoveryEvent(eventId);
-  const [selected, setSelected] = useState<DiscoverySelection | null>(null);
+  const { selections } = usePersistedMarketSlip();
+  const selectedIds = new Set(selections.map(({ id }) => id));
   const categoryLabel = marketCategoryLabel(category);
   const backHref = `/prediction/markets?category=${category}`;
 
@@ -117,10 +114,14 @@ export function DiscoveryEventDetail({ category, eventId }: DiscoveryEventDetail
             <DiscoveryMarketRow
               key={market.id}
               market={market}
-              selectedIds={new Set(selected ? [selected.id] : [])}
-              onSelect={(selection) =>
-                setSelected((current) => (current?.id === selection.id ? null : selection))
-              }
+              selectedIds={selectedIds}
+              onSelect={(selection) => {
+                const candidate = discoverySlipSelection(event, selection);
+                updateMarketSlip((current) => ({
+                  ...current,
+                  selections: toggleSlipSelection(current.selections, candidate),
+                }));
+              }}
             />
           ))}
         </div>

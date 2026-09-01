@@ -27,7 +27,7 @@ export function DiscoveryOutcomeButton({
       aria-label={`Buy ${selection.outcome} at ${selection.decimalOdds.toFixed(2)}`}
       aria-pressed={selected}
       onClick={() => onSelect(selection)}
-      className={`pointer-events-auto relative z-10 flex h-10 min-w-0 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[5px] border px-2 transition-[border-color,background-color,transform] active:scale-[0.98] sm:justify-between sm:rounded-[8px] sm:px-2.5 ${
+      className={`pointer-events-auto relative z-10 flex h-10 min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-[5px] border px-2 transition-[border-color,background-color,transform] active:scale-[0.98] sm:rounded-[8px] sm:px-2.5 ${
         selected
           ? negative
             ? "border-[#ff6872] bg-[#ff6872] text-[#1b0508]"
@@ -37,7 +37,6 @@ export function DiscoveryOutcomeButton({
             : "border-[#48df79]/12 bg-[#26342d] text-[#48df79] hover:border-[#48df79]/35 hover:bg-[#2b3d33]"
       }`}
     >
-      <span className="hidden truncate text-[11px] font-bold sm:inline">{selection.outcome}</span>
       <span className="shrink-0 text-[12px] font-black tabular-nums">
         {selection.decimalOdds.toFixed(2)}
       </span>

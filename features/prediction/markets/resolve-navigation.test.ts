@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest";
 import { resolveMarketNavigation } from "./resolve-navigation";
 
 describe("prediction market navigation", () => {
-  it("treats football and basketball as first-class categories", () => {
+  it("treats football, basketball props, and NFL props as first-class categories", () => {
     expect(resolveMarketNavigation({ category: "football", league: "ucl" })).toEqual({
       activeCategory: "football",
       activeLeague: "ucl",
     });
     expect(resolveMarketNavigation({ category: "basketball", league: "euroleague" })).toEqual({
       activeCategory: "basketball",
-      activeLeague: "euroleague",
+      activeLeague: "",
+    });
+    expect(resolveMarketNavigation({ category: "nfl" })).toEqual({
+      activeCategory: "nfl",
+      activeLeague: "",
     });
   });
 

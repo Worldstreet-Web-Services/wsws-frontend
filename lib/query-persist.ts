@@ -22,6 +22,11 @@ export const PERSISTED_PREFIXES = new Set([
   "prediction-combo-filters",
   "prediction-combo-events",
   "prediction-combo-event",
+  // The memecoin lists: the trade service's discovery provider goes down in
+  // bursts, taking every listing route with it. A persisted snapshot keeps
+  // real coins on screen through one of those bursts instead of an
+  // "unavailable" panel, and the refetch behind it corrects prices at once.
+  "meme",
 ]);
 
 export const RQ_PERSIST_KEY = "wsws.rq-cache.v1";

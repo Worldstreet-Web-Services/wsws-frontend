@@ -1,6 +1,6 @@
 import type { ComboEvent, ComboMarket, ComboSelection } from "./api";
 
-export type MarketWindow = "today" | "upcoming";
+export type MarketWindow = "today" | "next-24h" | "upcoming";
 
 export interface BoardSelection {
   id: string;
@@ -192,15 +192,19 @@ export function filterEventsByWindow(
   window: MarketWindow,
   now = new Date()
 ): ComboEvent[] {
-  if (window === "upcoming") return events;
   return events.filter((event) => {
-    if (event.live) return true;
     if (!event.startTime) return false;
     const start = new Date(event.startTime);
-    return (
+    const sameDay =
       start.getFullYear() === now.getFullYear() &&
       start.getMonth() === now.getMonth() &&
-      start.getDate() === now.getDate()
-    );
+      start.getDate() === now.getDate();
+
+    if (window === "today") return event.live || sameDay;
+    if (window === "next-24h") {
+      const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      return !event.live && start > now && start <= nextDay;
+    }
+    return !event.live && start > now && !sameDay;
   });
 }

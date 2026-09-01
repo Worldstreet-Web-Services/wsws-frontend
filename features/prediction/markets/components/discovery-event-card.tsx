@@ -17,11 +17,12 @@ export function DiscoveryEventCard({
   selectedIds,
   onSelect,
 }: DiscoveryEventCardProps) {
-  const hiddenMarkets = Math.max(0, event.marketCount - event.markets.length);
+  const visibleMarkets = event.markets.slice(0, 2);
+  const hiddenMarkets = Math.max(0, event.marketCount - visibleMarkets.length);
   const href = `/prediction/markets/${event.id}?category=${category}`;
 
   return (
-    <article className="relative overflow-hidden rounded-[12px] border border-white/8 bg-[linear-gradient(145deg,#15171b_0%,#101114_72%)] shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-colors hover:border-white/14">
+    <article className="relative overflow-hidden border-y border-white/8 bg-[linear-gradient(145deg,#15171b_0%,#101114_72%)] transition-colors hover:border-white/14 sm:rounded-[12px] sm:border sm:shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
       <Link href={href} aria-label={`Open ${event.title}`} className="absolute inset-0 z-0" />
 
       <header className="pointer-events-none relative z-[1] flex gap-2.5 border-b border-white/7 p-3 sm:gap-3 sm:p-4">
@@ -66,7 +67,7 @@ export function DiscoveryEventCard({
       </header>
 
       <div className="px-3 sm:px-4">
-        {event.markets.map((market) => (
+        {visibleMarkets.map((market) => (
           <DiscoveryMarketRow
             key={market.id}
             market={market}

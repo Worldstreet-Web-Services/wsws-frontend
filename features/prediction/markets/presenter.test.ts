@@ -130,4 +130,28 @@ describe("prediction sports presenter", () => {
       "live",
     ]);
   });
+
+  it("keeps Today out of Upcoming and orders the remaining fixtures by kickoff", () => {
+    const now = new Date("2026-08-28T12:00:00Z");
+    const today = event();
+    const live = event({ id: "live", startTime: "2026-08-27T19:00:00Z", live: true });
+    const later = event({ id: "later", startTime: "2026-09-23T19:00:00Z" });
+    const nearer = event({ id: "nearer", startTime: "2026-09-04T19:00:00Z" });
+    const upcoming = filterEventsByWindow([today, live, later, nearer], "upcoming", now);
+    const groups = groupLeagueFixtures(upcoming);
+
+    expect(groups[0].fixtures.map((fixture) => fixture.id)).toEqual(["nearer", "later"]);
+  });
+
+  it("keeps only future fixtures within the next rolling 24 hours", () => {
+    const now = new Date("2026-08-28T12:00:00Z");
+    const live = event({ id: "live", startTime: "2026-08-28T11:30:00Z", live: true });
+    const soon = event({ id: "soon", startTime: "2026-08-29T11:59:00Z" });
+    const boundary = event({ id: "boundary", startTime: "2026-08-29T12:00:00Z" });
+    const later = event({ id: "later", startTime: "2026-08-29T12:01:00Z" });
+
+    expect(
+      filterEventsByWindow([live, soon, boundary, later], "next-24h", now).map(({ id }) => id)
+    ).toEqual(["soon", "boundary"]);
+  });
 });

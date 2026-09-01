@@ -236,6 +236,8 @@ export const discoveryEventsSchema = z.object({
   category: z.enum([
     "trending",
     "sports",
+    "basketball",
+    "nfl",
     "politics",
     "crypto",
     "esports",

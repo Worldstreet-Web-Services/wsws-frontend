@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -16,6 +16,7 @@ import { AssetIcon } from "@/components/ui/asset-icon";
 import { SearchIcon } from "@/components/ui/icons";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
+import { useHiddenTokens } from "@/features/trade/hooks/use-hidden-tokens";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatUsd } from "@/lib/trade/math";
 import type { BuyPayload, DetailPayload } from "@/lib/modal-types";
@@ -23,6 +24,9 @@ import type { BuyPayload, DetailPayload } from "@/lib/modal-types";
 interface SpotSimpleViewProps {
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
+  // Drop tokens the user switched off in Manage Tokens. Only the dashboard's
+  // Explore tokens card opts in; the Spot section still lists everything.
+  hideDisabled?: boolean;
 }
 
 const PER_PAGE = 3;
@@ -45,15 +49,23 @@ const columns = [
   columnHelper.accessor("marketCap", { id: "mcap" }),
 ];
 
-export function SpotSimpleView({ onOpenDetail, onOpenBuy }: SpotSimpleViewProps) {
+export function SpotSimpleView({ onOpenDetail, onOpenBuy, hideDisabled }: SpotSimpleViewProps) {
   const t = useTranslations("markets");
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([{ id: "mcap", desc: true }]);
   const router = useRouter();
   const { markets, loading, error } = useSpotMarkets();
+  const { hidden } = useHiddenTokens();
+
+  // When opted in, drop the tokens switched off in Manage Tokens. The Manage
+  // Tokens page still lists them, so the choice is reversible.
+  const visibleMarkets = useMemo(
+    () => (hideDisabled ? markets.filter((m) => !hidden.has(m.symbol)) : markets),
+    [markets, hidden, hideDisabled]
+  );
 
   const table = useReactTable({
-    data: markets,
+    data: visibleMarkets,
     columns,
     state: { globalFilter: search, sorting },
     onGlobalFilterChange: setSearch,
@@ -99,7 +111,7 @@ export function SpotSimpleView({ onOpenDetail, onOpenBuy }: SpotSimpleViewProps)
   return (
     <div data-sensitive="position">
       {/* "Explore tokens ›" header — mobile only, desktop keeps the eyebrow. */}
-      <a className="mb-2 flex cursor-pointer items-center gap-[7px] md:hidden">
+      <a href="/explore-tokens" className="mb-2 flex cursor-pointer items-center gap-[7px] md:hidden">
         <span className="font-sans text-[20px] font-bold leading-8 tracking-[-0.24px] text-white">
           Explore tokens
         </span>

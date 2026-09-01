@@ -91,9 +91,10 @@ const MOBILE_LABELS: Partial<Record<SectionId, string>> = {
   spot: "Market",
 };
 
-// Three section tabs plus the broadcast control as the third visual item.
-// The close button on the right opens the sidebar drawer for everything else.
-const TAB_COUNT = 3;
+// The mobile tab bar always shows portfolio, spot (Market), broadcast, and
+// casino (Arkade) — regardless of the user's section order. The close button
+// on the right opens the sidebar drawer for everything else.
+const PINNED_TABS: SectionId[] = ["portfolio", "spot", "casino"];
 
 // The phone's bottom navigation: a frosted pill with the first sections and the
 // broadcast control, plus a separate close-style button that opens the sidebar
@@ -106,8 +107,11 @@ export function MobileTabBar({
   onOpenMore,
 }: MobileTabBarProps) {
   const t = useTranslations("topbar");
-  const tabs = items.slice(0, TAB_COUNT);
-  // Two tabs, then broadcast, then the remaining tab.
+  // Build the fixed tab set from the nav items, matching by section id.
+  const tabs = PINNED_TABS.map(
+    (id) => items.find((n) => n.id === id) ?? { id, label: id, icon: () => null }
+  );
+  // Two tabs (portfolio, market), then broadcast, then the last tab (arkade).
   const leading = tabs.slice(0, 2);
   const trailing = tabs.slice(2);
 

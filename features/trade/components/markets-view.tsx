@@ -8,7 +8,7 @@ import { SearchIcon } from "@/components/ui/icons";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { FlashPrice } from "@/features/trade/components/flash-price";
 import { SpotPanel } from "@/features/trade/components/spot-panel";
-import { MobileTradeSheet } from "@/features/trade/components/mobile-trade-sheet";
+import { MobileSpotTrade } from "@/features/trade/components/mobile-spot-trade";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { usePaged } from "@/hooks/use-paged";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -367,43 +367,15 @@ export function MarketsView() {
           ) : null}
         </div>
 
-        <MobileTradeSheet
+        {/* Tapping a market opens the restructured Spot Trading page (comp
+            251:16288): the section's own chart and order ticket in the new
+            layout. Switching pairs returns to this list. */}
+        <MobileSpotTrade
+          token={token}
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          title={base || "—"}
-          subtitle={token?.name}
-          priceSlot={
-            <FlashPrice value={mark} className="ws-display tnum block text-[15px]">
-              {mark > 0 ? formatUsd(mark) : "—"}
-            </FlashPrice>
-          }
-          marketPicker={(close) => (
-            <>
-              <div className="ws-inset mb-2 flex items-center gap-2.5 px-3.5 py-2.5">
-                <SearchIcon size={16} />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t("searchPlaceholder")}
-                  autoFocus
-                  className="min-w-0 flex-1 bg-transparent text-[14px] font-normal text-white outline-none"
-                />
-              </div>
-              <div className="ws-card overflow-hidden">
-                {filtered.slice(0, 60).map((m) =>
-                  marketRow(m, () => {
-                    setSelected(m.symbol);
-                    close();
-                  })
-                )}
-              </div>
-            </>
-          )}
-        >
-          {chartCard}
-          {ticket}
-          {holdingCard}
-        </MobileTradeSheet>
+          onSwitchMarket={() => setSheetOpen(false)}
+        />
       </>
     );
   }

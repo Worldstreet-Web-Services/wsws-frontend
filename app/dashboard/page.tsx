@@ -219,7 +219,9 @@ export default function DashboardPage() {
         onOpenFunds={openFunds}
         onOpenWithdraw={openWithdraw}
         crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
-        exploreTokensSlot={<SpotSimpleView onOpenDetail={openDetail} onOpenBuy={openBuy} />}
+        exploreTokensSlot={
+          <SpotSimpleView onOpenDetail={openDetail} onOpenBuy={openBuy} hideDisabled />
+        }
         onOpenDetail={openDetail}
         onOpenBuy={openBuy}
         onOpenSell={openSell}

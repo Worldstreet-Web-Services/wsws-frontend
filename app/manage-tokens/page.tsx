@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
+import { useHiddenTokens } from "@/features/trade/hooks/use-hidden-tokens";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatUsd } from "@/lib/trade/math";
 
@@ -39,11 +40,8 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 export default function ManageTokensPage() {
   const router = useRouter();
   const { markets } = useSpotMarkets();
+  const { isHidden, toggle } = useHiddenTokens();
   const [search, setSearch] = useState("");
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
-
-  // Default all tokens to ON if not yet set.
-  const isEnabled = (symbol: string) => enabled[symbol] ?? true;
 
   const filtered = markets.filter((m) =>
     `${m.symbol} ${m.name}`.toLowerCase().includes(search.toLowerCase())
@@ -132,15 +130,11 @@ export default function ManageTokensPage() {
                 </div>
               </div>
 
-              {/* Right: toggle */}
+              {/* Right: toggle. On means shown; off hides the token from the
+                  dashboard's Explore tokens list. */}
               <Toggle
-                checked={isEnabled(token.symbol)}
-                onChange={() =>
-                  setEnabled((prev) => ({
-                    ...prev,
-                    [token.symbol]: !isEnabled(token.symbol),
-                  }))
-                }
+                checked={!isHidden(token.symbol)}
+                onChange={() => toggle(token.symbol)}
               />
             </div>
           ))}

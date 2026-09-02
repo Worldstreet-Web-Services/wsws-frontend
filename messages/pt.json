@@ -1427,6 +1427,14 @@
           "name": "ArkBall",
           "note": "Pick 5 white balls and 1 ArkBall"
         },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Levante antes de o multiplicador cair"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Atravesse cada faixa e levante antes da queda"
+        },
         "ayo": {
           "name": "Ayo",
           "note": "Mancala com aposta, um contra um"

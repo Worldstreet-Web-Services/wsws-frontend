@@ -1427,6 +1427,14 @@
           "name": "ArkBall",
           "note": "Pick 5 white balls and 1 ArkBall"
         },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Cash out before the multiplier crashes"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cross each lane and cash out before the crash"
+        },
         "ayo": {
           "name": "Ayo",
           "note": "Staked mancala, head-to-head"

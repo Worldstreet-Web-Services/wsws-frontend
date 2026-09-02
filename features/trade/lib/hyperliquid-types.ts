@@ -157,6 +157,9 @@ export interface HlOrderRow {
   limitPrice: string | null;
   reduceOnly: boolean;
   status: HlOrderStatus;
+  /** Hyperliquid's own error string when status is "rejected" — a TP/SL leg
+   *  can be rejected while the entry of the same batch filled. */
+  rejectionReason?: string | null;
 }
 
 // ── Hyperliquid /exchange wire shapes (signed client-side) ──────────────

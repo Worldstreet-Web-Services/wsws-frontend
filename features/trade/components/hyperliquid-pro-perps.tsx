@@ -214,7 +214,11 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         className="grid min-h-0 grid-cols-1 gap-4 min-[1400px]:grid-cols-[minmax(0,1fr)_300px_420px]"
       >
         <div ref={chartColumnRef} className="min-h-0">
-          <HyperliquidChartPanel assetSymbol={asset?.symbol ?? ""} height={rowHeight} />
+          <HyperliquidChartPanel
+            assetSymbol={asset?.symbol ?? ""}
+            assetCategory={asset?.category}
+            height={rowHeight}
+          />
         </div>
         <div className="min-h-0">
           <HyperliquidMarketPanel symbol={asset?.symbol ?? ""} height={rowHeight} />

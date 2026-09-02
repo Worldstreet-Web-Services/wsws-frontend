@@ -184,20 +184,82 @@ interface Paged<T> {
   meta: { page: number; limit: number; total: number };
 }
 
-export function fetchTrendingTokens(): Promise<Paged<MemeToken>> {
-  return request("/tokens/trending");
+// Base mainnet USDC. The trade service refuses it as a meme-token selection —
+// it is the quote currency on both sides of every swap — so a card for it can
+// only dead-end when tapped. The catalog lists it because the catalog is every
+// indexed token, not every tradable meme coin.
+const BASE_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+
+// Enough Base rows to fill several pages of eight after USDC is dropped.
+const TRENDING_FALLBACK_LIMIT = 40;
+
+// The trending upstream currently hangs for ~10s before failing. Give up early
+// so the fallback lands while the loading placeholders are still on screen.
+const TRENDING_TIMEOUT_MS = 4_000;
+
+// /tokens/trending omits the whole risk block that /tokens returns:
+// riskLevel, warnings, buyEnabled and sellEnabled are simply absent. Rendering
+// one of those rows raw crashed the dashboard — RiskBadge called .charAt on a
+// missing level and Next replaced the page with its unrecoverable-error
+// screen. Normalising here rather than in each component keeps every consumer
+// safe, per this app's rule that upstream payloads are mapped into our own
+// types at the boundary.
+//
+// buyEnabled/sellEnabled default to TRUE deliberately. The service documents
+// them as display hints and repeats every policy check when a quote is
+// created, so the server still refuses a token it will not trade. Defaulting
+// to false would instead make every trending coin look untradable.
+export function withRiskDefaults(token: MemeToken): MemeToken {
+  return {
+    ...token,
+    riskLevel: token.riskLevel ?? "UNKNOWN",
+    warnings: token.warnings ?? [],
+    buyEnabled: token.buyEnabled ?? true,
+    sellEnabled: token.sellEnabled ?? true,
+  };
 }
 
-export function fetchTokenCatalog(page = 1, limit = 20): Promise<Paged<MemeToken>> {
-  return request(`/tokens?page=${page}&limit=${limit}`);
+function withoutQuoteCurrency(page: Paged<MemeToken>): Paged<MemeToken> {
+  const items = page.items
+    .filter((t) => t.address.toLowerCase() !== BASE_USDC)
+    .map(withRiskDefaults);
+  return { items, meta: { ...page.meta, total: items.length } };
 }
 
-export function searchTokens(q: string): Promise<MemeToken[]> {
-  return request(`/tokens/search?q=${encodeURIComponent(q.trim())}`);
+// The discovery feed and the persisted catalog are separate upstreams on the
+// trade service, so trending can be down while the catalog is healthy. When
+// that happens, fall back rather than showing an empty guided view beside a
+// working pro table. A catalog page is not ranked by trend, but real tradable
+// coins beat an "unavailable" panel. If the catalog is down too, that error
+// surfaces and the view shows its unavailable state.
+export async function fetchTrendingTokens(): Promise<Paged<MemeToken>> {
+  try {
+    return withoutQuoteCurrency(
+      await request<Paged<MemeToken>>("/tokens/trending", {
+        signal: AbortSignal.timeout(TRENDING_TIMEOUT_MS),
+      })
+    );
+  } catch {
+    // chain=base matches the "Trending on Base" heading and keeps every address
+    // in the EVM form the token detail routes expect.
+    return withoutQuoteCurrency(
+      await request<Paged<MemeToken>>(`/tokens?page=1&limit=${TRENDING_FALLBACK_LIMIT}&chain=base`)
+    );
+  }
 }
 
-export function fetchToken(address: string): Promise<MemeToken> {
-  return request(`/tokens/${address}`);
+export async function fetchTokenCatalog(page = 1, limit = 20): Promise<Paged<MemeToken>> {
+  const page_ = await request<Paged<MemeToken>>(`/tokens?page=${page}&limit=${limit}`);
+  return { ...page_, items: page_.items.map(withRiskDefaults) };
+}
+
+export async function searchTokens(q: string): Promise<MemeToken[]> {
+  const rows = await request<MemeToken[]>(`/tokens/search?q=${encodeURIComponent(q.trim())}`);
+  return rows.map(withRiskDefaults);
+}
+
+export async function fetchToken(address: string): Promise<MemeToken> {
+  return withRiskDefaults(await request<MemeToken>(`/tokens/${address}`));
 }
 
 export function fetchTradability(

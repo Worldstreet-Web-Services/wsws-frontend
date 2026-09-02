@@ -25,7 +25,7 @@
     "riskHigh": "Hohes Risiko",
     "riskCritical": "Kritisch",
     "riskUnknown": "Unbewertet",
-    "trendingTitle": "Im Trend auf Base",
+    "trendingTitle": "Aktuell im Trend",
     "unavailable": "Die Memecoin-Märkte sind derzeit nicht verfügbar.",
     "empty": "Noch keine Token.",
     "loading": "Wird geladen…",
@@ -514,6 +514,7 @@
       "faq": "FAQ",
       "connectTitle": "Verbinden",
       "contact": "Kontakt",
+      "email": "E-Mail",
       "rights": "© 2026 {brand}. Alle Rechte vorbehalten.",
       "disclaimer": "Keine Anlageberatung. Krypto- und Marktprodukte bergen Risiken, einschließlich des Verlusts des eingesetzten Kapitals."
     }
@@ -677,8 +678,6 @@
   },
   "rwa": {
     "eyebrow": "Reale Vermögenswerte",
-    "heading": "Reale Vermögenswerte",
-    "subheading": "Tokenisierte Staatsanleihen, Aktien, Kredite und Metalle. Live-Preise, sofortige Abwicklung, handeln oder über den Emittenten zugreifen.",
     "allCategories": "Alle",
     "searchPlaceholder": "Assets suchen",
     "asset": "Asset",
@@ -2295,8 +2294,7 @@
     "referralsLabel": "Empfehlungen",
     "pendingNote": "{count} beigetreten · erste Einzahlung ausstehend",
     "howTitle": "Wie funktioniert es?",
-    "howBody": "Teilen Sie Ihren Link. Sobald ein Freund ARK beitritt und die erste Einzahlung macht, zählt Ihre Empfehlung hier. Kash+-Belohnungen für Empfehlungen sind unterwegs.",
-    "howMinimum": "Die erste Einzahlung deines Freundes muss mindestens 1 $ betragen, damit sie zählt.",
+    "howBody": "Teile deinen Link mit einem Freund, damit er ARK beitritt und eine erste Einzahlung von mindestens 1 $ vornimmt, damit die Empfehlung zählt.",
     "cta": "Einladen und verdienen",
     "shareTitle": "Komm zu mir auf ARK",
     "shareText": "Melde dich über meinen Einladungslink an und lass uns gemeinsam auf ARK wachsen.",
@@ -2311,7 +2309,17 @@
     "claimCta": "Benutzernamen sichern",
     "claimFailed": "Dieser Benutzername konnte nicht gesichert werden. Versuchen Sie es erneut.",
     "loadFailed": "Ihre Empfehlungen konnten nicht geladen werden.",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "listTitle": "Empfehlungen",
+    "activeTab": "Aktive Empfehlungen",
+    "inactiveTab": "Inaktive Empfehlungen",
+    "counted": "Gezählt",
+    "depositPending": "Einzahlung ausstehend",
+    "noActive": "Bisher wurde keine Empfehlung gezählt.",
+    "noInactive": "Niemand wartet auf eine erste Einzahlung.",
+    "listUnavailable": "{count, plural, one {# Empfehlung erscheint hier, sobald Namen verfügbar sind.} other {# Empfehlungen erscheinen hier, sobald Namen verfügbar sind.}}",
+    "eligibilityTitle": "Voraussetzungen für Empfehlungen",
+    "eligibilityBody": "Dein Freund muss über deinen Empfehlungslink beitreten und eine erste Einzahlung von mindestens 1 $ vornehmen, damit die Empfehlung zählt."
   },
   "marquee": {
     "liveLabel": "Live",

@@ -28,6 +28,8 @@ import { BroadcastSessionProvider } from "@/components/broadcast/broadcast-sessi
 import { PrivyModalWatch } from "@/components/broadcast/privy-modal-watch";
 import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
 import { usePredictionQueryBroadcast } from "@/features/prediction/markets/query-broadcast";
+import { WALLET_CHAINS } from "@/lib/trade/wallet-chains";
+import { base } from "viem/chains";
 
 // Well-formed placeholder lets the app build before env vars are set.
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cl0123456789abcdefghijklm";
@@ -71,6 +73,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       appId={PRIVY_APP_ID}
       config={{
         loginMethods: ["google", "twitter", "email", "passkey"],
+        // Named explicitly so a chain id resolves to the chain we mean. See
+        // lib/trade/wallet-chains: 999 is HyperEVM here, not Zora Goerli.
+        supportedChains: [...WALLET_CHAINS],
+        defaultChain: base,
         embeddedWallets: {
           // Sign and send under the hood — no confirmation modal. The app
           // abstracts web3 away, so transactions (RWA buys, vault wagers,
@@ -120,8 +126,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 instead of dying with the page that started it. */}
             <BroadcastSessionProvider>
               <ClickRipple />
-              <PrivyModalWatch />
               {children}
+              {/* Holds the outgoing video while Privy's dialog is open, which is
+                where wallet export, recovery phrases and private-key reveal
+                live. Needs both contexts, so it mounts here rather than beside
+                the session provider. Renders nothing. */}
+              <PrivyModalWatch />
               {/* Syncs Mixpanel's identity to Privy auth state; needs to sit
                 inside PrivyProvider to read it. Renders nothing. */}
               <AnalyticsIdentity />

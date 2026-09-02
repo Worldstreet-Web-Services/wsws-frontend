@@ -9,12 +9,21 @@ import {
 } from "./use-singles-batch-order";
 
 describe("singles market-order price protection", () => {
-  it("allows three percent movement above the displayed implied price", () => {
-    expect(singlesMaxBuyPrice(2)).toBe("0.5150");
+  it("aligns the protected price down to the market tick", () => {
+    expect(singlesMaxBuyPrice(2, 0.01)).toBe("0.51");
+    expect(singlesMaxBuyPrice(2, 0.005)).toBe("0.515");
   });
 
-  it("caps the maximum order price below one dollar", () => {
-    expect(singlesMaxBuyPrice(1.01)).toBe("0.9900");
+  it("caps the maximum order price one tick below one dollar", () => {
+    expect(singlesMaxBuyPrice(1.01, 0.01)).toBe("0.99");
+  });
+
+  it("keeps the failed Nottingham order price on its one-cent grid", () => {
+    expect(singlesMaxBuyPrice(5.06 / 1.95, 0.01)).toBe("0.39");
+  });
+
+  it("rejects invalid market tick sizes", () => {
+    expect(() => singlesMaxBuyPrice(2, 0)).toThrow(/invalid price increment/i);
   });
 });
 
@@ -24,6 +33,8 @@ describe("singles minimum stake", () => {
       minimumBuyStakeE6(
         {
           minOrderSize: "5",
+          negRisk: false,
+          tickSize: 0.01,
           asks: [
             { price: "0.04", size: "10" },
             { price: "0.03", size: "2" },
@@ -36,7 +47,15 @@ describe("singles minimum stake", () => {
 
   it("returns null when the protected price has insufficient liquidity", () => {
     expect(
-      minimumBuyStakeE6({ minOrderSize: "5", asks: [{ price: "0.06", size: "10" }] }, "0.05")
+      minimumBuyStakeE6(
+        {
+          minOrderSize: "5",
+          negRisk: false,
+          tickSize: 0.01,
+          asks: [{ price: "0.06", size: "10" }],
+        },
+        "0.05"
+      )
     ).toBeNull();
   });
 

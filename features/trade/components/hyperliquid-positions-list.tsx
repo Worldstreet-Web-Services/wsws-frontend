@@ -162,7 +162,12 @@ export function HyperliquidPositionsList({
                         : "bg-white/6 text-white/45 hover:text-white/70"
                     }`}
                   >
-                    {takeProfit ? `TP @ ${takeProfit.limitPrice}` : "Add TP"}
+                    {/* limitPrice is nullable on the row — "TP set" beats rendering "TP @ null". */}
+                    {takeProfit
+                      ? takeProfit.limitPrice
+                        ? `TP @ ${takeProfit.limitPrice}`
+                        : "TP set"
+                      : "Add TP"}
                   </button>
                   <button
                     onClick={() =>
@@ -174,7 +179,7 @@ export function HyperliquidPositionsList({
                         : "bg-white/6 text-white/45 hover:text-white/70"
                     }`}
                   >
-                    {stopLoss ? `SL @ ${stopLoss.limitPrice}` : "Add SL"}
+                    {stopLoss ? (stopLoss.limitPrice ? `SL @ ${stopLoss.limitPrice}` : "SL set") : "Add SL"}
                   </button>
                   <button
                     onClick={() => setClosing(position)}

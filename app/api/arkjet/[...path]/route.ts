@@ -21,6 +21,10 @@ const BET_ID = /^bets\/[0-9a-f-]{36}$/iu;
 const BET_CASHOUT = /^bets\/[0-9a-f-]{36}\/cashout$/iu;
 const FUNDING_CONFIG = "funding/config";
 const FUNDING_WRITE = /^funding\/(?:deposits\/confirm|withdrawals)$/u;
+const CHICKEN_PUBLIC_READ = /^(?:chicken\/rules|chicken\/proofs\/[0-9a-f-]{36})$/iu;
+const CHICKEN_READ = /^chicken\/sessions\/(?:active|history)$/u;
+const CHICKEN_START = /^chicken\/(?:sessions|autoplay)$/u;
+const CHICKEN_ACTION = /^chicken\/sessions\/[0-9a-f-]{36}\/(?:steps|cashout)$/iu;
 
 function invalidPath() {
   return NextResponse.json(
@@ -55,15 +59,22 @@ async function forward(
   const isBet =
     joined === "bets" || BET_READ.test(joined) || BET_ID.test(joined) || BET_CASHOUT.test(joined);
   const isFundingWrite = FUNDING_WRITE.test(joined);
-  const requiresAuth = isChat || isBet || isFundingWrite;
+  const isChicken =
+    CHICKEN_READ.test(joined) || CHICKEN_START.test(joined) || CHICKEN_ACTION.test(joined);
+  const requiresAuth = isChat || isBet || isFundingWrite || isChicken;
   const allowed =
     (method === "GET" &&
       (PUBLIC_READ.test(joined) ||
         joined === FUNDING_CONFIG ||
+        CHICKEN_PUBLIC_READ.test(joined) ||
+        CHICKEN_READ.test(joined) ||
         joined === "chat" ||
         BET_READ.test(joined))) ||
     (method === "POST" &&
       (joined === "fairness/verify" ||
+        joined === "chicken/proofs/verify" ||
+        CHICKEN_START.test(joined) ||
+        CHICKEN_ACTION.test(joined) ||
         joined === "chat/messages" ||
         joined === "chat/presence" ||
         joined === "bets" ||

@@ -202,7 +202,7 @@ function FairnessDialog({
             Algorithm<strong>{rules?.algorithmVersion ?? current.algorithmVersion}</strong>
           </div>
           <div className={styles.fairStat}>
-            Published RTP<strong>{rules?.rtpPercent ?? "96.80"}%</strong>
+            Published RTP<strong>{rules?.rtpPercent ?? "76.00"}%</strong>
           </div>
           <div className={styles.fairStat}>
             Hash<strong>{rules?.result.hashAlgorithm ?? "SHA-256"}</strong>

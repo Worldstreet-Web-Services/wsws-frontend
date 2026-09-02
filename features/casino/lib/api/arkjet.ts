@@ -198,6 +198,90 @@ export interface ArkjetLikeResult {
   likeCount: number;
 }
 
+export type ChickenDifficulty = "easy" | "medium" | "hard";
+export type ChickenSessionStatus = "active" | "cashed_out" | "lost";
+export type ChickenStepOutcomeReason = "random" | "liquidity";
+
+export interface ChickenDifficultyRules {
+  difficulty: ChickenDifficulty;
+  payoutMultipliersHundredths: number[];
+}
+
+export interface ChickenRules {
+  algorithmVersion: string;
+  hashAlgorithm: string;
+  commitmentDomain: string;
+  stepDomain: string;
+  rtpBasisPoints: number;
+  rtpPercent: string;
+  houseEdgeBasisPoints: number;
+  houseEdgePercent: string;
+  reserveRiskBasisPoints: number;
+  reserveRiskPercent: string;
+  maximumSteps: number;
+  multiplierModel: string;
+  winningCondition: string;
+  liabilityPolicy: string;
+  difficulties: ChickenDifficultyRules[];
+}
+
+export interface ChickenStep {
+  step: number;
+  multiplierHundredths: number;
+  multiplier: string;
+  won: boolean;
+  randomWon: boolean;
+  outcomeReason: ChickenStepOutcomeReason;
+  resultHash: string;
+  randomValueHex: string;
+}
+
+export interface ChickenSession {
+  sessionId: string;
+  status: ChickenSessionStatus;
+  difficulty: ChickenDifficulty;
+  currency: string;
+  amount: string;
+  maximumStep: number;
+  maximumPayableStep: number;
+  liquidityCrashStep: number | null;
+  currentStep: number;
+  attemptedSteps: number;
+  currentMultiplier: string;
+  potentialPayout: string;
+  maximumPayout: string;
+  reservedNetLiability: string;
+  payout: string | null;
+  serverSeedCommitment: string;
+  serverSeed: string | null;
+  clientSeed: string;
+  algorithmVersion: string;
+  rtpBasisPoints: number;
+  version: number;
+  steps: ChickenStep[];
+  startedAt: string;
+  settledAt: string | null;
+}
+
+export interface ChickenHistory {
+  items: ChickenSession[];
+  total: number;
+}
+
+export interface StartChickenInput {
+  amount: string;
+  currency: string;
+  difficulty: ChickenDifficulty;
+  clientSeed: string;
+  idempotencyKey: string;
+}
+
+export interface ChickenActionInput {
+  sessionId: string;
+  expectedVersion: number;
+  idempotencyKey: string;
+}
+
 export function fetchArkjetCurrentRound(): Promise<ArkjetRound> {
   return arkjet.get<ArkjetRound>("/rounds/current");
 }
@@ -272,4 +356,34 @@ export function setArkjetMessageLike(messageId: string, liked: boolean): Promise
 
 export function refreshArkjetPresence(): Promise<{ onlineCount: number }> {
   return arkjet.post<{ onlineCount: number }>("/chat/presence");
+}
+
+export function fetchChickenRules(): Promise<ChickenRules> {
+  return arkjet.get<ChickenRules>("/chicken/rules");
+}
+
+export function fetchActiveChicken(): Promise<ChickenSession | null> {
+  return arkjet.authedGet<ChickenSession | null>("/chicken/sessions/active");
+}
+
+export function fetchChickenHistory(limit = 20): Promise<ChickenHistory> {
+  return arkjet.authedGet<ChickenHistory>("/chicken/sessions/history", { limit });
+}
+
+export function startChicken(input: StartChickenInput): Promise<ChickenSession> {
+  return arkjet.post<ChickenSession>("/chicken/sessions", input);
+}
+
+export function stepChicken(input: ChickenActionInput): Promise<ChickenSession> {
+  return arkjet.post<ChickenSession>(
+    `/chicken/sessions/${encodeURIComponent(input.sessionId)}/steps`,
+    { expectedVersion: input.expectedVersion, idempotencyKey: input.idempotencyKey }
+  );
+}
+
+export function cashoutChicken(input: ChickenActionInput): Promise<ChickenSession> {
+  return arkjet.post<ChickenSession>(
+    `/chicken/sessions/${encodeURIComponent(input.sessionId)}/cashout`,
+    { expectedVersion: input.expectedVersion, idempotencyKey: input.idempotencyKey }
+  );
 }

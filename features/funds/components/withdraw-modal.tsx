@@ -7,12 +7,16 @@ import { track } from "@/lib/analytics/mixpanel";
 import { CryptoWithdrawScreen } from "@/features/funds/components/crypto-withdraw-screen";
 import { BankWithdrawScreen } from "@/features/funds/components/bank-withdraw-screen";
 import { SwapIcon, BankIcon } from "@/components/ui/icons";
+import { BANK_WITHDRAW_ENABLED } from "@/features/funds/lib/flags";
 
 type Step = "chooser" | "crypto" | "bank";
 
 export function WithdrawModal({ onClose }: { onClose: () => void }) {
   const t = useTranslations("withdrawModal");
-  const [step, setStep] = useState<Step>("chooser");
+  // With bank withdrawal off there is only one method, so the chooser is
+  // skipped rather than shown with a single tile, and back closes the modal
+  // because there is nothing behind it.
+  const [step, setStep] = useState<Step>(BANK_WITHDRAW_ENABLED ? "chooser" : "crypto");
   const back = () => setStep("chooser");
 
   // Reported once per open, at the top of the withdraw funnel.
@@ -20,7 +24,8 @@ export function WithdrawModal({ onClose }: { onClose: () => void }) {
     track("withdraw_opened");
   }, []);
 
-  if (step === "crypto") return <CryptoWithdrawScreen onBack={back} />;
+  if (step === "crypto")
+    return <CryptoWithdrawScreen onBack={BANK_WITHDRAW_ENABLED ? back : onClose} />;
   if (step === "bank") return <BankWithdrawScreen onBack={back} />;
 
   return (
@@ -35,12 +40,14 @@ export function WithdrawModal({ onClose }: { onClose: () => void }) {
           badge={t("popular")}
           onClick={() => setStep("crypto")}
         />
-        <MethodTile
-          icon={<BankIcon size={22} />}
-          title={t("bankTitle")}
-          subtitle={t("bankSubtitle")}
-          onClick={() => setStep("bank")}
-        />
+        {BANK_WITHDRAW_ENABLED && (
+          <MethodTile
+            icon={<BankIcon size={22} />}
+            title={t("bankTitle")}
+            subtitle={t("bankSubtitle")}
+            onClick={() => setStep("bank")}
+          />
+        )}
       </div>
       <button
         onClick={onClose}

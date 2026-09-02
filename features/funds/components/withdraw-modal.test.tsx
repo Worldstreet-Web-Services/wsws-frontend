@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WithdrawModal } from "@/features/funds/components/withdraw-modal";
@@ -37,16 +37,16 @@ afterEach(() => {
 });
 
 describe("WithdrawModal with bank withdrawal disabled", () => {
-  it("goes straight to the crypto screen instead of a one-option chooser", () => {
+  it("keeps the external wallet tile and drops only the bank one", () => {
     renderModal();
-    expect(screen.getByText("crypto screen")).toBeInTheDocument();
+    expect(screen.getByText("To external wallet")).toBeInTheDocument();
     expect(screen.queryByText("To bank")).not.toBeInTheDocument();
   });
 
-  it("closes the modal on back, since no chooser sits behind it", () => {
-    const onClose = renderModal();
-    screen.getByText("crypto screen").click();
-    expect(onClose).toHaveBeenCalledOnce();
+  it("still reaches the crypto screen from the chooser", () => {
+    renderModal();
+    fireEvent.click(screen.getByRole("button", { name: /To external wallet/ }));
+    expect(screen.getByText("crypto screen")).toBeInTheDocument();
   });
 });
 

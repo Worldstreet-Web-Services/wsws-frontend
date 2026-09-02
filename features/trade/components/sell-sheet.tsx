@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -9,6 +10,7 @@ import { useSell } from "@/features/trade/hooks/use-sell";
 import { savePendingRwaSettlement } from "@/lib/trade/pending-settlement";
 import { formatAmount, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { maxSellable } from "@/lib/trade/gas-buffer";
+import { nativeSendCost } from "@/lib/trade/native-gas";
 import { SolanaBalanceChangedError } from "@/lib/trade/solana-balance";
 import { hasGasPolicyForNetwork } from "@/lib/trade/sponsored-evm";
 import { nativeSymbol, networkLabel } from "@/lib/trade/networks";
@@ -55,11 +57,25 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
     [sponsored, portfolio.tokens, payload.network, nativeSym]
   );
 
-  // Selling the chain's own gas token can't spend the whole balance: the fee
-  // comes out of the same asset, so a full-balance send always fails. maxSell
-  // holds back a small per-chain buffer for that case (Base keeps the full
-  // balance, its sends are sponsored) and the max/percent fills stay under it.
-  const maxSell = maxSellable(payload.network, payload.address, payload.balance);
+  // Selling a chain's own gas token pays the fee out of the same balance, so the
+  // amount sent has to be the balance minus that fee. Reading the live gas price
+  // makes the difference the fee itself rather than a round number picked in
+  // advance: on HyperEVM that is the difference between holding back a few cents
+  // and holding back several dollars of an eighty-dollar token. A chain with no
+  // read node, or a node that will not answer, falls back to the sized reserve.
+  const sellsNativeToken = payload.address === null && !sponsored;
+  const measuredGas = useQuery({
+    queryKey: ["nativeSendCost", payload.network],
+    queryFn: () => nativeSendCost(payload.network),
+    enabled: sellsNativeToken,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const maxSell =
+    sellsNativeToken && measuredGas.data !== undefined
+      ? Math.max(0, payload.balance - measuredGas.data)
+      : maxSellable(payload.network, payload.address, payload.balance);
 
   // Plain decimal string for the amount input. String() renders very small
   // numbers in scientific notation, which the input regex and base-unit

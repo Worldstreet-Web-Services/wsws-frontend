@@ -235,11 +235,7 @@ export function ArkjetMultiplierBar({ rounds }: { rounds: ArkjetRound[] }) {
                 key={round.roundId}
                 type="button"
                 className={styles.historyMultiplier + " " + multiplierClass(value)}
-                title={
-                  round.crashReason === "LIQUIDITY"
-                    ? `Round ${round.sequence}: liquidity-capped from ${round.randomCrashMultiplier ?? "unknown"}x`
-                    : `Round ${round.sequence}: random result`
-                }
+                title={`Round ${round.sequence}: ${value.toFixed(2)}x`}
               >
                 {value.toFixed(2)}x
               </button>
@@ -408,11 +404,6 @@ export function ArkjetStage({
         >
           {revealed ? <span className={styles.flewAway}>FLEW AWAY!</span> : null}
           {multiplier.toFixed(2)}x
-          {revealed && round.crashReason === "LIQUIDITY" ? (
-            <span className={styles.crashReason}>
-              Liquidity cap · random result {round.randomCrashMultiplier ?? "unavailable"}x
-            </span>
-          ) : null}
         </div>
       ) : null}
 

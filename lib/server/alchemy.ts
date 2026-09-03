@@ -405,10 +405,8 @@ const CACHE_TTL_MS = 15_000;
 // each distinct symbol set costs at most one upstream call per interval, and
 // a 429 during a burst finds a fresh-enough snapshot to serve instead.
 const PRICES_CACHE_TTL_MS = 45_000;
-// Balances change on every deposit/withdraw/wager/claim, and the client
-// refetches on Base blocks (throttled client-side). Keep the portfolio TTL
-// short so those refreshes see movement; prices keep the longer TTL (they
-// move slowly).
+// Transaction flows bypass this cache explicitly when they need to observe
+// their own writes. Background reads can share this short snapshot.
 const PORTFOLIO_CACHE_TTL_MS = 15_000;
 // How long past expiry a snapshot may still stand in when the upstream call
 // fails. Slightly stale balances beat an error flash — but a snapshot old

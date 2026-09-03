@@ -25,7 +25,12 @@ const ALLOWED_METHODS = new Set([
   "eth_supportedEntryPoints",
 ]);
 
-const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
+// Both the send AND the gas estimate need the policy header: the client
+// signals sponsorship with zeroed fee fields (see lib/trade/sponsor.ts), and
+// an estimate that reaches Alchemy without the policy context can reject
+// those zeroes as "Invalid fields set on User Operation" before the send is
+// ever attempted.
+const SPONSORED_METHODS = new Set(["eth_sendUserOperation", "eth_estimateUserOperationGas"]);
 
 interface RpcCall {
   jsonrpc?: string;
@@ -55,7 +60,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       return NextResponse.json({ error: "Method not allowed" }, { status: 403 });
     }
   }
-  const needsPolicy = calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
+  const needsPolicy = calls.some((call) => call && SPONSORED_METHODS.has(call.method));
   if (needsPolicy && !POLICY_ID) {
     return NextResponse.json({ error: "Alchemy gas policy is missing" }, { status: 503 });
   }
@@ -71,6 +76,19 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       signal: AbortSignal.timeout(30000),
     });
     const data = await res.json().catch(() => ({}));
+    // A JSON-RPC error from the bundler (schema rejection, paused policy,
+    // exhausted budget) otherwise passes through invisibly and surfaces only
+    // as a truncated toast in the browser — log the full detail server-side
+    // so the dev terminal shows exactly what Alchemy objected to.
+    for (const item of Array.isArray(data) ? data : [data]) {
+      const rpcError = (item as { error?: { code?: number; message?: string } })?.error;
+      if (rpcError) {
+        console.error(
+          `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
+          rpcError
+        );
+      }
+    }
     return NextResponse.json(data, {
       status: res.status,
       headers: {

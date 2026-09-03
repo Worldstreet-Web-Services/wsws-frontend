@@ -14,6 +14,11 @@ const USER_OPERATION_METHODS = new Set([
 ]);
 const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
 const PAYMASTER_METHODS = new Set(["pm_getPaymasterStubData", "pm_getPaymasterData"]);
+// BSO sponsorship needs the policy header on the gas estimate too, not just the
+// send: the client signals sponsorship with zeroed fee fields (lib/trade/sponsor.ts),
+// and an estimate that reaches Alchemy without the policy context rejects those
+// zeroes as "Invalid fields set on User Operation" before the send is attempted.
+const BSO_POLICY_METHODS = new Set([SPONSORED_SEND_METHOD, "eth_estimateUserOperationGas"]);
 const MAX_BATCH_CALLS = 100;
 
 interface RpcCall {
@@ -70,7 +75,6 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
   ) {
     return NextResponse.json({ error: "Method not allowed" }, { status: 403 });
   }
-
   const bsoPolicyId = process.env.ALCHEMY_GAS_POLICY_ID?.trim();
   const polygonPolicyId = process.env.ALCHEMY_POLYGON_GAS_POLICY_ID?.trim();
   const needsPaymasterPolicy =
@@ -78,7 +82,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)));
   const needsBsoPolicy =
     target.sponsorshipMode === "bso" &&
-    calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
+    calls.some((call) => Boolean(call && BSO_POLICY_METHODS.has(call.method)));
 
   if (needsPaymasterPolicy && !polygonPolicyId) {
     return NextResponse.json(
@@ -111,7 +115,26 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       signal: AbortSignal.timeout(30_000),
       cache: "no-store",
     });
-    return new NextResponse(await response.text(), {
+    const text = await response.text();
+    // A JSON-RPC error from the bundler (schema rejection, paused policy,
+    // exhausted budget) otherwise passes through invisibly and surfaces only
+    // as a truncated toast in the browser — log the full detail server-side
+    // so the dev terminal shows exactly what Alchemy objected to.
+    try {
+      const data = JSON.parse(text);
+      for (const item of Array.isArray(data) ? data : [data]) {
+        const rpcError = (item as { error?: { code?: number; message?: string } })?.error;
+        if (rpcError) {
+          console.error(
+            `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
+            rpcError
+          );
+        }
+      }
+    } catch {
+      // Non-JSON body — nothing to introspect; pass it through unchanged.
+    }
+    return new NextResponse(text, {
       status: response.status,
       headers: {
         "Content-Type": "application/json",

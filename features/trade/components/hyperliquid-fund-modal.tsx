@@ -6,7 +6,7 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SuccessPanel } from "@/components/ui/success-panel";
 import { toast } from "@/lib/toast";
-import { friendlyError } from "@/lib/errors";
+import { friendlyError, supportDetail } from "@/lib/errors";
 import { useEvmSendBatch } from "@/hooks/use-evm-send";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatAmount, toBaseUnits } from "@/lib/trade/math";
@@ -192,7 +192,12 @@ export function HyperliquidFundModal({
       setStage({ name: "done", amount, ...bridgeResult });
       onFunded();
     } catch (error) {
-      toast.error(friendlyError(error, "Transfer failed."));
+      // The friendly message alone hid WHAT reverted (a real report arrived as
+      // just "the network rejected this transaction", undiagnosable). Carry
+      // the trimmed raw reason beside it, the way lib/errors.ts intends.
+      const detail = supportDetail(error, 120);
+      const friendly = friendlyError(error, "Transfer failed.");
+      toast.error(detail && detail !== friendly ? `${friendly} (${detail})` : friendly);
       setStage({ name: "form" });
     }
   };
@@ -228,8 +233,7 @@ export function HyperliquidFundModal({
             <div className="text-center">
               <div className="ws-display text-[18px]">Top up</div>
               <p className="mt-1 text-[12.5px] font-normal text-white/50">
-                Signed silently, no popup — usually lands in your perps wallet within a couple of
-                minutes.
+                Usually takes a minute or two.
               </p>
             </div>
 

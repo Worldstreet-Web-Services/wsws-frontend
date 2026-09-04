@@ -5,7 +5,10 @@ import { formatAmount } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { HyperliquidClosePositionModal } from "@/features/trade/components/hyperliquid-close-position-modal";
 import { HyperliquidHistoryModal } from "@/features/trade/components/hyperliquid-history-modal";
+import { HyperliquidPnlShareModal } from "@/features/trade/components/hyperliquid-pnl-share-modal";
+import { listClosedPositions } from "@/features/trade/lib/hyperliquid-api";
 import type {
+  HlClosedPositionView,
   HlOrderRow,
   HlPositionView,
   HlTriggerKind,
@@ -28,6 +31,15 @@ interface HyperliquidPositionsListProps {
 
 const RESTING_STATUSES = new Set(["submitted", "open", "partially_filled"]);
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
+
+// How long to keep looking for the just-closed position's final record (with
+// its real fill price and PnL) before giving up on the auto-popup. The close
+// fill normally lands within a second or two; the card stays reachable from
+// Trading history either way, so a timeout costs nothing but the popup.
+const SHARE_CARD_POLL_TIMEOUT_MS = 20_000;
+const SHARE_CARD_POLL_INTERVAL_MS = 1_500;
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function findTrigger(
   orders: HlOrderRow[],
@@ -52,6 +64,7 @@ export function HyperliquidPositionsList({
   onEditTrigger,
 }: HyperliquidPositionsListProps) {
   const [closing, setClosing] = useState<HlPositionView | null>(null);
+  const [shareCard, setShareCard] = useState<HlClosedPositionView | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expanded, setExpanded] = useState<{ positionId: string; kind: HlTriggerKind } | null>(
     null
@@ -86,6 +99,25 @@ export function HyperliquidPositionsList({
     }
   };
 
+  // After a close is accepted, the position's final record (real fill price,
+  // realized PnL) is written by the fill event a moment later — poll for it
+  // and pop the share card the instant it exists. Fire-and-forget: the close
+  // modal must not wait on this, and a timeout just means no popup (the card
+  // stays available from Trading history).
+  const offerShareCard = async (positionId: string) => {
+    if (!walletId) return;
+    const deadline = Date.now() + SHARE_CARD_POLL_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      const closed = await listClosedPositions(walletId).catch(() => []);
+      const match = closed.find((p) => p.id === positionId);
+      if (match) {
+        setShareCard(match);
+        return;
+      }
+      await delay(SHARE_CARD_POLL_INTERVAL_MS);
+    }
+  };
+
   const confirmClose = async (position: HlPositionView) => {
     const siblingIds = orders
       .filter(
@@ -96,6 +128,7 @@ export function HyperliquidPositionsList({
       )
       .map((o) => o.id);
     await onClosePosition(position, siblingIds);
+    void offerShareCard(position.id);
   };
 
   return (
@@ -179,7 +212,11 @@ export function HyperliquidPositionsList({
                         : "bg-white/6 text-white/45 hover:text-white/70"
                     }`}
                   >
-                    {stopLoss ? (stopLoss.limitPrice ? `SL @ ${stopLoss.limitPrice}` : "SL set") : "Add SL"}
+                    {stopLoss
+                      ? stopLoss.limitPrice
+                        ? `SL @ ${stopLoss.limitPrice}`
+                        : "SL set"
+                      : "Add SL"}
                   </button>
                   <button
                     onClick={() => setClosing(position)}
@@ -231,6 +268,11 @@ export function HyperliquidPositionsList({
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
         walletId={walletId}
+      />
+      <HyperliquidPnlShareModal
+        open={shareCard !== null}
+        onClose={() => setShareCard(null)}
+        position={shareCard}
       />
     </div>
   );

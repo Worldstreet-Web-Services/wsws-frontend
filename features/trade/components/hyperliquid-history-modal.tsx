@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatAmount, formatUsd } from "@/lib/trade/math";
 import { useHyperliquidClosedPositions } from "@/features/trade/hooks/use-hyperliquid-closed-positions";
+import { HyperliquidPnlShareModal } from "@/features/trade/components/hyperliquid-pnl-share-modal";
 import type { HlClosedPositionView } from "@/features/trade/lib/hyperliquid-types";
 
 interface HyperliquidHistoryModalProps {
@@ -45,6 +47,7 @@ function formatTimestamp(value: string): string {
 
 export function HyperliquidHistoryModal({ open, onClose, walletId }: HyperliquidHistoryModalProps) {
   const { positions, loading, error } = useHyperliquidClosedPositions(walletId, open);
+  const [sharing, setSharing] = useState<HlClosedPositionView | null>(null);
 
   return (
     <ModalShell open={open} onClose={onClose} size="lg">
@@ -132,6 +135,12 @@ export function HyperliquidHistoryModal({ open, onClose, walletId }: Hyperliquid
                         <span className="tnum text-white/85">{position.closePrice}</span>
                       </div>
                     </div>
+                    <button
+                      onClick={() => setSharing(position)}
+                      className="cursor-pointer rounded-lg bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-white/80 transition-colors hover:bg-white/14 hover:text-white"
+                    >
+                      Share
+                    </button>
                   </div>
                 </div>
               );
@@ -146,6 +155,11 @@ export function HyperliquidHistoryModal({ open, onClose, walletId }: Hyperliquid
           </div>
         )}
       </div>
+      <HyperliquidPnlShareModal
+        open={sharing !== null}
+        onClose={() => setSharing(null)}
+        position={sharing}
+      />
     </ModalShell>
   );
 }

@@ -25,12 +25,9 @@ const ALLOWED_METHODS = new Set([
   "eth_supportedEntryPoints",
 ]);
 
-// Both the send AND the gas estimate need the policy header: the client
-// signals sponsorship with zeroed fee fields (see lib/trade/sponsor.ts), and
-// an estimate that reaches Alchemy without the policy context can reject
-// those zeroes as "Invalid fields set on User Operation" before the send is
-// ever attempted.
-const SPONSORED_METHODS = new Set(["eth_sendUserOperation", "eth_estimateUserOperationGas"]);
+// Per Alchemy's Bundler Sponsored Operations docs, the policy header goes on
+// eth_sendUserOperation only — the estimate does not take it.
+const SPONSORED_METHODS = new Set(["eth_sendUserOperation"]);
 
 interface RpcCall {
   jsonrpc?: string;
@@ -76,16 +73,17 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       signal: AbortSignal.timeout(30000),
     });
     const data = await res.json().catch(() => ({}));
-    // A JSON-RPC error from the bundler (schema rejection, paused policy,
-    // exhausted budget) otherwise passes through invisibly and surfaces only
-    // as a truncated toast in the browser — log the full detail server-side
-    // so the dev terminal shows exactly what Alchemy objected to.
+    // A JSON-RPC error from the bundler (schema rejection, wrong policy type,
+    // exhausted credits) otherwise passes through invisibly and surfaces only
+    // as a truncated toast in the browser — log the full detail server-side,
+    // with the method that produced it, so the dev terminal shows exactly
+    // what Alchemy objected to.
     for (const item of Array.isArray(data) ? data : [data]) {
       const rpcError = (item as { error?: { code?: number; message?: string } })?.error;
       if (rpcError) {
         console.error(
           `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
-          rpcError
+          JSON.stringify(rpcError)
         );
       }
     }

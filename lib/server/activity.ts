@@ -14,6 +14,7 @@ import {
   type ActionRegistry,
 } from "@/lib/server/action-registry";
 import { alchemyFetch } from "@/lib/server/alchemy-keys";
+import { cached } from "@/lib/server/response-cache";
 
 type RwaRegistry = Record<string, Map<string, RwaTokenInfo>>;
 
@@ -290,12 +291,29 @@ async function solanaActivity(
 // Recent wallet activity across every tracked chain, newest first. Spam is
 // filtered with the same allowlist the portfolio uses, so a dusting airdrop
 // never appears here either.
-export async function fetchActivity(
-  evm?: string,
-  solana?: string,
-  limit = 40
-): Promise<ActivityItem[]> {
-  if (!evm && !solana) return [];
+/**
+ * How long one wallet's history may be served from a snapshot.
+ *
+ * One sweep costs an upstream call per network per direction, which is the
+ * most expensive read in the app by a wide margin, and history only changes
+ * when a transaction lands. 90s is longer than the notification bell's poll on
+ * purpose: the bell sits in the topbar on every screen, so without this every
+ * signed-in tab paid for a full sweep every minute.
+ */
+const ACTIVITY_CACHE_TTL_MS = 90_000;
+
+export function fetchActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
+  if (!evm && !solana) return Promise.resolve([]);
+  // Keyed by the wallets and the page size, so two tabs, two devices and the
+  // bell plus the activity view all collapse onto one sweep.
+  return cached(
+    `activity:${evm ?? ""}:${solana ?? ""}:${limit}`,
+    () => loadActivity(evm, solana, limit),
+    ACTIVITY_CACHE_TTL_MS
+  );
+}
+
+async function loadActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
   const [rwa, registries, actions] = await Promise.all([
     fetchRwaRegistry().catch((): RwaRegistry => ({})),
     fetchBuyableRegistry().catch(() => ({ buyable: {}, meme: {} })),

@@ -16,6 +16,7 @@ import { getWalletAddress } from "@/lib/user";
 import type { GatewayApiError } from "@/lib/api/envelope";
 import { isBridgeMinimumDetails } from "@/features/trade/lib/hyperliquid-types";
 import {
+  getAccountState,
   getArbitrumBalance,
   getDepositAddress,
   getDepositStatus,
@@ -48,7 +49,14 @@ function belowBridgeMinimum(error: unknown): { haveUsdc: number; minUsdc: number
 }
 
 type BridgeResult =
-  { bridged: true } | { bridged: false; belowMinimum?: { haveUsdc: number; minUsdc: number } };
+  | { bridged: true; credited: boolean }
+  | { bridged: false; belowMinimum?: { haveUsdc: number; minUsdc: number } };
+
+// How long to wait for HyperCore to actually credit the bridged amount before
+// declaring success anyway. Credits are typically observed in 6-60 seconds;
+// this only bounds the wait, it never fails the flow.
+const CREDIT_POLL_TIMEOUT_MS = 90_000;
+const CREDIT_POLL_INTERVAL_MS = 3_000;
 
 type Stage =
   | { name: "form" }
@@ -154,6 +162,20 @@ export function HyperliquidFundModal({
     return "stuck";
   };
 
+  // Polls the perps balance until it rises above the pre-bridge baseline.
+  // Returns false on timeout or an unknown baseline — never fails the flow,
+  // only decides which "done" copy is honest.
+  const waitForPerpsCredit = async (withdrawableBefore: number | null): Promise<boolean> => {
+    if (!walletAddress || withdrawableBefore === null) return false;
+    const deadline = Date.now() + CREDIT_POLL_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      const state = await getAccountState(walletAddress).catch(() => null);
+      if (state && Number(state.withdrawable) > withdrawableBefore) return true;
+      await delay(CREDIT_POLL_INTERVAL_MS);
+    }
+    return false;
+  };
+
   const submit = async () => {
     if (!canSubmit || !walletId || !walletAddress) return;
     setStage({ name: "sending" });
@@ -181,10 +203,21 @@ export function HyperliquidFundModal({
       }
 
       setStage({ name: "bridging", amount });
+      // Perps balance BEFORE the bridge — the baseline the credit poll must rise above.
+      const perpsBefore = await getAccountState(walletAddress)
+        .then((s) => Number(s.withdrawable))
+        .catch(() => null);
       let bridgeResult: BridgeResult;
       try {
         await onBridge();
-        bridgeResult = { bridged: true };
+        // The bridge tx is accepted, but HyperCore only credits it once its
+        // validators finalize the deposit (typically 6-60s). Declaring success
+        // and refetching immediately caught the OLD balance — and with no
+        // background poll on the clearinghouse, the UI then sat stale until
+        // the next focus or action. Wait (bounded) for the credit itself, so
+        // "done" means the money is actually spendable and the refetch that
+        // follows shows it.
+        bridgeResult = { bridged: true, credited: await waitForPerpsCredit(perpsBefore) };
       } catch (error) {
         const belowMinimum = belowBridgeMinimum(error);
         bridgeResult = belowMinimum ? { bridged: false, belowMinimum } : { bridged: false };
@@ -218,7 +251,9 @@ export function HyperliquidFundModal({
           <SuccessPanel title="Perps wallet funded" onDone={close}>
             {formatAmount(Number(stage.amount))} USDC has arrived
             {stage.bridged
-              ? " and is on its way into your perps wallet — should be ready within a minute."
+              ? stage.credited
+                ? " and is in your perps wallet — ready to trade."
+                : " and is on its way into your perps wallet — should be ready within a minute."
               : stage.belowMinimum
                 ? ` — it's sitting safely in your account, but you need at least $${formatAmount(stage.belowMinimum.minUsdc)} total to activate your perps margin (you have $${formatAmount(stage.belowMinimum.haveUsdc)}). Top up a bit more and it activates automatically.`
                 : " — it's safely on Arbitrum and will move into your perps wallet automatically; check back in a moment."}

@@ -52,8 +52,16 @@ describe("refresh survives chain propagation", () => {
     expect(poll).toBeLessThanOrEqual(15);
   });
 
-  it("keeps polling while the tab is backgrounded", () => {
-    expect(HOOKS).toContain("refetchIntervalInBackground: true");
+  it("stops polling while the tab is backgrounded, and catches up on return", () => {
+    // This used to assert the opposite. A ten second poll that never slept was
+    // the most requested endpoint in the app by a factor of fifteen, measured
+    // off the dev server: one forgotten tab cost 360 authed reads an hour with
+    // nobody watching, and a background tab cannot show anyone a new number.
+    //
+    // The behaviour that was actually wanted, leaving to a wallet or an
+    // explorer and coming back to a fresh figure, is refetchOnWindowFocus, and
+    // that stays. Returning to the tab still refetches immediately.
+    expect(HOOKS).toContain("refetchIntervalInBackground: false");
     expect(HOOKS).toContain("refetchOnWindowFocus: true");
   });
 });

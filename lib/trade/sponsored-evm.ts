@@ -9,9 +9,9 @@ export interface SponsoredEvmChainConfig {
   alchemyHost: string;
   chain: Chain;
   supportsReceiptPolling: boolean;
-  zeroDevProvider?: "ULTRA_RELAY";
-  // Whether this network is enabled by the active ZeroDev gas policy. Registry
-  // membership alone only means the app knows how to read the chain.
+  sponsorshipMode: "bso" | "paymaster";
+  // Whether an Alchemy Gas Manager policy is configured for this network.
+  // Registry membership alone only means the app knows how to read the chain.
   gasPolicy: boolean;
 }
 
@@ -28,7 +28,7 @@ interface SponsoredEvmRegistryEntry {
     decimals: number;
   };
   gasPolicy?: boolean;
-  zeroDevProvider?: "ULTRA_RELAY";
+  sponsorshipMode?: "bso" | "paymaster";
 }
 
 function chainFromRegistryEntry(entry: SponsoredEvmRegistryEntry): Chain {
@@ -49,8 +49,8 @@ function chainFromRegistryEntry(entry: SponsoredEvmRegistryEntry): Chain {
     name: entry.name,
     nativeCurrency: entry.nativeCurrency,
     rpcUrls: {
-      default: { http: [`https://${entry.alchemyHost}/v2`] },
-      public: { http: [`https://${entry.alchemyHost}/v2`] },
+      default: { http: [`/api/evm-rpc/${entry.network}`] },
+      public: { http: [`/api/evm-rpc/${entry.network}`] },
     },
   });
 }
@@ -66,8 +66,8 @@ export const SPONSORED_EVM_CHAINS: readonly SponsoredEvmChainConfig[] = (
     alchemyHost: entry.alchemyHost,
     chain,
     supportsReceiptPolling: entry.chainKey !== null,
+    sponsorshipMode: entry.sponsorshipMode ?? "bso",
     gasPolicy: entry.gasPolicy ?? false,
-    zeroDevProvider: entry.zeroDevProvider,
   };
 });
 

@@ -16,8 +16,7 @@
     "policyNetwork": "BASE_MAINNET",
     "alchemyHost": "base-mainnet.g.alchemy.com",
     "chainKey": "base",
-    "gasPolicy": true,
-    "zeroDevProvider": "ULTRA_RELAY"
+    "gasPolicy": true
   },
   {
     "network": "base-sepolia",
@@ -231,6 +230,7 @@
     "policyNetwork": "MATIC_MAINNET",
     "alchemyHost": "polygon-mainnet.g.alchemy.com",
     "chainKey": "polygon",
+    "sponsorshipMode": "paymaster",
     "gasPolicy": true
   },
   {

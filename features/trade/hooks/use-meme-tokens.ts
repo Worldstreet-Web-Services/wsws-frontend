@@ -19,7 +19,12 @@ export function useTrendingMemes() {
   const query = useQuery({
     queryKey: ["meme", "trending"],
     queryFn: fetchTrendingTokens,
-    enabled: active,
+    // `subscribed`, not `enabled`. Both stop the timer, but `enabled: false`
+    // also parks the query in `pending` with its data unavailable and
+    // `refetch()` refused, so scrolling back showed a skeleton. `subscribed`
+    // only detaches the observer: the last data stays on screen, `refetch()`
+    // still works, and the query drops out of the window-focus herd too.
+    subscribed: active,
     refetchInterval: TRENDING_POLL_MS,
     staleTime: 15_000,
   });
@@ -79,7 +84,8 @@ export function useMemeToken(address: string | null) {
   const query = useQuery({
     queryKey: ["meme", "token", address],
     queryFn: () => fetchToken(address as string),
-    enabled: active && !!address,
+    subscribed: active,
+    enabled: !!address,
     staleTime: 20_000,
     refetchInterval: 30_000,
   });

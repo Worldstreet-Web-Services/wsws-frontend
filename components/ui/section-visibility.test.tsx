@@ -52,6 +52,7 @@ describe("SectionVisibility", () => {
   });
 
   it("pauses again on the way past", () => {
+    vi.useFakeTimers();
     render(
       <SectionVisibility>
         <Poller />
@@ -59,7 +60,11 @@ describe("SectionVisibility", () => {
     );
     act(() => trigger?.([{ isIntersecting: true }]));
     act(() => trigger?.([{ isIntersecting: false }]));
+    act(() => {
+      vi.advanceTimersByTime(2_500);
+    });
     expect(screen.getByTestId("poller")).toHaveTextContent("paused");
+    vi.useRealTimers();
   });
 
   it("reaches a hook nested well below the section", () => {

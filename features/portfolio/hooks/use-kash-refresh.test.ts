@@ -44,24 +44,7 @@ describe("refresh survives chain propagation", () => {
     expect(delays.split(",").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("polls fast enough that outside changes feel live", () => {
-    // Points now arrive from outside the app entirely; a minute of lag reads
-    // as "they never arrived".
-    const poll = Number(HOOKS.match(/ACCOUNT_POLL_MS = (\d+)/)?.[1] ?? 0);
-    expect(poll).toBeGreaterThan(0);
-    expect(poll).toBeLessThanOrEqual(15);
-  });
-
-  it("stops polling while the tab is backgrounded, and catches up on return", () => {
-    // This used to assert the opposite. A ten second poll that never slept was
-    // the most requested endpoint in the app by a factor of fifteen, measured
-    // off the dev server: one forgotten tab cost 360 authed reads an hour with
-    // nobody watching, and a background tab cannot show anyone a new number.
-    //
-    // The behaviour that was actually wanted, leaving to a wallet or an
-    // explorer and coming back to a fresh figure, is refetchOnWindowFocus, and
-    // that stays. Returning to the tab still refetches immediately.
-    expect(HOOKS).toContain("refetchIntervalInBackground: false");
-    expect(HOOKS).toContain("refetchOnWindowFocus: true");
-  });
+  // The poll rate, the background pause and the catch-up on return are
+  // asserted behaviourally in use-kash-poll.test.tsx. They used to be grepped
+  // out of this file's source text, which could not tell 10s from 10 minutes.
 });

@@ -14,11 +14,8 @@ const USER_OPERATION_METHODS = new Set([
 ]);
 const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
 const PAYMASTER_METHODS = new Set(["pm_getPaymasterStubData", "pm_getPaymasterData"]);
-// BSO sponsorship needs the policy header on the gas estimate too, not just the
-// send: the client signals sponsorship with zeroed fee fields (lib/trade/sponsor.ts),
-// and an estimate that reaches Alchemy without the policy context rejects those
-// zeroes as "Invalid fields set on User Operation" before the send is attempted.
-const BSO_POLICY_METHODS = new Set([SPONSORED_SEND_METHOD, "eth_estimateUserOperationGas"]);
+// Per Alchemy's Bundler Sponsored Operations docs, the policy header goes on
+// eth_sendUserOperation only — the estimate does not take it.
 const MAX_BATCH_CALLS = 100;
 
 interface RpcCall {
@@ -82,7 +79,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)));
   const needsBsoPolicy =
     target.sponsorshipMode === "bso" &&
-    calls.some((call) => Boolean(call && BSO_POLICY_METHODS.has(call.method)));
+    calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
 
   if (needsPaymasterPolicy && !polygonPolicyId) {
     return NextResponse.json(
@@ -127,7 +124,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
         if (rpcError) {
           console.error(
             `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
-            rpcError
+            JSON.stringify(rpcError)
           );
         }
       }

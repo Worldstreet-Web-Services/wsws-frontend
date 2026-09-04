@@ -49,7 +49,7 @@ const FALLBACK_PAIRS: PerpPair[] = [
 // being spot assets we hold.
 const FALLBACK_PRICE_SYMBOLS = [...new Set([...TRADE_PRICE_SYMBOLS, "BNB", "DOGE", "AAVE"])];
 
-export function PerpsView() {
+export function PerpsView({ active = true }: { active?: boolean }) {
   const { mode } = usePerpMode();
   // Which market is being looked at, and whether its trade screen is open, are
   // held here rather than inside either interface. The simple and pro desks are
@@ -70,8 +70,8 @@ export function PerpsView() {
   // today the REST path carries the section; the socket takes over on its own
   // the moment frames start flowing.
   const streamSymbols = useMemo(() => (live ? pairs.map(pairSymbol) : []), [live, pairs]);
-  const stream = usePerpPriceStream(streamSymbols, live);
-  const { prices: livePrices } = usePerpPrices(live, stream.healthy);
+  const stream = usePerpPriceStream(streamSymbols, live && active);
+  const { prices: livePrices } = usePerpPrices(live && active, stream.healthy);
   const fallbackPrices = usePrices(FALLBACK_PRICE_SYMBOLS);
 
   const effectivePairs = live ? pairs : FALLBACK_PAIRS;
@@ -105,6 +105,7 @@ export function PerpsView() {
     pairs: effectivePairs,
     priceOf,
     live,
+    active,
     voicePrefill: perpPrefill,
     selected,
     onSelect: setSelected,

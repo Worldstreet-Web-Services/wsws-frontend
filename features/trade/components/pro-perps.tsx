@@ -46,6 +46,9 @@ interface ProPerpsProps {
   pairs: PerpPair[];
   priceOf: (symbol: string) => string | null;
   live: boolean;
+  // False while the perp section is scrolled out of view. The market read
+  // polls every five seconds, so it waits until someone is looking at it.
+  active?: boolean;
   // A voice-staged long/short: the form fills in and auto-fires. Null when idle.
   voicePrefill?: PerpPrefill | null;
   // Owned by PerpsView so the chosen market and the open trade screen survive
@@ -96,6 +99,7 @@ export function ProPerps({
   pairs,
   priceOf,
   live,
+  active = true,
   voicePrefill,
   selected,
   onSelect,
@@ -137,7 +141,7 @@ export function ProPerps({
   const { orders } = usePerpOrders(live);
   const actions = usePerpActions(live);
   const portfolio = usePortfolio();
-  const { market, closed } = usePerpMarket(live ? selected : null);
+  const { market, closed } = usePerpMarket(live && active ? selected : null);
 
   const pair = pairs.find((p) => pairSymbol(p) === selected) ?? null;
   const baseSym = selected.split("/")[0];

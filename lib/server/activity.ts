@@ -2,6 +2,7 @@ import "server-only";
 import {
   EVM_NETWORKS,
   SOLANA_NETWORK,
+  fetchPortfolio,
   isAllowedHolding,
   isRateLimitError,
 } from "@/lib/server/alchemy";
@@ -292,6 +293,40 @@ async function solanaActivity(
 // filtered with the same allowlist the portfolio uses, so a dusting airdrop
 // never appears here either.
 /**
+ * Networks always swept, whatever the wallet holds right now.
+ *
+ * A wallet that spent everything on a chain still has history there, and a
+ * first deposit has to show up before any balance read has caught it. These
+ * two are where the product actually operates, so they are never skipped.
+ */
+const ACTIVITY_CORE_NETWORKS = ["base-mainnet", "eth-mainnet"];
+
+/**
+ * Which networks are worth sweeping for this wallet.
+ *
+ * The cost of a sweep is one upstream call per network per direction, so
+ * asking all 28 for a wallet that has only ever touched two is where the bill
+ * came from. The portfolio read already covers all 28 in two batched calls and
+ * is cached, which makes it the cheap index for where this wallet actually
+ * holds anything.
+ */
+async function activityNetworks(evm: string): Promise<string[]> {
+  const known = new Set<string>(EVM_NETWORKS);
+  try {
+    const portfolio = await fetchPortfolio(evm);
+    const held = portfolio.tokens
+      .map((token) => token.network)
+      .filter((network) => network !== SOLANA_NETWORK && known.has(network));
+    return [...new Set([...ACTIVITY_CORE_NETWORKS, ...held])];
+  } catch {
+    // Usually a throttled provider. Answering that with a full 28-network
+    // sweep is the worst thing we could do, so the core set stands in and the
+    // next poll restores the rest.
+    return [...ACTIVITY_CORE_NETWORKS];
+  }
+}
+
+/**
  * How long one wallet's history may be served from a snapshot.
  *
  * One sweep costs an upstream call per network per direction, which is the
@@ -322,8 +357,9 @@ async function loadActivity(evm?: string, solana?: string, limit = 40): Promise<
 
   const evmItems: ActivityItem[] = [];
   if (evm) {
+    const networks = await activityNetworks(evm);
     const batches = await Promise.all(
-      EVM_NETWORKS.flatMap((network) =>
+      networks.flatMap((network) =>
         (["in", "out"] as const).map(async (direction) => ({
           network,
           direction,

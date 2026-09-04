@@ -38,7 +38,7 @@ export function useRwaAssets(filters: Record<string, string> = {}) {
 }
 
 export function useRwaCategories() {
-  const active = useSectionActive();
+  // No interval and a five minute staleTime, so there is no poll to pause.
   const { data } = useQuery({
     queryKey: ["rwa-categories"],
     queryFn: fetchRwaCategories,

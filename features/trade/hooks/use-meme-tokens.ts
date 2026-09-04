@@ -34,7 +34,6 @@ export function useTrendingMemes() {
 // The pro table's server-paginated catalog. The previous page stays on screen
 // while the next loads, so paging never blanks the table.
 export function useMemeCatalog(page: number, limit = 10) {
-  const active = useSectionActive();
   const query = useQuery({
     queryKey: ["meme", "catalog", page, limit],
     queryFn: () => fetchTokenCatalog(page, limit),
@@ -53,7 +52,6 @@ export function useMemeCatalog(page: number, limit = 10) {
 // Debounced provider-backed search (rate limited upstream at 30/min). Queries
 // under two characters never leave the client.
 export function useMemeSearch(raw: string) {
-  const active = useSectionActive();
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
     const q = raw.trim();

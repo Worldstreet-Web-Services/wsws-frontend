@@ -13,6 +13,8 @@ const ALLOWED_METHODS = new Set([
   "eth_supportedEntryPoints",
   "pm_getPaymasterStubData",
   "pm_getPaymasterData",
+  "zd_getUserOperationGasPrice",
+  "zd_sponsorUserOperation",
 ]);
 
 interface RpcCall {
@@ -30,7 +32,7 @@ export async function forwardZeroDevBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Unsupported sponsored network" }, { status: 404 });
   }
 
-  const upstream = zeroDevRpcUrl(target.chainId);
+  const upstream = zeroDevRpcUrl(target.chainId, target.zeroDevProvider);
   if (!upstream) {
     return NextResponse.json({ error: "ZeroDev sponsorship is not configured" }, { status: 503 });
   }

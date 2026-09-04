@@ -1,15 +1,16 @@
 "use client";
 
 import { createClient, http, type EIP1193Provider, type SignedAuthorization } from "viem";
-import { createBundlerClient, createPaymasterClient } from "viem/account-abstraction";
-import { to7702SimpleSmartAccount } from "permissionless/accounts";
+import {
+  createKernelAccount,
+  createKernelAccountClient,
+  createZeroDevPaymasterClient,
+} from "@zerodev/sdk";
+import { getEntryPoint, KERNEL_7702_DELEGATION_ADDRESS, KERNEL_V3_3 } from "@zerodev/sdk/constants";
 import { getSponsoredEvmChainById } from "@/lib/trade/sponsored-evm";
 import { isReceiptChain, publicClientForChain } from "@/lib/trade/receipt";
 
-// The shared 7702 Simple Account implementation used by permissionless. The
-// EOA delegates to this logic at the same address, so sponsorship does not
-// create or migrate funds into a separate smart-wallet address.
-const SIMPLE_7702_IMPL = "0xe6Cae83BdE06E4c305530e199D7217f42808555B" as const;
+const ENTRY_POINT = getEntryPoint("0.7");
 
 // Every sponsored EVM transaction routes through our authenticated proxy so
 // the ZeroDev project URL never reaches the client.
@@ -38,12 +39,12 @@ async function isAlreadyDelegated(request: ReadRequest, address: `0x${string}`):
     method: "eth_getCode",
     params: [address, "latest"],
   })) as string;
-  return code.toLowerCase() === `0xef0100${SIMPLE_7702_IMPL.slice(2).toLowerCase()}`;
+  return code.toLowerCase() === `0xef0100${KERNEL_7702_DELEGATION_ADDRESS.slice(2).toLowerCase()}`;
 }
 
 // Sends a sponsored EVM transaction from the user's embedded EOA, upgraded in
 // place via EIP-7702. The EOA signs the one-time delegation if needed, then
-// the userOp, and ZeroDev's bundler + paymaster path covers the gas cost.
+// the userOp, and the configured ZeroDev sponsorship path covers the gas cost.
 export async function sendSponsoredEvmCalls({
   chainId,
   address,
@@ -96,27 +97,59 @@ export async function sendSponsoredEvmCalls({
       })) as string
     );
     authorization = await signAuthorization({
-      contractAddress: SIMPLE_7702_IMPL,
+      contractAddress: KERNEL_7702_DELEGATION_ADDRESS,
       chainId: target.chainId,
       nonce,
     });
   }
 
-  const account = await to7702SimpleSmartAccount({
-    client,
-    owner: provider,
-    accountLogicAddress: SIMPLE_7702_IMPL,
+  const account = await createKernelAccount(client, {
+    address,
+    eip7702Account: provider,
+    eip7702Auth: authorization,
+    entryPoint: ENTRY_POINT,
+    kernelVersion: KERNEL_V3_3,
   });
 
-  // The bundler client reads through `client` (fast node) and submits the userOp
-  // through `transport` (bundler proxy) — the split that keeps eth_getCode off
-  // the bundler endpoint.
-  const bundlerClient = createBundlerClient({
+  const paymasterClient = createZeroDevPaymasterClient({
+    chain: target.chain,
+    transport,
+  });
+
+  // UltraRelay combines the bundler and paymaster and applies the gas policy
+  // enabled for this project in the ZeroDev dashboard. Other supported chains
+  // retain ZeroDev's explicit paymaster RPC path.
+  const sponsorship =
+    target.zeroDevProvider === "ULTRA_RELAY"
+      ? {
+          userOperation: {
+            estimateFeesPerGas: async () => ({
+              maxFeePerGas: 0n,
+              maxPriorityFeePerGas: 0n,
+            }),
+          },
+        }
+      : {
+          paymaster: {
+            getPaymasterStubData: (
+              userOperation: Parameters<
+                typeof paymasterClient.sponsorUserOperation
+              >[0]["userOperation"]
+            ) => paymasterClient.sponsorUserOperation({ userOperation, shouldConsume: false }),
+            getPaymasterData: (
+              userOperation: Parameters<
+                typeof paymasterClient.sponsorUserOperation
+              >[0]["userOperation"]
+            ) => paymasterClient.sponsorUserOperation({ userOperation, shouldConsume: true }),
+          },
+        };
+
+  const bundlerClient = createKernelAccountClient({
     account,
     client,
     chain: target.chain,
-    transport,
-    paymaster: createPaymasterClient({ transport }),
+    bundlerTransport: transport,
+    ...sponsorship,
   });
 
   const hash = await bundlerClient.sendUserOperation({ calls, authorization });

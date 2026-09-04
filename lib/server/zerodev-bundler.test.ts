@@ -22,7 +22,7 @@ describe("ZeroDev bundler proxy", () => {
   it("keeps the project URL server-side and selects the requested chain", async () => {
     const { forwardZeroDevBundlerRequest } = await import("./zerodev-bundler");
     const response = await forwardZeroDevBundlerRequest(
-      makeReq({ jsonrpc: "2.0", id: 1, method: "pm_getPaymasterData", params: [] }),
+      makeReq({ jsonrpc: "2.0", id: 1, method: "zd_sponsorUserOperation", params: [] }),
       "polygon-mainnet"
     );
 
@@ -32,6 +32,19 @@ describe("ZeroDev bundler proxy", () => {
     );
     const init = vi.mocked(fetch).mock.calls[0][1];
     expect(init?.headers).toEqual({ "Content-Type": "application/json" });
+  });
+
+  it("uses the dashboard gas policy through UltraRelay on Base", async () => {
+    const { forwardZeroDevBundlerRequest } = await import("./zerodev-bundler");
+    const response = await forwardZeroDevBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 1, method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(200);
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe(
+      "https://rpc.zerodev.app/api/v3/test-project-id-123/chain/8453?provider=ULTRA_RELAY"
+    );
   });
 
   it("allows only chains enabled for sponsorship", async () => {

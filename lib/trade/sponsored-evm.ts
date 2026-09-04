@@ -9,6 +9,7 @@ export interface SponsoredEvmChainConfig {
   alchemyHost: string;
   chain: Chain;
   supportsReceiptPolling: boolean;
+  zeroDevProvider?: "ULTRA_RELAY";
   // Whether this network is enabled by the active ZeroDev gas policy. Registry
   // membership alone only means the app knows how to read the chain.
   gasPolicy: boolean;
@@ -27,6 +28,7 @@ interface SponsoredEvmRegistryEntry {
     decimals: number;
   };
   gasPolicy?: boolean;
+  zeroDevProvider?: "ULTRA_RELAY";
 }
 
 function chainFromRegistryEntry(entry: SponsoredEvmRegistryEntry): Chain {
@@ -65,6 +67,7 @@ export const SPONSORED_EVM_CHAINS: readonly SponsoredEvmChainConfig[] = (
     chain,
     supportsReceiptPolling: entry.chainKey !== null,
     gasPolicy: entry.gasPolicy ?? false,
+    zeroDevProvider: entry.zeroDevProvider,
   };
 });
 

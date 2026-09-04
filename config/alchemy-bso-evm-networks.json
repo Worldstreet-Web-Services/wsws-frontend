@@ -16,7 +16,8 @@
     "policyNetwork": "BASE_MAINNET",
     "alchemyHost": "base-mainnet.g.alchemy.com",
     "chainKey": "base",
-    "gasPolicy": true
+    "gasPolicy": true,
+    "zeroDevProvider": "ULTRA_RELAY"
   },
   {
     "network": "base-sepolia",

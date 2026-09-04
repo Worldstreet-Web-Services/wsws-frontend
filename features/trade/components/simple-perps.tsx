@@ -35,8 +35,6 @@ interface SimplePerpsProps {
   // False while the gateway is not deployed: the form renders with live-ish
   // preview prices but the trade action is disabled honestly.
   live: boolean;
-  // Unused here; PerpsView spreads one prop bag into both interfaces.
-  active?: boolean;
   // A voice-staged long/short ("long $2 of bitcoin 30x"): the form fills in and
   // auto-fires. Null when there's no pending voice command.
   voicePrefill?: PerpPrefill | null;

@@ -11,6 +11,7 @@ import { usePrices } from "@/hooks/use-prices";
 import { pairSymbol, toWirePrice } from "@/lib/perp/logic";
 import { TRADE_PRICE_SYMBOLS } from "@/lib/trade/assets";
 import type { PerpPair } from "@/lib/perp/types";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // The perpetuals body: one data layer, two interfaces (simple/pro) chosen by the
 // shared perp-mode store. Rendered inside the trade hub, which owns the section
@@ -49,7 +50,7 @@ const FALLBACK_PAIRS: PerpPair[] = [
 // being spot assets we hold.
 const FALLBACK_PRICE_SYMBOLS = [...new Set([...TRADE_PRICE_SYMBOLS, "BNB", "DOGE", "AAVE"])];
 
-export function PerpsView({ active = true }: { active?: boolean }) {
+export function PerpsView() {
   const { mode } = usePerpMode();
   // Which market is being looked at, and whether its trade screen is open, are
   // held here rather than inside either interface. The simple and pro desks are
@@ -61,6 +62,9 @@ export function PerpsView({ active = true }: { active?: boolean }) {
   // into whichever interface is showing, which STAGES the visible form and then
   // auto-fires its own submit (usePerpFormAutostage) — the user watches the order
   // fill in and place itself.
+  // False while the perp section is scrolled away, which pauses the five
+  // second price poll, the five second market poll and the price socket.
+  const active = useSectionActive();
   const perpPrefill = usePerpPrefill();
   const { pairs, unavailable, loading } = usePerpPairs();
   const live = !unavailable && pairs.length > 0;
@@ -105,7 +109,6 @@ export function PerpsView({ active = true }: { active?: boolean }) {
     pairs: effectivePairs,
     priceOf,
     live,
-    active,
     voicePrefill: perpPrefill,
     selected,
     onSelect: setSelected,

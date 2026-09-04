@@ -36,6 +36,7 @@ import { tradingViewFallbackSymbol, tradingViewSymbol } from "@/lib/perp/trading
 import { usePerpFormAutostage } from "@/features/trade/hooks/use-perp-form-autostage";
 import type { PerpPrefill } from "@/lib/voice/intent";
 import type { OpenPosition, PerpCategory, PerpOrderType, PerpPair } from "@/lib/perp/types";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // The full-control interface: every market Avantis lists across crypto, forex,
 // commodities and equities, with order types, TP/SL, slippage, and position
@@ -46,9 +47,6 @@ interface ProPerpsProps {
   pairs: PerpPair[];
   priceOf: (symbol: string) => string | null;
   live: boolean;
-  // False while the perp section is scrolled out of view. The market read
-  // polls every five seconds, so it waits until someone is looking at it.
-  active?: boolean;
   // A voice-staged long/short: the form fills in and auto-fires. Null when idle.
   voicePrefill?: PerpPrefill | null;
   // Owned by PerpsView so the chosen market and the open trade screen survive
@@ -99,13 +97,14 @@ export function ProPerps({
   pairs,
   priceOf,
   live,
-  active = true,
   voicePrefill,
   selected,
   onSelect,
   sheetOpen,
   onSheetOpenChange,
 }: ProPerpsProps) {
+  // Paused while the section is scrolled away; the market read polls at 5s.
+  const active = useSectionActive();
   const t = useTranslations("perps");
   const [category, setCategory] = useState<PerpCategory>("crypto");
   const isMobile = useIsMobile();

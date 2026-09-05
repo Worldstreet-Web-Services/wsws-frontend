@@ -111,7 +111,18 @@ function formatAmountInput(raw: string): string {
 
 interface SelectedBank {
   uuid: string;
+  // What the picker shows. The popular tiles use a short, recognisable label
+  // ("OPay", "First Bank") rather than the registry's full legal name.
   name: string;
+  /**
+   * The bank registry's own name for the same institution.
+   *
+   * The two lists reached the same bank by different names: a popular tile
+   * carried our label, a search result carried the registry's, so one bank
+   * arrived at analytics as both "OPay" and "Opay" and split every breakdown
+   * in two. This is the one name that is reported.
+   */
+  railName: string;
   initials: string;
   color: string;
 }
@@ -252,7 +263,8 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
       // own, so none is sent rather than a zero standing in.
       amount_ngn: ngn,
       fx_rate: Math.round((ngn / usd) * 100) / 100,
-      bank: bank?.name ?? "",
+      // The registry's name, not the tile's label, so one bank is one row.
+      bank: bank?.railName ?? "",
     });
   }, [done, order, paidNgn, amount, ngnRate, bank]);
 
@@ -262,7 +274,13 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
     return POPULAR.map((p): SelectedBank | null => {
       const match = list.find((n) => p.match.test(n.name));
       return match
-        ? { uuid: match.uuid, name: p.label, initials: p.initials, color: p.color }
+        ? {
+            uuid: match.uuid,
+            name: p.label,
+            railName: match.name,
+            initials: p.initials,
+            color: p.color,
+          }
         : null;
     }).filter((b): b is SelectedBank => b != null);
   }, [banks.data]);
@@ -277,6 +295,7 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
       .map((n: RampBank) => ({
         uuid: n.uuid,
         name: n.name,
+        railName: n.name,
         initials: initialsForName(n.name),
         color: colorForName(n.name),
       }));

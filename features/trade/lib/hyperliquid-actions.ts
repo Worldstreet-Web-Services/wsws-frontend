@@ -15,6 +15,7 @@ import {
   prepareBridge,
   prepareBuilderFeeApproval,
   prepareCancelOrder,
+  prepareDexTransfer,
   prepareClosePosition,
   prepareLeverageUpdate,
   prepareOrder,
@@ -23,6 +24,7 @@ import {
   submitAbstractionMode,
   submitBuilderFeeApproval,
   submitCancelOrder,
+  submitDexTransfer,
   submitClosePosition,
   submitLeverageUpdate,
   submitOrder,
@@ -69,8 +71,13 @@ const builderFeeApprovedWallets = new Set<string>();
  * their own signing silently. See apps/perp/src/signing/README.md.
  */
 export function useHyperliquidActions(walletId: string | undefined, address: string | undefined) {
-  const { signL1, signWithdrawal, signBuilderFeeApproval, signSetAbstractionMode } =
-    useHyperliquidSigner(address);
+  const {
+    signL1,
+    signWithdrawal,
+    signDexTransfer,
+    signBuilderFeeApproval,
+    signSetAbstractionMode,
+  } = useHyperliquidSigner(address);
   const evmSend = useEvmSend();
   // Continues a withdrawal's last hop (HyperCore -> Arbitrum, Hyperliquid's
   // own withdraw3, which can only ever settle to Arbitrum) on to Base, the
@@ -158,6 +165,38 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
       } catch (error) {
         const details = (error as GatewayApiError)?.details;
         if (!isInsufficientMarginDetails(details) || !address) throw error;
+        // A HIP-3 asset's shortfall lives on ITS dex's own balance —
+        // Hyperliquid margins each builder dex as a separate account, so the
+        // fix is a native -> dex transfer (instant, off-chain, no gas), and
+        // an Arbitrum bridge would not help at all (observed live: plenty of
+        // native margin, $0 on xyz, and the bridge path surfaced a baffling
+        // "Insufficient Arbitrum balance" instead).
+        if (details.dex) {
+          const native = await getAccountState(address);
+          const needed = Number(details.requiredUsdc);
+          if (Number(native.withdrawable) < needed) {
+            // Not enough anywhere — surface the honest original error.
+            throw error;
+          }
+          onStatus?.("Moving margin to this market's balance…");
+          // Small headroom over the exact requirement so fees/price drift
+          // between prepare calls don't force a second round trip.
+          const amount = Math.min(
+            Number(native.withdrawable),
+            Math.ceil(needed * 1.02 * 100) / 100
+          ).toFixed(2);
+          const prepared = await prepareDexTransfer(walletId, details.dex, amount);
+          const transferSignature = await signDexTransfer(prepared.action);
+          await submitDexTransfer(walletId, prepared.action, transferSignature);
+          const deadline = Date.now() + MARGIN_POLL_TIMEOUT_MS;
+          while (Date.now() < deadline) {
+            const state = await getAccountState(address, details.dex);
+            if (Number(state.withdrawable) >= needed) break;
+            await delay(MARGIN_POLL_INTERVAL_MS);
+          }
+          onStatus?.("Placing your order…");
+          return await submitPreparedOrder(walletId, request);
+        }
         // TradingService.prepareOrder deliberately never bridges implicitly
         // (see its own comment) — do it here, once, transparently, instead
         // of making the user go fund manually and retry the same trade
@@ -181,7 +220,7 @@ export function useHyperliquidActions(walletId: string | undefined, address: str
         return await submitPreparedOrder(walletId, request);
       }
     },
-    [walletId, address, bridge, submitPreparedOrder]
+    [walletId, address, bridge, submitPreparedOrder, signDexTransfer]
   );
 
   const cancelOrder = useCallback(

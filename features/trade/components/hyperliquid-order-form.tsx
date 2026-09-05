@@ -106,9 +106,11 @@ export function HyperliquidOrderForm({
 }: HyperliquidOrderFormProps) {
   const [side, setSide] = useState<HlOrderSide>("buy");
   const [orderKind, setOrderKind] = useState<OrderKind>("market");
-  // Trading amount is always entered in USDC — size (the asset's own base
-  // units, what Hyperliquid's API actually wants) is derived from it at
-  // submit time, matching how the simple view already works.
+  // Trading amount is entered in USDC as COLLATERAL, matching the simple
+  // view: leverage multiplies it into the position's notional, and size (the
+  // asset's own base units, what Hyperliquid's API actually wants) is derived
+  // from that notional at submit time. Treating the amount as notional made
+  // 10x trade exactly like 1x on the entered dollars.
   const [amountUsdc, setAmountUsdc] = useState("");
   const [sizePercent, setSizePercentValue] = useState(0);
   const [limitPrice, setLimitPrice] = useState("");
@@ -154,24 +156,73 @@ export function HyperliquidOrderForm({
   };
 
   const amountUsdcNum = Number(amountUsdc) || 0;
+  const clampedLeverage = Math.max(1, Math.min(leverage, maxLeverage));
+  const notionalUsdc = amountUsdcNum * clampedLeverage;
   const sizeDecimals = Math.max(0, Math.min(8, szDecimals));
-  const sizeBaseUnits = markPrice > 0 ? amountUsdcNum / markPrice : 0;
+  // Floored to the asset's own size precision so the wire size never exceeds
+  // what the entered collateral actually covers.
+  const sizeScale = 10 ** sizeDecimals;
+  const sizeBaseUnits =
+    markPrice > 0 ? Math.floor((notionalUsdc / markPrice) * sizeScale) / sizeScale : 0;
   const size = sizeBaseUnits > 0 ? sizeBaseUnits.toFixed(sizeDecimals) : "";
   // Advisory only — never blocks submission. placeOrder already auto-bridges
   // and retries when the perps wallet alone falls short (see
   // hyperliquid-actions.ts), so this can under-count real buying power; it's
-  // a fast, honest hint, not the authoritative check.
+  // a fast, honest hint, not the authoritative check. The amount IS the
+  // margin under collateral semantics, so it compares against the balance
+  // directly, un-scaled.
   const insufficientBalance = amountUsdcNum > 0 && amountUsdcNum > maxUsdc;
   // Unlike insufficientBalance, this ALWAYS blocks — no retry or auto-bridge
-  // fixes an order Hyperliquid rejects outright for being too small.
-  const belowMinimumOrder = amountUsdcNum > 0 && amountUsdcNum < MIN_ORDER_NOTIONAL_USDC;
+  // fixes an order Hyperliquid rejects outright for being too small. The $10
+  // floor applies to the position's notional, not the collateral.
+  const belowMinimumOrder = notionalUsdc > 0 && notionalUsdc < MIN_ORDER_NOTIONAL_USDC;
+
+  // TP/SL must sit on the correct side of entry for the direction: a long
+  // takes profit above and stops out below, a short the other way round. A
+  // crossed pair is a long's bracket on a short (or vice versa) — the exact
+  // configuration that reached Hyperliquid unchecked in the 1 Sept test and
+  // got the trigger legs rejected after the entry had already filled. The
+  // backend re-validates; catching it here just fails before anything is
+  // signed.
+  const triggerValidationError = (): string | null => {
+    if (!showTriggers) return null;
+    const reference = orderKind === "limit" ? Number(limitPrice) : markPrice;
+    if (!(reference > 0)) return null;
+    const tp = Number(takeProfitPrice) || 0;
+    const sl = Number(stopLossPrice) || 0;
+    const isLong = side === "buy";
+    if (tp > 0 && (isLong ? tp <= reference : tp >= reference)) {
+      return isLong
+        ? "Take profit must be above the entry price for a long."
+        : "Take profit must be below the entry price for a short.";
+    }
+    if (sl > 0 && (isLong ? sl >= reference : sl <= reference)) {
+      return isLong
+        ? "Stop loss must be below the entry price for a long."
+        : "Stop loss must be above the entry price for a short.";
+    }
+    return null;
+  };
 
   const handleSubmit = async () => {
     if (!assetSymbol || !size || belowMinimumOrder) return;
     if (orderKind === "limit" && !limitPrice) return;
-    setStatus({ text: "Placing order…", kind: "info" });
+    const triggerError = triggerValidationError();
+    if (triggerError) {
+      setStatus({ text: triggerError, kind: "error" });
+      return;
+    }
     try {
-      await onSubmit(
+      // The selected leverage/margin mode used to live only in this form's
+      // state unless the user found the separate "Update" button — the order
+      // then opened at whatever the Hyperliquid account already had (the 1
+      // Sept test: "isolated 10x" opening as 20x cross). Apply them as part
+      // of placing the order; a failure here aborts the order rather than
+      // opening a position with unknown risk settings.
+      setStatus({ text: "Applying leverage…", kind: "info" });
+      await onUpdateLeverage(assetSymbol, Math.min(leverage, maxLeverage), marginMode);
+      setStatus({ text: "Placing order…", kind: "info" });
+      const result = await onSubmit(
         {
           assetSymbol,
           side,
@@ -182,13 +233,33 @@ export function HyperliquidOrderForm({
         },
         (text) => setStatus({ text, kind: "info" })
       );
-      setStatus({
-        text:
-          orderKind === "market"
-            ? `${side === "buy" ? "Long" : "Short"} ${assetSymbol} opened.`
-            : `${side === "buy" ? "Buy" : "Sell"} order for ${assetSymbol} placed.`,
-        kind: "success",
-      });
+      // Hyperliquid can accept the entry while rejecting a TP/SL leg of the
+      // batch — the backend now reports that honestly instead of failing the
+      // whole call, and hiding it here would recreate the old lie.
+      const rejectedLegs = [
+        result.takeProfitOrder?.status === "rejected" ? "take profit" : null,
+        result.stopLossOrder?.status === "rejected" ? "stop loss" : null,
+      ].filter((leg): leg is string => leg !== null);
+      if (rejectedLegs.length > 0) {
+        const reason =
+          result.takeProfitOrder?.rejectionReason ?? result.stopLossOrder?.rejectionReason;
+        setStatus({
+          text: `Order placed, but the ${rejectedLegs.join(" and ")} ${
+            rejectedLegs.length > 1 ? "were" : "was"
+          } rejected${reason ? ` (${reason})` : ""} — set ${
+            rejectedLegs.length > 1 ? "them" : "it"
+          } again from your open position.`,
+          kind: "error",
+        });
+      } else {
+        setStatus({
+          text:
+            orderKind === "market"
+              ? `${side === "buy" ? "Long" : "Short"} ${assetSymbol} opened.`
+              : `${side === "buy" ? "Buy" : "Sell"} order for ${assetSymbol} placed.`,
+          kind: "success",
+        });
+      }
       setAmountUsdc("");
       setSizePercentValue(0);
       setLimitPrice("");
@@ -217,10 +288,14 @@ export function HyperliquidOrderForm({
   const handleLeverage = async () => {
     if (!assetSymbol) return;
     setStatus(null);
+    // Clamped to the ASSET's max, matching every display of this value —
+    // the raw state can exceed it after switching from a higher-max market,
+    // and sending that had the pill reading "10x" while the request said 40.
+    const clampedLeverage = Math.min(leverage, maxLeverage);
     try {
-      await onUpdateLeverage(assetSymbol, leverage, marginMode);
+      await onUpdateLeverage(assetSymbol, clampedLeverage, marginMode);
       setStatus({
-        text: `Leverage set to ${leverage}x (${marginMode}) for ${assetSymbol}.`,
+        text: `Leverage set to ${clampedLeverage}x (${marginMode}) for ${assetSymbol}.`,
         kind: "success",
       });
     } catch (error) {
@@ -236,8 +311,8 @@ export function HyperliquidOrderForm({
     ? `${currentPosition.side === "short" ? "-" : ""}${formatAmount(Number(currentPosition.size))} ${assetSymbol}`
     : `0.00000 ${assetSymbol || ""}`.trim();
 
-  const orderValueUsdc = amountUsdcNum;
-  const marginRequiredUsdc = leverage > 0 ? amountUsdcNum / leverage : amountUsdcNum;
+  const orderValueUsdc = notionalUsdc;
+  const marginRequiredUsdc = amountUsdcNum;
 
   return (
     <div
@@ -373,7 +448,7 @@ export function HyperliquidOrderForm({
           </div>
           {belowMinimumOrder ? (
             <p className="text-down mt-1.5 text-[11.5px] font-normal">
-              Minimum order is ${MIN_ORDER_NOTIONAL_USDC}.
+              Minimum position is ${MIN_ORDER_NOTIONAL_USDC} (amount × leverage).
             </p>
           ) : insufficientBalance ? (
             <p className="text-down mt-1.5 text-[11.5px] font-normal">Insufficient balance.</p>
@@ -464,10 +539,6 @@ export function HyperliquidOrderForm({
 
         <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-3 text-[12.5px] font-normal">
           <div className="flex justify-between">
-            <span className="text-white/55">Liquidation Price</span>
-            <span className="tnum text-white/70">N/A</span>
-          </div>
-          <div className="flex justify-between">
             <span className="text-white/55">Order Value</span>
             <span className="tnum text-white">
               {orderValueUsdc > 0 ? formatUsd(orderValueUsdc) : "N/A"}
@@ -490,11 +561,12 @@ export function HyperliquidOrderForm({
               %
             </span>
           </div>
-          {amountUsdcNum > 0 ? (
+          {notionalUsdc > 0 ? (
             <div className="flex justify-between text-white/40">
               <span>Est. fee this trade (open + close)</span>
               <span className="tnum">
-                {formatUsd(openFee(amountUsdcNum) + closeFee(amountUsdcNum))}
+                {/* Trading fees charge on notional, not on the margin posted. */}
+                {formatUsd(openFee(notionalUsdc) + closeFee(notionalUsdc))}
               </span>
             </div>
           ) : null}

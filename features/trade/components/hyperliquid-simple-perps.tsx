@@ -38,12 +38,14 @@ interface FormStatus {
 
 // The guided interface: pick a major market, long or short, a dollar amount
 // and a leverage, one tap to trade. Market orders only; TP/SL, limit orders,
-// and the full market list live in the pro interface. Enter a dollar amount
-// rather than a base-unit size (which Hyperliquid's own API wants) — this
-// view converts amountUsd / markPrice into that size, matching how the old
-// Avantis simple view worked (collateral x leverage), even though Hyperliquid's
-// own size/leverage model is structured differently under the hood (leverage
-// only changes required margin, not the size field on the order itself).
+// and the full market list live in the pro interface. The entered dollars
+// are COLLATERAL: the position's notional is amount × leverage, converted to
+// the base-unit size Hyperliquid's API wants (amount × leverage / markPrice)
+// — matching how the old Avantis simple view worked. Hyperliquid's own model
+// has leverage only changing required margin, not order size, which is why
+// the multiplication happens here and the leverage update is pushed to the
+// account right before the order (always cross in this view — the margin
+// mode control lives in the pro ticket only).
 export function HyperliquidSimplePerps() {
   const trading = useHyperliquidTrading();
   const [selected, setSelected] = useState(SIMPLE_SYMBOLS[1]);
@@ -83,13 +85,24 @@ export function HyperliquidSimplePerps() {
   const clampedLeverage = Math.min(leverage, maxLeverage);
 
   const amountNum = Number(amountUsd) || 0;
-  const size = price > 0 ? amountNum / price : 0;
-  const belowMinimumOrder = amountNum > 0 && amountNum < MIN_ORDER_NOTIONAL_USDC;
+  // The entered dollars are COLLATERAL, leverage multiplies them into
+  // notional (the button literally promises "Long BTC 10x") — sizing at
+  // amount/price alone opened 1x positions while displaying the chosen
+  // leverage, the 1 Sept test's "leverage not applied" finding. Floored to
+  // the asset's own size precision so the wire size never exceeds what the
+  // collateral actually covers.
+  const szDecimals = asset?.szDecimals ?? 8;
+  const rawSize = price > 0 ? (amountNum * clampedLeverage) / price : 0;
+  const sizeScale = 10 ** Math.max(0, Math.min(8, szDecimals));
+  const size = Math.floor(rawSize * sizeScale) / sizeScale;
+  const notionalUsd = amountNum * clampedLeverage;
+  const belowMinimumOrder = notionalUsd > 0 && notionalUsd < MIN_ORDER_NOTIONAL_USDC;
 
   const canSubmit =
     Boolean(asset) &&
     price > 0 &&
     amountNum > 0 &&
+    size > 0 &&
     !belowMinimumOrder &&
     trading.walletId != null &&
     !busy;
@@ -99,10 +112,17 @@ export function HyperliquidSimplePerps() {
     setStatus({ text: "Placing order…", kind: "info" });
     setBusy(true);
     try {
+      // Snapshot before the order so the background poll after submit can
+      // tell the fill landed (new position, or an existing one grown) and
+      // surface it immediately instead of waiting for the next refetch.
+      const before = JSON.stringify(trading.positions.map((p) => [p.id, p.size]).sort());
       await trading.actions.updateLeverage(asset.symbol, clampedLeverage, "cross");
       await trading.actions.placeOrder(
         { assetSymbol: asset.symbol, side, size: String(size) },
         (text) => setStatus({ text, kind: "info" })
+      );
+      void trading.waitForPositionsChange(
+        (rows) => JSON.stringify(rows.map((p) => [p.id, p.size]).sort()) !== before
       );
       setStatus({
         text: `${side === "buy" ? "Long" : "Short"} ${asset.symbol} opened.`,
@@ -254,7 +274,7 @@ export function HyperliquidSimplePerps() {
           </div>
           {belowMinimumOrder ? (
             <p className="text-down mt-1.5 text-[11.5px] font-normal">
-              Minimum order is ${MIN_ORDER_NOTIONAL_USDC}.
+              Minimum order is ${MIN_ORDER_NOTIONAL_USDC} of position size (amount × leverage).
             </p>
           ) : null}
         </div>

@@ -12,13 +12,21 @@ const ASSETS_STALE_MS = 5 * 60_000;
 // actually trades against.
 const PRICES_POLL_MS = 10_000;
 
+// TEMPORARY ROLLOUT GATE: only crypto is user-visible for now. The HIP-3
+// categories (equities, forex, commodities, indices) are live and e2e-tested
+// on the backend, but stay hidden until each is verified for release. To
+// roll them out, add categories here (or drop the filter entirely) and
+// un-comment the matching labels in hyperliquid-asset-picker.tsx.
+const RELEASED_CATEGORIES = new Set(["crypto"]);
+
 export function useHyperliquidAssets() {
   const query = useQuery({
     queryKey: ["hl-assets"],
     queryFn: listAssets,
     staleTime: ASSETS_STALE_MS,
   });
-  return { assets: query.data ?? [], loading: query.isLoading };
+  const assets = (query.data ?? []).filter((a) => RELEASED_CATEGORIES.has(a.category ?? "crypto"));
+  return { assets, loading: query.isLoading };
 }
 
 export function useHyperliquidPrices(enabled = true) {

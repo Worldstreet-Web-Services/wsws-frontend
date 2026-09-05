@@ -2,13 +2,21 @@ import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
 import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
 
-// EVM JSON-RPC reads for the browser, on our paid Alchemy key.
+// EVM JSON-RPC reads for the browser.
 //
 // Without this, viem's `http()` with no URL falls back to the chain's DEFAULT
 // PUBLIC endpoint (mainnet.base.org, polygon-rpc.com, …). Those are free, shared,
 // aggressively rate-limited, and they back every on-chain read the app makes:
 // prediction pool state and market structs, perp allowances, Polymarket
 // collateral, and the eth_getCode/nonce reads in the sponsored 7702 send path.
+//
+// Upstream split: standard reads go to ZeroDev when ZERODEV_PROJECT_ID is
+// set, with Alchemy as a live FALLBACK when ZeroDev errors or times out —
+// writes (the sponsored bundler path) stay on Alchemy, so read bursts can
+// never eat the compute budget the userOp send needs (observed live: a
+// dashboard-load burst 429'd the very top-up the user had just clicked).
+// A JSON-RPC error inside a 200 is a real answer (e.g. a revert) and never
+// triggers the fallback; only transport failures and non-OK statuses do.
 //
 // Reads only. Signing and broadcast go through Privy and the bundler, never
 // here, so nothing that reaches this endpoint can move funds.
@@ -18,6 +26,19 @@ import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
 // no header plumbing.
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
+
+// Ordered upstreams: ZeroDev first when configured, Alchemy after it — as a
+// runtime fallback when both exist, or the sole upstream when only one does.
+function upstreamUrls(chain: { alchemyHost: string; chainId: number }): string[] {
+  const urls: string[] = [];
+  const zerodevProject = process.env.ZERODEV_PROJECT_ID;
+  if (zerodevProject) {
+    urls.push(`https://rpc.zerodev.app/api/v3/${zerodevProject}/chain/${chain.chainId}`);
+  }
+  const alchemyKey = process.env.ALCHEMY_API_KEY;
+  if (alchemyKey) urls.push(`https://${chain.alchemyHost}/v2/${alchemyKey}`);
+  return urls;
+}
 
 // What the read paths actually call: state reads, the receipt poll
 // (waitForTransactionReceipt), and gas estimation. Deliberately no
@@ -68,8 +89,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ network: s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const key = process.env.ALCHEMY_API_KEY;
-  if (!key) {
+  const upstreams = upstreamUrls(chain);
+  if (upstreams.length === 0) {
     return NextResponse.json({ error: "EVM RPC is not configured" }, { status: 503 });
   }
 
@@ -88,22 +109,35 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ network: s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  try {
-    const res = await fetch(`https://${chain.alchemyHost}/v2/${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      cache: "no-store",
-    });
-    // Pass the payload through untouched: it is a JSON-RPC envelope, and an
-    // error inside it is the caller's to interpret, not ours to rewrite.
-    return new NextResponse(await res.text(), {
-      status: res.status,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error("EVM RPC proxy failed:", network, error);
-    return NextResponse.json({ error: "EVM RPC unreachable" }, { status: 502 });
+  const payload = JSON.stringify(body);
+  let lastError: unknown = null;
+  for (const [index, upstream] of upstreams.entries()) {
+    try {
+      const res = await fetch(upstream, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        cache: "no-store",
+      });
+      // A non-OK status is a provider problem (throttle, outage, bad
+      // project) — try the next upstream. A JSON-RPC error inside a 200 is
+      // a real answer (e.g. a revert) and passes through untouched.
+      if (!res.ok && index < upstreams.length - 1) {
+        console.warn("EVM RPC upstream unhealthy, failing over:", network, res.status);
+        continue;
+      }
+      return new NextResponse(await res.text(), {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      lastError = error;
+      if (index < upstreams.length - 1) {
+        console.warn("EVM RPC upstream failed, failing over:", network, error);
+      }
+    }
   }
+  console.error("EVM RPC proxy failed on every upstream:", network, lastError);
+  return NextResponse.json({ error: "EVM RPC unreachable" }, { status: 502 });
 }

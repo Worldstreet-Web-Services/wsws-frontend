@@ -44,11 +44,15 @@ interface MarketRow {
 // HIP-3 dexs are configured (PERPS_HIP3_DEXS).
 const CATEGORY_LABELS: Record<string, string> = {
   crypto: "Crypto",
-  equities: "Equities",
-  forex: "Forex",
-  commodities: "Commodities",
-  indices: "Indices",
-  other: "Other",
+  // TEMPORARY ROLLOUT GATE — HIP-3 categories are hidden until verified for
+  // release. Re-enable each label here together with its entry in
+  // RELEASED_CATEGORIES (use-hyperliquid-markets.ts), which is the actual
+  // gate; these labels only control which tabs can render.
+  // equities: "Equities",
+  // forex: "Forex",
+  // commodities: "Commodities",
+  // indices: "Indices",
+  // other: "Other",
 };
 const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
 

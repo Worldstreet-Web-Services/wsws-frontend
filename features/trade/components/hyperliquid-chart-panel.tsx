@@ -7,8 +7,10 @@ import { HyperliquidFundingChart } from "@/features/trade/components/hyperliquid
 import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
 
 interface HyperliquidChartPanelProps {
-  /** Raw asset symbol, e.g. "BTC" — empty until a market is selected. */
+  /** Raw asset symbol, e.g. "BTC" or the HIP-3 wire form "xyz:AAPL" — empty until a market is selected. */
   assetSymbol: string;
+  /** The asset's coarse class ("crypto", "equities", ...) — picks the TradingView venue mapping. */
+  assetCategory?: string | null;
   /** Real measured height of the order ticket (see HyperliquidProPerps'
    *  ResizeObserver) — falls back to CHART_PANEL_HEIGHT until measured. */
   height?: number;
@@ -42,6 +44,7 @@ export const CHART_PANEL_HEIGHT = 560;
 // resolves this symbol to.
 export function HyperliquidChartPanel({
   assetSymbol,
+  assetCategory,
   height = CHART_PANEL_HEIGHT,
 }: HyperliquidChartPanelProps) {
   const [fullscreen, setFullscreen] = useState(false);
@@ -97,7 +100,10 @@ export function HyperliquidChartPanel({
         {tab === "funding" ? (
           <HyperliquidFundingChart symbol={assetSymbol} height="100%" />
         ) : assetSymbol ? (
-          <TradingViewChart symbol={tradingViewSymbolForAsset(assetSymbol)} height="100%" />
+          <TradingViewChart
+            symbol={tradingViewSymbolForAsset(assetSymbol, assetCategory)}
+            height="100%"
+          />
         ) : (
           <div
             style={{ height: "100%" }}

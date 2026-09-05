@@ -44,6 +44,13 @@ describe("friendlyError", () => {
     expect(friendlyError("Unsupported network")).toMatch(/couldn't complete this/i);
   });
 
+  it("explains unavailable ZeroDev sponsorship", () => {
+    const expected =
+      "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
+    expect(friendlyError("ZeroDev sponsorship is not configured")).toBe(expected);
+    expect(friendlyError("ZeroDev bundler timed out")).toBe(expected);
+  });
+
   it("explains chess cashier balance failures precisely", () => {
     expect(friendlyError(apiError("CONFLICT", "insufficient available balance", 409))).toMatch(
       /chess balance/i

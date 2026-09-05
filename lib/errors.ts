@@ -145,6 +145,9 @@ export function friendlyError(
   if (/house reserve insufficient/.test(m)) {
     return "Stockfish staking is temporarily unavailable because the reward reserve is low. You can still play a free game.";
   }
+  if (/zerodev sponsorship is not configured|zerodev bundler/.test(m)) {
+    return "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
+  }
   // Not enough of the specific asset being moved (e.g. an ERC-20 balance revert).
   if (/insufficient[- ]?balance|amount exceeds balance|exceeds allowance/.test(m)) {
     return "You don't have enough of this asset for that. Try a smaller amount.";

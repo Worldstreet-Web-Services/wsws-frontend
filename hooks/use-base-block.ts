@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createPublicClient, erc20Abi, http } from "viem";
+import { erc20Abi } from "viem";
 import { base } from "viem/chains";
+import { publicClientForChain } from "@/lib/trade/receipt";
 
-// Reads go to Base's default public RPC. Block numbers and view calls don't
-// need the premium key (that stays server-side for writes/sponsorship), and a
-// public read is enough to know when to refresh on-chain-derived state.
-const client = createPublicClient({ chain: base, transport: http() });
+// Keep direct Base reads on the same authenticated ZeroDev-backed route as the
+// rest of the app instead of letting viem select a public chain default.
+const client = publicClientForChain(base.id);
 
 // One-shot ERC-20 balance read on Base, for flows that verify a delivery
 // on-chain themselves (e.g. a swap's received tokens) instead of waiting on a
@@ -22,37 +22,36 @@ export function readBaseTokenBalance(token: `0x${string}`, owner: `0x${string}`)
   });
 }
 
-// The Base chain tip, polled every ~4s. Consumers watch this to invalidate
+// The Base chain tip, polled every ~10s. Consumers watch this to invalidate
 // queries that mirror on-chain state (balances, vault winnings) so they refresh
-// within a block of any change instead of on a slow fixed poll.
-export function useBaseBlockNumber() {
+// shortly after a change without keeping an RPC poll alive on idle screens.
+export function useBaseBlockNumber(enabled = true) {
   return useQuery<bigint>({
     queryKey: ["base-block"],
     queryFn: () => client.getBlockNumber(),
-    refetchInterval: 4000,
-    staleTime: 3000,
-    refetchOnWindowFocus: true,
+    enabled,
+    refetchInterval: enabled ? 10_000 : false,
+    staleTime: 8_000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
   });
 }
 
-// Invalidates the given query keys on new Base blocks, so balances and
-// winnings react to a deposit, withdrawal, wager or claim quickly instead of
-// waiting for their own long poll. Enable it only where those balances are
-// shown, so idle pages don't poll the chain. `minIntervalMs` rate-limits the
-// invalidation for queries whose refetch is a real upstream call: every ~2s
-// block forcing a refetch is what drove the portfolio route into Alchemy's
-// rate limit, and a bounded cadence still reacts fast without the pile-up.
+// Invalidates direct Base contract reads on new blocks. Do not use this for
+// indexed multi-chain APIs such as portfolio discovery: a block tick there
+// turns one cheap chain read into several expensive provider requests.
 export function useInvalidateOnBlock(
   queryKeys: readonly (readonly unknown[])[],
   enabled = true,
   minIntervalMs = 0
 ): void {
   const queryClient = useQueryClient();
-  const { data: blockNumber } = useBaseBlockNumber();
+  const shouldPoll = enabled && queryKeys.length > 0;
+  const { data: blockNumber } = useBaseBlockNumber(shouldPoll);
   const lastRunRef = useRef(0);
 
   useEffect(() => {
-    if (!enabled || blockNumber === undefined) return;
+    if (!shouldPoll || blockNumber === undefined) return;
     const now = Date.now();
     if (now - lastRunRef.current < minIntervalMs) return;
     lastRunRef.current = now;
@@ -61,5 +60,5 @@ export function useInvalidateOnBlock(
     }
     // queryKeys is a stable literal from the caller; block ticks drive this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockNumber, enabled, queryClient, minIntervalMs]);
+  }, [blockNumber, shouldPoll, queryClient, minIntervalMs]);
 }

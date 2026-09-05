@@ -14,6 +14,7 @@ import {
   partiallySignTransaction,
   setTransactionMessageFeePayer,
 } from "@solana/kit";
+import { solanaRpcUpstreams } from "@/lib/server/solana-rpc-upstreams";
 
 // In-house Solana fee sponsorship, following the same contract as the
 // platform gas-sponsor service: the transaction is first prepared with the
@@ -27,16 +28,6 @@ import {
 // re-point every instruction. Lookup tables are fetched when the message uses
 // them (Jupiter routes always do).
 
-const PUBLIC_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
-const RPC_URLS = () => {
-  const configured = process.env.SOLANA_RPC_URL;
-  const key = process.env.ALCHEMY_API_KEY;
-  return [
-    configured,
-    key ? `https://solana-mainnet.g.alchemy.com/v2/${key}` : undefined,
-    PUBLIC_SOLANA_RPC,
-  ].filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index);
-};
 const ASSOCIATED_TOKEN_PROGRAM_ADDRESS = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const COMPUTE_BUDGET_PROGRAM_ADDRESS = "ComputeBudget111111111111111111111111111111";
 const DEFAULT_COMPUTE_UNIT_LIMIT = 1_400_000n;
@@ -198,7 +189,7 @@ export async function prepareWithLocalSponsor(
   return rewriteFeePayerWithRpc(
     serializedTransaction,
     await localSponsorAddress(),
-    RPC_URLS(),
+    solanaRpcUpstreams(),
     prefundRent
   );
 }
@@ -261,5 +252,5 @@ export async function cosignAndSubmitWithLocalSponsor(
   serializedTransaction: string
 ): Promise<CosignSubmitResult> {
   const secret = parseSponsorSecret(process.env.SOLANA_PRIVATE_KEY as string);
-  return cosignAndSubmitWithSecret(serializedTransaction, secret, RPC_URLS());
+  return cosignAndSubmitWithSecret(serializedTransaction, secret, solanaRpcUpstreams());
 }

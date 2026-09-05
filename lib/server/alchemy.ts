@@ -1,4 +1,6 @@
 import "server-only";
+import { alchemyFetch } from "@/lib/server/alchemy-keys";
+import { cached } from "@/lib/server/response-cache";
 import { fetchRwaRegistry, type RwaTokenInfo } from "@/lib/server/rwa-registry";
 import {
   fetchBuyableRegistry,
@@ -386,53 +388,9 @@ export interface SymbolPrice {
   priceUsd: number;
 }
 
-// Free-tier Alchemy keys are partitioned by purpose to spread load, and each
-// call rotates through a small pool (purpose key -> fallback -> default) so a
-// slow or throttled key fails over instead of hanging. Set the per-purpose keys
-// in env; each falls back to ALCHEMY_API_KEY.
-// One premium Alchemy key now covers every purpose (portfolio, prices, RPC). The
-// old per-purpose key pool only existed to spread free-tier rate limits.
-function alchemyKey(): string {
-  const key = process.env.ALCHEMY_API_KEY;
-  if (!key) throw new Error("No Alchemy API key configured");
-  return key;
-}
-
-// Thrown with the upstream status folded into the message so route handlers
-// and the client's retry guard can both recognize a 429 without re-parsing
-// anything. Kept as a plain Error (not a subclass) since it crosses a
-// server/client boundary via JSON, where only the message survives anyway.
-function alchemyError(status: number): Error {
-  return new Error(`Alchemy request failed: ${status}`);
-}
-
 export function isRateLimitError(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
   return message.includes("429") || message.includes("rate limit") || message.includes("too many");
-}
-
-async function alchemyFetch(
-  buildUrl: (key: string) => string,
-  init?: RequestInit
-): Promise<Response> {
-  const key = alchemyKey();
-  let lastError: unknown;
-  // Retry the single key on a transient failure (network error or 5xx). A 4xx
-  // (rate limit, bad key) won't improve on retry, so surface it immediately.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      // 12s, not 7s: a cold serverless start plus a cold Alchemy connection on
-      // the first request can exceed 7s and abort, showing "could not load" on
-      // first paint even though a warm retry succeeds.
-      const res = await fetch(buildUrl(key), { ...init, signal: AbortSignal.timeout(12_000) });
-      if (res.ok) return res;
-      lastError = alchemyError(res.status);
-      if (res.status < 500) break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError ?? new Error("Alchemy request failed");
 }
 
 // Short in-memory cache so a burst of near-simultaneous requests — multiple
@@ -443,58 +401,16 @@ async function alchemyFetch(
 // reads as stale next to the 30s client poll interval; it only absorbs
 // bursts. In-process only: fine for smoothing load, not meant to survive a
 // restart or span multiple server instances.
-const CACHE_TTL_MS = 15_000;
 // Prices move slowly and the client polls at 60s; a longer window here means
 // each distinct symbol set costs at most one upstream call per interval, and
 // a 429 during a burst finds a fresh-enough snapshot to serve instead.
 const PRICES_CACHE_TTL_MS = 45_000;
-// Balances change on every deposit/withdraw/wager/claim, and the client
-// refetches on Base blocks (throttled client-side). Keep the portfolio TTL
-// short so those refreshes see movement; prices keep the longer TTL (they
-// move slowly).
-const PORTFOLIO_CACHE_TTL_MS = 4_000;
+// Transaction flows bypass this cache explicitly when they need to observe
+// their own writes. Background reads can share this short snapshot.
+const PORTFOLIO_CACHE_TTL_MS = 15_000;
 // How long past expiry a snapshot may still stand in when the upstream call
 // fails. Slightly stale balances beat an error flash — but a snapshot old
 // enough to be from a different world must not.
-const STALE_SERVE_MS = 60_000;
-const responseCache = new Map<string, { expires: number; value: unknown }>();
-const inflight = new Map<string, Promise<unknown>>();
-
-async function cached<T>(
-  cacheKey: string,
-  load: () => Promise<T>,
-  ttlMs: number = CACHE_TTL_MS,
-  // Set when the caller has just changed the balances and needs to observe its
-  // own effect. Reading a cached snapshot there shows the pre-trade state and
-  // then holds it until the next poll.
-  skipCache = false
-): Promise<T> {
-  const hit = responseCache.get(cacheKey);
-  if (!skipCache) {
-    if (hit && hit.expires > Date.now()) return hit.value as T;
-    // Concurrent misses share one upstream call instead of each firing their
-    // own — the burst pattern that walks straight into a rate limit.
-    const pending = inflight.get(cacheKey);
-    if (pending) return pending as Promise<T>;
-  }
-  const run = (async () => {
-    try {
-      const value = await load();
-      responseCache.set(cacheKey, { expires: Date.now() + ttlMs, value });
-      return value;
-    } catch (error) {
-      // A throttled or failing upstream serves the recent snapshot rather
-      // than erroring every caller for the length of the outage.
-      if (hit && hit.expires > Date.now() - STALE_SERVE_MS) return hit.value as T;
-      throw error;
-    } finally {
-      inflight.delete(cacheKey);
-    }
-  })();
-  if (!skipCache) inflight.set(cacheKey, run);
-  return run;
-}
-
 function cachedPrices<T>(cacheKey: string, load: () => Promise<T>): Promise<T> {
   return cached(cacheKey, load, PRICES_CACHE_TTL_MS);
 }

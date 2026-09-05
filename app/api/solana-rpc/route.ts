@@ -1,18 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
+import { solanaRpcUpstreams } from "@/lib/server/solana-rpc-upstreams";
 
 // Solana JSON-RPC for the browser. Privy needs an RPC endpoint to broadcast a
 // Solana transaction, and the wallet code needs one to read blockhashes and
 // confirm signatures. The public mainnet endpoint rate-limits browser traffic
-// hard, so this proxies our Alchemy key instead — server-side, because a key
-// shipped to the client is a key anyone can spend.
+// hard, so this proxies server-side provider keys instead. They must never be
+// shipped to the client because a key exposed there is a key anyone can spend.
 //
 // Auth-gated exactly like the portfolio, which spends the same key. Privy's
 // same-origin fetch carries the privy-token cookie, so no header plumbing is
 // needed on the client.
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
-const PUBLIC_SOLANA_RPC = "https://api.mainnet-beta.solana.com";
 
 // Only what the wallet flows actually call. An open proxy would be a free
 // Alchemy relay for anyone who found it.
@@ -31,16 +31,6 @@ const ALLOWED_METHODS = new Set([
 
 interface RpcCall {
   method?: unknown;
-}
-
-function upstreams(): string[] {
-  const configured = process.env.SOLANA_RPC_URL;
-  const key = process.env.ALCHEMY_API_KEY;
-  return [
-    configured,
-    key ? `https://solana-mainnet.g.alchemy.com/v2/${key}` : undefined,
-    PUBLIC_SOLANA_RPC,
-  ].filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index);
 }
 
 function methodsAllowed(body: unknown): boolean {
@@ -62,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const serialized = JSON.stringify(body);
   let lastFailure: unknown;
-  for (const upstream of upstreams()) {
+  for (const upstream of solanaRpcUpstreams()) {
     try {
       const res = await fetch(upstream, {
         method: "POST",

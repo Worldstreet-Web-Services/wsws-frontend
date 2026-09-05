@@ -13,7 +13,6 @@ import { PerpsView } from "@/features/trade/components/perps-view";
 // market list until a market is chosen.
 export function PerpsSection() {
   const tSections = useTranslations("sections");
-
   return (
     <div className="mx-auto w-full max-w-[1920px] p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">

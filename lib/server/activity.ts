@@ -13,6 +13,8 @@ import {
   type ActionKind,
   type ActionRegistry,
 } from "@/lib/server/action-registry";
+import { alchemyFetch } from "@/lib/server/alchemy-keys";
+import { cached } from "@/lib/server/response-cache";
 
 type RwaRegistry = Record<string, Map<string, RwaTokenInfo>>;
 
@@ -95,27 +97,17 @@ const RPC_HOST: Record<string, string> = {
 
 const PER_NETWORK = 25;
 
-function key(): string {
-  const k = process.env.ALCHEMY_API_KEY;
-  if (!k) throw new Error("No Alchemy API key configured");
-  return k;
-}
-
 async function rpc<T>(network: string, method: string, params: unknown): Promise<T | null> {
   const host = RPC_HOST[network];
   if (!host) return null;
   try {
-    const res = await fetch(`https://${host}.g.alchemy.com/v2/${key()}`, {
+    const res = await alchemyFetch((key) => `https://${host}.g.alchemy.com/v2/${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
       signal: AbortSignal.timeout(12_000),
       cache: "no-store",
     });
-    if (!res.ok) {
-      if (res.status === 429) throw new Error("Alchemy request failed: 429");
-      return null;
-    }
     const data = await res.json();
     return (data?.result ?? null) as T | null;
   } catch (error) {
@@ -299,12 +291,48 @@ async function solanaActivity(
 // Recent wallet activity across every tracked chain, newest first. Spam is
 // filtered with the same allowlist the portfolio uses, so a dusting airdrop
 // never appears here either.
-export async function fetchActivity(
-  evm?: string,
-  solana?: string,
-  limit = 40
-): Promise<ActivityItem[]> {
-  if (!evm && !solana) return [];
+/**
+ * The sweep asks every EVM network, and that is deliberate.
+ *
+ * It looks expensive and is not: `rpc()` returns without a call for any
+ * network missing from RPC_HOST, and RPC_HOST holds five. So the ceiling is
+ * five networks either way, and narrowing it further can save at most twelve
+ * upstream calls once per cache window.
+ *
+ * A previous version selected networks from the wallet's current balances to
+ * claim that saving. It cost more than it was worth: a wallet that had spent
+ * everything on a chain lost its history there, a first deposit could stay
+ * invisible for the length of two cache windows, and reading the balances
+ * added a portfolio fetch of its own. Twelve calls per ninety seconds is not
+ * worth quietly deleting someone's transaction history.
+ *
+ * The real savings on this path are the snapshot below and the bell's slower
+ * poll, neither of which can hide anything.
+ */
+
+/**
+ * How long one wallet's history may be served from a snapshot.
+ *
+ * One sweep costs an upstream call per network per direction, which is the
+ * most expensive read in the app by a wide margin, and history only changes
+ * when a transaction lands. 90s is longer than the notification bell's poll on
+ * purpose: the bell sits in the topbar on every screen, so without this every
+ * signed-in tab paid for a full sweep every minute.
+ */
+const ACTIVITY_CACHE_TTL_MS = 90_000;
+
+export function fetchActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
+  if (!evm && !solana) return Promise.resolve([]);
+  // Keyed by the wallets and the page size, so two tabs, two devices and the
+  // bell plus the activity view all collapse onto one sweep.
+  return cached(
+    `activity:${evm ?? ""}:${solana ?? ""}:${limit}`,
+    () => loadActivity(evm, solana, limit),
+    ACTIVITY_CACHE_TTL_MS
+  );
+}
+
+async function loadActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
   const [rwa, registries, actions] = await Promise.all([
     fetchRwaRegistry().catch((): RwaRegistry => ({})),
     fetchBuyableRegistry().catch(() => ({ buyable: {}, meme: {} })),

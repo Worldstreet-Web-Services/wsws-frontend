@@ -9,14 +9,22 @@ import {
   searchTokens,
   type MemeToken,
 } from "@/lib/meme/api";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 const TRENDING_POLL_MS = 30_000;
 const SEARCH_DEBOUNCE_MS = 350;
 
 export function useTrendingMemes() {
+  const active = useSectionActive();
   const query = useQuery({
     queryKey: ["meme", "trending"],
     queryFn: fetchTrendingTokens,
+    // `subscribed`, not `enabled`. Both stop the timer, but `enabled: false`
+    // also parks the query in `pending` with its data unavailable and
+    // `refetch()` refused, so scrolling back showed a skeleton. `subscribed`
+    // only detaches the observer: the last data stays on screen, `refetch()`
+    // still works, and the query drops out of the window-focus herd too.
+    subscribed: active,
     refetchInterval: TRENDING_POLL_MS,
     staleTime: 15_000,
   });
@@ -72,9 +80,11 @@ export function useMemeSearch(raw: string) {
 // Fresh risk-assessed details for the selected token; search rows don't carry
 // current risk/tradability, so the trade surface always re-reads this.
 export function useMemeToken(address: string | null) {
+  const active = useSectionActive();
   const query = useQuery({
     queryKey: ["meme", "token", address],
     queryFn: () => fetchToken(address as string),
+    subscribed: active,
     enabled: !!address,
     staleTime: 20_000,
     refetchInterval: 30_000,

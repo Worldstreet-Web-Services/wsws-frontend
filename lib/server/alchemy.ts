@@ -1,4 +1,6 @@
 import "server-only";
+import { alchemyFetch } from "@/lib/server/alchemy-keys";
+import { cached } from "@/lib/server/response-cache";
 import { fetchRwaRegistry, type RwaTokenInfo } from "@/lib/server/rwa-registry";
 import {
   fetchBuyableRegistry,
@@ -6,6 +8,7 @@ import {
   type MemeRegistry,
 } from "@/lib/server/buyable-registry";
 import { displaySymbol } from "@/lib/buy";
+import { isPolymarketCollateral } from "@/lib/polymarket/config";
 
 // Alchemy Portfolio API. One call returns native + ERC-20 + SPL balances with
 // USD prices across every requested network. Key stays server-side.
@@ -148,6 +151,24 @@ const NATIVE_TOKEN: Record<string, { symbol: string; name: string; decimals: num
   "abstract-mainnet": { symbol: "ETH", name: "ETH", decimals: 18 },
 };
 
+// The symbols to ask the by-symbol price endpoint for when a native balance
+// comes back unpriced. Derived from NATIVE_TOKEN rather than written out, so a
+// chain added there can never be left unpriced.
+//
+// This is not a rare fallback. The Portfolio API prices native ETH on
+// eth-mainnet and base-mainnet but returns an EMPTY tokenPrices array for the
+// native coin of every chain past the original set — verified live against
+// apechain-mainnet (APE) and hyperliquid-mainnet (HYPE). This list used to be a
+// hard-coded ["ETH", "POL", "SOL"], so a bought APE or a swapped HYPE was
+// fetched correctly, valued at $0, and then dropped by the holdings table,
+// whose "hide zero-value assets" toggle defaults on: the owner was told they
+// held nothing. Two users reported exactly that, on exactly those two chains.
+// All twelve symbols resolve against the price endpoint, and twelve is inside
+// its 25-symbol per-request cap, so this stays one upstream call.
+export const NATIVE_PRICE_SYMBOLS = [
+  ...new Set(Object.values(NATIVE_TOKEN).map((t) => t.symbol)),
+].sort();
+
 // The stablecoins we always surface per chain. Balances come from Alchemy; a
 // tracked stablecoin the user doesn't hold still shows as a zero row so the
 // portfolio reflects the full supported set (4 chains x USDC/USDT) for everyone.
@@ -211,6 +232,7 @@ export function isAllowedHolding(
   const lower = address.toLowerCase();
   return (
     isTrackedStable(network, address) ||
+    isPolymarketCollateral(network, address) ||
     (ALLOWED_EXTRA[network] ?? []).includes(lower) ||
     (rwa[network]?.has(lower) ?? false) ||
     (buyable[network]?.has(lower) ?? false)
@@ -249,6 +271,7 @@ function normalize(
     const symbol = native?.symbol ?? t.tokenMetadata?.symbol ?? rwaInfo?.symbol;
     if (!symbol) continue;
     const memeInfo = address ? meme[network]?.get(address.toLowerCase()) : undefined;
+    const predictionCollateral = isPolymarketCollateral(network, address);
     const usdPrice = t.tokenPrices?.find((p) => p.currency === "usd");
     let priceUsd = usdPrice ? parseFloat(usdPrice.value) : 0;
     if (priceUsd === 0 && rwaInfo) priceUsd = rwaInfo.priceUsd;
@@ -257,7 +280,7 @@ function normalize(
     // Alchemy sometimes returns an empty price array for a tracked stablecoin
     // (Polygon USDC has done this). They are dollar-pegged, so value a held
     // balance at $1 rather than $0, which would hide a real holding.
-    if (priceUsd === 0 && isTrackedStable(network, address)) priceUsd = 1;
+    if (priceUsd === 0 && (isTrackedStable(network, address) || predictionCollateral)) priceUsd = 1;
     // A wrapped representation (cbBTC, cbDOGE) displays as the coin it
     // represents, not its own contract ticker or on-chain name — the raw
     // resolved symbol above still governs identity checks (isTrackedStable,
@@ -274,7 +297,7 @@ function normalize(
         ? "coin"
         : rwaInfo
           ? "rwa"
-          : isTrackedStable(network, address)
+          : isTrackedStable(network, address) || predictionCollateral
             ? "stablecoin"
             : "token";
     out.push({
@@ -304,7 +327,7 @@ async function withTrackedBaseline(
   networks: string[]
 ): Promise<TokenBalance[]> {
   const present = new Set(held.map((t) => `${t.network}:${(t.address ?? "native").toLowerCase()}`));
-  const nativePrices = await fetchPrices(["ETH", "POL", "SOL"]).catch(() => [] as SymbolPrice[]);
+  const nativePrices = await fetchPrices(NATIVE_PRICE_SYMBOLS).catch(() => [] as SymbolPrice[]);
   const priceOf = (symbol: string) => nativePrices.find((p) => p.symbol === symbol)?.priceUsd ?? 0;
 
   const baseline: TokenBalance[] = [];
@@ -343,9 +366,11 @@ async function withTrackedBaseline(
     }
   }
 
-  // Alchemy occasionally returns a native balance with no price (POL has done
-  // this). Backfill from the by-symbol price so gas tokens are never valued at $0
-  // when they shouldn't be.
+  // Alchemy returns a native balance with no price for every chain outside the
+  // original set, and occasionally for one inside it (POL has done this).
+  // Backfill from the by-symbol price so a gas token is never valued at $0 when
+  // it shouldn't be — a $0 value is what makes a real holding disappear from the
+  // holdings table entirely.
   const patched = held.map((t) => {
     if (t.address === null && t.priceUsd === 0 && priceOf(t.symbol) > 0) {
       const price = priceOf(t.symbol);
@@ -363,115 +388,38 @@ export interface SymbolPrice {
   priceUsd: number;
 }
 
-// Free-tier Alchemy keys are partitioned by purpose to spread load, and each
-// call rotates through a small pool (purpose key -> fallback -> default) so a
-// slow or throttled key fails over instead of hanging. Set the per-purpose keys
-// in env; each falls back to ALCHEMY_API_KEY.
-// One premium Alchemy key now covers every purpose (portfolio, prices, RPC). The
-// old per-purpose key pool only existed to spread free-tier rate limits.
-function alchemyKey(): string {
-  const key = process.env.ALCHEMY_API_KEY;
-  if (!key) throw new Error("No Alchemy API key configured");
-  return key;
-}
-
-// Thrown with the upstream status folded into the message so route handlers
-// and the client's retry guard can both recognize a 429 without re-parsing
-// anything. Kept as a plain Error (not a subclass) since it crosses a
-// server/client boundary via JSON, where only the message survives anyway.
-function alchemyError(status: number): Error {
-  return new Error(`Alchemy request failed: ${status}`);
-}
-
 export function isRateLimitError(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
   return message.includes("429") || message.includes("rate limit") || message.includes("too many");
 }
 
-async function alchemyFetch(
-  buildUrl: (key: string) => string,
-  init?: RequestInit
-): Promise<Response> {
-  const key = alchemyKey();
-  let lastError: unknown;
-  // Retry the single key on a transient failure (network error or 5xx). A 4xx
-  // (rate limit, bad key) won't improve on retry, so surface it immediately.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      // 12s, not 7s: a cold serverless start plus a cold Alchemy connection on
-      // the first request can exceed 7s and abort, showing "could not load" on
-      // first paint even though a warm retry succeeds.
-      const res = await fetch(buildUrl(key), { ...init, signal: AbortSignal.timeout(12_000) });
-      if (res.ok) return res;
-      lastError = alchemyError(res.status);
-      if (res.status < 500) break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError ?? new Error("Alchemy request failed");
-}
-
 // Short in-memory cache so a burst of near-simultaneous requests — multiple
 // browser tabs on the same wallet, every dashboard section re-rendering on
 // load, the native-price lookup below that every user's portfolio fetch
-// triggers with the identical ["ETH","POL","SOL"] key — collapses into one
+// triggers with the identical NATIVE_PRICE_SYMBOLS key — collapses into one
 // upstream Alchemy call instead of one per caller. Short enough that it never
 // reads as stale next to the 30s client poll interval; it only absorbs
 // bursts. In-process only: fine for smoothing load, not meant to survive a
 // restart or span multiple server instances.
-const CACHE_TTL_MS = 15_000;
-// Prices move slowly and the client polls at 60s; a longer window here means
-// each distinct symbol set costs at most one upstream call per interval, and
-// a 429 during a burst finds a fresh-enough snapshot to serve instead.
-const PRICES_CACHE_TTL_MS = 45_000;
-// Balances change on every deposit/withdraw/wager/claim, and the client
-// refetches on Base blocks (throttled client-side). Keep the portfolio TTL
-// short so those refreshes see movement; prices keep the longer TTL (they
-// move slowly).
-const PORTFOLIO_CACHE_TTL_MS = 4_000;
+// Both of these sat BELOW the 60s client poll, which meant a repeat poll could
+// never hit them: the snapshot expired before the next request arrived, so the
+// cache only ever absorbed concurrent duplicates and every user paid full price
+// on their own timer. Measured on the dev server, /api/prices was being 429'd
+// by the provider while this window was 45s.
+//
+// Above the poll interval, a poll lands inside the previous snapshot roughly
+// half the time. Prices are keyed by the symbol set and shared by every user,
+// so this is close to free; balances are per wallet, and a background read of
+// a balance up to 75s old is the same staleness the 60s poll already implies.
+const PRICES_CACHE_TTL_MS = 75_000;
+// Transaction flows bypass this cache explicitly (`fresh=1`) when they need to
+// observe their own writes, so lengthening it cannot make a trade look like it
+// did nothing. It also makes the snapshot activity borrows actually warm: that
+// read shares this key, and at 15s it missed on nearly every sweep.
+const PORTFOLIO_CACHE_TTL_MS = 75_000;
 // How long past expiry a snapshot may still stand in when the upstream call
 // fails. Slightly stale balances beat an error flash — but a snapshot old
 // enough to be from a different world must not.
-const STALE_SERVE_MS = 60_000;
-const responseCache = new Map<string, { expires: number; value: unknown }>();
-const inflight = new Map<string, Promise<unknown>>();
-
-async function cached<T>(
-  cacheKey: string,
-  load: () => Promise<T>,
-  ttlMs: number = CACHE_TTL_MS,
-  // Set when the caller has just changed the balances and needs to observe its
-  // own effect. Reading a cached snapshot there shows the pre-trade state and
-  // then holds it until the next poll.
-  skipCache = false
-): Promise<T> {
-  const hit = responseCache.get(cacheKey);
-  if (!skipCache) {
-    if (hit && hit.expires > Date.now()) return hit.value as T;
-    // Concurrent misses share one upstream call instead of each firing their
-    // own — the burst pattern that walks straight into a rate limit.
-    const pending = inflight.get(cacheKey);
-    if (pending) return pending as Promise<T>;
-  }
-  const run = (async () => {
-    try {
-      const value = await load();
-      responseCache.set(cacheKey, { expires: Date.now() + ttlMs, value });
-      return value;
-    } catch (error) {
-      // A throttled or failing upstream serves the recent snapshot rather
-      // than erroring every caller for the length of the outage.
-      if (hit && hit.expires > Date.now() - STALE_SERVE_MS) return hit.value as T;
-      throw error;
-    } finally {
-      inflight.delete(cacheKey);
-    }
-  })();
-  if (!skipCache) inflight.set(cacheKey, run);
-  return run;
-}
-
 function cachedPrices<T>(cacheKey: string, load: () => Promise<T>): Promise<T> {
   return cached(cacheKey, load, PRICES_CACHE_TTL_MS);
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSellQuoteBody, canSell, canSellAsset, SELL_DESTINATION } from "@/lib/sell";
+import { CONTRACTS } from "@/lib/polymarket/config";
 
 const USDC_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 
@@ -62,6 +63,29 @@ describe("canSellAsset", () => {
 
   it("rejects everything on an unsupported network", () => {
     expect(canSellAsset("fantom-mainnet", "0xtoken")).toBe(false);
+  });
+
+  // Users held pUSD in their own wallet with no way to sell it. Dextopus quotes
+  // it directly at the same rate as USDC.e, so the generic sell route is the way
+  // out; see the comment on canSellAsset.
+  it("sells Polygon pUSD through the generic Dextopus route, in either casing", () => {
+    expect(canSellAsset("polygon-mainnet", CONTRACTS.pusd)).toBe(true);
+    expect(canSellAsset("polygon-mainnet", CONTRACTS.pusd.toLowerCase())).toBe(true);
+  });
+
+  it("builds a pUSD sell body against Polygon, settling to USDC on Base", () => {
+    const body = buildSellQuoteBody({
+      network: "polygon-mainnet",
+      asset: CONTRACTS.pusd,
+      amount: 25_000_000n,
+      recipient: "0xbase",
+      refundTo: "0xpolygon",
+      slippageBps: 100,
+    });
+    expect(body.originChainId).toBe(137);
+    expect(body.originAsset).toBe(CONTRACTS.pusd);
+    expect(body.destinationChainId).toBe(8453);
+    expect(body.amount).toBe("25000000");
   });
 });
 

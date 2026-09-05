@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -33,8 +34,9 @@ import { useMoney } from "@/components/ui/currency-select";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
-import { selectHoldings } from "@/features/portfolio/lib/holdings";
+import { isZeroValueHolding, selectHoldings } from "@/features/portfolio/lib/holdings";
 import { canSellAsset } from "@/lib/sell";
+import { isPolymarketCollateral } from "@/lib/polymarket/config";
 import type { MemeToken } from "@/lib/meme/api";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
@@ -103,6 +105,7 @@ export function PortfolioView({
 }: PortfolioViewProps) {
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
+  const router = useRouter();
   const t = useTranslations("portfolio");
   const { wallet: kashWallet } = useKashAccount();
   const claimPoints = useKashClaim();
@@ -123,11 +126,11 @@ export function PortfolioView({
   // The table shows bought assets only, so drop the USDC-on-Base deposit float
   // first (see selectHoldings). Then, when hideZero is on, drop rows with no real
   // value — the always-present USDC/USDT/native baseline (shown at $0) plus dust
-  // that rounds to $0.00. The 0.005 floor is one rounded cent, so anything the
-  // table would render as "$0.00" is hidden.
+  // that rounds to $0.00. A held balance we could not price is not zero-value and
+  // survives the toggle; see isZeroValueHolding.
   const visibleTokens = useMemo(() => {
     const holdings = selectHoldings(tokens);
-    return hideZero ? holdings.filter((t) => t.valueUsd >= 0.005) : holdings;
+    return hideZero ? holdings.filter((t) => !isZeroValueHolding(t)) : holdings;
   }, [tokens, hideZero]);
 
   const table = useReactTable({
@@ -170,25 +173,28 @@ export function PortfolioView({
     // Trade-catalog memecoins sell through the meme trade service; Dextopus
     // cannot quote them, so its sell sheet always fails for these.
     const isMeme = token.meme === true && token.address !== null;
+    const isPredictionCollateral = isPolymarketCollateral(token.network, token.address);
     // Otherwise offer "Sell" only for assets Dextopus can take as an origin;
     // native POL/SOL, for example, cannot be sold, so we don't dead-end the user.
     const sellable = canSellAsset(token.network, token.address);
 
-    const buyAction = isRwa
-      ? () =>
-          onOpenRwaTrade({
-            network: token.network,
-            address: token.address as string,
-            symbol: token.symbol,
-            mode: "buy",
-          })
-      : () =>
-          onOpenBuy({
-            symbol: token.symbol,
-            name: token.name,
-            priceUsd: token.priceUsd,
-            logo: token.logo,
-          });
+    const buyAction = isPredictionCollateral
+      ? () => router.push("/prediction")
+      : isRwa
+        ? () =>
+            onOpenRwaTrade({
+              network: token.network,
+              address: token.address as string,
+              symbol: token.symbol,
+              mode: "buy",
+            })
+        : () =>
+            onOpenBuy({
+              symbol: token.symbol,
+              name: token.name,
+              priceUsd: token.priceUsd,
+              logo: token.logo,
+            });
 
     const sellAction = isRwa
       ? {
@@ -237,7 +243,7 @@ export function PortfolioView({
         { k: t("network"), v: displayNetworkLabel(token) },
         { k: t("positionValue"), v: money.format(token.valueUsd) },
       ],
-      cta: t("buyMore", { name: token.name }),
+      cta: isPredictionCollateral ? t("managePrediction") : t("buyMore", { name: token.name }),
       onCta: buyAction,
       ...sellAction,
       coingeckoId: coingeckoId(token.symbol) ?? undefined,
@@ -294,7 +300,9 @@ export function PortfolioView({
         />
       </div>
 
-      <div className="mt-3">{crossBorderSlot}</div>
+      {/* Commented out for now, at explicit request — cross-border is still
+          just a "coming soon" announcement banner, not a live flow. */}
+      {/* <div className="mt-3">{crossBorderSlot}</div> */}
 
       {errored ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">

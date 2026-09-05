@@ -15,7 +15,7 @@ import {
 } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePrices } from "@/hooks/use-prices";
-import { SETTLE_CHAINS } from "@/lib/deposit";
+import { quoteFee, SETTLE_CHAINS } from "@/lib/deposit";
 import { fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
@@ -87,6 +87,9 @@ export function FundSheet({ onClose }: FundSheetProps) {
     return eth * ethPrice;
   }, [quote.data, ethPrice]);
 
+  // The routing fee the quote implies: what the player adds minus what lands.
+  const feeUsd = addedUsd != null ? quoteFee(value, addedUsd) : null;
+
   const status = useDepositStatus(depositRequestId, "trade");
   useTerminalToast(
     status.data,
@@ -126,7 +129,10 @@ export function FundSheet({ onClose }: FundSheetProps) {
       setDepositRequestId(fresh.data.depositRequestId);
       setSent(true);
       track("game_wallet_funded", { game: "last_man", amount_usd: value });
-      toast.success(t("toastAdded", { amount: money.formatExact(value) }), { id: toastId });
+      toast.success(t("toastAdded", { amount: money.formatExact(value) }), {
+        id: toastId,
+        sensitive: true,
+      });
       void refetchPortfolio();
     } catch (e) {
       setError(friendlyError(e, t("errorSend")));
@@ -209,6 +215,13 @@ export function FundSheet({ onClose }: FundSheetProps) {
           ) : (
             <span className="tnum text-accent">≈ {money.formatExact(addedUsd)}</span>
           )}
+        </div>
+      ) : null}
+
+      {value > 0 && !overBalance && feeUsd != null && feeUsd > 0 ? (
+        <div className="ws-inset mt-2 flex items-center justify-between px-4 py-3 text-[12.5px] font-normal">
+          <span className="text-white/55">{t("transactionFee")}</span>
+          <span className="tnum text-white/85">≈ {money.formatExact(feeUsd)}</span>
         </div>
       ) : null}
 

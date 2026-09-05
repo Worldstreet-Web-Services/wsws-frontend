@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { fetchPerpOrders, isPerpUnavailable } from "@/lib/perp/api";
 import type { PerpOrder } from "@/lib/perp/types";
+import { pollUnlessFailing } from "@/lib/query-poll";
 
 // The trader's pending (unfilled) limit and stop orders. They change on two
 // events only — the user places or cancels one, or the keeper fills one at its
@@ -25,7 +26,7 @@ export function usePerpOrders(enabled = true) {
     queryKey: ["perp-orders", trader],
     queryFn: () => fetchPerpOrders(trader as string),
     enabled: enabled && trader != null,
-    refetchInterval: ORDERS_POLL_MS,
+    refetchInterval: pollUnlessFailing(ORDERS_POLL_MS),
     retry: (count, error) => !isPerpUnavailable(error) && count < 2,
   });
 

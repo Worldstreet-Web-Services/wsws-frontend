@@ -2,6 +2,7 @@
 
 import { resolveAuthTokens, type AuthIdentity } from "@/lib/auth-token";
 import { LegacySessionError } from "@/lib/errors";
+import { circuitAllows, recordCircuitFailure, recordCircuitSuccess } from "@/lib/api/circuit-store";
 
 export interface ApiFetchOptions {
   // Throw a retryable error instead of firing a token-less request that 401s.
@@ -10,6 +11,9 @@ export interface ApiFetchOptions {
   // OLD Privy identity for the migration flow's legacy calls. See
   // lib/auth-token for the rules.
   identity?: AuthIdentity;
+  // Send no credentials at all, for reads that are identical for everyone —
+  // keeps them cacheable while still passing through the breaker below.
+  anonymous?: boolean;
 }
 
 // The auth headers for one identity, for the few callers that cannot go
@@ -42,13 +46,56 @@ export async function apiFetch(
   opts: ApiFetchOptions = {}
 ): Promise<Response> {
   const identity = opts.identity ?? "current";
-  const { accessToken, idToken } = await resolveAuthTokens(identity);
-  if (opts.requireAuth && !accessToken) {
-    if (identity === "legacy") throw new LegacySessionError();
-    throw new Error("Auth not ready, retrying");
-  }
   const headers = new Headers(init.headers);
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  if (idToken) headers.set("privy-id-token", idToken);
-  return fetch(path, { ...init, headers });
+
+  // `anonymous` sends no credentials at all, for reads that are the same for
+  // everyone. It exists so a public read can still sit behind the breaker
+  // below without becoming uncacheable: a request carrying an Authorization
+  // header is private to one user, so a shared cache must not store it. That
+  // is why these reads used to go straight to `fetch` and skip the breaker
+  // entirely, which is the wrong trade — the breaker is what stops a failing
+  // endpoint costing an invocation per poll.
+  if (!opts.anonymous) {
+    const { accessToken, idToken } = await resolveAuthTokens(identity);
+    // Bearer-only: a Decane session has no identity token, so requiring one
+    // would reject every migrated user. A legacy call with no Privy session is
+    // not retryable — the flow must ask the user to sign in to the old account.
+    if (opts.requireAuth && !accessToken) {
+      if (identity === "legacy") throw new LegacySessionError();
+      throw new Error("Auth not ready, retrying");
+    }
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    if (idToken) headers.set("privy-id-token", idToken);
+  }
+
+  /**
+   * The breaker sits at the ONE transport, not in each hook.
+   *
+   * This app polls harder than anything else we run — match state every
+   * second, tickets every second, several of them deliberately continuing in
+   * a hidden tab — and each of those requests is a serverless invocation. When
+   * the gateway is down, none of that traffic can accomplish anything, so it
+   * does not leave the tab at all: no network, no invocation, no cost.
+   *
+   * READS only. A write is the player doing something deliberate — a move, a
+   * bet, a transfer — and refusing it in-process would look like it happened
+   * when it did not. Those go out and fail honestly, and their failure still
+   * informs the breaker.
+   */
+  const method = (init.method ?? "GET").toUpperCase();
+  if ((method === "GET" || method === "HEAD") && !circuitAllows()) {
+    throw new Error("Can't reach the server right now");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(path, { ...init, headers });
+  } catch (error) {
+    // No status at all: DNS, TCP, CORS, offline. The clearest signal there is.
+    recordCircuitFailure(undefined);
+    throw error;
+  }
+  if (response.ok) recordCircuitSuccess();
+  else recordCircuitFailure(response.status);
+  return response;
 }

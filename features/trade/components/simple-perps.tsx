@@ -17,12 +17,18 @@ import { usePerpActions } from "@/features/trade/hooks/use-perp-actions";
 import { usePerpPositions } from "@/features/trade/hooks/use-perp-positions";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatAmount, formatUsd, liquidationPrice } from "@/lib/trade/math";
-import { orderFieldValidity, pairSymbol, validateOrder } from "@/lib/perp/logic";
+import {
+  PERP_MAJOR_SYMBOLS,
+  orderFieldValidity,
+  pairSymbol,
+  validateOrder,
+} from "@/lib/perp/logic";
 import { tradingViewFallbackSymbol, tradingViewSymbol } from "@/lib/perp/tradingview";
 import { findAsset } from "@/lib/trade/assets";
 import { usePerpFormAutostage } from "@/features/trade/hooks/use-perp-form-autostage";
 import type { OpenPosition, PerpPair } from "@/lib/perp/types";
 import type { PerpPrefill } from "@/lib/voice/intent";
+import { useInView } from "@/hooks/use-in-view";
 
 // The guided interface: pick a major market, long or short, an amount and a
 // leverage, one tap to trade. Market orders only; TP/SL, limit orders and the
@@ -46,8 +52,6 @@ interface SimplePerpsProps {
   onSheetOpenChange: (open: boolean) => void;
 }
 
-// The curated market set for the simple view, in display order.
-const SIMPLE_SYMBOLS = ["BTC/USD", "ETH/USD", "SOL/USD", "BNB/USD", "DOGE/USD", "AAVE/USD"];
 // The desktop ticket keeps its three chips: they sit above the form in a narrow
 // column, where a second row of them pushes the amount and leverage off the
 // fold. The phone lists all six instead, as its own screen.
@@ -68,6 +72,8 @@ export function SimplePerps({
 }: SimplePerpsProps) {
   const t = useTranslations("perps");
   const tCommon = useTranslations("common");
+  // Holds the chart iframe back until the card is actually near the viewport.
+  const [chartRef, chartInView] = useInView<HTMLDivElement>();
   const setSelected = onSelect;
   const isMobile = useIsMobile();
   const setSheetOpen = onSheetOpenChange;
@@ -93,7 +99,7 @@ export function SimplePerps({
     setSideChosen(true);
   };
   const simplePairs = useMemo(() => {
-    const majors = SIMPLE_SYMBOLS.map((s) => pairs.find((p) => pairSymbol(p) === s)).filter(
+    const majors = PERP_MAJOR_SYMBOLS.map((s) => pairs.find((p) => pairSymbol(p) === s)).filter(
       (p): p is PerpPair => p != null
     );
     // A voice command may target a non-major (gold, tesla); include the currently
@@ -297,7 +303,7 @@ export function SimplePerps({
         {/* The phone's trade screen reaches every market through the selector
             in its header, so these would say it twice there. */}
         <div className={`mb-3.5 grid grid-cols-3 gap-2 ${isMobile ? "hidden" : ""}`}>
-          {SIMPLE_SYMBOLS.slice(0, DESKTOP_CHIPS).map((s) => {
+          {PERP_MAJOR_SYMBOLS.slice(0, DESKTOP_CHIPS).map((s) => {
             const sym = s.split("/")[0];
             const on = s === symbol;
             const p = priceOf(s);
@@ -461,7 +467,7 @@ export function SimplePerps({
   );
 
   const chartCard = (
-    <div className="ws-card p-4 sm:p-5">
+    <div ref={chartRef} className="ws-card p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2.5">
         <AssetIcon sym={baseSym} bg={findAsset(baseSym)?.bg ?? "#3c3c3c"} size={30} />
         <div className="min-w-0 flex-1">
@@ -474,10 +480,22 @@ export function SimplePerps({
           {priceNum > 0 ? formatUsd(priceNum) : "—"}
         </FlashPrice>
       </div>
-      <TradingViewChart
-        symbol={pair ? tradingViewSymbol(pair) : tradingViewFallbackSymbol(baseSym)}
-        height={320}
-      />
+      {/* The iframe pulls TradingView's whole chart runtime from their CDN,
+          which is roughly two hundred requests. A perp symbol is always
+          selected and this card renders unconditionally on desktop, so the
+          dashboard was paying all of it before anyone scrolled to the desk.
+
+          SectionVisibility does not help here: it pauses polling hooks, it
+          deliberately does not unmount, so the iframe still mounted. This
+          gates the iframe itself and holds its height so nothing shifts. */}
+      {chartInView ? (
+        <TradingViewChart
+          symbol={pair ? tradingViewSymbol(pair) : tradingViewFallbackSymbol(baseSym)}
+          height={320}
+        />
+      ) : (
+        <div className="animate-pulse rounded-xl bg-white/6" style={{ height: 320 }} />
+      )}
     </div>
   );
 
@@ -529,7 +547,7 @@ export function SimplePerps({
   if (isMobile) {
     return (
       <>
-        {renderMarketList(SIMPLE_SYMBOLS)}
+        {renderMarketList(PERP_MAJOR_SYMBOLS)}
 
         <MobileTradeSheet
           open={sheetOpen}
@@ -558,7 +576,10 @@ export function SimplePerps({
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]">
+    <div
+      className="grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,420px)_1fr]"
+      data-sensitive="position"
+    >
       {tradeCard}
       {chartAndPositions}
       {confirmDialog}

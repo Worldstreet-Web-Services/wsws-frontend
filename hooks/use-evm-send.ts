@@ -6,7 +6,7 @@ import type { EIP1193Provider, SignedAuthorization } from "viem";
 import { recordSelfInitiated } from "@/lib/analytics/self-initiated";
 import { ensureUnlocked } from "@/lib/decane";
 import { sendSponsoredEvmCalls, type SignAuthorization } from "@/lib/trade/sponsor";
-import { getSponsoredEvmChainById, isSponsoredEvmChainId } from "@/lib/trade/sponsored-evm";
+import { getSponsoredEvmChainById, hasGasPolicyForChainId } from "@/lib/trade/sponsored-evm";
 import type { EvmBatchCall } from "@/lib/migration/types";
 
 export interface EvmSendInput {
@@ -66,7 +66,10 @@ export function useEvmSend() {
     }: EvmSendInput): Promise<`0x${string}`> => {
       const from = connectedEvmAddress(wallet, address);
       await ensureUnlocked(wallet);
-      const sponsored = getSponsoredEvmChainById(chainId);
+      // Registry membership alone is not enough: a chain with no Gas Manager
+      // policy has its userOp rejected by the bundler, so it takes the ordinary
+      // user-paid path instead of failing.
+      const sponsored = hasGasPolicyForChainId(chainId) ? getSponsoredEvmChainById(chainId) : null;
       if (sponsored) {
         const accessToken = wallet.getAccessToken();
         if (!accessToken) throw new Error("Your session expired. Sign in again.");
@@ -116,7 +119,7 @@ export function useEvmSendBatch() {
       // silently signed by whichever wallet is connected.
       expectedAddress?: string
     ): Promise<`0x${string}`> => {
-      if (!isSponsoredEvmChainId(chainId)) {
+      if (!hasGasPolicyForChainId(chainId)) {
         throw new Error("Batched transactions are only supported on sponsored EVM chains.");
       }
       if (calls.length === 0) throw new Error("Nothing to send.");

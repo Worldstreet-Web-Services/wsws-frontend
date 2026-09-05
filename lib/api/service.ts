@@ -36,6 +36,14 @@ export interface ServiceClient {
   // The same service, authenticating as the named identity. Memoised, so a
   // feature can hold `client.as("legacy")` next to its normal client.
   as(identity: AuthIdentity): ServiceClient;
+  /**
+   * POST a FormData body.
+   *
+   * Separate from `post` because the browser must set `content-type` ITSELF —
+   * it is the only party that knows the multipart boundary it generated, and
+   * setting the header by hand produces a body no parser can read.
+   */
+  postForm<T>(path: string, form: FormData): Promise<T>;
 }
 
 export interface ServiceClientOptions {
@@ -59,9 +67,16 @@ export function createServiceClient(
   const variants = new Map<AuthIdentity, ServiceClient>();
 
   const client: ServiceClient = {
-    // Public reads stay on plain fetch so they remain cacheable.
+    // Public reads send no credentials, so they stay cacheable, but they go
+    // through the one transport so the circuit breaker sees them. On plain
+    // fetch they did not: the lobby polls are among the loudest readers in the
+    // app, and while their gateway was returning 502 every tick still left the
+    // tab and cost an invocation, which is exactly what the breaker exists to
+    // stop.
     get: <T>(path: string, params?: QueryParams) =>
-      fetch(url(path, params)).then((res) => unwrap<T>(res, fallbackMessage)),
+      apiFetch(url(path, params), {}, { anonymous: true }).then((res) =>
+        unwrap<T>(res, fallbackMessage)
+      ),
     authedGet: <T>(path: string, params?: QueryParams) => authed<T>(url(path, params), {}),
     post: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("POST", body)),
     put: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("PUT", body)),
@@ -75,6 +90,9 @@ export function createServiceClient(
       }
       return variant;
     },
+    // No `headers` on purpose — see the interface.
+    postForm: <T>(path: string, form: FormData) =>
+      authed<T>(url(path), { method: "POST", body: form }),
   };
   return client;
 }

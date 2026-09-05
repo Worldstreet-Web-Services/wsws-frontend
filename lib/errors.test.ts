@@ -44,9 +44,27 @@ describe("friendlyError", () => {
     expect(friendlyError("Unsupported network")).toMatch(/couldn't complete this/i);
   });
 
+  it("explains unavailable ZeroDev sponsorship", () => {
+    const expected =
+      "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
+    expect(friendlyError("ZeroDev sponsorship is not configured")).toBe(expected);
+    expect(friendlyError("ZeroDev bundler timed out")).toBe(expected);
+  });
+
   it("explains chess cashier balance failures precisely", () => {
     expect(friendlyError(apiError("CONFLICT", "insufficient available balance", 409))).toMatch(
       /chess balance/i
+    );
+    expect(
+      friendlyError(apiError("PLAYER_BALANCE_INSUFFICIENT", "player balance insufficient", 409))
+    ).toMatch(/deposit more usdc|smaller stake/i);
+  });
+
+  it("does not blame the player when the Stockfish reserve is too low", () => {
+    expect(
+      friendlyError(apiError("HOUSE_RESERVE_INSUFFICIENT", "house reserve insufficient", 503))
+    ).toBe(
+      "Stockfish staking is temporarily unavailable because the reward reserve is low. You can still play a free game."
     );
   });
 

@@ -23,3 +23,4 @@ export { ArenaListSection } from "./components/chess/arena/list-section";
 export { SwissDetailSection } from "./components/chess/swiss/detail-section";
 export { SwissListSection } from "./components/chess/swiss/list-section";
 export { cashierMigrationAdapter, vaultMigrationAdapter } from "./lib/migration-adapter";
+export { SwissCreateForm } from "./components/chess/swiss/create-form";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -11,6 +11,9 @@ import { fetchLiveMatches as fetchChessLive } from "@/features/casino/lib/api/ch
 import { fetchLiveMatches as fetchCheckersLive } from "@/features/casino/lib/api/draughts";
 import { VAULT_KEYS } from "@/features/casino/lib/last-standing/keys";
 import type { SectionId } from "@/lib/sections";
+import { playNotify } from "@/lib/notify-sound";
+import { cn } from "@/lib/utils";
+import { pollUnlessFailing } from "@/lib/query-poll";
 
 // The chrome strip under the topbar: every feature slides by as one-line
 // marketing, and live games take priority as a pinned chip that never scrolls
@@ -82,7 +85,7 @@ function useLiveEvents(): LiveEvent[] {
     queryKey: VAULT_KEYS.games,
     queryFn: fetchActiveGames,
     staleTime: LIVE_REFRESH_MS,
-    refetchInterval: LIVE_REFRESH_MS,
+    refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
   });
   // The index trails the chain by minutes and drops games it considers done,
   // so a round someone started moments ago is invisible to it: the exact gap
@@ -92,20 +95,20 @@ function useLiveEvents(): LiveEvent[] {
     queryKey: [...VAULT_KEYS.games, "chain"],
     queryFn: readActiveGames,
     staleTime: LIVE_REFRESH_MS,
-    refetchInterval: LIVE_REFRESH_MS,
+    refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
   });
   const ethPrice = usePrices(["ETH"])["ETH"] ?? 0;
   const chess = useQuery({
     queryKey: ["marquee", "chess-live"],
     queryFn: fetchChessLive,
     staleTime: LIVE_REFRESH_MS,
-    refetchInterval: LIVE_REFRESH_MS,
+    refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
   });
   const checkers = useQuery({
     queryKey: ["marquee", "checkers-live"],
     queryFn: fetchCheckersLive,
     staleTime: LIVE_REFRESH_MS,
-    refetchInterval: LIVE_REFRESH_MS,
+    refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
   });
 
   const lastmanData = lastman.isError ? null : (lastman.data ?? null);
@@ -170,6 +173,49 @@ function useLiveEvents(): LiveEvent[] {
   return events;
 }
 
+// The live chip's label. On a phone the chip is kept narrow, so the label gets
+// a small box and its text is usually wider than that. Rather than hiding it
+// (the old behaviour) or letting it stretch the chip, we clip it to the box and
+// scroll it in place when, and only when, it overflows. The overflow distance
+// is measured here and handed to the CSS animation as --ws-live-shift; a label
+// that fits never animates. Above 420px the box is unconstrained and the label
+// simply sits on one line.
+function LiveLabel({ text }: { text: string }) {
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [shift, setShift] = useState(0);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    const inner = textRef.current;
+    if (!box || !inner) return;
+    const measure = () => {
+      const overflow = inner.scrollWidth - box.clientWidth;
+      setShift(overflow > 1 ? overflow : 0);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <span
+      ref={boxRef}
+      className="tnum block max-w-[120px] min-w-0 overflow-hidden text-[12px] font-semibold min-[420px]:max-w-none"
+    >
+      <span
+        ref={textRef}
+        className={cn("inline-block whitespace-nowrap", shift > 0 && "ws-live-scroll")}
+        style={shift > 0 ? ({ "--ws-live-shift": `-${shift}px` } as CSSProperties) : undefined}
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
 interface FeatureMarqueeProps {
   /** Section ids the current nav actually offers. */
   navIds: SectionId[];
@@ -182,6 +228,25 @@ export function FeatureMarquee({ navIds, onNavigate, onAddFunds, onInvite }: Fea
   const t = useTranslations("marquee");
   const router = useRouter();
   const live = useLiveEvents();
+
+  // A notification chime the moment a NEW live event enters the marquee (a game
+  // just went live). The set of keys already present is seeded on the first
+  // run, so existing games never chime on load — only something that appears
+  // afterwards does.
+  const seenLive = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const keys = new Set(live.map((e) => e.key));
+    if (seenLive.current === null) {
+      seenLive.current = keys;
+      return;
+    }
+    let isNew = false;
+    for (const key of keys) {
+      if (!seenLive.current.has(key)) isNew = true;
+    }
+    seenLive.current = keys;
+    if (isNew) playNotify();
+  }, [live]);
 
   // The pinned chip cycles through the live events in turns.
   const [liveIndex, setLiveIndex] = useState(0);
@@ -233,9 +298,7 @@ export function FeatureMarquee({ navIds, onNavigate, onAddFunds, onInvite }: Fea
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase">
             {t("liveLabel")}
           </span>
-          <span className="tnum hidden text-[12px] font-semibold whitespace-nowrap min-[420px]:block">
-            {liveLabel}
-          </span>
+          <LiveLabel text={liveLabel} />
           <span className="text-ink rounded-full bg-white px-2.5 py-[3px] text-[10.5px] font-bold whitespace-nowrap">
             {liveEvent.kind === "lastman" ? t("liveJoin") : t("liveWatch")}
           </span>

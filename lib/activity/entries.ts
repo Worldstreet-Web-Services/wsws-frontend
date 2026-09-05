@@ -10,9 +10,80 @@
 // Pure: no framework, no network, so every branch here is unit tested.
 
 import type { ActivityDirection, ActivityItem } from "@/lib/server/activity";
+import type { BroadcastGameId } from "@/lib/broadcast/deep-link";
 
+// The plain-transfer kinds, plus the named actions the server tags when a
+// transfer's counterparty is one of our own contracts (see lib/server/
+// action-registry). A tagged item skips the deposit/withdraw wording entirely.
 export type ActivityKind =
-  "bought" | "sold" | "swapped" | "deposited" | "withdrew" | "moved" | "received" | "sent";
+  | "bought"
+  | "sold"
+  | "swapped"
+  | "deposited"
+  | "withdrew"
+  | "moved"
+  | "received"
+  | "sent"
+  | "entered_game"
+  | "claimed_winnings"
+  | "prediction_buy"
+  | "prediction_payout"
+  | "perp_margin"
+  | "perp_return"
+  | "bought_kash"
+  | "arkade_deposit"
+  | "arkade_withdraw"
+  // Off-chain arcade games, built from each game's own history (not on-chain
+  // transfers), so the feed shows the games played, not just the cashier moves.
+  | "won_chess"
+  | "lost_chess"
+  | "drew_chess"
+  | "won_checkers"
+  | "lost_checkers"
+  | "drew_checkers"
+  | "arkball_ticket"
+  | "arkball_won";
+
+// The off-chain game kinds, and the two that a draw refunds (shown without a
+// signed amount). Used by the row to pick a game layout over the transfer one.
+const GAME_KINDS = new Set<ActivityKind>([
+  "won_chess",
+  "lost_chess",
+  "drew_chess",
+  "won_checkers",
+  "lost_checkers",
+  "drew_checkers",
+  "arkball_ticket",
+  "arkball_won",
+]);
+const DRAW_KINDS = new Set<ActivityKind>(["drew_chess", "drew_checkers"]);
+
+export function isGameKind(kind: ActivityKind): boolean {
+  return GAME_KINDS.has(kind);
+}
+
+export function isDrawKind(kind: ActivityKind): boolean {
+  return DRAW_KINDS.has(kind);
+}
+
+// Which broadcast game an off-chain game kind belongs to, so a played game can
+// be shared with a link back to the game itself rather than to the casino
+// index. Returns null for anything that is not a game, which is what keeps the
+// caller from building a game link for a token transfer.
+const GAME_FOR_KIND: Partial<Record<ActivityKind, BroadcastGameId>> = {
+  won_chess: "chess",
+  lost_chess: "chess",
+  drew_chess: "chess",
+  won_checkers: "checkers",
+  lost_checkers: "checkers",
+  drew_checkers: "checkers",
+  arkball_ticket: "arkball",
+  arkball_won: "arkball",
+};
+
+export function gameForKind(kind: ActivityKind): BroadcastGameId | null {
+  return GAME_FOR_KIND[kind] ?? null;
+}
 
 export interface ActivityEntry {
   id: string;
@@ -71,15 +142,20 @@ function principal(items: ActivityItem[]): ActivityItem {
 
 function movement(item: ActivityItem): ActivityEntry {
   const stable = isStable(item.symbol);
-  const kind: ActivityKind = isRouter(item.counterparty)
-    ? "moved"
-    : item.direction === "in"
-      ? stable
-        ? "deposited"
-        : "received"
-      : stable
-        ? "withdrew"
-        : "sent";
+  // A server-tagged action wins: it knows the counterparty is our own contract,
+  // so "Bought KASH+" beats "Withdrew USDC". The bare contract address is then
+  // noise on the row, so it is dropped.
+  const kind: ActivityKind = item.action
+    ? item.action
+    : isRouter(item.counterparty)
+      ? "moved"
+      : item.direction === "in"
+        ? stable
+          ? "deposited"
+          : "received"
+        : stable
+          ? "withdrew"
+          : "sent";
   return {
     id: item.id,
     hash: item.hash,
@@ -89,7 +165,7 @@ function movement(item: ActivityItem): ActivityEntry {
     symbol: item.symbol,
     amount: item.amount,
     direction: item.direction,
-    counterparty: item.counterparty,
+    counterparty: item.action ? null : item.counterparty,
     logo: item.logo,
   };
 }

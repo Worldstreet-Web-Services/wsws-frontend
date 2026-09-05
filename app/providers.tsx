@@ -24,7 +24,15 @@ import {
   promptForRecoveryFile,
 } from "@/lib/decane-recovery";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
-import { MiniTimerHost } from "@/features/casino";
+import { ClickRipple } from "@/components/ui/click-ripple";
+// Deep import, not the barrel. `@/features/casino` re-exports 27 components,
+// including the chess and arkjet screens, and this provider is mounted on
+// every route — so the barrel pulled the whole casino into the initial payload
+// for one timer. optimizePackageImports only rewrites npm barrels, not ours.
+import { MiniTimerHost } from "@/features/casino/components/last-standing/mini-timer";
+import { BroadcastSessionProvider } from "@/components/broadcast/broadcast-session";
+import { WALLET_CHAINS } from "@/lib/trade/wallet-chains";
+import { base } from "viem/chains";
 
 // Well-formed placeholders let the app build before env vars are set. Decane
 // only talks to its backend when a sign-in is attempted, so mounting the kit
@@ -89,20 +97,23 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       >
         <NetworkStatusProvider>
           <BalanceVisibilityProvider>
-            {children}
-            {/* Syncs Mixpanel's identity to the auth session; needs to sit
-                inside DecaneKit to read it. Renders nothing. */}
-            <AnalyticsIdentity />
-            <AnalyticsSegments />
-            {/* Hands the Decane access-token getter to lib/auth-token so
-                apiFetch can attach it. Renders nothing. */}
-            <DecaneTokenBridge />
-            {/* The wallet-recovery dialogs Decane's callbacks block on. */}
-            <DecaneRecoveryHost />
-            {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
+            <BroadcastSessionProvider>
+              <ClickRipple />
+              {children}
+              {/* Syncs Mixpanel's identity to the auth session; needs to sit
+                  inside DecaneKit to read it. Renders nothing. */}
+              <AnalyticsIdentity />
+              <AnalyticsSegments />
+              {/* Hands the Decane access-token getter to lib/auth-token so
+                  apiFetch can attach it. Renders nothing. */}
+              <DecaneTokenBridge />
+              {/* The wallet-recovery dialogs Decane's callbacks block on. */}
+              <DecaneRecoveryHost />
+              {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
                 the app; it only subscribes to game data while open. */}
-            <MiniTimerHost />
+              <MiniTimerHost />
+            </BroadcastSessionProvider>
           </BalanceVisibilityProvider>
         </NetworkStatusProvider>
         <Toaster />

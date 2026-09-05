@@ -7,7 +7,6 @@ import { MASK_ATTRIBUTE, NO_AUTOCAPTURE_CLASS } from "@/lib/analytics/clarity";
 import { track } from "@/lib/analytics/mixpanel";
 import { ArrowUpRightIcon, CheckIcon, SearchIcon, SwapIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { useSendToken } from "@/hooks/use-withdraw";
 import {
   useCreateOfframpOrder,
@@ -36,12 +35,6 @@ interface BankWithdrawScreenProps {
 
 const DECIMAL = /^\d*\.?\d*$/;
 const BASE = SETTLE_CHAINS.base;
-
-// Refresh the portfolio on Base blocks, rate-limited like the balance card, so
-// the balance shown next to the amount entry is live rather than the slow-poll
-// snapshot.
-const PORTFOLIO_KEY = [["portfolio"]] as const;
-const PORTFOLIO_REFRESH_MIN_MS = 10_000;
 
 // The banks most users reach for, shown first and resolved against the live
 // bank list by name. Everything else is one search away. Colours are just a
@@ -110,7 +103,18 @@ function formatAmountInput(raw: string): string {
 
 interface SelectedBank {
   uuid: string;
+  // What the picker shows. The popular tiles use a short, recognisable label
+  // ("OPay", "First Bank") rather than the registry's full legal name.
   name: string;
+  /**
+   * The bank registry's own name for the same institution.
+   *
+   * The two lists reached the same bank by different names: a popular tile
+   * carried our label, a search result carried the registry's, so one bank
+   * arrived at analytics as both "OPay" and "Opay" and split every breakdown
+   * in two. This is the one name that is reported.
+   */
+  railName: string;
   initials: string;
   color: string;
 }
@@ -151,7 +155,6 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
   const banks = useRampingBanks(true);
   const resolve = useResolveBankAccount();
   const create = useCreateOfframpOrder();
-  useInvalidateOnBlock(PORTFOLIO_KEY, true, PORTFOLIO_REFRESH_MIN_MS);
 
   const [query, setQuery] = useState("");
   const [bank, setBank] = useState<SelectedBank | null>(null);
@@ -218,18 +221,43 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
   // the pre-send estimate until then.
   const paidNgn = order?.amountNgn ?? payoutNgn;
 
-  // Reported once on settlement. The amount and the rail, never the account it
-  // was paid into.
+  // Reported once on settlement, from the order's own figures. The amounts and
+  // the rail, never the account it was paid into.
   const reportedComplete = useRef(false);
   useEffect(() => {
     if (!done || reportedComplete.current) return;
+    // What the rail says it moved beats what was typed: a payout converts at
+    // the rate that applied when it ran, which is not always the one quoted on
+    // this screen.
+    const usd = Number(order?.amountUsdc) || amount;
+    const rate = Number(order?.rate) || ngnRate;
+    const ngn = Number(paidNgn) || (rate > 0 ? usd * rate : 0);
+    if (!(usd > 0) || !(ngn > 0)) {
+      // A guessed figure on a money event is worse than a late one, and the
+      // Naira leg is the whole point of reporting this rail. Stay quiet and let
+      // a later poll, which will carry the order's figures, report it.
+      console.warn("[analytics] bank withdrawal settled with no figures to report");
+      return;
+    }
     reportedComplete.current = true;
     // No recipient here, deliberately: a bank withdrawal's recipient is an
     // account number, which must never leave the app. The crypto rail sends
     // recipient_address because an on-chain address is public; this one has no
     // equivalent that is safe to send.
-    track("withdraw_completed", { method: "bank", asset: "USDC", amount_usd: amount });
-  }, [done, amount]);
+    track("withdraw_completed", {
+      method: "bank",
+      asset: "USDC",
+      amount_usd: usd,
+      // The net Naira that reached the account, and the rate the two legs
+      // imply, so amount_ngn / fx_rate is always amount_usd. Two decimals, the
+      // precision the rail quotes rates at. The rail reports no fee of its
+      // own, so none is sent rather than a zero standing in.
+      amount_ngn: ngn,
+      fx_rate: Math.round((ngn / usd) * 100) / 100,
+      // The registry's name, not the tile's label, so one bank is one row.
+      bank: bank?.railName ?? "",
+    });
+  }, [done, order, paidNgn, amount, ngnRate, bank]);
 
   // Popular banks resolved to real uuids against the live list.
   const popularBanks = useMemo(() => {
@@ -237,7 +265,13 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
     return POPULAR.map((p): SelectedBank | null => {
       const match = list.find((n) => p.match.test(n.name));
       return match
-        ? { uuid: match.uuid, name: p.label, initials: p.initials, color: p.color }
+        ? {
+            uuid: match.uuid,
+            name: p.label,
+            railName: match.name,
+            initials: p.initials,
+            color: p.color,
+          }
         : null;
     }).filter((b): b is SelectedBank => b != null);
   }, [banks.data]);
@@ -252,6 +286,7 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
       .map((n: RampBank) => ({
         uuid: n.uuid,
         name: n.name,
+        railName: n.name,
         initials: initialsForName(n.name),
         color: colorForName(n.name),
       }));

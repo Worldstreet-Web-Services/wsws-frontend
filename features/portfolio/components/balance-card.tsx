@@ -6,7 +6,6 @@ import { BalanceCardDesktop } from "@/features/portfolio/components/balance-card
 import { BalanceCardMobile } from "@/features/portfolio/components/balance-card-mobile";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePendingBankDeposit } from "@/hooks/use-ramping";
-import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { readyToSpendUsd } from "@/features/portfolio/lib/breakdown";
 import { OFFRAMP_MIN_USDC } from "@/lib/ramping/orders";
 import type { ReactNode } from "react";
@@ -48,7 +47,6 @@ export function BalanceCard({
   const { totalUsd, tokens, loading, refreshing, error } = usePortfolio();
   const money = useMoney();
   const { hidden, toggle, mask } = useBalanceVisibility();
-  useInvalidateOnBlock(PORTFOLIO_KEY, true, PORTFOLIO_REFRESH_MIN_MS);
   // A confirmed bank deposit that has not settled yet holds the withdraw
   // button, so an unchanged balance next to a live button doesn't read as
   // "withdraw your new money now" and invite repeated attempts.

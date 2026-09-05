@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Avatar } from "@/components/ui/avatar";
 import { LanguageSelect } from "@/components/ui/language-select";
-import { WalletList } from "@/features/portfolio";
 import { InviteFriendsModal } from "@/features/referrals";
 import { MoveOldMoneyEntry } from "@/features/migrate";
 import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
+import { WalletAddresses } from "@/components/layout/modals/wallet-addresses";
+import { toast } from "@/lib/toast";
 
 interface AccountModalProps {
   onClose: () => void;
@@ -55,20 +56,24 @@ export function AccountModal({ onClose }: AccountModalProps) {
     <div>
       <div className="flex items-center gap-[13px]">
         <Avatar seed={profile.avatarSeed} size={46} />
-        <div className="min-w-0">
+        <div className="min-w-0" data-sensitive="other">
           <div className="ws-display truncate text-[21px]">{profile.name}</div>
           {profile.email ? (
             <div className="truncate text-[12.5px] font-normal text-white/50">{profile.email}</div>
           ) : null}
         </div>
       </div>
+      {/* The addresses come FIRST of the sections: this sheet is opened from
+          the wallet line in the header, so the address is what the reader came
+          for — settings are what they scroll past on the way. */}
+      <WalletAddresses />
+
       {/* Language lives here on a phone, where the header has no room for it.
           The desktop header still carries its own picker. */}
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <span className="text-[13.5px] font-normal text-white/60">{tLanguage("label")}</span>
         <LanguageSelect />
       </div>
-      <WalletList />
       <div className="mt-[18px] flex flex-col gap-1.5">
         <button onClick={() => setInviteOpen(true)} className={`${item} text-white`}>
           <span className="text-accent">

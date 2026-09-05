@@ -9,6 +9,10 @@ export interface SponsoredEvmChainConfig {
   alchemyHost: string;
   chain: Chain;
   supportsReceiptPolling: boolean;
+  sponsorshipMode: "bso" | "paymaster";
+  // Whether an Alchemy Gas Manager policy is configured for this network.
+  // Registry membership alone only means the app knows how to read the chain.
+  gasPolicy: boolean;
 }
 
 interface SponsoredEvmRegistryEntry {
@@ -23,6 +27,8 @@ interface SponsoredEvmRegistryEntry {
     symbol: string;
     decimals: number;
   };
+  gasPolicy?: boolean;
+  sponsorshipMode?: "bso" | "paymaster";
 }
 
 function chainFromRegistryEntry(entry: SponsoredEvmRegistryEntry): Chain {
@@ -43,8 +49,8 @@ function chainFromRegistryEntry(entry: SponsoredEvmRegistryEntry): Chain {
     name: entry.name,
     nativeCurrency: entry.nativeCurrency,
     rpcUrls: {
-      default: { http: [`https://${entry.alchemyHost}/v2`] },
-      public: { http: [`https://${entry.alchemyHost}/v2`] },
+      default: { http: [`/api/evm-rpc/${entry.network}`] },
+      public: { http: [`/api/evm-rpc/${entry.network}`] },
     },
   });
 }
@@ -60,6 +66,8 @@ export const SPONSORED_EVM_CHAINS: readonly SponsoredEvmChainConfig[] = (
     alchemyHost: entry.alchemyHost,
     chain,
     supportsReceiptPolling: entry.chainKey !== null,
+    sponsorshipMode: entry.sponsorshipMode ?? "bso",
+    gasPolicy: entry.gasPolicy ?? false,
   };
 });
 
@@ -89,4 +97,16 @@ export function getSponsoredEvmChainByPolicyNetwork(
   policyNetwork: string
 ): SponsoredEvmChainConfig | null {
   return BY_POLICY_NETWORK.get(policyNetwork) ?? null;
+}
+
+// Whether sponsorship will actually work here, as opposed to the chain merely
+// being sponsorable. Callers deciding whether to take the bundler path, or
+// whether a wallet needs its own native gas, want this rather than mere
+// registry membership.
+export function hasGasPolicyForNetwork(network: string): boolean {
+  return BY_NETWORK.get(network)?.gasPolicy ?? false;
+}
+
+export function hasGasPolicyForChainId(chainId: number): boolean {
+  return BY_CHAIN_ID.get(chainId)?.gasPolicy ?? false;
 }

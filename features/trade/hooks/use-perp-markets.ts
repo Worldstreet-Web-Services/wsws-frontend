@@ -7,8 +7,10 @@ import {
   fetchPerpPairs,
   fetchPerpPrices,
   isPerpUnavailable,
+  perpErrorCode,
 } from "@/lib/perp/api";
 import { isLikelyClosed } from "@/lib/perp/logic";
+import { pollUnlessFailing } from "@/lib/query-poll";
 import type { PerpPair, PerpPairMarket, PerpPrice } from "@/lib/perp/types";
 
 // Market data hooks for the perp section. Pair config barely changes, so it is
@@ -27,9 +29,12 @@ const MARKET_POLL_MS = 5_000;
 const PAIRS_STALE_MS = 5 * 60 * 1000;
 
 // Not-deployed is terminal for the session: retrying cannot fix it, so stop
-// after the first response instead of hammering the proxy.
-function retryUnlessUnavailable(failureCount: number, error: unknown): boolean {
+// after the first response instead of hammering the proxy. NOT_FOUND is
+// terminal for the same reason. The gateway has answered about this exact
+// pair, and asking twice more changes nothing.
+export function retryUnlessUnavailable(failureCount: number, error: unknown): boolean {
   if (isPerpUnavailable(error)) return false;
+  if (perpErrorCode(error) === "NOT_FOUND") return false;
   return failureCount < 2;
 }
 
@@ -55,7 +60,7 @@ export function usePerpPrices(enabled: boolean, streaming = false) {
     queryKey: ["perp-prices"],
     queryFn: fetchPerpPrices,
     enabled,
-    refetchInterval: pollMs,
+    refetchInterval: pollUnlessFailing(pollMs),
     staleTime: pollMs,
     retry: retryUnlessUnavailable,
   });
@@ -83,7 +88,7 @@ export function usePerpMarket(pair: string | null) {
       return { market, closed };
     },
     enabled: pair != null,
-    refetchInterval: MARKET_POLL_MS,
+    refetchInterval: pollUnlessFailing(MARKET_POLL_MS),
     staleTime: MARKET_POLL_MS,
     retry: retryUnlessUnavailable,
   });

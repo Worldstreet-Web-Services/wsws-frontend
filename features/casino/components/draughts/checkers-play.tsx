@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AsyncError } from "@/components/ui/async-state";
 import { DraughtsBoardView } from "@/features/casino/components/draughts/draughts-board";
 import { DraughtsMoveTable } from "@/features/casino/components/draughts/draughts-move-table";
 import {
@@ -13,6 +14,7 @@ import { MatchChat } from "@/features/casino/components/draughts/match-chat";
 import { MatchComments } from "@/features/casino/components/draughts/match-comments";
 import { SpectatorBetting } from "@/features/casino/components/draughts/spectator-betting";
 import { ChessCashierLauncher } from "@/features/casino/components/chess/chess-cashier-launcher";
+import { GameGoLive } from "@/features/casino/components/broadcast";
 import { armAudioUnlock, playGameEndSound, playMoveSound } from "@/features/casino/lib/chess/sound";
 import {
   remainingSeconds,
@@ -553,7 +555,15 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
     return <p className="py-16 text-center text-[14px] text-white/50">Loading game…</p>;
   }
   if (error && !match) {
-    return <p className="py-16 text-center text-[14px] text-red-400">{error}</p>;
+    // A board that has not loaded is not an emergency, and it was drawn in
+    // alarm red with the raw error string in it. Same surface as every other
+    // panel now: it says what happened, stays quiet while the app is already
+    // retrying, and keeps red for the things that involve money.
+    return (
+      <div className="py-10">
+        <AsyncError error={new Error(error)} subject="this game" onRetry={() => router.refresh()} />
+      </div>
+    );
   }
   if (!match || !board) return null;
 
@@ -897,6 +907,28 @@ export function CheckersPlay({ matchId }: { matchId: string }) {
           </div>
           {match.wager || match.computer?.wager ? (
             <ChessCashierLauncher compact productName="Checkers" />
+          ) : null}
+          {/* Participants only, and never against the computer: there is no
+              second player and nothing worth spectating. Both players may
+              broadcast at once, each owning their own Market Square stream. */}
+          {seat && !match.computer ? (
+            <GameGoLive
+              target={{
+                game: "checkers",
+                ref: match.id,
+                title: `Checkers: ${whiteName} vs ${blackName}`,
+                watchPath: `/casino/checkers/play?match=${encodeURIComponent(match.id)}`,
+                descriptionLead: "Live checkers on Ark. Watch the match:",
+                content: "detail",
+                creatorApplicationNote: "I play checkers on Ark and want to broadcast my matches.",
+              }}
+              copy={{
+                subject: "the board",
+                finishedNotice:
+                  "The game is over. End the broadcast so you are not streaming a finished board.",
+              }}
+              activityOver={settled}
+            />
           ) : null}
         </div>
       }

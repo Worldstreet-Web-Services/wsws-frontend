@@ -9,8 +9,8 @@ import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
 import { ComputerWagerSummary } from "@/features/casino/components/computer-wager-summary";
 import {
-  MIN_STAKED_COMPUTER_LEVEL,
-  computerWagerBreakdown,
+  MIN_STAKED_CHESS_COMPUTER_LEVEL,
+  chessComputerWagerBreakdown,
   exceedsUsdcBalance,
   normalizeUsdcAmount,
 } from "@/features/casino/lib/api/cashier";
@@ -23,6 +23,7 @@ import { friendlyError } from "@/lib/errors";
 import { toast } from "@/lib/toast";
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const STAKED_INITIAL_SECONDS = 600;
 
 // These are Lichess's time slider values. Keeping the same index mapping makes
 // the setup behave predictably for players already familiar with that dialog.
@@ -160,13 +161,14 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
   const minutes = MINUTES_PER_SIDE[setup.timeIndex];
   const increment = INCREMENTS[setup.incrementIndex];
   const realTimeValid = minutes > 0 || increment > 0;
-  const stakingAllowed = setup.level >= MIN_STAKED_COMPUTER_LEVEL;
+  const stakingAllowed = setup.level >= MIN_STAKED_CHESS_COMPUTER_LEVEL;
   const stakeUsdc = cashier.configured && stakingAllowed ? normalizeUsdcAmount(stake) : null;
   const wagerBreakdown = stakeUsdc
-    ? computerWagerBreakdown(stakeUsdc, cashier.available, setup.level)
+    ? chessComputerWagerBreakdown(stakeUsdc, cashier.available, setup.level)
     : null;
-  const stakeTooSmall = !!stakeUsdc && !wagerBreakdown;
+  const stakeInvalid = stake.trim().length > 0 && stakingAllowed && !wagerBreakdown;
   const stakeOverBalance = !!stakeUsdc && exceedsUsdcBalance(stakeUsdc, cashier.available);
+  const stakedGame = !!stakeUsdc;
 
   const onPlay = async () => {
     if (!wallet.connected) {
@@ -177,14 +179,16 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
     try {
       const match = await create.mutateAsync({
         level: setup.level,
-        color: setup.color,
-        timeMode: setup.timeMode,
-        ...(setup.timeMode === "real_time"
-          ? {
-              initialSeconds: Math.round(minutes * 60),
-              incrementSeconds: increment,
-            }
-          : {}),
+        color: stakedGame ? "random" : setup.color,
+        timeMode: stakedGame ? "real_time" : setup.timeMode,
+        ...(stakedGame
+          ? { initialSeconds: STAKED_INITIAL_SECONDS, incrementSeconds: 0 }
+          : setup.timeMode === "real_time"
+            ? {
+                initialSeconds: Math.round(minutes * 60),
+                incrementSeconds: increment,
+              }
+            : {}),
         ...(stakeUsdc ? { stakeUsdc } : {}),
         coachEnabled: setup.coachEnabled && !stakeUsdc,
       });
@@ -243,10 +247,11 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                 key={mode}
                 type="button"
                 role="tab"
-                aria-selected={setup.timeMode === mode}
+                aria-selected={(stakedGame ? "real_time" : setup.timeMode) === mode}
+                disabled={stakedGame}
                 onClick={() => setSetup((current) => ({ ...current, timeMode: mode }))}
                 className={`cursor-pointer border-b-2 px-3 py-2.5 text-[14px] transition-colors ${
-                  setup.timeMode === mode
+                  (stakedGame ? "real_time" : setup.timeMode) === mode
                     ? "border-[#629924] text-[#8fbd55]"
                     : "border-transparent text-white/52 hover:text-white/78"
                 }`}
@@ -256,7 +261,11 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
             ))}
           </div>
 
-          {setup.timeMode === "real_time" ? (
+          {stakedGame ? (
+            <p className="mt-5 rounded-[3px] border border-white/10 bg-[#262421] px-4 py-3 text-center text-[13px] leading-6 text-white/62">
+              Every paid choice uses the maximum-strength level-8 engine with a fixed 10+0 clock.
+            </p>
+          ) : setup.timeMode === "real_time" ? (
             <div className="mt-5 grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)] items-end gap-3">
               <label className="block min-w-0">
                 <span className="mb-3 flex items-center justify-between gap-3 text-[13px] text-white/62">
@@ -311,7 +320,7 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
 
         <fieldset>
           <legend className="mb-3 text-[14px] font-semibold text-white/86">Strength</legend>
-          <div className="grid grid-cols-8 overflow-hidden rounded-[3px] border border-white/10">
+          <div className="grid grid-cols-4 gap-2">
             {LEVELS.map((level) => (
               <button
                 key={level}
@@ -319,15 +328,15 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                 aria-pressed={setup.level === level}
                 onClick={() => {
                   setSetup((current) => ({ ...current, level }));
-                  if (level < MIN_STAKED_COMPUTER_LEVEL) setStake("");
+                  if (level < MIN_STAKED_CHESS_COMPUTER_LEVEL) setStake("");
                 }}
-                className={`tnum h-10 cursor-pointer border-r border-white/10 text-[14px] last:border-r-0 ${
+                className={`tnum flex h-11 cursor-pointer items-center justify-center rounded-[3px] border text-[13px] ${
                   setup.level === level
-                    ? "bg-[#629924] font-semibold text-white"
-                    : "bg-[#262421] text-white/68 hover:bg-white/8 hover:text-white"
+                    ? "border-[#78b32d] bg-[#629924] font-semibold text-white"
+                    : "border-white/10 bg-[#262421] text-white/68 hover:border-white/22 hover:bg-white/8 hover:text-white"
                 }`}
               >
-                {level}
+                {level >= MIN_STAKED_CHESS_COMPUTER_LEVEL ? `Stockfish ${level}` : level}
               </button>
             ))}
           </div>
@@ -386,12 +395,13 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
               <button
                 key={color}
                 type="button"
-                aria-pressed={setup.color === color}
+                aria-pressed={(stakedGame ? "random" : setup.color) === color}
+                disabled={stakedGame}
                 onClick={() => setSetup((current) => ({ ...current, color }))}
                 className={`flex min-h-[78px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[3px] border text-[13px] transition-colors ${
-                  setup.color === color
+                  (stakedGame ? "random" : setup.color) === color
                     ? "border-[#629924] bg-[#34451f] text-white"
-                    : "border-white/10 bg-[#262421] text-white/62 hover:border-white/22 hover:text-white/82"
+                    : "border-white/10 bg-[#262421] text-white/62 hover:border-white/22 hover:text-white/82 disabled:opacity-35"
                 }`}
               >
                 <SidePiece color={color} />
@@ -399,6 +409,11 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
               </button>
             ))}
           </div>
+          {stakedGame ? (
+            <p className="mt-1.5 text-[11px] text-white/38">
+              Paid games assign your colour randomly.
+            </p>
+          ) : null}
         </fieldset>
 
         {cashier.configured ? (
@@ -425,10 +440,10 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                     <span className="text-[11px] font-semibold text-white/44">USD</span>
                   </div>
                   <span
-                    className={`mt-1 block text-[10.5px] ${stakeOverBalance || stakeTooSmall ? "text-down" : "text-white/36"}`}
+                    className={`mt-1 block text-[10.5px] ${stakeOverBalance || stakeInvalid ? "text-down" : "text-white/36"}`}
                   >
-                    {stakeTooSmall
-                      ? "Stake is too small for this level."
+                    {stakeInvalid
+                      ? "Enter a stake greater than 0 USDC."
                       : `Balance ${cashier.available} USD`}
                   </span>
                 </label>
@@ -438,10 +453,14 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                       stakeUsdc={stakeUsdc}
                       availableUsdc={cashier.available}
                       level={setup.level}
+                      showDrawPayout
+                      chessLevelEightTerms
                     />
                     <p className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                      A win returns your stake plus the level reward, less 8% of that reward. A draw
-                      refunds your stake.
+                      A reviewed win pays 2x your stake. A draw or loss forfeits your stake to the
+                      computer. An abort or system cancellation returns 100%. After engine analysis,
+                      every win stays held until a moderator clears it. An approved win is credited
+                      to your chess balance and waits there if the cashier wallet needs funding.
                     </p>
                   </div>
                 ) : (
@@ -452,7 +471,8 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
               </div>
             ) : (
               <p className="rounded-[3px] border border-white/10 bg-[#262421] px-4 py-3 text-[12px] leading-5 text-white/48">
-                Levels 1 to 3 are practice only. Choose level 4 or higher to stake real money.
+                Levels 1 to 4 are free-only. Levels 5 to 8 accept stakes, and every paid choice uses
+                the maximum-strength level-8 engine.
               </p>
             )}
           </fieldset>
@@ -469,8 +489,8 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
           disabled={
             create.isPending ||
             stakeOverBalance ||
-            stakeTooSmall ||
-            (setup.timeMode === "real_time" && !realTimeValid)
+            stakeInvalid ||
+            (!stakedGame && setup.timeMode === "real_time" && !realTimeValid)
           }
           className="h-12 cursor-pointer rounded-[3px] border border-white/12 bg-[#3a3936] px-6 text-[15px] font-semibold text-white/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-colors hover:bg-[#454441] disabled:cursor-not-allowed disabled:opacity-40"
         >

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildActivityEntries } from "@/lib/activity/entries";
+import {
+  buildActivityEntries,
+  gameForKind,
+  isGameKind,
+  type ActivityKind,
+} from "@/lib/activity/entries";
 import type { ActivityItem } from "@/lib/server/activity";
 
 let seq = 0;
@@ -98,5 +103,120 @@ describe("cross-chain pairing", () => {
       item({ symbol: "USDC", direction: "in", amount: 30, timestamp: 1_700_000_010_000 }),
     ]);
     expect(entries).toHaveLength(2);
+  });
+});
+
+describe("platform actions", () => {
+  // The core fix: a transfer to one of our own contracts is the action, not a
+  // withdrawal. The server tags it; the entry must carry that name and drop the
+  // bare contract address.
+  it("names a KASH purchase instead of calling it a withdrawal", () => {
+    const [entry] = buildActivityEntries([
+      item({
+        symbol: "USDC",
+        direction: "out",
+        amount: 7,
+        action: "bought_kash",
+        counterparty: "0xtreasury",
+      }),
+    ]);
+    expect(entry.kind).toBe("bought_kash");
+    expect(entry.amount).toBe(7);
+    expect(entry.direction).toBe("out");
+    // The contract address is noise once the row is named.
+    expect(entry.counterparty).toBeNull();
+  });
+
+  it("names a game entry (native ETH to the vault) and its winnings", () => {
+    const entered = buildActivityEntries([
+      item({ symbol: "ETH", direction: "out", amount: 0.002, action: "entered_game" }),
+    ]);
+    expect(entered[0].kind).toBe("entered_game");
+
+    const claimed = buildActivityEntries([
+      item({ symbol: "ETH", direction: "in", amount: 0.004, action: "claimed_winnings" }),
+    ]);
+    expect(claimed[0].kind).toBe("claimed_winnings");
+  });
+
+  it("names a prediction buy and a perp margin deposit", () => {
+    const bought = buildActivityEntries([
+      item({ symbol: "USDC", direction: "out", amount: 5, action: "prediction_buy" }),
+    ]);
+    expect(bought[0].kind).toBe("prediction_buy");
+
+    const margin = buildActivityEntries([
+      item({ symbol: "USDC", direction: "out", amount: 25, action: "perp_margin" }),
+    ]);
+    expect(margin[0].kind).toBe("perp_margin");
+  });
+
+  it("still calls an untagged stablecoin move a plain withdrawal", () => {
+    const [entry] = buildActivityEntries([
+      item({ symbol: "USDC", direction: "out", amount: 5, counterparty: "0xstranger" }),
+    ]);
+    expect(entry.kind).toBe("withdrew");
+    // An ordinary send keeps its counterparty so the row can show it.
+    expect(entry.counterparty).toBe("0xstranger");
+  });
+});
+
+describe("gameForKind", () => {
+  // A played game is the most shareable thing on the platform, and every game
+  // kind must resolve to a game or its row cannot link back to the match.
+  it("maps every game kind to its broadcast game", () => {
+    const expected: Array<[ActivityKind, string]> = [
+      ["won_chess", "chess"],
+      ["lost_chess", "chess"],
+      ["drew_chess", "chess"],
+      ["won_checkers", "checkers"],
+      ["lost_checkers", "checkers"],
+      ["drew_checkers", "checkers"],
+      ["arkball_ticket", "arkball"],
+      ["arkball_won", "arkball"],
+    ];
+    for (const [kind, game] of expected) {
+      expect(gameForKind(kind)).toBe(game);
+    }
+  });
+
+  it("covers every kind isGameKind claims is a game", () => {
+    // The two lists are separate, so a game kind added to one and not the
+    // other would render a game row with no way to share it.
+    const kinds: ActivityKind[] = [
+      "bought",
+      "sold",
+      "swapped",
+      "deposited",
+      "withdrew",
+      "moved",
+      "received",
+      "sent",
+      "entered_game",
+      "claimed_winnings",
+      "prediction_buy",
+      "prediction_payout",
+      "perp_margin",
+      "perp_return",
+      "bought_kash",
+      "arkade_deposit",
+      "arkade_withdraw",
+      "won_chess",
+      "lost_chess",
+      "drew_chess",
+      "won_checkers",
+      "lost_checkers",
+      "drew_checkers",
+      "arkball_ticket",
+      "arkball_won",
+    ];
+    for (const kind of kinds) {
+      expect(gameForKind(kind) !== null).toBe(isGameKind(kind));
+    }
+  });
+
+  it("returns null for a transfer, so no token row builds a game link", () => {
+    expect(gameForKind("bought")).toBeNull();
+    expect(gameForKind("swapped")).toBeNull();
   });
 });

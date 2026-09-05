@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 // Matches usePortfolio's poll interval — same backend, same reasoning.
 const POLL_MS = 60 * 1000;
@@ -39,7 +40,17 @@ function fetchPriceBatch(symbols: readonly string[]): Promise<Record<string, num
       const params = new URLSearchParams();
       for (const symbol of requested) params.append("symbols", symbol);
       try {
-        const res = await fetch(`/api/prices?${params.toString()}`);
+        // Anonymous on purpose. This response is identical for every caller,
+        // and a request carrying an Authorization header can never be stored by
+        // a shared cache, so sending credentials here would make the route's
+        // s-maxage inert.
+        const res = await apiFetch(
+          `/api/prices?${params.toString()}`,
+          {},
+          {
+            anonymous: true,
+          }
+        );
         if (!res.ok) throw new PriceRequestError(res.status);
         const body = await res.json();
         const all: Record<string, number> = {};

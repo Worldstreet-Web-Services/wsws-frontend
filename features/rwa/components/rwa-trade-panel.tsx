@@ -23,7 +23,7 @@ import {
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
-import { depositProgress, settlementFor } from "@/lib/deposit";
+import { depositProgress, quoteFee, settlementFor } from "@/lib/deposit";
 import {
   clearPendingRwaSettlement,
   savePendingRwaSettlement,
@@ -639,6 +639,9 @@ export function RwaTradePanel({
   const receiveEst =
     quoteReceive ??
     (isBuy ? estimateReceiveTokens(usdValue, price) : estimateReceiveUsdc(payValue, price));
+  // The fee a live quote implies; an estimate has none, so it stays hidden then.
+  const receiveUsd = isBuy ? (receiveEst != null && price ? receiveEst * price : null) : receiveEst;
+  const feeUsd = quoteReceive != null && receiveUsd != null ? quoteFee(usdValue, receiveUsd) : null;
   const confirming = phase === "confirming";
   const busy = confirming || settlementBusy;
   const canConfirm =
@@ -672,6 +675,8 @@ export function RwaTradePanel({
 
   return (
     <div
+      data-sensitive="position"
+      data-broadcast-suspend
       className={
         bare
           ? ""
@@ -777,6 +782,13 @@ export function RwaTradePanel({
                 : "—"}
             </span>
           </div>
+
+          {feeUsd != null && feeUsd > 0 ? (
+            <div className="mt-2 flex items-center justify-between text-[13.5px] font-normal">
+              <span className="text-white/55">{tBuySell("transactionFee")}</span>
+              <span className="tnum text-white/75">≈ {formatUsd(feeUsd)}</span>
+            </div>
+          ) : null}
 
           {!isBuy ? (
             <p className="mt-2 text-[12px] leading-[1.5] font-normal text-white/45">

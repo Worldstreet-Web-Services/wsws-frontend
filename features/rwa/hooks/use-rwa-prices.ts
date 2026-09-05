@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { mergeMarket, type RwaAssetView, type RwaMarketStats } from "@/features/rwa/lib/presenter";
 import type { RwaApiAsset } from "@/features/rwa/lib/api";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 const MARKET_STALE_MS = 60_000;
 
@@ -13,6 +14,8 @@ const MARKET_STALE_MS = 60_000;
 // an APY for three and a TVL for one, so one batched request covers the rest;
 // a per-asset fan-out rate-limits immediately.
 export function useRwaEnrichedAssets(assets: RwaApiAsset[]): RwaAssetView[] {
+  // Paused while the real-assets section is scrolled away.
+  const active = useSectionActive();
   const targets = useMemo(
     () => assets.map((a) => ({ id: a.id, chain: a.chain, address: a.address })),
     [assets]
@@ -31,6 +34,12 @@ export function useRwaEnrichedAssets(assets: RwaApiAsset[]): RwaAssetView[] {
 
   const { data } = useQuery<Record<string, RwaMarketStats>>({
     queryKey: ["rwa-market", key],
+    // `subscribed`, not `enabled`. Both stop the timer, but `enabled: false`
+    // also parks the query in `pending` with its data unavailable and
+    // `refetch()` refused, so scrolling back showed a skeleton. `subscribed`
+    // only detaches the observer: the last data stays on screen, `refetch()`
+    // still works, and the query drops out of the window-focus herd too.
+    subscribed: active,
     enabled: targets.length > 0,
     staleTime: MARKET_STALE_MS,
     refetchInterval: MARKET_STALE_MS,

@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import {
+  quoteFee,
   SETTLE_CHAINS,
   txExplorerUrl,
   type AddressKind,
@@ -34,12 +35,19 @@ import {
   extractScannedAddress,
 } from "@/lib/wallet-address";
 import { friendlyError } from "@/lib/errors";
+import { isSubmittedEvmOperationError } from "@/lib/trade/sponsor";
 import { formatAmount, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 
 const DECIMAL = /^\d*\.?\d*$/;
 const QUOTE_DEBOUNCE_MS = 450;
+
+// Payouts treated as dollars, so "amount in minus amount out" is a real fee.
+const STABLE_PAYOUTS = new Set(["USDC", "USDT", "USDC.E", "DAI", "PYUSD", "USDG", "USDS"]);
+function isStableSymbol(symbol: string): boolean {
+  return STABLE_PAYOUTS.has(symbol.toUpperCase());
+}
 
 // The wallet balance is USDC on Base — everything deposited settles here, so
 // it is the single source every withdrawal sends from. The screen never names
@@ -278,6 +286,14 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
       ? `${fromBaseUnits(BigInt(quote.data.amountOut), selectedDestination.decimals)} ${selectedDestination.symbol}`
       : null;
 
+  // The fee the quote implies, only when the payout is dollar-priced so it
+  // reconciles with the "recipient gets" figure. A direct send has no fee.
+  const payoutUsd =
+    !isDirectSend && quote.data && selectedDestination && isStableSymbol(selectedDestination.symbol)
+      ? Number(fromBaseUnits(BigInt(quote.data.amountOut), selectedDestination.decimals))
+      : null;
+  const feeUsd = payoutUsd != null ? quoteFee(value, payoutUsd) : null;
+
   const busy = submitting;
   const ready =
     Boolean(selectedDestination) &&
@@ -315,17 +331,12 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
     if (!selectedDestination) return;
     setError(null);
     setSubmitting(true);
-    // Flipped the moment a transfer is handed to the wallet. Past that point a
-    // failure cannot be reported as "not sent": the transfer may already be
-    // on-chain, and inviting a retry would send real money twice.
-    let broadcasting = false;
     // One processing toast that resolves in place; dismissed if we bail on a
     // validation check before anything is actually sent.
     const toastId = toast.loading(t("sendingWithdrawal"));
     try {
       const sendAmount = toBaseUnits(amount, source.decimals);
       if (isDirectSend) {
-        broadcasting = true;
         const hash = await sendToken({
           network: sourceNetwork,
           tokenAddress: source.usdc,
@@ -341,7 +352,10 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
           network: sourceNetwork,
           recipient_address: to.trim(),
         });
-        toast.success(t("withdrewAmount", { amount: formatAmount(value) }), { id: toastId });
+        toast.success(t("withdrewAmount", { amount: formatAmount(value) }), {
+          id: toastId,
+          sensitive: true,
+        });
         return;
       }
       if (!refundTo) {
@@ -357,7 +371,6 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
         toast.dismiss(toastId);
         return;
       }
-      broadcasting = true;
       const hash = await sendToken({
         network: sourceNetwork,
         tokenAddress: source.usdc,
@@ -383,7 +396,10 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
         { id: toastId }
       );
     } catch (e) {
-      if (broadcasting) {
+      // Only the sponsored sender can prove that a request reached the
+      // bundler: it wraps failures after eth_sendUserOperation returned a hash.
+      // Validation, signing and pre-submission failures remain safe to retry.
+      if (isSubmittedEvmOperationError(e)) {
         setError(t("withdrawalUnconfirmed"));
         toast.error(t("withdrawalUnconfirmedToast"), { id: toastId });
       } else {
@@ -652,6 +668,13 @@ export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
           ) : (
             <span className="tnum text-white/85">≈ {previewOut}</span>
           )}
+        </div>
+      ) : null}
+
+      {feeUsd != null && feeUsd > 0 ? (
+        <div className="ws-inset mt-2 flex items-center justify-between px-4 py-3 text-[12.5px] font-normal">
+          <span className="text-white/55">{t("transactionFee")}</span>
+          <span className="tnum text-white/85">≈ ${formatAmount(feeUsd)}</span>
         </div>
       ) : null}
 

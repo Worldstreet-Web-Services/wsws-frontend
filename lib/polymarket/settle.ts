@@ -87,14 +87,23 @@ export async function settleCollateral(
   // when there's none (e.g. a resumed run where it's already USDC.e). The
   // approve and the unwrap ride in one sponsored batch.
   input.onPhase?.("unwrapping");
-  const pusd = await readErc20(polygon, CONTRACTS.pusd, depositWallet);
-  if (pusd > 0n) {
+  const depositPusd = await readErc20(polygon, CONTRACTS.pusd, depositWallet);
+  if (depositPusd > 0n) {
     const transfer = await client.transferErc20({
       tokenAddress: CONTRACTS.pusd,
       recipientAddress: eoa,
-      amount: pusd,
+      amount: depositPusd,
     });
     await transfer.wait();
+  }
+
+  // Unwrap what the EOA ACTUALLY holds, not what the deposit wallet just sent.
+  // A previous run may have completed the transfer and then failed before
+  // unwrapping: the deposit wallet reads 0, and unwrapping that amount would
+  // strand the user's pUSD in the EOA forever. Reading the real balance is what
+  // makes a re-run recover it.
+  const pusd = await readErc20(polygon, CONTRACTS.pusd, eoa);
+  if (pusd > 0n) {
     const hash = await input.sendBatch(
       [
         {

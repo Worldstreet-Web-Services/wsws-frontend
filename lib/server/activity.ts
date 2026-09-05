@@ -7,6 +7,14 @@ import {
 } from "@/lib/server/alchemy";
 import { fetchRwaRegistry, type RwaTokenInfo } from "@/lib/server/rwa-registry";
 import { fetchBuyableRegistry, type BuyableRegistry } from "@/lib/server/buyable-registry";
+import {
+  fetchActionRegistry,
+  actionFor,
+  type ActionKind,
+  type ActionRegistry,
+} from "@/lib/server/action-registry";
+import { alchemyFetch } from "@/lib/server/alchemy-keys";
+import { cached } from "@/lib/server/response-cache";
 
 type RwaRegistry = Record<string, Map<string, RwaTokenInfo>>;
 
@@ -57,6 +65,10 @@ export interface ActivityItem {
   // Server-resolved asset logo, the same one the portfolio renders. Null when
   // the symbol already has a built-in icon or the token is unknown.
   logo: string | null;
+  // Set when the counterparty is one of our own contracts, so the feed can name
+  // the action (a KASH buy, a wager, a prediction buy) instead of showing a
+  // bare "Withdrew"/"Deposited". Absent for plain sends and receives.
+  action?: ActionKind;
 }
 
 interface RawTransfer {
@@ -85,27 +97,17 @@ const RPC_HOST: Record<string, string> = {
 
 const PER_NETWORK = 25;
 
-function key(): string {
-  const k = process.env.ALCHEMY_API_KEY;
-  if (!k) throw new Error("No Alchemy API key configured");
-  return k;
-}
-
 async function rpc<T>(network: string, method: string, params: unknown): Promise<T | null> {
   const host = RPC_HOST[network];
   if (!host) return null;
   try {
-    const res = await fetch(`https://${host}.g.alchemy.com/v2/${key()}`, {
+    const res = await alchemyFetch((key) => `https://${host}.g.alchemy.com/v2/${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
       signal: AbortSignal.timeout(12_000),
       cache: "no-store",
     });
-    if (!res.ok) {
-      if (res.status === 429) throw new Error("Alchemy request failed: 429");
-      return null;
-    }
     const data = await res.json();
     return (data?.result ?? null) as T | null;
   } catch (error) {
@@ -114,25 +116,46 @@ async function rpc<T>(network: string, method: string, params: unknown): Promise
   }
 }
 
-// One direction of transfers on one network. Alchemy indexes sends and
-// receives separately, so each network costs two calls.
+// Networks where Alchemy also indexes `internal` transfers: native ETH moved by
+// a contract call rather than a top-level send. Base is the one that matters — a
+// Last Man wager and its winnings pay through the gasless 7702 bundler, so the
+// ETH moves internally and an external+erc20 query never sees it. Fetched as its
+// own call, so a network that does not index internal transfers can only lose
+// that extra list, never the main one.
+const INTERNAL_NETWORKS = new Set([
+  "base-mainnet",
+  "eth-mainnet",
+  "arb-mainnet",
+  "opt-mainnet",
+  "polygon-mainnet",
+]);
+
+// One direction of transfers on one network, newest first. Alchemy indexes sends
+// and receives separately, so each direction is its own query.
 async function evmTransfers(
   network: string,
   address: string,
   direction: ActivityDirection
 ): Promise<RawTransfer[]> {
-  const filter: Record<string, unknown> = {
-    category: ["external", "erc20"],
-    withMetadata: true,
-    excludeZeroValue: true,
-    maxCount: `0x${PER_NETWORK.toString(16)}`,
-    order: "desc",
+  const query = (categories: string[]) => {
+    const filter: Record<string, unknown> = {
+      category: categories,
+      withMetadata: true,
+      excludeZeroValue: true,
+      maxCount: `0x${PER_NETWORK.toString(16)}`,
+      order: "desc",
+    };
+    filter[direction === "in" ? "toAddress" : "fromAddress"] = address;
+    return rpc<{ transfers?: RawTransfer[] }>(network, "alchemy_getAssetTransfers", [filter]).then(
+      (result) => result?.transfers ?? []
+    );
   };
-  filter[direction === "in" ? "toAddress" : "fromAddress"] = address;
-  const result = await rpc<{ transfers?: RawTransfer[] }>(network, "alchemy_getAssetTransfers", [
-    filter,
+
+  const [main, internal] = await Promise.all([
+    query(["external", "erc20"]),
+    INTERNAL_NETWORKS.has(network) ? query(["internal"]) : Promise.resolve<RawTransfer[]>([]),
   ]);
-  return result?.transfers ?? [];
+  return [...main, ...internal];
 }
 
 interface SolanaSignature {
@@ -268,15 +291,52 @@ async function solanaActivity(
 // Recent wallet activity across every tracked chain, newest first. Spam is
 // filtered with the same allowlist the portfolio uses, so a dusting airdrop
 // never appears here either.
-export async function fetchActivity(
-  evm?: string,
-  solana?: string,
-  limit = 40
-): Promise<ActivityItem[]> {
-  if (!evm && !solana) return [];
-  const [rwa, registries] = await Promise.all([
+/**
+ * The sweep asks every EVM network, and that is deliberate.
+ *
+ * It looks expensive and is not: `rpc()` returns without a call for any
+ * network missing from RPC_HOST, and RPC_HOST holds five. So the ceiling is
+ * five networks either way, and narrowing it further can save at most twelve
+ * upstream calls once per cache window.
+ *
+ * A previous version selected networks from the wallet's current balances to
+ * claim that saving. It cost more than it was worth: a wallet that had spent
+ * everything on a chain lost its history there, a first deposit could stay
+ * invisible for the length of two cache windows, and reading the balances
+ * added a portfolio fetch of its own. Twelve calls per ninety seconds is not
+ * worth quietly deleting someone's transaction history.
+ *
+ * The real savings on this path are the snapshot below and the bell's slower
+ * poll, neither of which can hide anything.
+ */
+
+/**
+ * How long one wallet's history may be served from a snapshot.
+ *
+ * One sweep costs an upstream call per network per direction, which is the
+ * most expensive read in the app by a wide margin, and history only changes
+ * when a transaction lands. 90s is longer than the notification bell's poll on
+ * purpose: the bell sits in the topbar on every screen, so without this every
+ * signed-in tab paid for a full sweep every minute.
+ */
+const ACTIVITY_CACHE_TTL_MS = 90_000;
+
+export function fetchActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
+  if (!evm && !solana) return Promise.resolve([]);
+  // Keyed by the wallets and the page size, so two tabs, two devices and the
+  // bell plus the activity view all collapse onto one sweep.
+  return cached(
+    `activity:${evm ?? ""}:${solana ?? ""}:${limit}`,
+    () => loadActivity(evm, solana, limit),
+    ACTIVITY_CACHE_TTL_MS
+  );
+}
+
+async function loadActivity(evm?: string, solana?: string, limit = 40): Promise<ActivityItem[]> {
+  const [rwa, registries, actions] = await Promise.all([
     fetchRwaRegistry().catch((): RwaRegistry => ({})),
     fetchBuyableRegistry().catch(() => ({ buyable: {}, meme: {} })),
+    fetchActionRegistry().catch((): ActionRegistry => ({})),
   ]);
 
   const evmItems: ActivityItem[] = [];
@@ -294,10 +354,13 @@ export async function fetchActivity(
     for (const { network, direction, transfers } of batches) {
       for (const [index, t] of transfers.entries()) {
         const contract = t.rawContract?.address ?? null;
-        const isNative = t.category === "external";
+        // Both external and internal transfers carry native ETH (only erc20 is a
+        // token), so both count as native for the holdings allowlist.
+        const isNative = t.category === "external" || t.category === "internal";
         if (!isAllowedHolding(network, contract, isNative, rwa, registries.buyable)) continue;
         const amount = typeof t.value === "number" ? t.value : 0;
         if (amount <= 0 || !t.hash) continue;
+        const counterparty = (direction === "in" ? t.from : t.to) ?? null;
         evmItems.push({
           // Prefer Alchemy's uniqueId; fall back to a per-transfer composite so
           // two transfers of the same token in one tx never share a React key.
@@ -310,8 +373,9 @@ export async function fetchActivity(
           symbol: t.asset ?? "",
           amount,
           timestamp: Date.parse(t.metadata?.blockTimestamp ?? "") || 0,
-          counterparty: (direction === "in" ? t.from : t.to) ?? null,
+          counterparty,
           logo: tokenLogo(network, contract),
+          action: actionFor(actions, network, counterparty, direction),
         });
       }
     }

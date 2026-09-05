@@ -7,6 +7,7 @@ const TEN_MINUTES = 600;
 async function fromErApi() {
   const res = await fetch("https://open.er-api.com/v6/latest/USD", {
     next: { revalidate: TEN_MINUTES },
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) throw new Error(`er-api failed: ${res.status}`);
   const data = await res.json();
@@ -20,7 +21,7 @@ async function fromErApi() {
 async function fromCurrencyApi() {
   const res = await fetch(
     "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
-    { next: { revalidate: TEN_MINUTES } }
+    { next: { revalidate: TEN_MINUTES }, signal: AbortSignal.timeout(8_000) }
   );
   if (!res.ok) throw new Error(`currency-api failed: ${res.status}`);
   const data = await res.json();
@@ -36,7 +37,13 @@ async function fromCurrencyApi() {
 export async function GET() {
   try {
     const data = await fromErApi();
-    return NextResponse.json(data);
+    // Public rates. The client holds these for ten minutes, so the shared
+    // cache may too.
+    return NextResponse.json(data, {
+      headers: {
+        "Cache-Control": "public, s-maxage=600, stale-while-revalidate=3600, max-age=300",
+      },
+    });
   } catch {
     try {
       const data = await fromCurrencyApi();

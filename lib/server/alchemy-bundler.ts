@@ -25,9 +25,14 @@ const ALLOWED_METHODS = new Set([
   "eth_supportedEntryPoints",
 ]);
 
-// Per Alchemy's Bundler Sponsored Operations docs, the policy header goes on
-// eth_sendUserOperation only — the estimate does not take it.
-const SPONSORED_METHODS = new Set(["eth_sendUserOperation"]);
+// The policy header goes on BOTH the estimate and the send. Alchemy's BSO
+// docs only mention the send, but the live bundler rejects a zero-fee
+// eth_estimateUserOperationGas that arrives without the policy context —
+// captured verbatim: "Invalid fields set on User Operation ... User
+// operation must include a paymaster for sponsorship." Every sponsored
+// action estimates before sending, so a header-less estimate kills the
+// whole flow before the send is ever attempted.
+const SPONSORED_METHODS = new Set(["eth_sendUserOperation", "eth_estimateUserOperationGas"]);
 
 interface RpcCall {
   jsonrpc?: string;

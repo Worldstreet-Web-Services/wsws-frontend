@@ -9,11 +9,13 @@ import {
 } from "@nktkas/hyperliquid/signing";
 import {
   ApproveBuilderFeeTypes,
+  SendAssetTypes,
   UserSetAbstractionTypes,
   Withdraw3Types,
 } from "@nktkas/hyperliquid/api/exchange";
 import type {
   HlApproveBuilderFeeAction,
+  HlSendAssetAction,
   HlL1Action,
   HlSetAbstractionAction,
   HlSignature,
@@ -85,6 +87,17 @@ export function useHyperliquidSigner(address: string | undefined) {
     [wallet]
   );
 
+  const signDexTransfer = useCallback(
+    async (action: HlSendAssetAction): Promise<HlSignature> => {
+      return signUserSignedAction({
+        wallet: wallet(),
+        action: action as unknown as Record<string, unknown> & { signatureChainId: `0x${string}` },
+        types: SendAssetTypes,
+      });
+    },
+    [wallet]
+  );
+
   const signBuilderFeeApproval = useCallback(
     async (action: HlApproveBuilderFeeAction): Promise<HlSignature> => {
       return signUserSignedAction({
@@ -107,5 +120,11 @@ export function useHyperliquidSigner(address: string | undefined) {
     [wallet]
   );
 
-  return { signL1, signWithdrawal, signBuilderFeeApproval, signSetAbstractionMode };
+  return {
+    signL1,
+    signWithdrawal,
+    signDexTransfer,
+    signBuilderFeeApproval,
+    signSetAbstractionMode,
+  };
 }

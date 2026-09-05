@@ -25,6 +25,11 @@ export function useHyperliquidPositions(walletId: string | null, enabled = true)
     queryKey: ["hl-positions", walletId],
     queryFn: () => listPositions(walletId as string),
     enabled: enabled && walletId != null,
+    // The backend's reconciliation sweep corrects state the WS missed
+    // (ghost positions, resolved orders) — without a background poll those
+    // fixes stayed invisible until the user clicked something, which read
+    // as "I closed it but it still shows open".
+    refetchInterval: 15_000,
   });
 
   const waitForChange = useCallback(

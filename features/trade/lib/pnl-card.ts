@@ -114,7 +114,7 @@ export function drawPnlCard(ctx: CanvasRenderingContext2D, model: PnlCardModel):
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = SILVER;
   ctx.font = `700 30px ${FONT}`;
-  const brand = "WORLD STREET";
+  const brand = "MARKET";
   ctx.save();
   // Letter-spaced wordmark, drawn manually — canvas has no letter-spacing.
   let x = 64;
@@ -184,7 +184,7 @@ export function drawPnlCard(ctx: CanvasRenderingContext2D, model: PnlCardModel):
   ctx.textAlign = "left";
 }
 
-// File name for the exported image, e.g. "worldstreet-BTC-pnl.png".
+// File name for the exported image, e.g. "market-BTC-pnl.png".
 export function pnlCardFileName(model: PnlCardModel): string {
-  return `worldstreet-${model.symbol.replace(/[^a-zA-Z0-9]/g, "")}-pnl.png`;
+  return `market-${model.symbol.replace(/[^a-zA-Z0-9]/g, "")}-pnl.png`;
 }

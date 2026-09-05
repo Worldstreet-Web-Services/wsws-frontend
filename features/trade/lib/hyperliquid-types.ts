@@ -187,6 +187,28 @@ export type HlL1Action =
   | { type: "cancel"; cancels: { a: number; o: number }[] }
   | { type: "updateLeverage"; asset: number; isCross: boolean; leverage: number };
 
+// Native -> HIP-3 dex margin transfer: each builder dex margins as a
+// separate Hyperliquid account, and sendAsset is the venue's own primitive
+// for moving USDC between them. Same signed-EIP-712 family as withdraw3;
+// this platform only ever sends to the wallet's OWN address.
+export interface HlSendAssetAction {
+  type: "sendAsset";
+  signatureChainId: `0x${string}`;
+  hyperliquidChain: "Mainnet" | "Testnet";
+  destination: string;
+  sourceDex: string;
+  destinationDex: string;
+  token: string;
+  amount: string;
+  fromSubAccount: string;
+  nonce: number;
+}
+
+export interface PreparedDexTransfer {
+  action: HlSendAssetAction;
+  nonce: number;
+}
+
 export interface HlWithdraw3Action {
   type: "withdraw3";
   signatureChainId: `0x${string}`;
@@ -347,6 +369,9 @@ export interface InsufficientMarginDetails {
   walletId: string;
   requiredUsdc: string;
   withdrawableUsdc: string;
+  /** Set for HIP-3 assets: the shortfall is on THIS dex's own balance and
+   *  the fix is a native -> dex transfer, never an Arbitrum bridge. */
+  dex?: string;
 }
 
 export function isInsufficientMarginDetails(

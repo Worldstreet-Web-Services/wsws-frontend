@@ -112,10 +112,17 @@ export function HyperliquidSimplePerps() {
     setStatus({ text: "Placing order…", kind: "info" });
     setBusy(true);
     try {
+      // Snapshot before the order so the background poll after submit can
+      // tell the fill landed (new position, or an existing one grown) and
+      // surface it immediately instead of waiting for the next refetch.
+      const before = JSON.stringify(trading.positions.map((p) => [p.id, p.size]).sort());
       await trading.actions.updateLeverage(asset.symbol, clampedLeverage, "cross");
       await trading.actions.placeOrder(
         { assetSymbol: asset.symbol, side, size: String(size) },
         (text) => setStatus({ text, kind: "info" })
+      );
+      void trading.waitForPositionsChange(
+        (rows) => JSON.stringify(rows.map((p) => [p.id, p.size]).sort()) !== before
       );
       setStatus({
         text: `${side === "buy" ? "Long" : "Short"} ${asset.symbol} opened.`,

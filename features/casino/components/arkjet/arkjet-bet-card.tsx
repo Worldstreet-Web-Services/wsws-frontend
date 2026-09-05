@@ -18,14 +18,17 @@ function validAmount(value: string): string {
   return rest.length ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
 }
 
+function fixedMultiplier(value: string): string {
+  if (!value.trim()) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : value;
+}
+
 function arkjetError(error: unknown, fallback: string): string {
   const code =
     error && typeof error === "object" && "code" in error
       ? (error as { code?: unknown }).code
       : null;
-  if (code === "HOUSE_RESERVE_INSUFFICIENT") {
-    return "Arkjet cannot safely cover that bet from the current house reserve. Try a smaller amount later.";
-  }
   if (code === "PLAYER_BALANCE_INSUFFICIENT") {
     return "Your Arkjet balance is too low for that bet. Add funds or choose a smaller amount.";
   }
@@ -167,7 +170,8 @@ export function ArkjetBetCard({
     }
 
     if (actionKind !== "place") return;
-    const fingerprint = [round.roundId, panelId, amount, mode, cashout].join(":");
+    const canonicalCashout = fixedMultiplier(cashout);
+    const fingerprint = [round.roundId, panelId, amount, mode, canonicalCashout].join(":");
     if (idempotency.current?.fingerprint !== fingerprint) {
       idempotency.current = { fingerprint, key: crypto.randomUUID() };
     }
@@ -179,7 +183,7 @@ export function ArkjetBetCard({
         panelId,
         amount,
         currency,
-        ...(mode === "auto" ? { autoCashoutMultiplier: cashout } : {}),
+        ...(mode === "auto" ? { autoCashoutMultiplier: canonicalCashout } : {}),
         idempotencyKey: idempotency.current.key,
       });
       idempotency.current = null;
@@ -265,6 +269,7 @@ export function ArkjetBetCard({
                 className={styles.autoInput}
                 disabled={Boolean(activeBet) || busy}
                 onChange={(event) => setCashout(validAmount(event.target.value))}
+                onBlur={() => setCashout(fixedMultiplier(cashout))}
               />
             </label>
           ) : null}

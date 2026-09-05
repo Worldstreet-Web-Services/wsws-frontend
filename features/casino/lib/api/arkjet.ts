@@ -330,7 +330,16 @@ export function fetchArkjetBetHistory(limit = 50): Promise<ArkjetBetList> {
 }
 
 export function createArkjetBet(input: CreateArkjetBetInput): Promise<ArkjetBet> {
-  return arkjet.post<ArkjetBet>("/bets", input);
+  const autoCashoutMultiplier = input.autoCashoutMultiplier;
+  const parsedAutoCashout = autoCashoutMultiplier ? Number(autoCashoutMultiplier) : null;
+  const normalizedAutoCashout =
+    parsedAutoCashout !== null && Number.isFinite(parsedAutoCashout)
+      ? parsedAutoCashout.toFixed(2)
+      : autoCashoutMultiplier;
+  return arkjet.post<ArkjetBet>("/bets", {
+    ...input,
+    ...(normalizedAutoCashout ? { autoCashoutMultiplier: normalizedAutoCashout } : {}),
+  });
 }
 
 export function cancelArkjetBet(betId: string): Promise<ArkjetBet> {

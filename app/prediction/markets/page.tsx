@@ -1,8 +1,8 @@
 import {
-  MarketsHeader,
-  MarketsWorkspace,
-  resolveMarketNavigation,
-} from "@/features/prediction/markets";
+  SportsbookShell,
+  type SportsbookEventKind,
+  type SportsbookGameState,
+} from "@/features/prediction/sportsbook";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -11,12 +11,26 @@ export default async function PredictionMarketsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { activeCategory, activeLeague } = resolveMarketNavigation(await searchParams);
+  const query = await searchParams;
+  const value = (key: string) => {
+    const candidate = query[key];
+    return typeof candidate === "string" ? candidate : "";
+  };
+  const requestedState = value("state");
+  const state: SportsbookGameState =
+    requestedState === "live" || requestedState === "all" ? requestedState : "prematch";
+  const requestedKind = value("kind");
+  const eventKind: SportsbookEventKind =
+    requestedKind === "virtual" || requestedKind === "esports" ? requestedKind : "sports";
 
   return (
-    <main className="min-h-screen bg-black">
-      <MarketsHeader activeCategory={activeCategory} activeLeague={activeLeague} />
-      <MarketsWorkspace activeCategory={activeCategory} activeLeague={activeLeague} />
-    </main>
+    <SportsbookShell
+      requestedSport={value("sport") || "football"}
+      country={value("country")}
+      league={value("league")}
+      state={state}
+      eventKind={eventKind}
+      initialView={value("view") === "tickets" ? "tickets" : "markets"}
+    />
   );
 }

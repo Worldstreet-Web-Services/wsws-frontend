@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { OrderSide, OrderType } from "@polymarket/client";
-import { fetchNegRisk } from "@polymarket/client/actions";
 import { usePolymarketSession } from "@/features/prediction/hooks/use-polymarket-session";
 import { usePolymarketFunding } from "@/features/prediction/hooks/use-polymarket-funding";
 import { ensureNegRiskBuyAllowance } from "@/features/prediction/lib/polymarket/allowance";
@@ -39,6 +38,8 @@ type SignedMarketOrder = Awaited<ReturnType<SecureClient["createMarketOrder"]>>;
 interface MinimumOrderBook {
   asks: ReadonlyArray<{ price: string; size: string }>;
   minOrderSize: string;
+  negRisk: boolean;
+  tickSize: number;
 }
 
 class SinglesOrderValidationError extends Error {}
@@ -123,10 +124,44 @@ function e6ToDecimal(value: bigint): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-export function singlesMaxBuyPrice(decimalOdds: number): string {
-  if (!Number.isFinite(decimalOdds) || decimalOdds <= 1) return "0.99";
-  const referencePrice = 1 / decimalOdds;
-  return Math.min(0.99, Math.max(0.01, referencePrice * (1 + MAX_PRICE_SLIPPAGE))).toFixed(4);
+export function singlesMaxBuyPrice(decimalOdds: number, tickSize: number): string {
+  const tickE6 = parseUsdE6(String(tickSize));
+  if (!tickE6 || tickE6 >= 1_000_000n) {
+    throw new SinglesOrderValidationError("This market returned an invalid price increment.");
+  }
+
+  const highestPriceE6 = 1_000_000n - tickE6;
+  if (!Number.isFinite(decimalOdds) || decimalOdds <= 1) {
+    return e6ToDecimal(highestPriceE6);
+  }
+
+  const protectedPrice = (1 / decimalOdds) * (1 + MAX_PRICE_SLIPPAGE);
+  const protectedPriceE6 = BigInt(Math.floor(protectedPrice * 1_000_000));
+  const boundedPriceE6 =
+    protectedPriceE6 < tickE6
+      ? tickE6
+      : protectedPriceE6 > highestPriceE6
+        ? highestPriceE6
+        : protectedPriceE6;
+
+  // A protected BUY price is a ceiling, so align down rather than silently
+  // exceeding the advertised slippage allowance.
+  return e6ToDecimal((boundedPriceE6 / tickE6) * tickE6);
+}
+
+function preparationError(cause: unknown): string {
+  const name =
+    cause && typeof cause === "object" && "name" in cause
+      ? String((cause as { name: unknown }).name)
+      : "";
+
+  if (name === "InsufficientLiquidityError") {
+    return "This market does not have enough liquidity to fill the full order within price protection.";
+  }
+  if (name === "UserInputError") {
+    return "This market changed while the order was being prepared. Refresh its price and try again.";
+  }
+  return friendlyError(cause, "This order could not be prepared. Try again.");
 }
 
 export function useSinglesBatchOrder() {
@@ -200,17 +235,17 @@ export function useSinglesBatchOrder() {
       const amount = e6ToDecimal(stakeE6);
 
       setPhase("checking");
-      const [books, negRiskFlags] = await Promise.all([
-        client.fetchOrderBooks(selections.map(({ tokenId }) => ({ tokenId }))),
-        Promise.all(selections.map(({ tokenId }) => fetchNegRisk(client, { tokenId }))),
-      ]);
+      const books = await client.fetchOrderBooks(selections.map(({ tokenId }) => ({ tokenId })));
       const booksByTokenId = new Map<string, (typeof books)[number]>(
         books.map((book) => [String(book.tokenId), book])
       );
       const minimumStakeE6 = selections.reduce((required, selection) => {
         const book = booksByTokenId.get(selection.tokenId);
         if (!book) return required;
-        const minimum = minimumBuyStakeE6(book, singlesMaxBuyPrice(selection.decimalOdds));
+        const minimum = minimumBuyStakeE6(
+          book,
+          singlesMaxBuyPrice(selection.decimalOdds, book.tickSize)
+        );
         return minimum && minimum > required ? minimum : required;
       }, 0n);
       if (minimumStakeE6 > stakeE6) {
@@ -234,7 +269,9 @@ export function useSinglesBatchOrder() {
         }
       }
 
-      const negRiskOrderCount = negRiskFlags.filter(Boolean).length;
+      const negRiskOrderCount = selections.filter(
+        ({ tokenId }) => booksByTokenId.get(tokenId)?.negRisk === true
+      ).length;
       if (negRiskOrderCount > 0) {
         setPhase("approving");
         await ensureNegRiskBuyAllowance(client, stakeE6 * BigInt(negRiskOrderCount));
@@ -266,17 +303,21 @@ export function useSinglesBatchOrder() {
       setPhase("signing");
       for (const [index, selection] of selections.entries()) {
         try {
+          const book = booksByTokenId.get(selection.tokenId);
+          if (!book) {
+            throw new SinglesOrderValidationError(
+              "Polymarket did not return an order book for this selection."
+            );
+          }
           const order = await client.createMarketOrder({
             tokenId: selection.tokenId,
             side: OrderSide.BUY,
             amount,
             maxSpend: amount,
-            maxPrice: singlesMaxBuyPrice(selection.decimalOdds),
+            maxPrice: singlesMaxBuyPrice(selection.decimalOdds, book.tickSize),
             orderType: OrderType.FOK,
           });
-          const minimumSharesE6 = parseUsdE6(
-            booksByTokenId.get(selection.tokenId)?.minOrderSize ?? ""
-          );
+          const minimumSharesE6 = parseUsdE6(book.minOrderSize);
           const requiredStakeE6 = minimumPreparedBuyStakeE6({
             stakeE6,
             makerAmountE6: BigInt(order.makerAmount),
@@ -288,9 +329,14 @@ export function useSinglesBatchOrder() {
           }
           prepared.push({ index, selection, order });
         } catch (cause) {
+          console.error("[prediction] order preparation failed", {
+            selectionId: selection.id,
+            tokenId: selection.tokenId,
+            cause,
+          });
           results[index] = {
             selection,
-            error: friendlyError(cause, "This order could not be prepared."),
+            error: preparationError(cause),
           };
         }
         setPreparedCount(index + 1);

@@ -14,8 +14,14 @@ const USER_OPERATION_METHODS = new Set([
 ]);
 const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
 const PAYMASTER_METHODS = new Set(["pm_getPaymasterStubData", "pm_getPaymasterData"]);
-// Per Alchemy's Bundler Sponsored Operations docs, the policy header goes on
-// eth_sendUserOperation only — the estimate does not take it.
+// The BSO policy header goes on BOTH the estimate and the send. Alchemy's BSO
+// docs only mention the send, but the live bundler rejects a zero-fee
+// eth_estimateUserOperationGas that arrives without the policy context —
+// captured verbatim: "Invalid fields set on User Operation ... User
+// operation must include a paymaster for sponsorship." Every sponsored
+// action estimates before sending, so a header-less estimate kills the
+// whole flow before the send is ever attempted.
+const BSO_POLICY_METHODS = new Set([SPONSORED_SEND_METHOD, "eth_estimateUserOperationGas"]);
 const MAX_BATCH_CALLS = 100;
 
 interface RpcCall {
@@ -79,7 +85,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)));
   const needsBsoPolicy =
     target.sponsorshipMode === "bso" &&
-    calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
+    calls.some((call) => Boolean(call && BSO_POLICY_METHODS.has(call.method)));
 
   if (needsPaymasterPolicy && !polygonPolicyId) {
     return NextResponse.json(

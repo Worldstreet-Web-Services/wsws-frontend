@@ -13,6 +13,7 @@ import type {
   HlMarketContext,
   HlOrderRow,
   HlPositionView,
+  HlSendAssetAction,
   HlSetAbstractionAction,
   HlSignature,
   HlTriggerKind,
@@ -22,6 +23,7 @@ import type {
   PlaceOrderRequest,
   PlaceOrderResult,
   PreparedBridge,
+  PreparedDexTransfer,
   PrepareLeverageResult,
   PreparedAbstractionMode,
   PreparedBuilderFeeApproval,
@@ -53,8 +55,52 @@ export async function getMarketContexts(): Promise<HlMarketContext[]> {
   return perp.get<HlMarketContext[]>("/ark/market-contexts");
 }
 
+<<<<<<< HEAD
 export async function getAccountState(address: string): Promise<HlClearinghouseState> {
   return perp.authedGet<HlClearinghouseState>(`/ark/account-state/${address}`);
+=======
+export async function getFundingHistory(
+  symbol: string,
+  startTime: number,
+  endTime?: number
+): Promise<HlFundingHistoryEntry[]> {
+  return perp.get<HlFundingHistoryEntry[]>(`/ark/funding-history/${symbol}`, {
+    startTime,
+    ...(endTime !== undefined ? { endTime } : {}),
+  });
+}
+
+export async function getAccountState(
+  address: string,
+  dex?: string
+): Promise<HlClearinghouseState> {
+  // Each HIP-3 dex margins as a separate Hyperliquid account; dex unset = native.
+  const query = dex ? `?dex=${encodeURIComponent(dex)}` : "";
+  return perp.authedGet<HlClearinghouseState>(`/ark/account-state/${address}${query}`);
+}
+
+// Native -> HIP-3 dex margin transfer (sendAsset): prepare returns the
+// unsigned EIP-712 action, submit relays the client-signed result. Instant,
+// off-chain, no gas — see apps/perp's BridgeService.
+export async function prepareDexTransfer(
+  walletId: string,
+  destinationDex: string,
+  amountUsdc: string
+): Promise<PreparedDexTransfer> {
+  return perp.post<PreparedDexTransfer>("/ark/dex-transfer/prepare", {
+    walletId,
+    destinationDex,
+    amountUsdc,
+  });
+}
+
+export async function submitDexTransfer(
+  walletId: string,
+  action: HlSendAssetAction,
+  signature: HlSignature
+): Promise<void> {
+  await perp.post("/ark/dex-transfer/submit", { walletId, action, signature });
+>>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
 }
 
 // Reads the destination chain directly rather than the Dextopus-webhook-driven

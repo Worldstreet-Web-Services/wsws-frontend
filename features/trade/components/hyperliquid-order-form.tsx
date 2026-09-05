@@ -107,9 +107,11 @@ export function HyperliquidOrderForm({
 }: HyperliquidOrderFormProps) {
   const [side, setSide] = useState<HlOrderSide>("buy");
   const [orderKind, setOrderKind] = useState<OrderKind>("market");
-  // Trading amount is always entered in USDC — size (the asset's own base
-  // units, what Hyperliquid's API actually wants) is derived from it at
-  // submit time, matching how the simple view already works.
+  // Trading amount is entered in USDC as COLLATERAL, matching the simple
+  // view: leverage multiplies it into the position's notional, and size (the
+  // asset's own base units, what Hyperliquid's API actually wants) is derived
+  // from that notional at submit time. Treating the amount as notional made
+  // 10x trade exactly like 1x on the entered dollars.
   const [amountUsdc, setAmountUsdc] = useState("");
   const [sizePercent, setSizePercentValue] = useState(0);
   const [limitPrice, setLimitPrice] = useState("");
@@ -191,17 +193,26 @@ export function HyperliquidOrderForm({
   };
 
   const amountUsdcNum = Number(amountUsdc) || 0;
+  const clampedLeverage = Math.max(1, Math.min(leverage, maxLeverage));
+  const notionalUsdc = amountUsdcNum * clampedLeverage;
   const sizeDecimals = Math.max(0, Math.min(8, szDecimals));
-  const sizeBaseUnits = markPrice > 0 ? amountUsdcNum / markPrice : 0;
+  // Floored to the asset's own size precision so the wire size never exceeds
+  // what the entered collateral actually covers.
+  const sizeScale = 10 ** sizeDecimals;
+  const sizeBaseUnits =
+    markPrice > 0 ? Math.floor((notionalUsdc / markPrice) * sizeScale) / sizeScale : 0;
   const size = sizeBaseUnits > 0 ? sizeBaseUnits.toFixed(sizeDecimals) : "";
   // Advisory only — never blocks submission. placeOrder already auto-bridges
   // and retries when the perps wallet alone falls short (see
   // hyperliquid-actions.ts), so this can under-count real buying power; it's
-  // a fast, honest hint, not the authoritative check.
+  // a fast, honest hint, not the authoritative check. The amount IS the
+  // margin under collateral semantics, so it compares against the balance
+  // directly, un-scaled.
   const insufficientBalance = amountUsdcNum > 0 && amountUsdcNum > maxUsdc;
   // Unlike insufficientBalance, this ALWAYS blocks — no retry or auto-bridge
-  // fixes an order Hyperliquid rejects outright for being too small.
-  const belowMinimumOrder = amountUsdcNum > 0 && amountUsdcNum < MIN_ORDER_NOTIONAL_USDC;
+  // fixes an order Hyperliquid rejects outright for being too small. The $10
+  // floor applies to the position's notional, not the collateral.
+  const belowMinimumOrder = notionalUsdc > 0 && notionalUsdc < MIN_ORDER_NOTIONAL_USDC;
 
   // TP/SL must sit on the correct side of entry for the direction: a long
   // takes profit above and stops out below, a short the other way round. A
@@ -337,8 +348,8 @@ export function HyperliquidOrderForm({
     ? `${currentPosition.side === "short" ? "-" : ""}${formatAmount(Number(currentPosition.size))} ${assetSymbol}`
     : `0.00000 ${assetSymbol || ""}`.trim();
 
-  const orderValueUsdc = amountUsdcNum;
-  const marginRequiredUsdc = leverage > 0 ? amountUsdcNum / leverage : amountUsdcNum;
+  const orderValueUsdc = notionalUsdc;
+  const marginRequiredUsdc = amountUsdcNum;
 
   return (
     <div className="ws-card p-4 sm:p-5">
@@ -386,6 +397,31 @@ export function HyperliquidOrderForm({
               </button>
             ))}
           </div>
+<<<<<<< HEAD
+=======
+          <div className="flex items-center gap-2">
+            <input
+              value={amountUsdc}
+              onChange={decimalField(setAmountUsdc)}
+              inputMode="decimal"
+              placeholder="0"
+              className="tnum w-full bg-transparent text-2xl text-white outline-none placeholder:text-white/30"
+            />
+            <span className="rounded-lg bg-white/8 px-2 py-1 text-[12px] font-semibold text-white/60">
+              USDC
+            </span>
+          </div>
+          {belowMinimumOrder ? (
+            <p className="text-down mt-1.5 text-[11.5px] font-normal">
+              Minimum position is ${MIN_ORDER_NOTIONAL_USDC} (amount × leverage).
+            </p>
+          ) : insufficientBalance ? (
+            <p className="text-down mt-1.5 text-[11.5px] font-normal">Insufficient balance.</p>
+          ) : null}
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+>>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
           <input
             type="range"
             min={1}
@@ -546,6 +582,61 @@ export function HyperliquidOrderForm({
               className="tnum w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
             />
           </div>
+<<<<<<< HEAD
+=======
+        ) : null}
+
+        <button
+          onClick={() => void handleSubmit()}
+          disabled={
+            busy ||
+            !walletReady ||
+            !assetSymbol ||
+            !size ||
+            belowMinimumOrder ||
+            (orderKind === "limit" && !limitPrice)
+          }
+          className={`mt-3 w-full cursor-pointer rounded-[14px] p-[15px] text-[15px] font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${
+            side === "buy" ? "bg-up text-up-ink" : "bg-down text-down-ink"
+          }`}
+        >
+          {busy ? (status?.text ?? "Placing order…") : "Place Order"}
+        </button>
+
+        <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-3 text-[12.5px] font-normal">
+          <div className="flex justify-between">
+            <span className="text-white/55">Order Value</span>
+            <span className="tnum text-white">
+              {orderValueUsdc > 0 ? formatUsd(orderValueUsdc) : "N/A"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/55">Margin Required</span>
+            <span className="tnum text-white">
+              {marginRequiredUsdc > 0 ? formatUsd(marginRequiredUsdc) : "N/A"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/55">Slippage</span>
+            <span className="tnum text-white">Est: 0% / Max: 20%</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/55">Fees</span>
+            <span className="tnum text-white">
+              {(PERPS_TAKER_FEE_RATE * 100).toFixed(2)}% / {(PERPS_TAKER_FEE_RATE * 100).toFixed(2)}
+              %
+            </span>
+          </div>
+          {notionalUsdc > 0 ? (
+            <div className="flex justify-between text-white/40">
+              <span>Est. fee this trade (open + close)</span>
+              <span className="tnum">
+                {/* Trading fees charge on notional, not on the margin posted. */}
+                {formatUsd(openFee(notionalUsdc) + closeFee(notionalUsdc))}
+              </span>
+            </div>
+          ) : null}
+>>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
         </div>
       ) : null}
 

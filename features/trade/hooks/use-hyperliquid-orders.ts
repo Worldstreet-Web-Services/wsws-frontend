@@ -13,6 +13,9 @@ export function useHyperliquidOrders(walletId: string | null, enabled = true) {
     queryKey: ["hl-orders", walletId],
     queryFn: () => listOrders(walletId as string),
     enabled: enabled && walletId != null,
+    // Same rationale as the positions poll: reconciliation resolves stale
+    // orders server-side and the panel must notice without a click.
+    refetchInterval: 15_000,
   });
 
   return {

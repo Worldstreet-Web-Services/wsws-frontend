@@ -61,6 +61,6 @@ describe("pnlCardModel", () => {
 
   it("builds a filesystem-safe file name from the symbol", () => {
     const model = pnlCardModel(closedPosition({ symbol: "xyz:AAPL" }));
-    expect(pnlCardFileName(model)).toBe("worldstreet-xyzAAPL-pnl.png");
+    expect(pnlCardFileName(model)).toBe("market-xyzAAPL-pnl.png");
   });
 });

@@ -240,8 +240,16 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
             busy={busy}
             onSubmit={(input, onStatus) =>
               withBusy(async () => {
+                // Snapshot before the order so the background poll below can
+                // tell "the fill landed" (a new position, or an existing one
+                // grown) from stale data — without it, the panel showed the
+                // new trade only on the next unrelated refetch.
+                const before = JSON.stringify(trading.positions.map((p) => [p.id, p.size]).sort());
                 const result = await trading.actions.placeOrder(input, onStatus);
                 trading.refetchAll();
+                void trading.waitForPositionsChange(
+                  (rows) => JSON.stringify(rows.map((p) => [p.id, p.size]).sort()) !== before
+                );
                 return result;
               })
             }

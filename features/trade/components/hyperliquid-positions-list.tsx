@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { formatAmount } from "@/lib/trade/math";
-import { friendlyError } from "@/lib/errors";
 import { HyperliquidClosePositionModal } from "@/features/trade/components/hyperliquid-close-position-modal";
 import { HyperliquidHistoryModal } from "@/features/trade/components/hyperliquid-history-modal";
 import { HyperliquidPnlShareModal } from "@/features/trade/components/hyperliquid-pnl-share-modal";
+import {
+  HyperliquidTriggerModal,
+  type TriggerModalTarget,
+} from "@/features/trade/components/hyperliquid-trigger-modal";
 import { listClosedPositions } from "@/features/trade/lib/hyperliquid-api";
 import type {
   HlClosedPositionView,
@@ -30,14 +33,17 @@ interface HyperliquidPositionsListProps {
 }
 
 const RESTING_STATUSES = new Set(["submitted", "open", "partially_filled"]);
-const DECIMAL_INPUT = /^\d*\.?\d*$/;
 
 // How long to keep looking for the just-closed position's final record (with
-// its real fill price and PnL) before giving up on the auto-popup. The close
-// fill normally lands within a second or two; the card stays reachable from
-// Trading history either way, so a timeout costs nothing but the popup.
-const SHARE_CARD_POLL_TIMEOUT_MS = 20_000;
-const SHARE_CARD_POLL_INTERVAL_MS = 1_500;
+// its real fill price and PnL) before giving up on the auto-popup. When the
+// WS fill event lands this is a second or two — but a missed fill is only
+// caught by the backend's reconciliation sweep (60s cadence), so the window
+// must outlast a full sweep or the popup never fires for exactly the closes
+// that need it most (observed live: close filled instantly, record written
+// 34s later by reconciliation). The card stays reachable from Trading
+// history either way; a timeout costs nothing but the popup.
+const SHARE_CARD_POLL_TIMEOUT_MS = 90_000;
+const SHARE_CARD_POLL_INTERVAL_MS = 1_000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -66,37 +72,16 @@ export function HyperliquidPositionsList({
   const [closing, setClosing] = useState<HlPositionView | null>(null);
   const [shareCard, setShareCard] = useState<HlClosedPositionView | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [expanded, setExpanded] = useState<{ positionId: string; kind: HlTriggerKind } | null>(
-    null
-  );
-  const [triggerPrice, setTriggerPrice] = useState("");
-  const [triggerBusy, setTriggerBusy] = useState(false);
-  const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [triggerTarget, setTriggerTarget] = useState<TriggerModalTarget | null>(null);
 
-  const toggleTrigger = (positionId: string, kind: HlTriggerKind, existingPrice?: string) => {
-    setTriggerError(null);
-    if (expanded?.positionId === positionId && expanded.kind === kind) {
-      setExpanded(null);
-      return;
-    }
-    setExpanded({ positionId, kind });
-    setTriggerPrice(existingPrice ?? "");
-  };
-
-  const saveTrigger = async (position: HlPositionView, kind: HlTriggerKind) => {
-    if (!triggerPrice) return;
-    setTriggerBusy(true);
-    setTriggerError(null);
-    try {
-      const existing = findTrigger(orders, position, kind);
-      await onEditTrigger(position, kind, triggerPrice, existing?.id);
-      setExpanded(null);
-      setTriggerPrice("");
-    } catch (error) {
-      setTriggerError(friendlyError(error, "Failed to update."));
-    } finally {
-      setTriggerBusy(false);
-    }
+  const openTriggerModal = (position: HlPositionView, kind: HlTriggerKind) => {
+    const existing = findTrigger(orders, position, kind);
+    setTriggerTarget({
+      position,
+      kind,
+      existingPrice: existing?.limitPrice ?? null,
+      existingOrderId: existing?.id,
+    });
   };
 
   // After a close is accepted, the position's final record (real fill price,
@@ -127,8 +112,12 @@ export function HyperliquidPositionsList({
           RESTING_STATUSES.has(o.status)
       )
       .map((o) => o.id);
-    await onClosePosition(position, siblingIds);
+    // The poll starts the moment the user confirms, CONCURRENT with the
+    // close round trip — the closed record can only exist after the fill
+    // lands, so early polling is harmless, and the card pops the second
+    // the record appears instead of after the whole close flow settles.
     void offerShareCard(position.id);
+    await onClosePosition(position, siblingIds);
   };
 
   return (
@@ -154,8 +143,6 @@ export function HyperliquidPositionsList({
               position.unrealizedPnlUsdc != null ? Number(position.unrealizedPnlUsdc) : null;
             const takeProfit = findTrigger(orders, position, "take_profit");
             const stopLoss = findTrigger(orders, position, "stop_loss");
-            const isExpanded = (kind: HlTriggerKind) =>
-              expanded?.positionId === position.id && expanded.kind === kind;
 
             return (
               <div key={position.id} className="ws-inset flex flex-col gap-2 p-3 text-[12.5px]">
@@ -186,9 +173,7 @@ export function HyperliquidPositionsList({
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() =>
-                      toggleTrigger(position.id, "take_profit", takeProfit?.limitPrice ?? undefined)
-                    }
+                    onClick={() => openTriggerModal(position, "take_profit")}
                     className={`cursor-pointer rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       takeProfit
                         ? "bg-up/12 text-up"
@@ -203,9 +188,7 @@ export function HyperliquidPositionsList({
                       : "Add TP"}
                   </button>
                   <button
-                    onClick={() =>
-                      toggleTrigger(position.id, "stop_loss", stopLoss?.limitPrice ?? undefined)
-                    }
+                    onClick={() => openTriggerModal(position, "stop_loss")}
                     className={`cursor-pointer rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       stopLoss
                         ? "bg-down/12 text-down"
@@ -226,33 +209,6 @@ export function HyperliquidPositionsList({
                     Close
                   </button>
                 </div>
-
-                {isExpanded("take_profit") || isExpanded("stop_loss") ? (
-                  <div className="flex items-center gap-2 border-t border-white/8 pt-2">
-                    <input
-                      value={triggerPrice}
-                      onChange={(e) => {
-                        const next = e.target.value.replace(/,/g, "");
-                        if (next === "" || DECIMAL_INPUT.test(next)) setTriggerPrice(next);
-                      }}
-                      inputMode="decimal"
-                      placeholder={
-                        expanded?.kind === "take_profit" ? "Take profit price" : "Stop loss price"
-                      }
-                      className="tnum ws-inset min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-white outline-none placeholder:text-white/30"
-                    />
-                    <button
-                      onClick={() => void saveTrigger(position, expanded!.kind)}
-                      disabled={triggerBusy || !triggerPrice}
-                      className="cursor-pointer rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {triggerBusy ? "Saving…" : "Save"}
-                    </button>
-                  </div>
-                ) : null}
-                {triggerError && expanded?.positionId === position.id ? (
-                  <p className="text-down text-[11px] font-normal">{triggerError}</p>
-                ) : null}
               </div>
             );
           })}
@@ -273,6 +229,13 @@ export function HyperliquidPositionsList({
         open={shareCard !== null}
         onClose={() => setShareCard(null)}
         position={shareCard}
+      />
+      <HyperliquidTriggerModal
+        target={triggerTarget}
+        onClose={() => setTriggerTarget(null)}
+        onSave={(position, kind, price, existingOrderId) =>
+          onEditTrigger(position, kind, price, existingOrderId)
+        }
       />
     </div>
   );

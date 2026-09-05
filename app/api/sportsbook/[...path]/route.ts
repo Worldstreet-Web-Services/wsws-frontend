@@ -12,7 +12,8 @@ import { checkUpstream } from "@/lib/server/validate-upstream";
 import { wsapiService } from "@/lib/wsapi-base";
 
 const BASE =
-  process.env.NODE_ENV === "development" ? "http://127.0.0.1:8086" : wsapiService("prediction");
+  process.env.PREDICTION_COMBOS_API_URL ??
+  (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8086" : wsapiService("prediction"));
 
 function safePath(path: string[]): string | null {
   const joined = path.join("/");

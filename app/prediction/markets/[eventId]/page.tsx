@@ -1,11 +1,5 @@
 import { notFound } from "next/navigation";
-import {
-  DiscoveryEventDetail,
-  MarketsHeader,
-  resolveMarketNavigation,
-  SportsEventDetail,
-} from "@/features/prediction/markets";
-import { isNormalSportCategory } from "@/features/prediction/markets/types";
+import { SportsbookShell } from "@/features/prediction/sportsbook";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -18,18 +12,19 @@ export default async function PredictionMarketEventPage({
 }) {
   const { eventId } = await params;
   if (!/^\d+$/.test(eventId)) notFound();
-  const { activeCategory, activeLeague } = resolveMarketNavigation(await searchParams);
+  const query = await searchParams;
+  const sport = typeof query.sport === "string" ? query.sport : "football";
+  const country = typeof query.country === "string" ? query.country : "";
+  const league = typeof query.league === "string" ? query.league : "";
 
   return (
-    <main className="min-h-screen bg-black">
-      <MarketsHeader activeCategory={activeCategory} activeLeague={activeLeague} />
-      <div className="mx-auto w-full max-w-[1000px] px-4 py-5 sm:px-5 lg:px-0">
-        {isNormalSportCategory(activeCategory) ? (
-          <SportsEventDetail eventId={eventId} sport={activeCategory} activeLeague={activeLeague} />
-        ) : (
-          <DiscoveryEventDetail category={activeCategory} eventId={eventId} />
-        )}
-      </div>
-    </main>
+    <SportsbookShell
+      requestedSport={sport}
+      country={country}
+      league={league}
+      state="all"
+      eventKind="sports"
+      eventId={eventId}
+    />
   );
 }

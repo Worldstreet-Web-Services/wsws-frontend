@@ -35,6 +35,7 @@ function rawJsonBodyInit(method: string, body: string, headers?: HeadersInit): R
 export interface ServiceClient {
   get<T>(path: string, params?: QueryParams): Promise<T>;
   authedGet<T>(path: string, params?: QueryParams): Promise<T>;
+  publicPost<T>(path: string, body?: unknown): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
   postRawJson<T>(path: string, body: string, headers?: HeadersInit): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
@@ -61,6 +62,8 @@ export function createServiceClient(basePath: string, fallbackMessage: string): 
     get: <T>(path: string, params?: QueryParams) =>
       fetch(url(path, params)).then((res) => unwrap<T>(res, fallbackMessage)),
     authedGet: <T>(path: string, params?: QueryParams) => authed<T>(url(path, params), {}),
+    publicPost: <T>(path: string, body?: unknown) =>
+      apiFetch(url(path), bodyInit("POST", body)).then((res) => unwrap<T>(res, fallbackMessage)),
     post: <T>(path: string, body?: unknown) => authed<T>(url(path), bodyInit("POST", body)),
     postRawJson: <T>(path: string, body: string, headers?: HeadersInit) =>
       authed<T>(url(path), rawJsonBodyInit("POST", body, headers)),

@@ -10,8 +10,8 @@
 // Isomorphic on purpose: server code reads WSAPI_BASE_URL, client bundles can
 // only see the NEXT_PUBLIC_ variant, and both fall back to production.
 export const WSAPI_BASE =
-  process.env.NEXT_PUBLIC_WSAPI_BASE_URL ??
   process.env.WSAPI_BASE_URL ??
+  process.env.NEXT_PUBLIC_WSAPI_BASE_URL ??
   "https://api.worldstreetwebservices.com";
 
 export function wsapiService(service: string): string {

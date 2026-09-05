@@ -14,6 +14,7 @@ import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { DepositAnalytics } from "@/features/activity";
+import { SectionVisibility } from "@/components/ui/section-visibility";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { BankDepositAnalytics } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit";
@@ -224,7 +225,7 @@ export default function DashboardPage() {
 
         {/* The account, in full. It is what someone opened Ark to see, and the
             only section that is not a doorway to somewhere else. */}
-        <section id="portfolio" className={SECTION_CLASS}>
+        <SectionVisibility id="portfolio" className={SECTION_CLASS}>
           <Portfolio
             onOpenFunds={modals.openFunds}
             onOpenWithdraw={modals.openWithdraw}
@@ -235,7 +236,7 @@ export default function DashboardPage() {
             onOpenMemeSell={modals.openMemeSell}
             onOpenRwaTrade={modals.openRwaTrade}
           />
-        </section>
+        </SectionVisibility>
 
         {briefs.map((id, index) => {
           const Body = BRIEF_BODY[id];
@@ -243,8 +244,17 @@ export default function DashboardPage() {
             <Fragment key={id}>
               {/* The id stays what it always was, so /dashboard#spot from
                   outside the app still lands here, and the walkthrough still
-                  finds a section to point at. */}
-              <section id={id} className={SECTION_CLASS}>
+                  finds a section to point at.
+
+                  The gate sits HERE, above the brief, not inside it. A brief
+                  that called useSectionActive() in its own body would sit
+                  ABOVE its own returned JSX and read the context default, so
+                  it would poll regardless — the trap that made the RWA gating
+                  dead code. RwaOverview and MemeOverview both run gated hooks
+                  in their bodies, so a brief off screen must be wrapped from
+                  out here to stay quiet. Renders a div with the same id and
+                  classes, so the scroll-spy anchor is unchanged. */}
+              <SectionVisibility id={id} className={SECTION_CLASS}>
                 <SectionOverview
                   title={tSections(id)}
                   blurb={tOverview(`${id}Blurb`)}
@@ -253,7 +263,7 @@ export default function DashboardPage() {
                 >
                   <Body rows={PREVIEW_ROWS} />
                 </SectionOverview>
-              </section>
+              </SectionVisibility>
               {/* One doorway between the briefs, so Prediction and Arkade are
                   met while reading rather than only at the very bottom. */}
               {INTERLEAVED_BANNERS[index] ? (

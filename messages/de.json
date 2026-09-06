@@ -563,11 +563,14 @@
   "account": {
     "passkeyAdded": "Passkey hinzugefügt. Nutzen Sie ihn bei der nächsten Anmeldung.",
     "passkeyFailed": "Passkey konnte nicht hinzugefügt werden. Versuchen Sie es erneut.",
-    "addPasskey": "Passkey für schnellere Anmeldung hinzufügen",
+    "addPasskey": "Add a passkey to this device",
     "inviteFriends": "Freunde einladen",
     "helpSupport": "Hilfe & Support",
     "signOut": "Abmelden",
-    "wallets": "Wallets"
+    "wallets": "Wallets",
+    "addingPasskey": "Adding a passkey…",
+    "addPasskeyHint": "Unlock with your fingerprint or face instead of the PIN",
+    "addPasskeyReauth": "Signs you out and back in once, to set it up"
   },
   "common": {
     "addressCopied": "Adresse kopiert",

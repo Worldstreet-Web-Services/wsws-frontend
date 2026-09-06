@@ -8,10 +8,10 @@ import { LanguageSelect } from "@/components/ui/language-select";
 import { InviteFriendsModal } from "@/features/referrals";
 import { MoveOldMoneyEntry } from "@/features/migrate";
 import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
-import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
+import { HelpIcon, PasskeyIcon, SignOutIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
+import { useDevicePasskey } from "@/hooks/use-device-passkey";
 import { WalletAddresses } from "@/components/layout/modals/wallet-addresses";
-import { toast } from "@/lib/toast";
 
 interface AccountModalProps {
   onClose: () => void;
@@ -42,6 +42,7 @@ export function AccountModal({ onClose }: AccountModalProps) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const tLanguage = useTranslations("language");
   const { profile, logout } = useAuthSession();
+  const passkey = useDevicePasskey();
   const router = useRouter();
 
   const signOut = async () => {
@@ -82,6 +83,24 @@ export function AccountModal({ onClose }: AccountModalProps) {
           {t("inviteFriends")}
         </button>
         <MoveOldMoneyEntry adapters={MIGRATION_ADAPTERS} className={item} />
+        {/* Only for a device that fell back to a PIN and could hold a passkey
+            now. Hidden otherwise, so it is an answer to a problem the user has
+            rather than a setting to wonder about. */}
+        {passkey.canAdd ? (
+          <button
+            onClick={() => void passkey.addPasskey().catch(() => {})}
+            disabled={passkey.adding}
+            className={`${item} text-white disabled:opacity-60`}
+          >
+            <PasskeyIcon size={20} />
+            <span className="flex min-w-0 flex-col items-start">
+              <span>{passkey.adding ? t("addingPasskey") : t("addPasskey")}</span>
+              <span className="text-[11.5px] font-normal text-white/45">
+                {passkey.needsReauth ? t("addPasskeyReauth") : t("addPasskeyHint")}
+              </span>
+            </span>
+          </button>
+        ) : null}
         <button onClick={onClose} className={`${item} text-white`}>
           <HelpIcon size={20} />
           {t("helpSupport")}

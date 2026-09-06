@@ -8,6 +8,14 @@ import { buildDashboardFeed } from "@/lib/server/dashboard-feed";
 //
 // `public, s-maxage` is only safe because the body is the same for everyone.
 // Anything per user belongs on its own route with `private`.
+
+// Rendered per request, never at build time. This handler reads no request
+// API, so without this the build treats it as static, runs the composer once
+// on the build machine and ships that feed as the response: prices and live
+// games frozen at the moment of the deploy. The edge cache above is where
+// sharing belongs; the build is not.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const feed = await buildDashboardFeed();
   return NextResponse.json(feed, {

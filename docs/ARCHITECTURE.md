@@ -240,6 +240,12 @@ index" cannot be expressed as a rule. It is convention, currently unbroken.
 `pnpm typecheck`, `pnpm test`, `pnpm build`. Typecheck is separate from build
 because `next build` only checks what the build graph reaches.
 
+**`pnpm bundle:check`** runs after the build in CI and fails when a route's
+initial client JavaScript exceeds its budget in `scripts/first-load-budget.json`.
+`next build` no longer prints first-load sizes, so `scripts/first-load.mjs`
+reads them from the build's own manifests and gzips the chunks. The budgets
+are a ratchet: set just above what a route ships, lowered when it improves.
+
 **`npx knip`** finds unused files, exports and dependencies. `knip.json` lists
 the three entries it cannot see, each referenced by string rather than import.
 Do not delete on knip's word alone; check for string and worker references

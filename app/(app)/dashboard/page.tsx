@@ -4,8 +4,7 @@ import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { buildNav } from "@/components/layout/nav-items";
+import { useAppChrome, useReportActiveSection } from "@/components/layout/app-chrome";
 import { PortfolioView } from "@/features/portfolio";
 import { SectionOverview } from "@/components/ui/section-overview";
 import { SpotOverview } from "@/features/trade/components/spot-overview";
@@ -23,14 +22,12 @@ import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modal
 import { BankDepositAnalytics } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit/components/cross-border-banner";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import { SquareComposeFab, SquareSection } from "@/features/square";
 import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { useDashboardTour } from "@/features/tour";
-import { loadInterest } from "@/lib/preferences";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { DashboardModal } from "@/lib/modal-types";
@@ -120,8 +117,11 @@ export default function DashboardPage() {
   const tSections = useTranslations("sections");
   const tOverview = useTranslations("overview");
   const tRemit = useTranslations("remitBanner");
-  const nav = useMemo(() => buildNav(loadInterest(), tSections), [tSections]);
+  const { nav } = useAppChrome();
+  // Which section sits under the header is scroll state, not a route fact, so
+  // the rail is told from here while this page is mounted.
   const activeSection = useScrollSpy(SCROLL_SECTIONS);
+  useReportActiveSection(activeSection);
   // The services briefed on this page, in the nav's own order.
   const briefs = useMemo(() => nav.map((n) => n.id).filter(isBriefed), [nav]);
   // The tradeable universe, so a $TICKER in a square post can open the real
@@ -216,37 +216,36 @@ export default function DashboardPage() {
   const openCrossBorder = useCallback(() => toast.info(tRemit("comingSoonToast")), [tRemit]);
 
   return (
-    <AuthGuard>
-      <DashboardShell nav={nav} activeSection={activeSection}>
-        <RwaSettlementTracker />
-        {/* Reports settled deposits. It used to ride on the recent-activity
+    <>
+      <RwaSettlementTracker />
+      {/* Reports settled deposits. It used to ride on the recent-activity
             list that stood here; it is mounted on its own now that history
             lives only on its own page. */}
-        <DepositAnalytics />
-        {/* Follows a bank deposit to settlement so the arrival above can be
+      <DepositAnalytics />
+      {/* Follows a bank deposit to settlement so the arrival above can be
             reported as the Naira deposit it is, rather than as a chain one. */}
-        <BankDepositAnalytics />
+      <BankDepositAnalytics />
 
-        {/* The account, in full. It is what someone opened Ark to see, and the
+      {/* The account, in full. It is what someone opened Ark to see, and the
             only section that is not a doorway to somewhere else. */}
-        <SectionVisibility id="portfolio" className={SECTION_CLASS}>
-          <Portfolio
-            onOpenFunds={modals.openFunds}
-            onOpenWithdraw={modals.openWithdraw}
-            crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
-            onOpenDetail={modals.openDetail}
-            onOpenBuy={modals.openBuy}
-            onOpenSell={modals.openSell}
-            onOpenMemeSell={modals.openMemeSell}
-            onOpenRwaTrade={modals.openRwaTrade}
-          />
-        </SectionVisibility>
+      <SectionVisibility id="portfolio" className={SECTION_CLASS}>
+        <Portfolio
+          onOpenFunds={modals.openFunds}
+          onOpenWithdraw={modals.openWithdraw}
+          crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
+          onOpenDetail={modals.openDetail}
+          onOpenBuy={modals.openBuy}
+          onOpenSell={modals.openSell}
+          onOpenMemeSell={modals.openMemeSell}
+          onOpenRwaTrade={modals.openRwaTrade}
+        />
+      </SectionVisibility>
 
-        {briefs.map((id, index) => {
-          const Body = BRIEF_BODY[id];
-          return (
-            <Fragment key={id}>
-              {/* The id stays what it always was, so /dashboard#spot from
+      {briefs.map((id, index) => {
+        const Body = BRIEF_BODY[id];
+        return (
+          <Fragment key={id}>
+            {/* The id stays what it always was, so /dashboard#spot from
                   outside the app still lands here, and the walkthrough still
                   finds a section to point at.
 
@@ -258,50 +257,49 @@ export default function DashboardPage() {
                   in their bodies, so a brief off screen must be wrapped from
                   out here to stay quiet. Renders a div with the same id and
                   classes, so the scroll-spy anchor is unchanged. */}
-              <SectionVisibility id={id} className={SECTION_CLASS}>
-                <SectionOverview
-                  title={tSections(id)}
-                  blurb={tOverview(`${id}Blurb`)}
-                  href={BRIEF_HREF[id]}
-                  action={tOverview("viewAll", { section: tSections(id) })}
-                >
-                  <Body rows={PREVIEW_ROWS} />
-                </SectionOverview>
-              </SectionVisibility>
-              {/* One doorway between the briefs, so Prediction and Arkade are
+            <SectionVisibility id={id} className={SECTION_CLASS}>
+              <SectionOverview
+                title={tSections(id)}
+                blurb={tOverview(`${id}Blurb`)}
+                href={BRIEF_HREF[id]}
+                action={tOverview("viewAll", { section: tSections(id) })}
+              >
+                <Body rows={PREVIEW_ROWS} />
+              </SectionOverview>
+            </SectionVisibility>
+            {/* One doorway between the briefs, so Prediction and Arkade are
                   met while reading rather than only at the very bottom. */}
-              {INTERLEAVED_BANNERS[index] ? (
-                <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
-              ) : null}
-              {/* Hidden for now, so the gaps close up and the doorway track
+            {INTERLEAVED_BANNERS[index] ? (
+              <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
+            ) : null}
+            {/* Hidden for now, so the gaps close up and the doorway track
                   above is unaffected. */}
-              {MARKET_SQUARE_HIDDEN ? null : (
-                <>
-                  {INTERLEAVED_SQUARE[index] === "live" ? <SquareLivePromo /> : null}
-                  {INTERLEAVED_SQUARE[index] === "posts" ? <SquarePostsPromo /> : null}
-                  {INTERLEAVED_SQUARE[index] === "people" ? <SquarePeoplePromo /> : null}
-                </>
-              )}
-            </Fragment>
-          );
-        })}
+            {MARKET_SQUARE_HIDDEN ? null : (
+              <>
+                {INTERLEAVED_SQUARE[index] === "live" ? <SquareLivePromo /> : null}
+                {INTERLEAVED_SQUARE[index] === "posts" ? <SquarePostsPromo /> : null}
+                {INTERLEAVED_SQUARE[index] === "people" ? <SquarePeoplePromo /> : null}
+              </>
+            )}
+          </Fragment>
+        );
+      })}
 
-        {/* The social floor of the dashboard. It sits AFTER the markets on
+      {/* The social floor of the dashboard. It sits AFTER the markets on
             purpose: someone opening Ark came for their money, and the square
             is what they scroll into once they are done reading it — met by
             browsing rather than by deciding to leave for another deployment.
             Hidden for now: see MARKET_SQUARE_HIDDEN in lib/market-square.ts. */}
-        {MARKET_SQUARE_HIDDEN ? null : (
-          <SquareSection
-            onOpenBuy={modals.openBuy}
-            markets={spotMarkets}
-            tab={squareTab}
-            onTabChange={setSquareTab}
-          />
-        )}
-      </DashboardShell>
-      {/* Outside the shell so it anchors to the viewport rather than the
-          scrolling column. It reveals itself once the square is in reach. */}
+      {MARKET_SQUARE_HIDDEN ? null : (
+        <SquareSection
+          onOpenBuy={modals.openBuy}
+          markets={spotMarkets}
+          tab={squareTab}
+          onTabChange={setSquareTab}
+        />
+      )}
+      {/* Fixed to the viewport, so it sits the same wherever it renders. It
+          reveals itself once the square is in reach. */}
       {MARKET_SQUARE_HIDDEN ? null : (
         <SquareComposeFab
           markets={spotMarkets}
@@ -311,6 +309,6 @@ export default function DashboardPage() {
       )}
 
       <AppModalHost active={active} onClose={close} onConfirmed={modals.showDone} />
-    </AuthGuard>
+    </>
   );
 }

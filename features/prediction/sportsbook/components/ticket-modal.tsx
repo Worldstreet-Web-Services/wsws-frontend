@@ -11,7 +11,7 @@ import {
   tokenToUsdcAmount,
 } from "../money";
 import { canRebet } from "../ticket-rebet";
-import { ticketStatusDetail } from "../ticket-status";
+import { isLostSelectionResult, ticketStatusDetail } from "../ticket-status";
 
 const PROCESSING = new Set([
   "draft",
@@ -38,8 +38,9 @@ export function TicketModal({
   const ethPriceUsd = usePrices(["ETH"]).ETH ?? 0;
   if (!ticketId) return null;
   const order = query.data;
+  const lostLegCount = order?.legs.filter((leg) => isLostSelectionResult(leg.result)).length ?? 0;
   const processing = order ? PROCESSING.has(order.status) : true;
-  const positive = order ? POSITIVE.has(order.status) : false;
+  const positive = order ? POSITIVE.has(order.status) && lostLegCount === 0 : false;
   const redeemable = Boolean(
     order &&
     order.status !== "redeemed" &&
@@ -95,24 +96,31 @@ export function TicketModal({
           <div className="p-5">
             <div
               className={`flex items-center gap-3 rounded-[10px] border px-4 py-3 ${
-                positive
-                  ? "border-[#3eff8b]/20 bg-[#3eff8b]/8"
-                  : order.status === "failed" ||
-                      order.status === "rejected" ||
-                      order.status === "lost"
-                    ? "border-[#f42e52]/20 bg-[#f42e52]/8"
+                lostLegCount > 0 ||
+                order.status === "failed" ||
+                order.status === "rejected" ||
+                order.status === "lost"
+                  ? "border-[#f42e52]/20 bg-[#f42e52]/8"
+                  : positive
+                    ? "border-[#3eff8b]/20 bg-[#3eff8b]/8"
                     : "border-[#b9fcff]/15 bg-[#b9fcff]/5"
               }`}
             >
               <span
-                className={`size-2.5 rounded-full ${processing ? "animate-pulse bg-[#b9fcff]" : positive ? "bg-[#3eff8b]" : "bg-[#f42e52]"}`}
+                className={`size-2.5 rounded-full ${lostLegCount > 0 ? "bg-[#f42e52]" : processing ? "animate-pulse bg-[#b9fcff]" : positive ? "bg-[#3eff8b]" : "bg-[#f42e52]"}`}
               />
               <div>
                 <p className="text-[12px] font-semibold text-[#ebebeb] capitalize">
-                  {processing ? "Processing" : order.status.replaceAll("_", " ")}
+                  {lostLegCount > 0
+                    ? `${lostLegCount} selection${lostLegCount === 1 ? "" : "s"} lost`
+                    : processing
+                      ? "Processing"
+                      : order.status.replaceAll("_", " ")}
                 </p>
                 <p className="mt-0.5 text-[9px] text-[#7e7e7e]">
-                  {ticketStatusDetail(order.status, processing)}
+                  {lostLegCount > 0
+                    ? `Provider ticket: ${order.status.replaceAll("_", " ")}`
+                    : ticketStatusDetail(order.status, processing)}
                 </p>
               </div>
             </div>
@@ -121,8 +129,7 @@ export function TicketModal({
               {order.legs.map((leg) => {
                 const won =
                   leg.result?.toLowerCase() === "won" || leg.result?.toLowerCase() === "win";
-                const lost =
-                  leg.result?.toLowerCase() === "lost" || leg.result?.toLowerCase() === "lose";
+                const lost = isLostSelectionResult(leg.result);
                 return (
                   <article
                     key={`${leg.conditionId}:${leg.outcomeId}`}

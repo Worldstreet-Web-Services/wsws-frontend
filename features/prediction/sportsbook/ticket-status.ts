@@ -13,3 +13,8 @@ export function ticketStatusDetail(status: SportsbookOrderStatus, processing: bo
   if (processing) return `Latest state: ${status.replaceAll("_", " ")}`;
   return TERMINAL_STATUS_DETAIL[status] ?? "Settlement confirmed";
 }
+
+export function isLostSelectionResult(result: string | null | undefined): boolean {
+  const normalized = result?.trim().toLowerCase();
+  return normalized === "lost" || normalized === "lose";
+}

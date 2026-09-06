@@ -8,7 +8,7 @@ Accepted — 2026-09-06
 
 ## What Is This Document?
 
-This document is the simplified, accessible companion to the formal technical ADR [`ADR-2026-09-06-AI-Development-Governance-Framework.md`](file:///Users/ettaraphael/Documents/systems/wsws-frontend/docs/adr/ADR-2026-09-06-AI-Development-Governance-Framework.md). It explains what the AI Development Control & Governance Framework does and why it exists in simple terms for non-technical stakeholders, product managers, and human reviewers.
+This document is the simplified, accessible companion to the formal technical ADR [`ADR-2026-09-06-AI-Development-Governance-Framework.md`](ADR-2026-09-06-AI-Development-Governance-Framework.md). It explains what the AI Development Control & Governance Framework does and why it exists in simple terms for non-technical stakeholders, product managers, and human reviewers.
 
 ---
 

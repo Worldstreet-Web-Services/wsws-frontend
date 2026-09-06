@@ -7,7 +7,14 @@ BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-export PATH="$HOME/.nvm/versions/node/v22.23.0/bin:$HOME/.nvm/versions/node/v22.23.0/lib/node_modules/corepack/shims:$HOME/.nvm/versions/node/v22.0.0/bin:$HOME/.local/share/mise/installs/node/20.20.2/lib/node_modules/corepack/shims:$HOME/.local/share/mise/shims:$HOME/.local/share/mise/installs/node/20.20.2/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+# Dynamically include node/pnpm paths if not on PATH
+if ! command -v pnpm >/dev/null 2>&1; then
+    NVM_LATEST=$(ls -d "$HOME/.nvm/versions/node"/v* 2>/dev/null | tail -n 1 || true)
+    if [ -n "$NVM_LATEST" ]; then
+        export PATH="$NVM_LATEST/bin:$NVM_LATEST/lib/node_modules/corepack/shims:$PATH"
+    fi
+    export PATH="$HOME/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:$PATH"
+fi
 
 echo -e "${BLUE}=== Checking Release Notes Governance Gate ===${NC}"
 
@@ -28,19 +35,18 @@ if [ -z "$CHANGED_APP_FILES" ]; then
     exit 0
 fi
 
-# Check for release notes in docs/release-notes/
-RELEASE_NOTES=$(find docs/release-notes -type f -name "*.md" ! -name ".gitkeep" 2>/dev/null || true)
+# Check for newly added or modified release notes in active git diff
+RELEASE_NOTES=$(git diff --name-only "$DIFF_BASE"...HEAD 2>/dev/null | grep -E '^docs/release-notes/.*\.md$' | grep -v '.gitkeep$' || true)
 
 if [ -z "$RELEASE_NOTES" ]; then
-    echo -e "${YELLOW}Warning: Application code changes detected, but no release note found in docs/release-notes/${NC}"
+    echo -e "${YELLOW}Warning: Application code changes detected, but no new release note was found in git diff for docs/release-notes/${NC}"
     echo -e "${YELLOW}Application files changed:${NC}"
     echo "$CHANGED_APP_FILES" | sed 's/^/  - /'
     echo -e "\n${YELLOW}Please add a release note markdown file under docs/release-notes/<date>-<feature>.md${NC}"
-    # In strict CI environment, exit 1 if SKIP_RELEASE_NOTE_CHECK is not set
     if [ "${STRICT_RELEASE_NOTES:-false}" = "true" ]; then
         echo -e "${RED}❌ Release notes check failed in strict mode.${NC}"
         exit 1
     fi
 else
-    echo -e "${GREEN}✓ Release note present in docs/release-notes/. Gate passed.${NC}"
+    echo -e "${GREEN}✓ Release note found in git diff (docs/release-notes/). Gate passed.${NC}"
 fi

@@ -82,6 +82,21 @@ loader before the shell). Sign-out now clears stored balances. The playbook
 scenarios for "open the dashboard", "sign out on a shared device" and "a game
 gateway is down" should be re-recorded.
 
+## Review fixes (PR #374)
+
+- `useSessionWallet` no longer falls back to the server's wallet once Privy is
+  ready: a signed-out browser, or a user without a wallet on a chain, gets
+  Privy's answer alone. Regression tests cover both.
+- The feed's chain-round pot label is built from `formatEther`, an exact
+  decimal, instead of a float division of wei. Test covers a pot that a float
+  would round.
+- The circuit summary now notifies subscribers when only the failure count
+  changes, which could happen once an open circuit's backoff reached its
+  ceiling. Test covers it.
+- Not changed: the production-build guard on `NEXT_PUBLIC_PRIVY_APP_ID` in
+  `next.config.ts`. It predates this branch and is deliberate; CI supplies the
+  variable and does not run `preflight.sh`. See the PR discussion.
+
 ## Known limits
 
 - The on-chain live-round read inside the feed was not observed with an

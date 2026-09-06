@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { usePerpPairs, usePerpPrices } from "@/features/trade/hooks/use-perp-markets";
+import { useSectionActive } from "@/components/ui/section-visibility";
 import { usePrices } from "@/hooks/use-prices";
 import { PERP_MAJOR_SYMBOLS, pairSymbol } from "@/lib/perp/logic";
 import type { PerpPair } from "@/lib/perp/types";
@@ -27,11 +28,13 @@ export function usePerpPreview(count: number): {
 } {
   const { pairs, unavailable, loading: pairsLoading } = usePerpPairs();
   const live = !unavailable && pairs.length > 0;
+  const active = useSectionActive();
   // Pairs carry leverage and prices carry the mark, so a row needs both. Waiting
   // on only the first paints the majors with an em dash where the price goes.
   // A disabled query never reports loading, so an undeployed gateway falls
   // straight through to the CoinGecko marks below rather than hanging here.
-  const { prices, loading: pricesLoading } = usePerpPrices(live);
+  // Slow cadence, and only while the brief is on screen: see usePerpPrices.
+  const { prices, loading: pricesLoading } = usePerpPrices(live, true, active);
   const wanted = useMemo(() => PERP_MAJOR_SYMBOLS.slice(0, count), [count]);
   const fallback = usePrices(useMemo(() => wanted.map((s) => s.split("/")[0]), [wanted]));
 

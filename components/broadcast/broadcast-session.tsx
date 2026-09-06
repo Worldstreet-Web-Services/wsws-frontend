@@ -668,6 +668,13 @@ export function BroadcastSessionProvider({ children }: { children: React.ReactNo
     [room]
   );
 
+  const dismissError = useCallback(() => {
+    setError(null);
+    setCleanupWarning(null);
+  }, []);
+
+  const reset = useCallback(() => setPhase("idle"), []);
+
   const value = useMemo<Session>(
     () => ({
       phase,
@@ -704,11 +711,8 @@ export function BroadcastSessionProvider({ children }: { children: React.ReactNo
       resumeScreenShare,
       setBlurSensitive: setBlurSensitiveState,
       setPrivyModalOpen,
-      dismissError: () => {
-        setError(null);
-        setCleanupWarning(null);
-      },
-      reset: () => setPhase("idle"),
+      dismissError,
+      reset,
     }),
     [
       phase,
@@ -743,6 +747,8 @@ export function BroadcastSessionProvider({ children }: { children: React.ReactNo
       setCameraEnabled,
       setMuted,
       resumeScreenShare,
+      dismissError,
+      reset,
     ]
   );
 

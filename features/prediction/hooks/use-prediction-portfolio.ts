@@ -10,6 +10,7 @@ import {
 } from "@/features/prediction/lib/api";
 import { readPendingWithdrawals } from "@/features/prediction/lib/chain-reads";
 import { getWalletAddress } from "@/lib/user";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // Portfolio reads for the connected wallet: open positions and LP positions from
 // the indexer, the markets the wallet created, and the claimable balance from the
@@ -18,6 +19,7 @@ import { getWalletAddress } from "@/lib/user";
 // Markets the connected wallet created (by on-chain creator), so they can resolve
 // their own markets even before the indexer backfills the creator field.
 export function useMyMarkets() {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const wallet = getWalletAddress(user, "ethereum");
   return useQuery({
@@ -26,10 +28,12 @@ export function useMyMarkets() {
     enabled: !!wallet,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    subscribed: active,
   });
 }
 
 export function usePositions() {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const wallet = getWalletAddress(user, "ethereum");
   return useQuery({
@@ -38,12 +42,14 @@ export function usePositions() {
     enabled: !!wallet,
     staleTime: 10_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }
 
 // The connected wallet's positions in ONE market (both sides), for the detail
 // page's positions panel. Disabled until a wallet + market id are known.
 export function useMarketPositions(marketId: string | null) {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const wallet = getWalletAddress(user, "ethereum");
   return useQuery({
@@ -52,10 +58,12 @@ export function useMarketPositions(marketId: string | null) {
     enabled: !!wallet && !!marketId,
     staleTime: 10_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }
 
 export function useLpPositions() {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const wallet = getWalletAddress(user, "ethereum");
   return useQuery({
@@ -64,10 +72,12 @@ export function useLpPositions() {
     enabled: !!wallet,
     staleTime: 10_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }
 
 export function usePendingWithdrawals() {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const wallet = getWalletAddress(user, "ethereum");
   return useQuery({
@@ -76,5 +86,6 @@ export function usePendingWithdrawals() {
     enabled: !!wallet,
     staleTime: 15_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }

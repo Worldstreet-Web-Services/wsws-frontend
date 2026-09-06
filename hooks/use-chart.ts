@@ -33,6 +33,7 @@ export function useChart(id: string | null, range: ChartRange, type: "area" | "c
     },
     staleTime: FIVE_MINUTES,
     refetchInterval: FIVE_MINUTES,
+    refetchIntervalInBackground: false,
   });
 
   return {

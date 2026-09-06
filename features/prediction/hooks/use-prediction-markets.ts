@@ -9,12 +9,14 @@ import {
   listMarkets,
 } from "@/features/prediction/lib/api";
 import type { ChartInterval, MarketStatus } from "@/features/prediction/lib/types";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // React Query reads for the prediction market. REST is the first paint and a
 // background safety net; on the detail page the WS stream overlays live ticks on
 // top of these cached values, so the poll intervals stay relaxed.
 
 export function useMarkets(status?: MarketStatus, category?: string) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "markets", status ?? null],
     queryFn: () => listMarkets(status),
@@ -23,36 +25,43 @@ export function useMarkets(status?: MarketStatus, category?: string) {
     select: category ? (markets) => markets.filter((m) => m.category === category) : undefined,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    subscribed: active,
   });
 }
 
 export function useMarket(id: string | null) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "market", id],
     queryFn: () => getMarket(id as string),
     enabled: !!id,
     staleTime: 10_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }
 
 export function useMarketChart(id: string | null, interval: ChartInterval) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "chart", id, interval],
     queryFn: () => getMarketChart(id as string, interval),
     enabled: !!id,
     staleTime: 60_000,
     refetchInterval: 60_000,
+    subscribed: active,
   });
 }
 
 export function useMarketTrades(id: string | null) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "trades", id],
     queryFn: () => getMarketTrades(id as string),
     enabled: !!id,
     staleTime: 10_000,
     refetchInterval: 15_000,
+    subscribed: active,
   });
 }
 

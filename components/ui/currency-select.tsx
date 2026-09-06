@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useFx } from "@/hooks/use-fx";
 import { track } from "@/lib/analytics/mixpanel";
@@ -106,15 +106,19 @@ export function useMoney() {
   const active = ready ? currency : USD;
   const activeRate = resolved ?? 1;
 
-  return {
-    currency,
-    setCurrency,
-    ready,
-    format: (amountUsd: number) => formatMoney(amountUsd, active, activeRate),
-    // For the amount of a transaction rather than the size of a holding: what
-    // is staked, paid out, or charged. Those are never abbreviated.
-    formatExact: (amountUsd: number) => formatMoney(amountUsd, active, activeRate, { exact: true }),
-  };
+  const format = useCallback(
+    (amountUsd: number) => formatMoney(amountUsd, active, activeRate),
+    [active, activeRate]
+  );
+  const formatExact = useCallback(
+    (amountUsd: number) => formatMoney(amountUsd, active, activeRate, { exact: true }),
+    [active, activeRate]
+  );
+
+  return useMemo(
+    () => ({ currency, setCurrency, ready, format, formatExact }),
+    [currency, setCurrency, ready, format, formatExact]
+  );
 }
 
 interface CurrencySelectProps {

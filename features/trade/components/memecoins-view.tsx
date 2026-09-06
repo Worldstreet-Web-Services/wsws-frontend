@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MemeCoin, priceLabel } from "@/features/trade/components/meme-bits";
+import { MemecoinPromos } from "@/features/trade/components/memecoin-promos";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
 import { useTrendingMemes } from "@/features/trade/hooks/use-meme-tokens";
 import type { MemeToken } from "@/lib/meme/api";
@@ -151,6 +152,16 @@ export function MemecoinsView() {
 
   const trending = tokens.slice(0, 3);
 
+  // A promo card names a token symbol; open its trade sheet when that token is
+  // in the live feed, otherwise the tap is a no-op rather than a broken link.
+  const openSymbol = useCallback(
+    (symbol: string) => {
+      const match = tokens.find((t) => (t.symbol ?? "").toUpperCase() === symbol.toUpperCase());
+      if (match) setSelected(match);
+    },
+    [tokens]
+  );
+
   // The chips re-order the same live list. "New" keeps the feed's own order,
   // which already leads with freshly trending tokens.
   const rows = useMemo(() => {
@@ -177,6 +188,25 @@ export function MemecoinsView() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Section header: "Find the next 100X >" */}
+      <div className="flex items-center gap-[3px]">
+        <span className="ws-display text-[16px] leading-[1.1] tracking-[-0.32px] text-white">
+          Find the next <span className="tracking-[-0.64px] text-[#ddb4fd]">100X</span>
+        </span>
+        <svg viewBox="0 0 20 20" aria-hidden className="h-5 w-5 shrink-0" fill="none">
+          <path
+            d="M7.5 4l6 6-6 6"
+            stroke="white"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      {/* Featured promo banners */}
+      <MemecoinPromos onOpenSymbol={openSymbol} />
+
       {/* Trending strip */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center gap-1.5">

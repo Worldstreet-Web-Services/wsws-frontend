@@ -20,6 +20,14 @@ const monaSans = localFont({
   variable: "--font-display",
 });
 
+// The rounded display face the wallet's balance figure is set in (Chewy). Scoped
+// to its own token so only the balance opts into it.
+const chewy = localFont({
+  src: "./fonts/chewy-regular.ttf",
+  weight: "400",
+  variable: "--font-chewy",
+});
+
 // Chess round uses the same type families Lichess does: Noto Sans for the
 // surrounding table text and Roboto light for clocks. Kept as local variables
 // so only chess opts into them.
@@ -63,7 +71,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geist.variable} ${monaSans.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
+      className={`${geist.variable} ${monaSans.variable} ${chewy.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>

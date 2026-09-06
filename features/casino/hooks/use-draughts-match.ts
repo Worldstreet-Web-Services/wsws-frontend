@@ -123,9 +123,10 @@ export function useDraughtsMatch(matchId: string | null): UseDraughtsMatchResult
       ),
     enabled: !!matchId,
     refetchInterval: (q) => matchRefetchMs(q.state.data?.state, socketLive),
-    // A second tab on the same game must keep moving even when backgrounded: if
-    // the relay is silent, a focus-only refetch would leave that board frozen.
-    refetchIntervalInBackground: true,
+    // Not polled in a background tab, to cut the 429 pressure from hidden games
+    // refetching at once. The socket keeps a focused board current; a
+    // backgrounded tab catches up when it next refetches after refocus.
+    refetchIntervalInBackground: false,
   });
 
   const match = query.data ?? null;
@@ -234,6 +235,7 @@ export function useDraughtsLobby(wallet: string | null) {
     queryKey: DRAUGHTS_KEYS.live,
     queryFn: fetchLiveMatches,
     refetchInterval: pollUnlessFailing(LOBBY_POLL_MS),
+    retry: 1,
   });
 
   return {
@@ -256,6 +258,7 @@ export function useDraughtsLiveMatches(enabled = true) {
     queryFn: fetchLiveMatches,
     enabled,
     refetchInterval: pollUnlessFailing(LOBBY_POLL_MS),
+    retry: 1,
   });
   return {
     matches: live.data ?? EMPTY_MATCHES,

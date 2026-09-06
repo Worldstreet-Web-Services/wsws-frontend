@@ -13,32 +13,12 @@ import { SquareComments } from "@/features/square/components/square-comments";
 import { CoinChip } from "@/features/square/components/coin-chip";
 import { ExpandableText } from "@/features/square/components/expandable-text";
 import { FollowButton } from "@/features/square/components/follow-button";
+import { VerifiedChip } from "@/features/square/components/verified-chip";
 import { authorName } from "@/lib/square/author";
 import { SquareAvatar } from "@/features/square/components/square-avatar";
 import type { MarketSquareFeedPost } from "@/lib/api/market-square";
 import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
-
-/** The platform's tick. Small, and only ever drawn for a verified author. */
-function VerifiedTick({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={className}>
-      <path
-        d="M12 2 14.3 4.2 17.5 3.8 18.6 6.8 21.5 8.1 21 11.2 23 13.6 21 16 21.5 19.1 18.6 20.4 17.5 23.4 14.3 23 12 25.2 9.7 23 6.5 23.4 5.4 20.4 2.5 19.1 3 16 1 13.6 3 11.2 2.5 8.1 5.4 6.8 6.5 3.8 9.7 4.2Z"
-        fill="currentColor"
-        transform="translate(0 -1.6) scale(1 0.92)"
-      />
-      <path
-        d="m8.6 12.4 2.3 2.3 4.5-4.6"
-        fill="none"
-        stroke="#0a0a0a"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /**
  * One control in the action row.
@@ -202,9 +182,7 @@ export function SquarePostCard({
             <span className="truncate text-[14px] leading-5 font-semibold text-white">
               {authorName(author, t("someone"))}
             </span>
-            {author?.verification === "verified" ? (
-              <VerifiedTick className="text-accent h-[14px] w-[14px] shrink-0" />
-            ) : null}
+            <VerifiedChip verification={author?.verification} />
           </p>
           <p className="text-grey-500 truncate text-[12px] leading-4">
             {author ? `@${author.username} · ` : ""}

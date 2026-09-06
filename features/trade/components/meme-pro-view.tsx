@@ -205,6 +205,8 @@ export function MemeProView() {
     </>
   );
 
+  // The desktop detail rail: coin header, 3-column stats, warnings, trade CTA,
+  // and the candle chart. Unchanged from the existing design.
   const detailPanel = (
     <>
       <div className="flex flex-col gap-4">
@@ -288,6 +290,155 @@ export function MemeProView() {
     </>
   );
 
+  // The mobile detail panel, matching the Figma comp at node 1:15935: a large
+  // price at the top, a toggle chart, a live chart card, 2x2 market metrics
+  // grid, active traders bar, and side-by-side buy/sell buttons.
+  const [chartOpen, setChartOpen] = useState(true);
+  const mobileDetailPanel = (
+    <>
+      <div className="flex flex-col gap-[22px]">
+        {shown ? (
+          <>
+            {/* Price section */}
+            <div className="flex flex-col gap-[3.5px]">
+              <span className="tnum text-[31px] font-extrabold text-white">
+                {priceLabel(shown.priceUsd)}
+              </span>
+              <div className="flex items-center gap-[5px]">
+                <span className="text-[12px] font-bold">
+                  <PctChange value={shown.priceChange24hPercent} />
+                </span>
+                <span className="text-[10px] font-normal text-white/30">{t("col24h")} change</span>
+              </div>
+            </div>
+
+            {/* Chart toggle */}
+            <button
+              type="button"
+              onClick={() => setChartOpen((v) => !v)}
+              className="flex cursor-pointer items-center gap-1 self-start"
+            >
+              <span className="inline-block h-[3px] w-[3px] rounded-full bg-[#0f6]" />
+              <svg viewBox="0 0 10 10" className="h-[10px] w-[10px] text-white/70" fill="none">
+                <path
+                  d="M1 8L3.5 5L5.5 6.5L9 2"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="text-[10px] font-medium tracking-[-0.05px] text-white">
+                {chartOpen ? t("mobileCloseChart") : t("mobileViewChart")}
+              </span>
+              <svg
+                viewBox="0 0 12 8"
+                className={`h-[10px] w-[10px] text-white/50 transition-transform ${chartOpen ? "rotate-180" : ""}`}
+                fill="none"
+              >
+                <path
+                  d="M1 1.5L6 6.5L11 1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+
+            {/* Chart card */}
+            {chartOpen ? (
+              <div className="overflow-hidden rounded-[21px] border border-white/12 bg-white/4">
+                <div className="flex items-center justify-between px-5 pt-4 pb-1">
+                  <span className="text-[10px] font-semibold tracking-wide text-white uppercase">
+                    {t("mobileLiveChart")}
+                  </span>
+                  <div className="flex items-center gap-[5px]">
+                    <span className="inline-block h-[5px] w-[5px] rounded-full bg-[#0f6]" />
+                    <span className="text-[10px] font-semibold text-white/50">LIVE</span>
+                  </div>
+                </div>
+                <div className="px-2">
+                  {resolved.id ? (
+                    <AssetChart
+                      coingeckoId={resolved.id}
+                      allowCandles={false}
+                      defaultType="area"
+                      height={110}
+                      up={Number(shown.priceChange24hPercent ?? 0) >= 0}
+                    />
+                  ) : (
+                    <div className="grid h-[110px] place-items-center text-center text-[13px] font-normal text-white/45">
+                      {resolved.loading ? t("loading") : t("noChart")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Market Metrics */}
+            <div className="flex flex-col gap-[10px]">
+              <span className="text-[11px] font-bold tracking-wide text-white/50 uppercase">
+                {t("mobileMetrics")}
+              </span>
+              <div className="grid grid-cols-2 gap-[10px]">
+                {(
+                  [
+                    [t("colMcap"), compactUsd(shown.marketCapUsd)],
+                    [t("colVolume"), compactUsd(shown.volume24hUsd)],
+                    [t("colLiquidity"), compactUsd(shown.liquidityUsd)],
+                    [t("mobileFdv"), compactUsd(shown.fdvUsd)],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-[3.5px] rounded-[10px] border border-white/6 bg-[#1b1b1b] p-[10px]"
+                  >
+                    <span className="text-[10px] font-medium text-white/30">{label}</span>
+                    <span className="tnum text-[12px] font-bold text-white">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Warnings */}
+            {visibleWarnings(shown.warnings).length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {visibleWarnings(shown.warnings)
+                  .slice(0, 3)
+                  .map((w, i) => (
+                    <div key={`${w.code}-${i}`} className="text-down/90 text-[11.5px] font-normal">
+                      {w.message}
+                    </div>
+                  ))}
+              </div>
+            ) : null}
+
+            {/* Buy / Sell buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setTrading(true);
+                }}
+                className="flex-1 cursor-pointer rounded-[14px] bg-[#0ECB81] py-3.5 text-center font-sans text-[14px] font-bold text-white"
+              >
+                {t("mobileBuy")} ↗
+              </button>
+              <button
+                onClick={() => {
+                  setTrading(true);
+                }}
+                className="flex-1 cursor-pointer rounded-[14px] bg-[#D93025] py-3.5 text-center font-sans text-[14px] font-bold text-white"
+              >
+                {t("mobileSell")} ↘
+              </button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </>
+  );
+
   const tradeSheet = (
     <>
       {trading && shown ? <MemeTradeSheet token={shown} onClose={() => setTrading(false)} /> : null}
@@ -330,7 +481,7 @@ export function MemeProView() {
             />
           )}
         >
-          {detailPanel}
+          {mobileDetailPanel}
         </MobileTradeSheet>
 
         {tradeSheet}

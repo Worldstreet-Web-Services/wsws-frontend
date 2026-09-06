@@ -20,7 +20,7 @@ import {
   useWithdrawQuote,
   type WithdrawQuoteInput,
 } from "@/hooks/use-deposit";
-import { usePortfolio } from "@/hooks/use-portfolio";
+import { usePortfolioTokens } from "@/hooks/use-portfolio";
 import { getWalletAddress } from "@/lib/user";
 import {
   quoteFee,
@@ -146,7 +146,7 @@ interface CryptoWithdrawScreenProps {
 export function CryptoWithdrawScreen({ onBack }: CryptoWithdrawScreenProps) {
   const t = useTranslations("fundsFlow");
   const { user } = usePrivy();
-  const { tokens } = usePortfolio();
+  const tokens = usePortfolioTokens();
   const { sendToken } = useSendToken();
   const allChains = useDepositChains();
 

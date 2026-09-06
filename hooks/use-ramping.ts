@@ -54,6 +54,7 @@ export function useRampingRates() {
     queryKey: ["ramping-rates"],
     staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const res = await apiFetch("/api/ramping/rates", {}, { requireAuth: true });
       return normalizeRates(await readData(res, "Could not load the rate"));

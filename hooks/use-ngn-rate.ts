@@ -13,6 +13,7 @@ export function useNgnRate() {
     queryFn: fetchNgnRate,
     staleTime: TEN_MINUTES,
     refetchInterval: TEN_MINUTES,
+    refetchIntervalInBackground: false,
     retry: 2,
   });
   return {

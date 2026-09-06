@@ -7,6 +7,7 @@ import { fetchPerpOrders, isPerpUnavailable } from "@/lib/perp/api";
 import { getWalletAddress } from "@/lib/user";
 import type { PerpOrder } from "@/lib/perp/types";
 import { pollUnlessFailing } from "@/lib/query-poll";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // The trader's pending (unfilled) limit and stop orders. They change on two
 // events only — the user places or cancels one, or the keeper fills one at its
@@ -20,6 +21,7 @@ const SETTLE_MAX_ATTEMPTS = 12;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function usePerpOrders(enabled = true) {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const queryClient = useQueryClient();
   const trader = getWalletAddress(user, "ethereum");
@@ -30,6 +32,7 @@ export function usePerpOrders(enabled = true) {
     enabled: enabled && trader != null,
     refetchInterval: pollUnlessFailing(ORDERS_POLL_MS),
     retry: (count, error) => !isPerpUnavailable(error) && count < 2,
+    subscribed: active,
   });
 
   // Polls until an expected transition is visible (an order cleared after a

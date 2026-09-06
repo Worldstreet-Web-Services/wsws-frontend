@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { useFx } from "@/hooks/use-fx";
-import { usePortfolio } from "@/hooks/use-portfolio";
+import { usePortfolioTotal } from "@/hooks/use-portfolio";
 import { formatAmount } from "@/lib/trade/math";
 import {
   feeUsd,
@@ -46,7 +46,7 @@ function Line({ label, value, strong }: { label: string; value: string; strong?:
 // the payout provider returns a real quote.
 export function AmountStep({ country, amountUsd, onAmount, onBack, onNext }: AmountStepProps) {
   const t = useTranslations("remit");
-  const { totalUsd } = usePortfolio();
+  const totalUsd = usePortfolioTotal();
   const { rate } = useFx();
   const localRate = rate(country.currency);
 

@@ -51,6 +51,7 @@ export function useActivity({ pollMs = POLL_MS }: { pollMs?: number } = {}) {
       return res.json();
     },
     refetchInterval: pollMs,
+    refetchIntervalInBackground: false,
     staleTime: POLL_MS,
     // Keep the current list rendered while a poll refetches, so the feed never
     // drops back to a loading state or flashes empty between ticks.

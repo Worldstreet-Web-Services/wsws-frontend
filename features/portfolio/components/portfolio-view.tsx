@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -15,11 +15,15 @@ import {
 } from "@tanstack/react-table";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
-import { LastManBanner } from "@/features/portfolio/components/last-man-banner";
-import { SquareLiveBannerCard } from "@/components/ui/square-live-banner";
-import { PromoDeck } from "@/components/ui/promo-deck";
-import { marketSquareHref } from "@/lib/market-square";
+import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
+// Banners 3 and 4 held back for now, pending their redesigns.
+// import { LastManBanner } from "@/features/portfolio/components/last-man-banner";
+import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
+// import { SquareLiveBannerCard } from "@/components/ui/square-live-banner";
+import { PromoCarousel } from "@/components/ui/promo-deck";
+// import { marketSquareHref } from "@/lib/market-square";
 import { KashCard } from "@/features/portfolio/components/kash-card";
+import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
 import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
 import { KashHistoryModal } from "@/features/portfolio/components/kash-history-modal";
@@ -58,6 +62,7 @@ interface PortfolioViewProps {
   onOpenSell: (sell: SellPayload) => void;
   onOpenRwaTrade: (rwaTrade: RwaTradePayload) => void;
   onOpenMemeSell: (token: MemeToken) => void;
+  onCustomise?: () => void;
 }
 
 // A held meme balance as the trade sheet's listing shape; the sheet re-fetches
@@ -102,6 +107,7 @@ export function PortfolioView({
   onOpenSell,
   onOpenRwaTrade,
   onOpenMemeSell,
+  onCustomise,
 }: PortfolioViewProps) {
   const { tokens, loading, error, refetch } = usePortfolio();
   const money = useMoney();
@@ -112,6 +118,25 @@ export function PortfolioView({
   const [kashModal, setKashModal] = useState<
     "buy" | "send" | "convert" | "history" | "upgrade" | null
   >(null);
+
+  // Stable callbacks — prevent re-renders in KashCard, KashBanner, modals.
+  const openKashBuy = useCallback(() => setKashModal("buy"), []);
+  const openKashSend = useCallback(() => setKashModal("send"), []);
+  const openKashConvert = useCallback(() => setKashModal("convert"), []);
+  const openKashHistory = useCallback(() => setKashModal("history"), []);
+  const openKashUpgrade = useCallback(() => setKashModal("upgrade"), []);
+  const closeKashModal = useCallback(() => setKashModal(null), []);
+
+  const onClaim = useCallback(() => {
+    if (!kashWallet) return;
+    claimPoints.mutate(
+      { wallet: kashWallet },
+      {
+        onSuccess: (result) => track("kash_earned", { kash_amount: Number(result.kashMinted) }),
+      }
+    );
+  }, [kashWallet, claimPoints]);
+
   // Distinguish "we couldn't load it" from "you have nothing". A failed request
   // with no cached tokens is an error, not an empty wallet; if a cached balance
   // survives (persisted), keep showing it rather than an error.
@@ -258,17 +283,13 @@ export function PortfolioView({
           below the balance card, per the mobile comp (the sm:hidden copy
           further down). */}
       <div className="mb-4 hidden sm:block">
-        <KashBanner onBuy={() => setKashModal("buy")} />
+        <KashBanner onBuy={openKashBuy} />
       </div>
-      <KashBuyModal
-        open={kashModal === "buy"}
-        wallet={kashWallet}
-        onClose={() => setKashModal(null)}
-      />
-      <KashConvertModal open={kashModal === "convert"} onClose={() => setKashModal(null)} />
-      <KashHistoryModal open={kashModal === "history"} onClose={() => setKashModal(null)} />
-      <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
-      <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
+      <KashBuyModal open={kashModal === "buy"} wallet={kashWallet} onClose={closeKashModal} />
+      <KashConvertModal open={kashModal === "convert"} onClose={closeKashModal} />
+      <KashHistoryModal open={kashModal === "history"} onClose={closeKashModal} />
+      <KashUpgradeModal open={kashModal === "upgrade"} onClose={closeKashModal} />
+      <KashSendModal open={kashModal === "send"} onClose={closeKashModal} />
 
       <div className="hidden md:block">
         <Eyebrow>{t("eyebrow")}</Eyebrow>
@@ -280,25 +301,11 @@ export function PortfolioView({
       <div className="mt-3.5 sm:hidden">
         <BalanceCarousel>
           <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
-          <KashCard
-            onBuy={() => setKashModal("buy")}
-            onClaim={
-              kashWallet
-                ? () =>
-                    claimPoints.mutate(
-                      { wallet: kashWallet },
-                      {
-                        onSuccess: (result) =>
-                          track("kash_earned", { kash_amount: Number(result.kashMinted) }),
-                      }
-                    )
-                : undefined
-            }
-            claiming={claimPoints.isPending}
-            onSend={() => setKashModal("send")}
-            onConvert={() => setKashModal("convert")}
-            onHistory={() => setKashModal("history")}
-            onUpgrade={() => setKashModal("upgrade")}
+          <KashCardMobile
+            onBuy={openKashBuy}
+            onSend={openKashSend}
+            onConvert={openKashConvert}
+            onHistory={openKashHistory}
           />
         </BalanceCarousel>
       </div>
@@ -306,26 +313,13 @@ export function PortfolioView({
       <div className="mt-3.5 hidden gap-3 sm:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
         <KashCard
-          onBuy={() => setKashModal("buy")}
-          onClaim={
-            kashWallet
-              ? () =>
-                  claimPoints.mutate(
-                    { wallet: kashWallet },
-                    {
-                      // Reported on settlement, so the figure is what the engine
-                      // actually minted rather than what was claimable.
-                      onSuccess: (result) =>
-                        track("kash_earned", { kash_amount: Number(result.kashMinted) }),
-                    }
-                  )
-              : undefined
-          }
+          onBuy={openKashBuy}
+          onClaim={kashWallet ? onClaim : undefined}
           claiming={claimPoints.isPending}
-          onSend={() => setKashModal("send")}
-          onConvert={() => setKashModal("convert")}
-          onHistory={() => setKashModal("history")}
-          onUpgrade={() => setKashModal("upgrade")}
+          onSend={openKashSend}
+          onConvert={openKashConvert}
+          onHistory={openKashHistory}
+          onUpgrade={openKashUpgrade}
         />
       </div>
 
@@ -333,11 +327,13 @@ export function PortfolioView({
           mobile comp: each holds the front for five seconds, then slides to the
           back. On desktop the Kash+ promo stays at the top of the section. */}
       <div className="mt-8 sm:hidden">
-        <PromoDeck>
-          <KashBanner onBuy={() => setKashModal("buy")} />
-          <SquareLiveBannerCard href={marketSquareHref() ?? "#"} />
-          <LastManBanner />
-        </PromoDeck>
+        <PromoCarousel>
+          <SetTheStakeBanner />
+          <GetKashBanner onBuy={openKashBuy} />
+          {/* Banners 3 and 4 held back for now, pending their redesigns. */}
+          {/* <SquareLiveBannerCard href={marketSquareHref() ?? "#"} /> */}
+          {/* <LastManBanner /> */}
+        </PromoCarousel>
       </div>
 
       {/* Commented out for now, at explicit request — cross-border is still
@@ -525,22 +521,10 @@ export function PortfolioView({
         </>
       )}
 
-      {/* Explore tokens card — the spot simple view, mobile only. */}
-      {exploreTokensSlot ? (
-        <div className="mt-10 md:hidden">{exploreTokensSlot}</div>
-      ) : null}
+      {/* Explore tokens card — the spot simple view, mobile only. Hidden. */}
+      {/* {exploreTokensSlot ? <div className="mt-10 md:hidden">{exploreTokensSlot}</div> : null} */}
 
-      {/* Customise Portfolio — links to the interest picker so the user
-          can reorder their dashboard sections. Mobile only. */}
-      <div className="mt-10 flex justify-center md:hidden">
-        <a
-          href="/customise"
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 bg-[rgba(105,102,102,0.25)] px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-white/10"
-        >
-          Customise Portfolio
-          <span>›</span>
-        </a>
-      </div>
+      {/* Customise Portfolio moved to the bottom of the dashboard. */}
     </div>
   );
 }

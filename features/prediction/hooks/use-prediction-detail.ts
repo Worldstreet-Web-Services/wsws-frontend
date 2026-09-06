@@ -12,6 +12,7 @@ import {
   listGroups,
 } from "@/features/prediction/lib/api";
 import type { ChartInterval, Side } from "@/features/prediction/lib/types";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // TanStack Query hooks for the Polymarket-style market/event detail surfaces:
 // top holders, the activity feed, comments, the CPMM quote, and multi-outcome
@@ -20,17 +21,23 @@ import type { ChartInterval, Side } from "@/features/prediction/lib/types";
 // ticks; these intervals are relaxed fallbacks.
 
 export function useTopHolders(marketId: string | null, side: Side, limit = 20) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "holders", marketId, side, limit],
     queryFn: () => getHolders(marketId as string, side, limit),
     enabled: !!marketId,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    // Pause the poll while the tab is hidden; the WS overlay and a resume
+    // refetch cover anything missed in the background.
+    refetchIntervalInBackground: false,
+    subscribed: active,
   });
 }
 
 // Cursor-paginated activity feed. Pages are flattened by the caller.
 export function useActivity(marketId: string | null, limit = 30) {
+  const active = useSectionActive();
   return useInfiniteQuery({
     queryKey: ["prediction", "activity", marketId, limit],
     queryFn: ({ pageParam }) => getActivity(marketId as string, pageParam, limit),
@@ -38,16 +45,19 @@ export function useActivity(marketId: string | null, limit = 30) {
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: !!marketId,
     staleTime: 10_000,
+    subscribed: active,
   });
 }
 
 export function useComments(scope: { groupId?: string; marketId?: string }, limit = 50) {
+  const active = useSectionActive();
   const id = scope.groupId ?? scope.marketId ?? null;
   return useQuery({
     queryKey: ["prediction", "comments", scope.groupId ? "group" : "market", id, limit],
     queryFn: () => listComments(scope, limit),
     enabled: !!id,
     staleTime: 10_000,
+    subscribed: active,
   });
 }
 
@@ -59,41 +69,49 @@ export function useQuote(
   kind: "buy" | "sell",
   amount: bigint
 ) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "quote", marketId, side, kind, amount.toString()],
     queryFn: () => getQuote(marketId as string, side, kind, amount),
     enabled: !!marketId && amount > 0n,
     staleTime: 5_000,
+    subscribed: active,
   });
 }
 
 export function useGroup(idOrSlug: string | null) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "group", idOrSlug],
     queryFn: () => getGroup(idOrSlug as string),
     enabled: !!idOrSlug,
     staleTime: 10_000,
     refetchInterval: 20_000,
+    subscribed: active,
   });
 }
 
 // Multi-series event chart (one line per outcome). Interval-driven like the
 // single-market chart.
 export function useGroupChart(idOrSlug: string | null, interval: ChartInterval) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "group-chart", idOrSlug, interval],
     queryFn: () => getGroupChart(idOrSlug as string, interval),
     enabled: !!idOrSlug,
     staleTime: 15_000,
     refetchInterval: 30_000,
+    subscribed: active,
   });
 }
 
 export function useGroups(filter?: { category?: string; status?: string }) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "groups", filter?.category ?? null, filter?.status ?? null],
     queryFn: () => listGroups(filter),
     staleTime: 15_000,
+    subscribed: active,
   });
 }
 
@@ -107,6 +125,7 @@ export function useGroups(filter?: { category?: string; status?: string }) {
 // `enabled` is the caller's on-chain answer to "is this market grouped at all",
 // so the group list is only fetched for a market that actually has a parent.
 export function useParentEvent(marketId: string | null, enabled: boolean) {
+  const active = useSectionActive();
   return useQuery({
     queryKey: ["prediction", "parent-event", marketId],
     queryFn: async () => {
@@ -115,6 +134,7 @@ export function useParentEvent(marketId: string | null, enabled: boolean) {
     },
     enabled: enabled && !!marketId,
     staleTime: 60_000,
+    subscribed: active,
   });
 }
 

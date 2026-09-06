@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { getWalletAddress } from "@/lib/user";
-import { usePortfolio } from "@/hooks/use-portfolio";
+import { usePortfolioTokens } from "@/hooks/use-portfolio";
 import type { SellPayload } from "@/lib/modal-types";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -49,7 +49,7 @@ export function LastStandingLobby({ renderWithdrawSheet }: LastStandingLobbyProp
   // cannot open or join a game until some of it becomes ETH, and the lobby is
   // where they find that out, so the way to fund is here and not only on a
   // game page they cannot get into yet.
-  const { tokens } = usePortfolio();
+  const tokens = usePortfolioTokens();
   const ethHolding = tokens.find(
     (tk) => tk.network === "base-mainnet" && tk.symbol.toUpperCase() === "ETH"
   );

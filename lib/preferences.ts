@@ -30,3 +30,28 @@ export function clearInterest(): void {
     // Nothing to do: if storage is unavailable there is nothing stored.
   }
 }
+
+// Which sections the user has toggled off on the Customise Portfolio screen.
+// Stored as an array of customise section ids (e.g. ["perps", "arkade"]).
+const CUSTOMISE_KEY = "ws.customise.v1";
+
+export function saveCustomise(hidden: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CUSTOMISE_KEY, JSON.stringify(hidden));
+  } catch {
+    // Storage unavailable — preference is a nice-to-have, losing it is fine.
+  }
+}
+
+export function loadCustomise(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CUSTOMISE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}

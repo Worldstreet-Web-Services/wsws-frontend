@@ -102,6 +102,13 @@ body {
   letter-spacing: -0.01em;
 }
 
+@utility ws-chewy {
+  /* Chewy: the rounded face the wallet balance figure is set in. Scoped here so
+     only the balance opts in; everything else stays on Mona Sans / Geist. */
+  font-family: var(--font-chewy), var(--font-serif), sans-serif;
+  font-weight: 400;
+}
+
 @utility ws-card {
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.05);

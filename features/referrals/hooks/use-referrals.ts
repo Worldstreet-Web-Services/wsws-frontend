@@ -29,6 +29,7 @@ export function useReferralStats(enabled: boolean) {
     queryFn: getMyReferralStats,
     enabled: enabled && ready && authenticated && Boolean(wallet),
     refetchInterval: STATS_POLL_MS,
+    refetchIntervalInBackground: false,
   });
 }
 

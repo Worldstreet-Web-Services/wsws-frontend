@@ -191,6 +191,7 @@ export function useChessLobby(wallet: string | null) {
     queryKey: CHESS_KEYS.liveMatches,
     queryFn: fetchLiveMatches,
     refetchInterval: pollUnlessFailing(LOBBY_POLL_MS),
+    retry: 1,
   });
   const mine = wallet?.toLowerCase() ?? null;
   const allLive =
@@ -298,11 +299,11 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
     refetchOnReconnect: "always",
     refetchOnWindowFocus: "always",
     refetchInterval: (q) => chessMatchRefetchMs(q.state.data?.state, socketLive),
-    // A second browser/tab on the same game must keep moving even when it is
-    // backgrounded. If the live socket is absent or silent (local backend with
-    // no broker fanout, dropped relay, etc.), window-focus refetch is too late:
-    // the hidden board would only catch up when you click back into it.
-    refetchIntervalInBackground: true,
+    // Not polled in a background tab, to cut the 429 storm from every hidden
+    // game refetching at once. A focused board stays live via the socket and the
+    // interval; a backgrounded tab catches up on refocus, since
+    // refetchOnWindowFocus is "always" above.
+    refetchIntervalInBackground: false,
   });
 
   const baseMatch = query.data;
@@ -808,7 +809,7 @@ export function useChessMatchSocial(
         ? false
         : SOCIAL_POLL_MS;
     },
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const note = useQuery({
@@ -822,7 +823,7 @@ export function useChessMatchSocial(
     queryFn: () => fetchMatchComments(matchId as string, currentPly ?? undefined),
     enabled: !!matchId && currentPly !== null,
     refetchInterval: SOCIAL_POLL_MS,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   const postChat = useMutation({

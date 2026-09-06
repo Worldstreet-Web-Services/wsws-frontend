@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useMoney } from "@/components/ui/currency-select";

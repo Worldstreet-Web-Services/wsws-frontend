@@ -63,7 +63,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
     <>
       {/* data-tour: the walkthrough spotlights the balance card, whichever
           breakpoint's copy of it is the visible one. */}
-      <div data-tour="balance" className="md:hidden">
+      <div data-tour="balance" className="h-full md:hidden">
         <BalanceCardMobile {...view} />
       </div>
       <div data-tour="balance" className="hidden md:block">

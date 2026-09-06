@@ -12,6 +12,7 @@ import { pairSymbol, toWirePrice } from "@/lib/perp/logic";
 import { TRADE_PRICE_SYMBOLS } from "@/lib/trade/assets";
 import type { PerpPair } from "@/lib/perp/types";
 import { useSectionActive } from "@/components/ui/section-visibility";
+import { emptyArray } from "@/lib/react/stable-empty";
 
 // The perpetuals body: one data layer, two interfaces (simple/pro) chosen by the
 // shared perp-mode store. Rendered inside the trade hub, which owns the section
@@ -73,7 +74,10 @@ export function PerpsView() {
   // healthy). The gateway's price publisher is not live in production yet, so
   // today the REST path carries the section; the socket takes over on its own
   // the moment frames start flowing.
-  const streamSymbols = useMemo(() => (live ? pairs.map(pairSymbol) : []), [live, pairs]);
+  const streamSymbols = useMemo(
+    () => (live ? pairs.map(pairSymbol) : emptyArray<string>()),
+    [live, pairs]
+  );
   const stream = usePerpPriceStream(streamSymbols, live && active);
   const { prices: livePrices } = usePerpPrices(live && active, stream.healthy);
   const fallbackPrices = usePrices(FALLBACK_PRICE_SYMBOLS);
@@ -85,7 +89,7 @@ export function PerpsView() {
   const priceOf = useCallback(
     (symbol: string): string | null => {
       if (stream.healthy) {
-        const streamed = stream.prices.get(symbol)?.price;
+        const streamed = stream.getPrice(symbol)?.price;
         if (streamed != null) return streamed;
       }
       const livePrice = livePrices.get(symbol)?.price;

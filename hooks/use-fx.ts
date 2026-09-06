@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 
 const TEN_MINUTES = 10 * 60 * 1000;
-
 const EMPTY_RATES: Record<string, number> = {};
 
 interface FxResponse {
@@ -27,6 +26,7 @@ export function useFx() {
     },
     staleTime: TEN_MINUTES,
     refetchInterval: TEN_MINUTES,
+    refetchIntervalInBackground: false,
   });
 
   const rates = data?.rates ?? EMPTY_RATES;

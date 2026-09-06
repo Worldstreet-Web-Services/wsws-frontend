@@ -27,7 +27,7 @@ export const MARKET_SQUARE_URL = process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? ""
  * variable should keep the square hidden rather than reveal it by omission,
  * and the decision to show it again belongs in a reviewed change.
  */
-export const MARKET_SQUARE_HIDDEN: boolean = true;
+export const MARKET_SQUARE_HIDDEN: boolean = false;
 
 export function marketSquareHref(path = ""): string | null {
   if (MARKET_SQUARE_URL === "") return null;

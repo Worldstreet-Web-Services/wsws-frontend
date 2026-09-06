@@ -72,7 +72,7 @@ export function useListedRwaAssets() {
     queryFn: () => fetchRwaAssets({}),
     staleTime: SIXTY_SECONDS,
     gcTime: PERSISTED_GC_TIME,
-    enabled: active,
+    subscribed: active,
     refetchInterval: SIXTY_SECONDS,
     select: (all: RwaApiAsset[]) => all.filter(isListedAsset),
   });

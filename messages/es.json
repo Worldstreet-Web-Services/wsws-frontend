@@ -8,7 +8,8 @@
     "prediction": "Predicción",
     "earn": "Ganar",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Mercados de predicción",
@@ -29,6 +30,7 @@
     "empty": "Todavía no hay nada que mostrar."
   },
   "meme": {
+    "checkChart": "Check Chart",
     "riskLow": "Riesgo bajo",
     "riskMedium": "Medio",
     "riskHigh": "Riesgo alto",
@@ -89,7 +91,14 @@
     "confirmingLong": "Aún verificando: la red está ocupada. Puedes cerrar esto; el resultado aparecerá en cuanto llegue.",
     "closeAndNotify": "Cerrar y avisarme del resultado",
     "orderFailed": "La operación no se completó.",
-    "max": "Máx"
+    "max": "Máx",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -179,7 +188,8 @@
     "slice_cash": "Efectivo",
     "slice_coins": "Monedas",
     "slice_realAssets": "Activos reales",
-    "slice_tokens": "Tokens"
+    "slice_tokens": "Tokens",
+    "takeTour": "Hacer un recorrido"
   },
   "remitBanner": {
     "title": "Envía dinero al extranjero",
@@ -1068,7 +1078,12 @@
     "lpReturned": "Tu liquidez ya está de vuelta en tu monedero.",
     "lpReturnFailed": "No pudimos devolver tu liquidez. Lo intentaremos de nuevo la próxima vez que abras predicciones.",
     "lpAutoReturnNote": "Tu liquidez vuelve a ti automáticamente cuando este mercado se resuelve.",
-    "toastRedeemSuccess": "Ganancias canjeadas. Están en tu saldo por reclamar."
+    "toastRedeemSuccess": "Ganancias canjeadas. Están en tu saldo por reclamar.",
+    "predictNow": "Predict Now",
+    "seeOther": "See Other Prediction",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here"
   },
   "perps": {
     "eyebrow": "Perpetuos",
@@ -1447,7 +1462,8 @@
         "racing": {
           "name": "Ganador de carreras"
         }
-      }
+      },
+      "explore": "Explorar"
     },
     "arkball": {
       "title": "ArkBall",
@@ -2496,6 +2512,7 @@
     "slides": "Diapositivas de bienvenida"
   },
   "square": {
+    "joinConversation": "Join the Conversation",
     "bannerAria": "Explore Market Square",
     "bannerLine1": "Build <hi>your audience</hi> live",
     "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",

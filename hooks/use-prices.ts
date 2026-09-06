@@ -77,11 +77,15 @@ export function usePrices(symbols: string[]) {
     queryFn: () => fetchPriceBatch(key),
     staleTime: POLL_MS,
     refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
     // Retrying a throttled request from every mounted section amplifies the
     // outage. Wait for the next normal interval instead.
     retry: (failureCount, error) =>
       !(error instanceof PriceRequestError && error.status === 429) && failureCount < 2,
     retryDelay: (attempt) => Math.min(2_000 * 2 ** attempt, 30_000),
   });
+  // React Query's structural sharing keeps this map at a stable identity across
+  // unchanged polls, so consumers keying memos and effects on it stay put until a
+  // price actually moves. EMPTY_PRICES holds that identity before the first load.
   return data ?? EMPTY_PRICES;
 }

@@ -8,7 +8,8 @@
     "prediction": "Prediction",
     "earn": "Earn",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Prediction markets",
@@ -29,6 +30,7 @@
     "empty": "Nothing to show yet."
   },
   "meme": {
+    "checkChart": "Check Chart",
     "riskLow": "Low risk",
     "riskMedium": "Medium",
     "riskHigh": "High risk",
@@ -89,7 +91,14 @@
     "confirmingLong": "Still verifying, the network is busy. You can close this; we'll show the result the moment it lands.",
     "closeAndNotify": "Close and notify me when done",
     "orderFailed": "The trade didn't complete.",
-    "max": "Max"
+    "max": "Max",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -165,6 +174,7 @@
   },
   "balance": {
     "totalBalance": "Total balance",
+    "takeTour": "Take a tour",
     "showBalance": "Show balance",
     "hideBalance": "Hide balance",
     "couldntLoad": "Couldn't load",
@@ -1068,7 +1078,12 @@
     "lpReturned": "Your liquidity is back in your wallet.",
     "lpReturnFailed": "Couldn't return your liquidity. We'll try again next time you open predictions.",
     "lpAutoReturnNote": "Your liquidity returns to you automatically once this market resolves.",
-    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance."
+    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance.",
+    "predictNow": "Predict Now",
+    "seeOther": "See Other Prediction",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -2497,6 +2512,7 @@
     "slides": "Welcome slides"
   },
   "square": {
+    "joinConversation": "Join the Conversation",
     "bannerAria": "Explore Market Square",
     "bannerLine1": "Build <hi>your audience</hi> live",
     "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",

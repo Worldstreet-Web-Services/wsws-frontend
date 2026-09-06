@@ -86,6 +86,7 @@ function useLiveEvents(): LiveEvent[] {
     queryFn: fetchActiveGames,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    refetchIntervalInBackground: false,
   });
   // The index trails the chain by minutes and drops games it considers done,
   // so a round someone started moments ago is invisible to it: the exact gap
@@ -96,6 +97,8 @@ function useLiveEvents(): LiveEvent[] {
     queryFn: readActiveGames,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    refetchIntervalInBackground: false,
+    retry: 0,
   });
   const ethPrice = usePrices(["ETH"])["ETH"] ?? 0;
   const chess = useQuery({
@@ -103,12 +106,16 @@ function useLiveEvents(): LiveEvent[] {
     queryFn: fetchChessLive,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    refetchIntervalInBackground: false,
+    retry: 0,
   });
   const checkers = useQuery({
     queryKey: ["marquee", "checkers-live"],
     queryFn: fetchCheckersLive,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    refetchIntervalInBackground: false,
+    retry: 0,
   });
 
   const lastmanData = lastman.isError ? null : (lastman.data ?? null);

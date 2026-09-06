@@ -1,19 +1,14 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { MemeModeSwitch, useMemeMode } from "@/features/trade/components/meme-mode";
 import { MemeSimpleView } from "@/features/trade/components/meme-simple-view";
-// Dynamic: the pro desk carries lightweight-charts and a data-table, and it
-// only renders for someone who has flipped the mode switch. Statically
-// imported it shipped in every dashboard payload, including the default
-// simple view that draws no chart at all.
-const MemeProView = dynamic(
-  () => import("@/features/trade/components/meme-pro-view").then((m) => m.MemeProView),
-  { ssr: false }
-);
+import { MemeProView } from "@/features/trade/components/meme-pro-view";
+import { MemecoinsView } from "@/features/trade/components/memecoins-view";
+import { MemecoinPromos } from "@/features/trade/components/memecoin-promos";
+import { TokenMovesPromos } from "@/features/trade/components/token-moves-promos";
+import { SectionVisibility } from "@/components/ui/section-visibility";
 
 // Memecoin trading on Base: trending cards for the simple interface, the
 // search/table/chart desk for pro. Both trade through the same sheet.
@@ -25,12 +20,36 @@ export function MemeSection() {
   const { mode } = useMemeMode();
 
   return (
-    <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <SectionVisibility className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
+      <div className="hidden flex-wrap items-center justify-between gap-3 sm:flex">
         <Eyebrow>{tSections("meme")}</Eyebrow>
         <MemeModeSwitch />
       </div>
-      <div className="mt-4">{mode === "pro" ? <MemeProView /> : <MemeSimpleView />}</div>
-    </div>
+      {/* Mobile: "Stay Ahead of Token Moves" promo cards only.
+          The trending strip, filter chips and token table are commented out. */}
+      <div className="sm:hidden">
+        {/* "Find the next 100X" header + Shiba/Pepe promo banners */}
+        <div className="flex items-center gap-[3px]">
+          <span className="ws-display text-[16px] leading-[1.1] tracking-[-0.32px] text-white">
+            Find the next <span className="tracking-[-0.64px] text-[#ddb4fd]">100X</span>
+          </span>
+          <svg viewBox="0 0 20 20" aria-hidden className="h-5 w-5 shrink-0" fill="none">
+            <path
+              d="M7.5 4l6 6-6 6"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div className="mt-4">
+          <MemecoinPromos />
+        </div>
+      </div>
+      <div className="mt-4 hidden sm:block">
+        {mode === "pro" ? <MemeProView /> : <MemeSimpleView />}
+      </div>
+    </SectionVisibility>
   );
 }

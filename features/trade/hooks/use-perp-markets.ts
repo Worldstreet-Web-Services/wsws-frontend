@@ -11,6 +11,8 @@ import {
 } from "@/lib/perp/api";
 import { isLikelyClosed } from "@/lib/perp/logic";
 import { pollUnlessFailing } from "@/lib/query-poll";
+import { useSectionActive } from "@/components/ui/section-visibility";
+import { emptyArray } from "@/lib/react/stable-empty";
 import type { PerpPair, PerpPairMarket, PerpPrice } from "@/lib/perp/types";
 
 // Market data hooks for the perp section. Pair config barely changes, so it is
@@ -55,6 +57,7 @@ export function usePerpPairs() {
 }
 
 export function usePerpPrices(enabled: boolean, streaming = false) {
+  const active = useSectionActive();
   const pollMs = streaming ? PRICE_POLL_SLOW_MS : PRICE_POLL_MS;
   const query = useQuery<PerpPrice[]>({
     queryKey: ["perp-prices"],
@@ -63,6 +66,7 @@ export function usePerpPrices(enabled: boolean, streaming = false) {
     refetchInterval: pollUnlessFailing(pollMs),
     staleTime: pollMs,
     retry: retryUnlessUnavailable,
+    subscribed: active,
   });
   // Keyed by pair symbol; memoized so priceOf keeps a stable identity.
   const data = query.data;
@@ -75,6 +79,7 @@ export function usePerpPrices(enabled: boolean, streaming = false) {
 }
 
 export function usePerpMarket(pair: string | null) {
+  const active = useSectionActive();
   const query = useQuery<{ market: PerpPairMarket; closed: boolean }>({
     queryKey: ["perp-market", pair],
     // Staleness ("this market is likely closed") is judged here at fetch time,
@@ -91,6 +96,7 @@ export function usePerpMarket(pair: string | null) {
     refetchInterval: pollUnlessFailing(MARKET_POLL_MS),
     staleTime: MARKET_POLL_MS,
     retry: retryUnlessUnavailable,
+    subscribed: active,
   });
   return {
     market: query.data?.market ?? null,

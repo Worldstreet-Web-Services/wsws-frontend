@@ -1,16 +1,12 @@
 "use client";
 
 import { SpotModeSwitch, useSpotMode } from "@/features/trade/components/spot-mode";
-// Dynamic: the pro desk carries lightweight-charts and a data-table, and it
-// only renders for someone who has flipped the mode switch. Statically
-// imported it shipped in every dashboard payload, including the default
-// simple view that draws no chart at all.
-const MarketsView = dynamic(
-  () => import("@/features/trade/components/markets-view").then((m) => m.MarketsView),
-  { ssr: false }
-);
+import { MarketsView } from "@/features/trade/components/markets-view";
 import { SpotSimpleView } from "@/features/trade/components/spot-simple-view";
+import { useTranslations } from "next-intl";
 import type { BuyPayload, DetailPayload } from "@/lib/modal-types";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { SectionVisibility } from "@/components/ui/section-visibility";
 
 interface SpotSectionProps {
   onOpenDetail: (detail: DetailPayload) => void;
@@ -21,10 +17,12 @@ interface SpotSectionProps {
 // (above Customise Portfolio), so this section is desktop-only.
 export function SpotSection({ onOpenDetail, onOpenBuy }: SpotSectionProps) {
   const { mode } = useSpotMode();
+  const tSections = useTranslations("sections");
 
   return (
-    <div className="mx-auto hidden w-full max-w-[1520px] p-4 sm:p-6 md:block lg:p-8">
-      <div className="flex items-center justify-between gap-3">
+    <SectionVisibility className="mx-auto mt-8 w-full max-w-[1520px] p-4 sm:mt-0 sm:p-6 lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Eyebrow>{tSections("spot")}</Eyebrow>
         <SpotModeSwitch />
       </div>
       <div className="mt-4">
@@ -34,6 +32,6 @@ export function SpotSection({ onOpenDetail, onOpenBuy }: SpotSectionProps) {
           <SpotSimpleView onOpenDetail={onOpenDetail} onOpenBuy={onOpenBuy} />
         )}
       </div>
-    </div>
+    </SectionVisibility>
   );
 }

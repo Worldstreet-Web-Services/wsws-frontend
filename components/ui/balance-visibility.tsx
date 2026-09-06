@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 
 // Persisted so the choice survives reloads, per the lib/preferences pattern.
 const STORAGE_KEY = "ws.hideBalance.v1";
@@ -54,7 +54,9 @@ export function BalanceVisibilityProvider({ children }: { children: React.ReactN
   const toggle = useCallback(() => writeHidden(!readHidden()), []);
   const mask = useCallback((value: string) => (hidden ? MASK : value), [hidden]);
 
-  return <Ctx.Provider value={{ hidden, toggle, mask }}>{children}</Ctx.Provider>;
+  const value = useMemo(() => ({ hidden, toggle, mask }), [hidden, toggle, mask]);
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useBalanceVisibility(): BalanceVisibility {

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { markKnownUser } from "@/lib/known-user";
 import { Topbar } from "@/components/layout/topbar";
 import { AccountModal } from "@/components/layout/modals/account-modal";
-import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
+import { CurvedTabBar } from "@/components/layout/curved-tab-bar";
 import { ConnectionBanner } from "@/components/layout/connection-banner";
 import { SupportButton } from "@/components/layout/support-button";
 import { BroadcastDock } from "@/components/broadcast/broadcast-dock";
@@ -62,15 +62,25 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
   const navigate = useAppNavigate();
 
+  const openAccount = useCallback(() => setAccountOpen(true), []);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const openFunds = useCallback(() => setFundsOpen(true), []);
+  const closeFunds = useCallback(() => setFundsOpen(false), []);
+  const openInvite = useCallback(() => setInviteOpen(true), []);
+  const closeInvite = useCallback(() => setInviteOpen(false), []);
+  const navIds = useMemo(() => nav.map((n) => n.id), [nav]);
+
   return (
     <div className="min-h-screen bg-black">
       <Sidebar
         items={nav}
         activeSection={activeSection}
-        onNavigate={(id) => navigate(id)}
-        onOpenAccount={() => setAccountOpen(true)}
+        onNavigate={navigate}
+        onOpenAccount={openAccount}
         open={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={closeMenu}
       />
 
       {/* The tab bar sits at the bottom on a phone, so the last section needs
@@ -80,12 +90,12 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
           covering the last row of it. */}
       <main className="min-h-screen pb-[calc(92px+var(--ws-live-bar,0px))] md:ml-[248px] md:pb-[var(--ws-live-bar,0px)]">
         <div className="sticky top-0 z-[60]">
-          <Topbar onOpenAccount={() => setAccountOpen(true)} />
+          <Topbar onOpenAccount={openAccount} />
           <FeatureMarquee
-            navIds={nav.map((n) => n.id)}
+            navIds={navIds}
             onNavigate={navigate}
-            onAddFunds={() => setFundsOpen(true)}
-            onInvite={() => setInviteOpen(true)}
+            onAddFunds={openFunds}
+            onInvite={openInvite}
           />
         </div>
 
@@ -96,11 +106,11 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
           the note in the component for why it is not one per panel. */}
       <ConnectionBanner />
 
-      <MobileTabBar
+      <CurvedTabBar
         items={nav}
         activeSection={activeSection}
         onNavigate={navigate}
-        onOpenMore={() => setMenuOpen(true)}
+        onOpenMore={openMenu}
       />
 
       {/* The live indicator and the minimised self-view. Docked, never
@@ -110,14 +120,14 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
       <SupportButton />
 
-      <InviteFriendsModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <InviteFriendsModal open={inviteOpen} onClose={closeInvite} />
 
-      <ModalShell open={accountOpen} onClose={() => setAccountOpen(false)}>
-        <AccountModal onClose={() => setAccountOpen(false)} />
+      <ModalShell open={accountOpen} onClose={closeAccount}>
+        <AccountModal onClose={closeAccount} />
       </ModalShell>
 
-      <ModalShell open={fundsOpen} onClose={() => setFundsOpen(false)} size="lg">
-        <FundsModal onClose={() => setFundsOpen(false)} />
+      <ModalShell open={fundsOpen} onClose={closeFunds} size="lg">
+        <FundsModal onClose={closeFunds} />
       </ModalShell>
     </div>
   );

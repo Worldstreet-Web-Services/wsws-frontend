@@ -19,7 +19,7 @@
 // picture convention Twitch and chess.com streamers use, and it leaves the
 // layout the viewer's to change. The viewer tells them apart by track source.
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Switch } from "@/components/ui/switch";
@@ -69,7 +69,9 @@ export function GameBroadcastProvider({
   children: React.ReactNode;
 }) {
   return (
-    <BroadcastContext.Provider value={{ broadcast, copy }}>{children}</BroadcastContext.Provider>
+    <BroadcastContext.Provider value={useMemo(() => ({ broadcast, copy }), [broadcast, copy])}>
+      {children}
+    </BroadcastContext.Provider>
   );
 }
 

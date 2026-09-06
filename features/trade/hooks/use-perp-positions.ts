@@ -7,6 +7,7 @@ import { fetchPerpPositions, isPerpUnavailable } from "@/lib/perp/api";
 import { getWalletAddress } from "@/lib/user";
 import type { OpenPosition } from "@/lib/perp/types";
 import { pollUnlessFailing } from "@/lib/query-poll";
+import { useSectionActive } from "@/components/ui/section-visibility";
 
 // The trader's open positions. Market opens and closes are keeper-executed
 // with a few seconds of delay, so after a trade this is polled (not assumed)
@@ -20,6 +21,7 @@ const SETTLE_MAX_ATTEMPTS = 12;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function usePerpPositions(enabled = true) {
+  const active = useSectionActive();
   const { user } = usePrivy();
   const queryClient = useQueryClient();
   const trader = getWalletAddress(user, "ethereum");
@@ -30,6 +32,7 @@ export function usePerpPositions(enabled = true) {
     enabled: enabled && trader != null,
     refetchInterval: pollUnlessFailing(POSITIONS_POLL_MS),
     retry: (count, error) => !isPerpUnavailable(error) && count < 2,
+    subscribed: active,
   });
 
   // Polls until the keeper's fill is visible: `changed` decides from a fresh

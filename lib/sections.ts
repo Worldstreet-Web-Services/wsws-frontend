@@ -22,7 +22,8 @@ const REORDERABLE: SectionId[] = [
   "spot",
   "perps",
   "meme",
-  "rwa",
+  // Rwa is hidden from the nav for now.
+  // "rwa",
   "prediction",
   // Earn is hidden from the nav for now.
   // "earn",

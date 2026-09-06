@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { saveCustomise, loadCustomise } from "@/lib/preferences";
 
 const SECTIONS = [
   { id: "tokens", label: "Tokens" },
@@ -9,7 +10,6 @@ const SECTIONS = [
   { id: "predictions", label: "Predictions" },
   { id: "memecoins", label: "Memecoins" },
   { id: "arkade", label: "Arkade" },
-  { id: "marketsquare", label: "MarketSquare" },
 ] as const;
 
 function DragHandle() {
@@ -54,13 +54,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 export default function CustomisePage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(SECTIONS.map((s) => [s.id, true]))
-  );
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(() => {
+    const hidden = new Set(loadCustomise());
+    return Object.fromEntries(SECTIONS.map((s) => [s.id, !hidden.has(s.id)]));
+  });
 
-  const filtered = SECTIONS.filter((s) =>
-    s.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = SECTIONS.filter((s) => s.label.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] pt-[max(70px,env(safe-area-inset-top,70px))]">
@@ -81,7 +80,7 @@ export default function CustomisePage() {
             />
           </svg>
         </button>
-        <p className="absolute inset-x-0 text-center text-[20px] font-bold leading-7 tracking-[-0.2px] text-[#f3f3f3]">
+        <p className="absolute inset-x-0 text-center text-[20px] leading-7 font-bold tracking-[-0.2px] text-[#f3f3f3]">
           Customise Portfolio
         </p>
       </div>
@@ -89,16 +88,28 @@ export default function CustomisePage() {
       {/* Search */}
       <div className="mt-5 px-[42px]">
         <div className="flex h-[42px] items-center gap-2.5 rounded-xl border border-white/12 bg-white/5 px-4">
-          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+          <svg
+            width={16}
+            height={16}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+            className="shrink-0"
+          >
             <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" />
-            <path d="m20 20-3.5-3.5" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" />
+            <path
+              d="m20 20-3.5-3.5"
+              stroke="rgba(255,255,255,0.4)"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
           </svg>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search ..."
-            className="w-full bg-transparent text-[13.5px] text-white placeholder:text-white/40 outline-none"
+            className="w-full bg-transparent text-[13.5px] text-white outline-none placeholder:text-white/40"
           />
         </div>
       </div>
@@ -109,14 +120,21 @@ export default function CustomisePage() {
           <div key={section.id} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DragHandle />
-              <span className="text-base font-semibold leading-6 tracking-[0.15px] text-white">
+              <span className="text-base leading-6 font-semibold tracking-[0.15px] text-white">
                 {section.label}
               </span>
             </div>
             <Toggle
               checked={enabled[section.id]}
               onChange={() =>
-                setEnabled((prev) => ({ ...prev, [section.id]: !prev[section.id] }))
+                setEnabled((prev) => {
+                  const next = { ...prev, [section.id]: !prev[section.id] };
+                  const hidden = Object.entries(next)
+                    .filter(([, on]) => !on)
+                    .map(([id]) => id);
+                  saveCustomise(hidden);
+                  return next;
+                })
               }
             />
           </div>

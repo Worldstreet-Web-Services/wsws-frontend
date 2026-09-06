@@ -8,7 +8,8 @@
     "prediction": "Prognosen",
     "earn": "Verdienen",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Prognosemärkte",
@@ -29,6 +30,7 @@
     "empty": "Noch nichts zu sehen."
   },
   "meme": {
+    "checkChart": "Check Chart",
     "riskLow": "Geringes Risiko",
     "riskMedium": "Mittel",
     "riskHigh": "Hohes Risiko",
@@ -89,7 +91,14 @@
     "confirmingLong": "Wird noch verifiziert, das Netzwerk ist ausgelastet. Sie können dies schließen; das Ergebnis erscheint, sobald es vorliegt.",
     "closeAndNotify": "Schließen und Ergebnis melden",
     "orderFailed": "Der Handel wurde nicht abgeschlossen.",
-    "max": "Max"
+    "max": "Max",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -179,7 +188,8 @@
     "slice_cash": "Bargeld",
     "slice_coins": "Coins",
     "slice_realAssets": "Reale Werte",
-    "slice_tokens": "Token"
+    "slice_tokens": "Token",
+    "takeTour": "Tour starten"
   },
   "remitBanner": {
     "title": "Geld über Grenzen senden",
@@ -1068,7 +1078,12 @@
     "lpReturned": "Ihre Liquidität ist zurück in Ihrer Wallet.",
     "lpReturnFailed": "Ihre Liquidität konnte nicht zurückgeführt werden. Wir versuchen es beim nächsten Öffnen erneut.",
     "lpAutoReturnNote": "Ihre Liquidität fließt automatisch an Sie zurück, sobald dieser Markt aufgelöst ist.",
-    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben."
+    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben.",
+    "predictNow": "Predict Now",
+    "seeOther": "See Other Prediction",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -1447,7 +1462,8 @@
         "racing": {
           "name": "Rennsieger-Wetten"
         }
-      }
+      },
+      "explore": "Entdecken"
     },
     "arkball": {
       "title": "ArkBall",
@@ -2496,6 +2512,7 @@
     "slides": "Willkommensfolien"
   },
   "square": {
+    "joinConversation": "Join the Conversation",
     "bannerAria": "Explore Market Square",
     "bannerLine1": "Build <hi>your audience</hi> live",
     "bannerLine2": "Stream now and watch your community <grow>grow instantly.</grow>",

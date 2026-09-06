@@ -20,7 +20,9 @@ export function useScrollSpy<T extends string>(sectionIds: readonly T[]): T {
         const el = document.getElementById(id);
         if (el && el.getBoundingClientRect().top <= HEADER_OFFSET) current = id;
       }
-      setActiveId(current);
+      // Only setState when the active section actually changed, so scroll
+      // events that land in the same section don't trigger rerenders.
+      setActiveId((prev) => (prev === current ? prev : current));
     };
 
     const onScroll = () => {

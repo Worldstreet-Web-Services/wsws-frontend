@@ -14,7 +14,7 @@ const RISK_STYLE: Record<TokenRiskLevel, string> = {
   UNKNOWN: "bg-white/6 text-white/45 border-white/12",
 };
 
-export function RiskBadge({ level }: { level: TokenRiskLevel }) {
+export function RiskBadge({ level = "UNKNOWN" }: { level: TokenRiskLevel }) {
   const t = useTranslations("meme");
   // The trade service documents riskLevel as always present, but a token can
   // reach here without one, and level.charAt() on a missing value took the

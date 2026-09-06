@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 import { friendlyError } from "@/lib/errors";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { usePortfolio } from "@/hooks/use-portfolio";
+import { usePortfolioTokens } from "@/hooks/use-portfolio";
 import { useVaultActions } from "@/features/casino/hooks/use-vault-actions";
 import { useDefaultEntry } from "@/features/casino/hooks/use-default-entry";
 import { followGame } from "@/features/casino/lib/last-standing/followed-game";
@@ -60,7 +60,7 @@ export function StartGameSheet({
 
   // What the wallet needs to hold. The stake is native ETH on Base, so a user
   // whose balance is all USDC cannot start a game however much it is worth.
-  const { tokens } = usePortfolio();
+  const tokens = usePortfolioTokens();
   const ethBalance =
     tokens.find((tk) => tk.network === "base-mainnet" && tk.symbol.toUpperCase() === "ETH")
       ?.balance ?? 0;

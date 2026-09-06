@@ -135,6 +135,24 @@ component -> hook (TanStack Query) -> lib client -> app/api/<service> -> gateway
 - Never use floating point for asset amounts. Base units and `bigint`, converted
   once at the display edge.
 
+**The server path.** A Server Component reads through `lib/server/` directly,
+never through its own `/api` route:
+
+```
+page.tsx -> lib/server/session.ts (cookie -> verified user) -> lib/server/<data> -> gateway
+```
+
+- `getSessionClaims` and `getSessionUser` verify the `privy-token` cookie once
+  per request under React's `cache`. Identity is derived where it is used and
+  never passed down as a prop.
+- A page starts a prefetch and hands the promise down without awaiting it, so
+  the page streams at once. `components/providers/query-hydration.tsx` reads
+  the promise inside its own `<Suspense>` and puts the result in the query
+  cache under the key the client hook builds, so the hook finds its data
+  already there. The dashboard's balance is the first route on this path.
+- Per-user reads on this path are never cached across requests. The only
+  cache they touch is the per-wallet process cache the route handler shares.
+
 ---
 
 ## 4. Composing across features

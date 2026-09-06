@@ -28,21 +28,30 @@ import { getSessionUser } from "@/lib/server/session";
 // browser fetches as it always did.
 export async function dehydratedPortfolio(): Promise<DehydratedState | null> {
   try {
-    const user = await getSessionUser();
-    if (!user) return null;
-    const evm = embeddedWalletAddress(user, "ethereum");
-    const solana = embeddedWalletAddress(user, "solana");
-    if (!evm && !solana) return null;
-
     const client = new QueryClient();
-    // prefetchQuery resolves on failure rather than rejecting, and dehydrate
-    // only carries successful queries, so a failed fetch yields an empty state.
-    await client.prefetchQuery({
-      queryKey: ["portfolio", evm, solana],
-      queryFn: () => fetchPortfolio(evm ?? undefined, solana ?? undefined),
-    });
+    const prefetched = await prefetchPortfolio(client);
+    if (!prefetched) return null;
     return dehydrate(client);
   } catch {
     return null;
   }
+}
+
+// Puts the session's balance into `client` under the browser's key. Resolves
+// false when there is no session or no wallet to read for. Shared with the
+// dashboard snapshot, which prefetches the public feed beside it.
+export async function prefetchPortfolio(client: QueryClient): Promise<boolean> {
+  const user = await getSessionUser();
+  if (!user) return false;
+  const evm = embeddedWalletAddress(user, "ethereum");
+  const solana = embeddedWalletAddress(user, "solana");
+  if (!evm && !solana) return false;
+
+  // prefetchQuery resolves on failure rather than rejecting, and dehydrate
+  // only carries successful queries, so a failed fetch yields an empty state.
+  await client.prefetchQuery({
+    queryKey: ["portfolio", evm, solana],
+    queryFn: () => fetchPortfolio(evm ?? undefined, solana ?? undefined),
+  });
+  return true;
 }

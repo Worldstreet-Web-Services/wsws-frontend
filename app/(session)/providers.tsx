@@ -16,8 +16,8 @@ import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // initial payload for one timer. optimizePackageImports only rewrites npm
 // barrels, not ours. This file sits under app/ rather than components/ for
 // the same reason the root providers do: it composes a feature, and only the
-// app layer may.
-import { MiniTimerHost } from "@/features/casino/components/last-standing/mini-timer";
+// app layer may. The gate loads the host itself on demand.
+import { MiniTimerGate } from "@/features/casino/components/last-standing/mini-timer-gate";
 import { BroadcastSessionProvider } from "@/components/broadcast/broadcast-session";
 import { PrivyModalWatch } from "@/components/broadcast/privy-modal-watch";
 import { WALLET_CHAINS } from "@/lib/trade/wallet-chains";
@@ -117,8 +117,9 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
             <AnalyticsSegments />
             {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
-                the app; it only subscribes to game data while open. */}
-            <MiniTimerHost />
+                the app. The gate loads the host only on Arkade routes or while
+                a game is followed; the rest of the time nothing is loaded. */}
+            <MiniTimerGate />
           </BroadcastSessionProvider>
         </BalanceVisibilityProvider>
       </NetworkStatusProvider>

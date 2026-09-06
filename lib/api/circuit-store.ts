@@ -85,7 +85,16 @@ function publish(service: string, next: CircuitSnapshot) {
   circuits.set(service, next);
   const before = summary;
   summary = summarise();
-  if (summary.state === before.state && summary.retryAt === before.retryAt) return;
+  // Every field the summary carries is part of "changed". Comparing only the
+  // state and the retry time let the failure count move without a
+  // notification once an open circuit's backoff had reached its ceiling.
+  if (
+    summary.state === before.state &&
+    summary.retryAt === before.retryAt &&
+    summary.failures === before.failures
+  ) {
+    return;
+  }
   for (const listener of listeners) listener();
 }
 

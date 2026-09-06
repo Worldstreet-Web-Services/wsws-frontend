@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 import {
   circuitAllows,
   circuitServiceOf,
@@ -7,6 +8,7 @@ import {
   recordCircuitSuccess,
   resetCircuitForTest,
   retryCircuitNow,
+  useCircuit,
 } from "@/lib/api/circuit-store";
 
 const NOW = 1_000_000;
@@ -76,6 +78,18 @@ describe("circuit store", () => {
 
     expect(circuitAllows("/api/portfolio", NOW)).toBe(true);
     expect(circuitAllows("/api/chess/matches", NOW)).toBe(true);
+  });
+
+  it("tells subscribers about every failure, even when the retry time cannot move", () => {
+    const { result } = renderHook(() => useCircuit());
+    // Enough failures at one frozen instant to reach the cooldown ceiling,
+    // after which each further failure changes only the count.
+    act(() => fail("/api/portfolio", 12));
+    const atCeiling = result.current;
+    act(() => fail("/api/portfolio", 1));
+
+    expect(result.current.retryAt).toBe(atCeiling.retryAt);
+    expect(result.current.failures).toBe(13);
   });
 
   it("ignores statuses that mean the server is working", () => {

@@ -54,6 +54,61 @@ describe("Alchemy sponsorship proxy", () => {
     expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBe("base-policy");
   });
 
+  it("keeps comma-separated keys paired with policies while failing over", async () => {
+    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "owner-one, owner-two");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-one, policy-two");
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response("Unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x2" }), { status: 200 })
+      );
+
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_estimateUserOperationGas", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain("/v2/owner-one");
+    expect(String(vi.mocked(fetch).mock.calls[1][0])).toContain("/v2/owner-two");
+    expect(
+      (vi.mocked(fetch).mock.calls[0][1]?.headers as Record<string, string>)["x-alchemy-policy-id"]
+    ).toBe("policy-one");
+    expect(
+      (vi.mocked(fetch).mock.calls[1][1]?.headers as Record<string, string>)["x-alchemy-policy-id"]
+    ).toBe("policy-two");
+  });
+
+  it("fails closed instead of crossing mismatched key and policy lists", async () => {
+    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "");
+    vi.stubEnv("ALCHEMY_API_KEY", "owner-one,owner-two");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-one");
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_estimateUserOperationGas", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(503);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an ambiguous submission transport failure", async () => {
+    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "owner-one,owner-two");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-one,policy-two");
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("socket closed"));
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(502);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it("keeps the existing primary key as a compatibility fallback", async () => {
     vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "");
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
@@ -66,6 +121,27 @@ describe("Alchemy sponsorship proxy", () => {
     expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain(
       "base-mainnet.g.alchemy.com/v2/data-api-key"
     );
+  });
+
+  it("uses the aligned API key list when a legacy dedicated key is not aligned", async () => {
+    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "legacy-owner-key");
+    vi.stubEnv("ALCHEMY_API_KEY", "owner-one,owner-two");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-one,policy-two");
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response("Unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x2" }), { status: 200 })
+      );
+
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_estimateUserOperationGas", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(200);
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain("/v2/owner-one");
+    expect(String(vi.mocked(fetch).mock.calls[1][0])).toContain("/v2/owner-two");
   });
 
   it("rejects ordinary node reads so they stay on ZeroDev", async () => {

@@ -17,7 +17,8 @@ import "server-only";
 export function alchemyKeys(): string[] {
   const configured = [process.env.ALCHEMY_API_KEY, process.env.ALCHEMY_API_KEY_FALLBACK];
   return configured
-    .map((key) => key?.trim())
+    .flatMap((value) => value?.split(",") ?? [])
+    .map((key) => key.trim())
     .filter((key, index, all): key is string => Boolean(key) && all.indexOf(key) === index);
 }
 

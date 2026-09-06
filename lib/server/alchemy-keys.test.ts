@@ -34,6 +34,12 @@ describe("alchemyKeys", () => {
     expect(alchemyKeys()).toEqual([PRIMARY, FALLBACK]);
   });
 
+  it("accepts comma-separated keys in either variable", () => {
+    vi.stubEnv("ALCHEMY_API_KEY", "primary-a, primary-b");
+    vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "fallback-a,fallback-b");
+    expect(alchemyKeys()).toEqual(["primary-a", "primary-b", "fallback-a", "fallback-b"]);
+  });
+
   it("drops a fallback that repeats the primary, so it is not tried twice", () => {
     vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", PRIMARY);
     expect(alchemyKeys()).toEqual([PRIMARY]);

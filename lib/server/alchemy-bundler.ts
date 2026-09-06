@@ -29,10 +29,56 @@ interface RpcCall {
   params?: unknown[];
 }
 
-function primaryAlchemyKey(): string | null {
-  return (
-    process.env.ALCHEMY_GAS_MANAGER_API_KEY?.trim() || process.env.ALCHEMY_API_KEY?.trim() || null
-  );
+interface AlchemySponsorCredential {
+  apiKey: string;
+  policyId?: string;
+}
+
+function strictCommaList(value: string | undefined): string[] | null {
+  if (!value?.trim()) return [];
+  const values = value.split(",").map((item) => item.trim());
+  return values.every(Boolean) ? values : null;
+}
+
+function sponsorCredentials(
+  policyIds: string | undefined,
+  policyRequired: boolean
+): AlchemySponsorCredential[] | null {
+  const policies = strictCommaList(policyIds);
+  if (policyRequired && !policies?.length) return null;
+
+  const keyLists = [process.env.ALCHEMY_GAS_MANAGER_API_KEY, process.env.ALCHEMY_API_KEY]
+    .map(strictCommaList)
+    .filter((keys): keys is string[] => Boolean(keys?.length));
+  const keys = policyRequired
+    ? keyLists.find((candidate) => candidate.length === policies?.length)
+    : keyLists[0];
+  if (!keys) return null;
+
+  return keys.map((apiKey, index) => ({ apiKey, policyId: policies?.[index] }));
+}
+
+function retryableStatus(status: number): boolean {
+  return status === 401 || status === 403 || status === 429 || status >= 500;
+}
+
+function retryableRpcFailure(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body);
+    const errors = (Array.isArray(parsed) ? parsed : [parsed])
+      .map((item) => (item as { error?: { message?: unknown } })?.error)
+      .filter(Boolean);
+    return (
+      errors.length > 0 &&
+      errors.every((error) =>
+        /unauthori|forbidden|invalid api key|policy.+not found|rate.?limit|too many requests|quota|credit|capacity|temporar|unavailable/i.test(
+          String(error?.message ?? JSON.stringify(error))
+        )
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 function withPaymasterPolicy(call: RpcCall, policyId: string): RpcCall {
@@ -60,11 +106,6 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Unsupported sponsored network" }, { status: 404 });
   }
 
-  const apiKey = primaryAlchemyKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "Alchemy API key is missing" }, { status: 503 });
-  }
-
   const body = await req.json().catch(() => null);
   const calls = (Array.isArray(body) ? body : [body]) as Array<RpcCall | null>;
   if (
@@ -85,76 +126,124 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
   const needsBsoPolicy =
     target.sponsorshipMode === "bso" &&
     calls.some((call) => Boolean(call && SPONSORED_METHODS.has(call.method)));
+  const policyRequired = needsPaymasterPolicy || needsBsoPolicy;
+  const policyIds = target.sponsorshipMode === "paymaster" ? polygonPolicyId : bsoPolicyId;
 
-  if (needsPaymasterPolicy && !polygonPolicyId) {
+  if (needsPaymasterPolicy && !policyIds) {
     return NextResponse.json(
       { error: "Polygon gas sponsorship policy is missing" },
       { status: 424 }
     );
   }
-  if (needsBsoPolicy && !bsoPolicyId) {
+  if (needsBsoPolicy && !policyIds) {
     return NextResponse.json({ error: "Alchemy gas policy is missing" }, { status: 503 });
   }
 
-  const attachPaymasterPolicy = (call: RpcCall | null): RpcCall | null =>
-    call && needsPaymasterPolicy && polygonPolicyId
-      ? withPaymasterPolicy(call, polygonPolicyId)
-      : call;
-  const upstreamBody = Array.isArray(body)
-    ? calls.map(attachPaymasterPolicy)
-    : attachPaymasterPolicy(calls[0]);
-
-  try {
-    // A Gas Manager policy is scoped to the Alchemy account owning this key.
-    // Never rotate this request through ALCHEMY_API_KEY_FALLBACK.
-    const response = await fetch(`https://${target.alchemyHost}/v2/${apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(needsBsoPolicy && bsoPolicyId ? { "x-alchemy-policy-id": bsoPolicyId } : {}),
+  const credentials = sponsorCredentials(policyIds, policyRequired);
+  if (!credentials) {
+    return NextResponse.json(
+      {
+        error: policyRequired
+          ? "Alchemy API keys and gas policy IDs must be non-empty comma-separated lists of equal length"
+          : "Alchemy API key is missing",
       },
-      body: JSON.stringify(upstreamBody),
-      signal: AbortSignal.timeout(30_000),
-      cache: "no-store",
-    });
-    const body = await response.text();
-    // A JSON-RPC error from the bundler (schema rejection, wrong policy type,
-    // exhausted credits) otherwise passes through invisibly and surfaces only as
-    // a truncated toast, so log the full detail with the method that caused it.
+      { status: 503 }
+    );
+  }
+
+  const includesSubmission = calls.some((call) => call?.method === "eth_sendUserOperation");
+  let lastResponse: Response | null = null;
+  let lastBody = "";
+  let lastError: unknown;
+
+  for (const [index, credential] of credentials.entries()) {
+    const attachPaymasterPolicy = (call: RpcCall | null): RpcCall | null =>
+      call && needsPaymasterPolicy && credential.policyId
+        ? withPaymasterPolicy(call, credential.policyId)
+        : call;
+    const upstreamBody = Array.isArray(body)
+      ? calls.map(attachPaymasterPolicy)
+      : attachPaymasterPolicy(calls[0]);
+
     try {
-      const parsed = JSON.parse(body);
-      for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
-        const rpcError = (item as { error?: unknown })?.error;
-        if (rpcError) {
-          console.error(
-            `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
-            JSON.stringify(rpcError)
-          );
+      const response = await fetch(`https://${target.alchemyHost}/v2/${credential.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(needsBsoPolicy && credential.policyId
+            ? { "x-alchemy-policy-id": credential.policyId }
+            : {}),
+        },
+        body: JSON.stringify(upstreamBody),
+        signal: AbortSignal.timeout(30_000),
+        cache: "no-store",
+      });
+      const responseBody = await response.text();
+      lastResponse = response;
+      lastBody = responseBody;
+
+      const hasNext = index + 1 < credentials.length;
+      const shouldRetry =
+        hasNext &&
+        (retryableRpcFailure(responseBody) ||
+          (retryableStatus(response.status) &&
+            (!includesSubmission || [401, 403, 429].includes(response.status))));
+      if (shouldRetry) continue;
+
+      try {
+        const parsed = JSON.parse(responseBody);
+        for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+          const rpcError = (item as { error?: unknown })?.error;
+          if (rpcError) {
+            console.error(
+              `Alchemy bundler RPC error on ${network} (${calls.map((c) => c?.method).join(",")}):`,
+              JSON.stringify(rpcError)
+            );
+          }
         }
+      } catch {
+        // A non-JSON body is the transport's problem, not ours to report here.
       }
-    } catch {
-      // A non-JSON body is the transport's problem, not ours to report here.
+
+      return new NextResponse(responseBody, {
+        status: response.status,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+          ...(response.headers.get("retry-after")
+            ? { "Retry-After": response.headers.get("retry-after") as string }
+            : {}),
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      // A transport failure during submission is ambiguous: the user operation
+      // may already be accepted, so never submit it again through another key.
+      if (includesSubmission) break;
     }
-    return new NextResponse(body, {
-      status: response.status,
+  }
+
+  if (lastResponse) {
+    return new NextResponse(lastBody, {
+      status: lastResponse.status,
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
-        ...(response.headers.get("retry-after")
-          ? { "Retry-After": response.headers.get("retry-after") as string }
+        ...(lastResponse.headers.get("retry-after")
+          ? { "Retry-After": lastResponse.headers.get("retry-after") as string }
           : {}),
       },
     });
-  } catch (error) {
-    console.error(`Alchemy bundler proxy failed for ${network}:`, error);
-    const timedOut = error instanceof Error && error.name === "TimeoutError";
-    return NextResponse.json(
-      {
-        error: timedOut ? "Alchemy bundler timed out" : "Alchemy bundler is unavailable",
-        provider: "alchemy",
-        retryable: true,
-      },
-      { status: timedOut ? 504 : 502, headers: { "Retry-After": "5" } }
-    );
   }
+
+  console.error(`Alchemy bundler proxy failed for ${network}:`, lastError);
+  const timedOut = lastError instanceof Error && lastError.name === "TimeoutError";
+  return NextResponse.json(
+    {
+      error: timedOut ? "Alchemy bundler timed out" : "Alchemy bundler is unavailable",
+      provider: "alchemy",
+      retryable: true,
+    },
+    { status: timedOut ? 504 : 502, headers: { "Retry-After": "5" } }
+  );
 }

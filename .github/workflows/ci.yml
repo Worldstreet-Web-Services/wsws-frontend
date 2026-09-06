@@ -74,3 +74,8 @@ jobs:
       # the dashboard is caught here rather than by users.
       - name: First-load budget
         run: pnpm bundle:check
+
+      - name: Release Notes Governance Gate
+        run: bash scripts/check_release_notes.sh
+        env:
+          STRICT_RELEASE_NOTES: "true"

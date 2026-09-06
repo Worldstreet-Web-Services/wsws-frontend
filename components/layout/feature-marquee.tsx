@@ -81,11 +81,16 @@ function sameEvents(a: LiveEvent[], b: LiveEvent[]): boolean {
 // wall-clock expiry check lives in an effect (render must stay pure) and
 // re-runs on a short interval.
 function useLiveEvents(): LiveEvent[] {
+  // No retries on any of these. They decorate; a failed tick costs a chip for
+  // thirty seconds, and the default two retries turned every outage of a
+  // game gateway into three requests per source per tick. pollUnlessFailing
+  // already backs the interval off while a source is failing.
   const lastman = useQuery<VaultGame[]>({
     queryKey: VAULT_KEYS.games,
     queryFn: fetchActiveGames,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    retry: false,
   });
   // The index trails the chain by minutes and drops games it considers done,
   // so a round someone started moments ago is invisible to it: the exact gap
@@ -96,6 +101,7 @@ function useLiveEvents(): LiveEvent[] {
     queryFn: readActiveGames,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    retry: false,
   });
   const ethPrice = usePrices(["ETH"])["ETH"] ?? 0;
   const chess = useQuery({
@@ -103,12 +109,14 @@ function useLiveEvents(): LiveEvent[] {
     queryFn: fetchChessLive,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    retry: false,
   });
   const checkers = useQuery({
     queryKey: ["marquee", "checkers-live"],
     queryFn: fetchCheckersLive,
     staleTime: LIVE_REFRESH_MS,
     refetchInterval: pollUnlessFailing(LIVE_REFRESH_MS),
+    retry: false,
   });
 
   const lastmanData = lastman.isError ? null : (lastman.data ?? null);

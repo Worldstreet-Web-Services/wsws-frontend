@@ -67,3 +67,6 @@ jobs:
         run: pnpm build
         env:
           NEXT_PUBLIC_PRIVY_APP_ID: ${{ vars.NEXT_PUBLIC_PRIVY_APP_ID }}
+
+      - name: Release Notes Governance Gate
+        run: bash scripts/check_release_notes.sh

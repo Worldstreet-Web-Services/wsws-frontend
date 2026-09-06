@@ -9,6 +9,8 @@ import {
   verifyAccessToken,
   type AccessClaims,
 } from "@/lib/server/auth";
+import { embeddedWalletAddress } from "@/lib/server/embedded-wallets";
+import type { ServerSession } from "@/lib/session";
 
 // The session a Server Component renders for, read from the cookie Privy sets
 // in the browser. This is the server-side counterpart of verifyRequest for
@@ -36,4 +38,20 @@ export const getSessionUser = cache(async (): Promise<User | null> => {
   const claims = await getSessionClaims();
   if (!claims) return null;
   return loadVerifiedUser(claims);
+});
+
+// The session as a value the browser may hold: the user id and the embedded
+// wallet addresses, nothing more. The (app) layout passes it down so the shell
+// can render before Privy's browser SDK is ready, and so hooks that build a
+// query key from a wallet build the right one in the meantime.
+export const getServerSession = cache(async (): Promise<ServerSession | null> => {
+  const user = await getSessionUser();
+  if (!user) return null;
+  return {
+    userId: user.id,
+    wallets: {
+      ethereum: embeddedWalletAddress(user, "ethereum"),
+      solana: embeddedWalletAddress(user, "solana"),
+    },
+  };
 });

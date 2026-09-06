@@ -16,6 +16,7 @@ import {
 } from "@/lib/query-persist";
 import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusProvider } from "@/components/providers/network-status";
+import { SessionCacheGuard } from "@/components/providers/session-cache-guard";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
@@ -126,6 +127,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 live. Needs both contexts, so it mounts here rather than beside
                 the session provider. Renders nothing. */}
               <PrivyModalWatch />
+              {/* Empties the persisted query cache when the session ends, so
+                a signed-out browser holds no balances. Needs both the Privy
+                and query contexts. Renders nothing. */}
+              <SessionCacheGuard />
               {/* Syncs Mixpanel's identity to Privy auth state; needs to sit
                 inside PrivyProvider to read it. Renders nothing. */}
               <AnalyticsIdentity />

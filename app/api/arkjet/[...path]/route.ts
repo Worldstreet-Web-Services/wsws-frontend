@@ -1,15 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { wsapiService } from "@/lib/wsapi-base";
 import { verifyRequest } from "@/lib/server/auth";
+import {
+  fetchUpstreamRead,
+  fetchUpstreamWrite,
+  upstreamCandidates,
+} from "@/lib/server/upstream-failover";
 
 // Keep browsers on the app origin. In development the proxy talks directly to
 // the Rust worker; production uses the normal /v1/arkjet gateway registration.
 const LOCAL_DEV_ARKJET_API = "http://127.0.0.1:8096";
-const BASE =
-  process.env.ARKJET_API_URL ??
-  (process.env.NODE_ENV === "development" ? LOCAL_DEV_ARKJET_API : undefined) ??
-  process.env.NEXT_PUBLIC_ARKJET_API_URL ??
-  wsapiService("arkjet");
+const UPSTREAMS = upstreamCandidates(
+  process.env.ARKJET_API_URL,
+  process.env.NODE_ENV === "development" ? LOCAL_DEV_ARKJET_API : undefined,
+  process.env.NEXT_PUBLIC_ARKJET_API_URL,
+  wsapiService("arkjet")
+);
 const NO_STORE = "no-store, max-age=0, must-revalidate";
 
 const PUBLIC_READ =
@@ -85,7 +91,6 @@ async function forward(
   if (!allowed) return invalidPath();
   if (requiresAuth && !(await verifyRequest(req))) return unauthorized();
 
-  const url = `${BASE}/${joined}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: "application/json" };
   let body: string | undefined;
   if (method !== "GET") {
@@ -95,13 +100,17 @@ async function forward(
   if (requiresAuth) forwardAuthHeaders(req, headers);
 
   try {
-    const response = await fetch(url, {
+    const init: RequestInit = {
       method,
       headers,
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    });
+    };
+    const path = `${joined}${req.nextUrl.search}`;
+    const response =
+      method === "GET"
+        ? await fetchUpstreamRead(UPSTREAMS, path, init, 8_000)
+        : await fetchUpstreamWrite(UPSTREAMS, path, init, 8_000);
     return new NextResponse(await response.text(), {
       status: response.status,
       headers: {

@@ -24,6 +24,14 @@ async function loadRoute() {
   return import("@/app/api/arkjet/[...path]/route");
 }
 
+function forwardedCalls(): [string, RequestInit][] {
+  return (
+    global.fetch as unknown as {
+      mock: { calls: [string, RequestInit][] };
+    }
+  ).mock.calls.filter(([url]) => !url.endsWith("/ready"));
+}
+
 describe("arkjet proxy route", () => {
   beforeEach(() => {
     auth.verifyRequest.mockReset();
@@ -113,8 +121,7 @@ describe("arkjet proxy route", () => {
     );
 
     expect(response.status).toBe(200);
-    const [url, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0];
+    const [url, init] = forwardedCalls()[0];
     expect(url).toBe("http://127.0.0.1:8096/funding/withdrawals");
     expect(init.body).toBe(body);
     expect(init.headers).toMatchObject({
@@ -140,8 +147,7 @@ describe("arkjet proxy route", () => {
     );
 
     expect(response.status).toBe(200);
-    const [url, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0];
+    const [url, init] = forwardedCalls()[0];
     expect(url).toBe("http://127.0.0.1:8096/funding/deposits/confirm");
     expect(init.body).toBe(body);
     expect(init.headers).toMatchObject({
@@ -172,8 +178,7 @@ describe("arkjet proxy route", () => {
     );
 
     expect(response.status).toBe(200);
-    const [url, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
-      .mock.calls[0];
+    const [url, init] = forwardedCalls()[0];
     expect(url).toBe("http://127.0.0.1:8096/bets");
     expect(init.method).toBe("POST");
     expect(init.body).toBe(body);
@@ -204,7 +209,7 @@ describe("arkjet proxy route", () => {
 
     expect(cashout.status).toBe(200);
     expect(cancellation.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(forwardedCalls()).toHaveLength(2);
   });
 
   it("rejects unlisted bet paths", async () => {

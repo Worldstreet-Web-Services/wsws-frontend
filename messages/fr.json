@@ -2585,7 +2585,17 @@
     "restorePasswordPlaceholder": "Mot de passe du fichier de récupération",
     "restore": "Restaurer le portefeuille",
     "cancelRestore": "Annuler",
-    "fileUnreadable": "Ce fichier n'est pas un fichier de récupération lisible."
+    "fileUnreadable": "Ce fichier n'est pas un fichier de récupération lisible.",
+    "pinSetupTitle": "Choose a PIN for this device",
+    "pinSetupBody": "This device can't use a passkey right now, so a PIN protects your wallet here. 4–8 digits. It is never sent anywhere and cannot be reset, so pick one you'll remember.",
+    "pinUnlockTitle": "Enter your PIN",
+    "pinUnlockBody": "This device unlocks your wallet with the PIN you chose here.",
+    "pinPlaceholder": "PIN",
+    "pinConfirmPlaceholder": "Confirm PIN",
+    "pinMalformed": "A PIN is 4 to 8 digits.",
+    "pinMismatch": "Those two don't match.",
+    "pinSetupAction": "Set PIN",
+    "pinUnlockAction": "Unlock"
   },
   "square": {
     "title": "Place du Marché",

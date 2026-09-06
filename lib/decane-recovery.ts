@@ -46,6 +46,15 @@ export type RecoveryRequest =
       // reports as NewDeviceError.
       kind: "restore";
       resolve: (supplied: RecoveryFileSupply | null) => void;
+    }
+  | {
+      // This device cannot use a passkey, so the device share is wrapped with a
+      // PIN instead. `setup` is true the first time one is chosen here, which is
+      // the only moment a typo can lock the wallet — the PIN is never stored and
+      // cannot be recovered, so that path asks for it twice.
+      kind: "pin";
+      setup: boolean;
+      resolve: (pin: string) => void;
     };
 
 export interface RecoveryFileSupply {
@@ -99,4 +108,38 @@ export function deliverRecoveryFile(file: RecoveryShareFile, filename: string): 
 
 export function promptForRecoveryFile(): Promise<RecoveryFileSupply | null> {
   return new Promise((resolve) => enqueue({ kind: "restore", resolve }));
+}
+
+// The kit's storage key prefix for a remembered identity. Reused here only to
+// tell "choosing a PIN for the first time on this device" from "entering the
+// one already set", which decides whether the dialog asks twice. Coupled to the
+// kit's storage layout on purpose (see hooks/use-auth-session); a wrong guess
+// costs an extra field, never a lockout, because the setup path is the default.
+const DECANE_IDENTITY_KEY_PREFIX = "decane:social:";
+
+function looksLikeFirstPinOnThisDevice(): boolean {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(DECANE_IDENTITY_KEY_PREFIX) && localStorage.getItem(key)) return false;
+    }
+  } catch {
+    // Storage blocked: assume setup, so the user is asked to confirm.
+  }
+  return true;
+}
+
+/**
+ * Decane's `promptPin`. Called when this device has no usable passkey — an
+ * unreachable password manager, a browser without WebAuthn PRF, or a user who
+ * declined the prompt — either to choose the PIN that wraps the device share,
+ * or to re-enter it on unlock.
+ *
+ * The kit gives no argument distinguishing the two, so the dialog infers it and
+ * defaults to the safer reading.
+ */
+export function promptPin(): Promise<string> {
+  return new Promise((resolve) =>
+    enqueue({ kind: "pin", setup: looksLikeFirstPinOnThisDevice(), resolve })
+  );
 }

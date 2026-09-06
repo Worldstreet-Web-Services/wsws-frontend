@@ -22,6 +22,7 @@ import {
   collectRotatedRecoveryPassword,
   deliverRecoveryFile,
   promptForRecoveryFile,
+  promptPin,
 } from "@/lib/decane-recovery";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { ClickRipple } from "@/components/ui/click-ripple";
@@ -31,8 +32,6 @@ import { ClickRipple } from "@/components/ui/click-ripple";
 // for one timer. optimizePackageImports only rewrites npm barrels, not ours.
 import { MiniTimerHost } from "@/features/casino/components/last-standing/mini-timer";
 import { BroadcastSessionProvider } from "@/components/broadcast/broadcast-session";
-import { WALLET_CHAINS } from "@/lib/trade/wallet-chains";
-import { base } from "viem/chains";
 
 // Well-formed placeholders let the app build before env vars are set. Decane
 // only talks to its backend when a sign-in is attempted, so mounting the kit
@@ -80,6 +79,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           // Without this, a device with no share and no passkey throws
           // NewDeviceError instantly instead of asking for the saved file.
           promptForRecoveryFile,
+          // A device that cannot reach a passkey — an unreachable password
+          // manager, no WebAuthn PRF, or a declined prompt — wraps its device
+          // share with a PIN instead. Without this the kit throws
+          // PromptPinNotConfiguredError and the user cannot sign in at all.
+          promptPin,
         },
       }}
     >

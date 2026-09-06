@@ -165,6 +165,82 @@ function RestoreDialog({ request }: { request: Extract<RecoveryRequest, { kind: 
   );
 }
 
+const PIN_PATTERN = /^\d{4,8}$/;
+
+/**
+ * The PIN that wraps the device share when this device has no usable passkey.
+ *
+ * On setup it is asked for twice. The PIN is never sent anywhere and cannot be
+ * reset: a typo here would wrap the share with a value the user does not know,
+ * which is a locked wallet rather than an inconvenience. On unlock, once is
+ * enough — a wrong entry simply fails and can be retried.
+ */
+function PinDialog({ request }: { request: Extract<RecoveryRequest, { kind: "pin" }> }) {
+  const t = useTranslations("recovery");
+  const [pin, setPin] = useState("");
+  const [confirm, setConfirm] = useState("");
+
+  const malformed = pin.length > 0 && !PIN_PATTERN.test(pin);
+  const mismatched = request.setup && confirm.length > 0 && confirm !== pin;
+  const ready = PIN_PATTERN.test(pin) && (!request.setup || confirm === pin);
+
+  const submit = () => {
+    if (!ready) return;
+    request.resolve(pin);
+    completeRecoveryRequest(request);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <div className="ws-display text-[19px]">
+          {request.setup ? t("pinSetupTitle") : t("pinUnlockTitle")}
+        </div>
+        <p className="mt-1.5 text-[13.5px] font-normal text-white/55">
+          {request.setup ? t("pinSetupBody") : t("pinUnlockBody")}
+        </p>
+      </div>
+
+      <input
+        className={INPUT}
+        type="password"
+        inputMode="numeric"
+        autoComplete={request.setup ? "new-password" : "current-password"}
+        maxLength={8}
+        placeholder={t("pinPlaceholder")}
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        autoFocus
+      />
+
+      {request.setup ? (
+        <input
+          className={INPUT}
+          type="password"
+          inputMode="numeric"
+          autoComplete="new-password"
+          maxLength={8}
+          placeholder={t("pinConfirmPlaceholder")}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+      ) : null}
+
+      {malformed ? (
+        <p className="text-[12.5px] font-normal text-amber-300/90">{t("pinMalformed")}</p>
+      ) : mismatched ? (
+        <p className="text-[12.5px] font-normal text-amber-300/90">{t("pinMismatch")}</p>
+      ) : null}
+
+      <button onClick={submit} disabled={!ready} className={PRIMARY}>
+        {request.setup ? t("pinSetupAction") : t("pinUnlockAction")}
+      </button>
+    </div>
+  );
+}
+
 export function DecaneRecoveryHost() {
   const request = useRecoveryRequest();
   if (!request) return null;
@@ -175,6 +251,8 @@ export function DecaneRecoveryHost() {
           <FileDialog request={request} />
         ) : request.kind === "restore" ? (
           <RestoreDialog request={request} />
+        ) : request.kind === "pin" ? (
+          <PinDialog request={request} />
         ) : (
           <PasswordDialog request={request} />
         )}

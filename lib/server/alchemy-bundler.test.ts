@@ -203,6 +203,38 @@ describe("Alchemy sponsorship proxy", () => {
     );
   });
 
+  // Alchemy answers a rejected user operation or a paymaster refusal with a
+  // 200 whose body is a JSON-RPC error. Relayed silently, the only record of
+  // why a sponsored send failed was a toast in one user's browser.
+  it("logs a JSON-RPC error the bundler returns inside a 200, with its method", async () => {
+    const rejected = {
+      jsonrpc: "2.0",
+      id: 3,
+      error: { code: -32521, message: "UserOperation reverted during simulation with reason: 0x" },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(rejected), { status: 200 }))
+    );
+    const logged = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 3, method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+
+    // Relayed unchanged: the client's bundler library reads it as before.
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(rejected);
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringMatching(/eth_sendUserOperation/),
+      -32521,
+      expect.stringMatching(/reverted during simulation/)
+    );
+    logged.mockRestore();
+  });
+
   it("still passes an ordinary rate limit through as a 429 the client may retry", async () => {
     const throttled = { jsonrpc: "2.0", id: 1, error: { code: 429, message: "Too many requests" } };
     vi.stubGlobal(

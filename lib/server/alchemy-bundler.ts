@@ -31,6 +31,34 @@ const SPONSORSHIP_EXHAUSTED_MESSAGE =
 
 // One JSON-RPC error per call the client sent, under the ids it sent, so a
 // batch gets a batch back.
+// A JSON-RPC error inside a 2xx is how the bundler reports a rejected user
+// operation, a paymaster refusal or a simulation revert. Relayed silently,
+// the only record of why a sponsored send failed was a toast in one user's
+// browser. Logged here with the method it answered, the code and the message;
+// no addresses, no calldata.
+function logRpcErrors(network: string, calls: Array<RpcCall | null>, text: string): void {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return;
+  }
+  const methodById = new Map<string, string>();
+  for (const call of calls) if (call) methodById.set(String(call.id ?? ""), call.method);
+  const entries = Array.isArray(parsed) ? parsed : [parsed];
+  for (const entry of entries) {
+    const error = (entry as { id?: unknown; error?: { code?: unknown; message?: unknown } })?.error;
+    if (!error) continue;
+    const id = String((entry as { id?: unknown }).id ?? "");
+    const method = methodById.get(id) ?? calls[0]?.method ?? "unknown";
+    console.warn(
+      `Alchemy bundler ${network}: ${method} answered an error`,
+      typeof error.code === "number" ? error.code : null,
+      typeof error.message === "string" ? error.message.slice(0, 300) : ""
+    );
+  }
+}
+
 function exhaustedBody(calls: Array<RpcCall | null>, batch: boolean): unknown {
   const entries = calls.map((call) => ({
     jsonrpc: "2.0",
@@ -157,6 +185,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
         headers: { "Cache-Control": "no-store" },
       });
     }
+    logRpcErrors(network, calls, text);
     return new NextResponse(text, {
       status: response.status,
       headers: {

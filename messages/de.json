@@ -178,7 +178,8 @@
     "slice_cash": "Bargeld",
     "slice_coins": "Coins",
     "slice_realAssets": "Reale Werte",
-    "slice_tokens": "Token"
+    "slice_tokens": "Token",
+    "portfolioAllocation": "Portfolio-Aufteilung"
   },
   "remitBanner": {
     "title": "Geld über Grenzen senden",
@@ -2290,7 +2291,9 @@
     "comingSoonToast": "Kash kommt bald. Kaufen, Verdienen und Umwandeln öffnen in Kürze.",
     "redeemReserve": "Einlösereserve",
     "reserveCannotCover": "Die Einlösereserve kann diesen Betrag gerade nicht decken. Versuchen Sie einen kleineren Betrag oder schauen Sie bald wieder vorbei.",
-    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei."
+    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei.",
+    "railTitle": "Hol dir Kash+",
+    "railSubtitle": "Und verdiene extra Geld mit allem, was du tust!"
   },
   "referral": {
     "title": "Freunde einladen",
@@ -2576,5 +2579,54 @@
     "retryIn": "Neuer Versuch in {seconds} s",
     "retryNow": "Jetzt versuchen",
     "reconnecting": "Verbinde neu…"
+  },
+  "discovery": {
+    "tokenMovesTitle": "Token-Bewegungen immer im Blick",
+    "ethAfricaTitle": "Eth Africa",
+    "ethAfricaBody": "ETH Africa erreicht eine <strong>Trefferquote von 70 %</strong> bei ETH-Prognosen.",
+    "ethAfricaBuy": "Eth kaufen",
+    "ethAfricaJoin": "Eth Africa beitreten",
+    "conversationTitle": "Mach mit beim Gespräch",
+    "conversationRoom": "Mitolyx Playroom",
+    "conversationHeadline": "Denken wie ein Schachgroßmeister",
+    "conversationJoin": "Space beitreten",
+    "conversationPlay": "Schach spielen",
+    "ownMarketTitle": "Beherrsche den Markt.",
+    "arenaTitle": "Betritt die Arena",
+    "arenaBody": "Mach deinen Zug. Steuere dein Risiko. Beherrsche den Markt.",
+    "arenaCta": "Jetzt traden",
+    "next100xTitle": "Finde den nächsten <hot>100X</hot>",
+    "pepeTitle": "Pepe boomt",
+    "pepeCta": "Pepe kaufen",
+    "shibaTitle": "Shiba hört was!",
+    "shibaCta": "Chart ansehen",
+    "predictionTitle": "Deine nächste <accent>Prognose</accent> beginnt hier",
+    "predictionCountdown": "01:46:55:22",
+    "predictionOneTitle": "Wird Pastor Benny Hinn beim Healing Stream sein?",
+    "predictionOneBody": "<strong>ETH ist in den letzten 6 Stunden um 3,5 % gestiegen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "predictionTwoTitle": "Wer holt sich den Gürtel? <strong>Jetzt tippen!</strong>",
+    "predictNow": "Jetzt tippen",
+    "predictionOther": "Weitere Prognosen",
+    "stakeTitle": "Setz deinen Einsatz",
+    "stakeSubtitle": "Alle spielen, um zu gewinnen",
+    "tokenMovesCarousel": "Token-Bewegungen",
+    "conversationCarousel": "Gespräch und Märkte",
+    "next100xCarousel": "Nächster 100X",
+    "predictionCarousel": "Prognosemärkte",
+    "promoRailCarousel": "Angebote",
+    "tokenTicker": "{price}  <change>{delta}</change>",
+    "tokenTipUp": "<strong>{symbol} ist in den letzten 6 Stunden um {move} gestiegen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "tokenTipDown": "<strong>{symbol} ist in den letzten 6 Stunden um {move} gefallen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "tokenCta": "{symbol} kaufen",
+    "tokenFallbackPrice": "1.876.617 $",
+    "tokenFallbackChange": "+12,8 %",
+    "tokenFallbackMove": "12,8 %",
+    "memeUpTitle": "{name} steigt",
+    "memeDownTitle": "{name} fällt",
+    "predictionNoDeadline": "Ohne Frist"
+  },
+  "carousel": {
+    "previous": "Vorheriger Slide",
+    "next": "Nächster Slide"
   }
 }

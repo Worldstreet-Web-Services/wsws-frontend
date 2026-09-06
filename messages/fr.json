@@ -178,7 +178,8 @@
     "slice_cash": "Liquidités",
     "slice_coins": "Cryptos",
     "slice_realAssets": "Actifs réels",
-    "slice_tokens": "Jetons"
+    "slice_tokens": "Jetons",
+    "portfolioAllocation": "Répartition du portefeuille"
   },
   "remitBanner": {
     "title": "Envoyez de l'argent à l'étranger",
@@ -2290,7 +2291,9 @@
     "comingSoonToast": "Kash arrive bientôt. L'achat, les gains et la conversion ouvriront prochainement.",
     "redeemReserve": "Réserve de rachat",
     "reserveCannotCover": "La réserve de rachat ne peut pas couvrir ce montant pour le moment. Essayez un montant plus petit ou revenez bientôt.",
-    "buyingPaused": "L'achat est suspendu pour le moment. Revenez bientôt."
+    "buyingPaused": "L'achat est suspendu pour le moment. Revenez bientôt.",
+    "railTitle": "Prends du Kash+",
+    "railSubtitle": "Et gagnez de l'argent en plus avec ce que vous faites !"
   },
   "referral": {
     "title": "Inviter des amis",
@@ -2576,5 +2579,54 @@
     "retryIn": "Nouvel essai dans {seconds} s",
     "retryNow": "Réessayer",
     "reconnecting": "Reconnexion…"
+  },
+  "discovery": {
+    "tokenMovesTitle": "Gardez une longueur d'avance sur les tokens",
+    "ethAfricaTitle": "Eth Africa",
+    "ethAfricaBody": "ETH Africa atteint <strong>70 % de réussite</strong> sur les prédictions ETH.",
+    "ethAfricaBuy": "Acheter de l'Eth",
+    "ethAfricaJoin": "Rejoindre Eth Africa",
+    "conversationTitle": "Rejoignez la conversation",
+    "conversationRoom": "Mitolyx Playroom",
+    "conversationHeadline": "Penser comme un grand maître d'échecs",
+    "conversationJoin": "Rejoindre l'espace",
+    "conversationPlay": "Jouer aux échecs",
+    "ownMarketTitle": "Dominez le marché.",
+    "arenaTitle": "Entrez dans l'arène",
+    "arenaBody": "Jouez votre coup. Gérez votre risque. Dominez le marché.",
+    "arenaCta": "Trader",
+    "next100xTitle": "Trouvez le prochain <hot>100X</hot>",
+    "pepeTitle": "Pepe s'envole",
+    "pepeCta": "Acheter du Pepe",
+    "shibaTitle": "Shiba entend des choses !",
+    "shibaCta": "Voir le graphique",
+    "predictionTitle": "Votre prochaine <accent>prédiction</accent> commence ici",
+    "predictionCountdown": "01:46:55:22",
+    "predictionOneTitle": "Le pasteur Benny Hinn sera-t-il au Healing Stream ?",
+    "predictionOneBody": "<strong>L'ETH a pris 3,5 %</strong> ces 6 dernières heures. Je recommande d'augmenter votre position de 10 %",
+    "predictionTwoTitle": "Qui repartira avec la ceinture ? <strong>Prédisez maintenant !</strong>",
+    "predictNow": "Prédire",
+    "predictionOther": "Voir d'autres prédictions",
+    "stakeTitle": "Fixez la mise",
+    "stakeSubtitle": "Tout le monde joue pour gagner",
+    "tokenMovesCarousel": "Mouvements des tokens",
+    "conversationCarousel": "Conversation et marchés",
+    "next100xCarousel": "Prochain 100X",
+    "predictionCarousel": "Marchés de prédiction",
+    "promoRailCarousel": "Promotions",
+    "tokenTicker": "{price}  <change>{delta}</change>",
+    "tokenTipUp": "<strong>{symbol} a pris {move}</strong> ces 6 dernières heures. Je recommande d'augmenter votre position de 10 %",
+    "tokenTipDown": "<strong>{symbol} a perdu {move}</strong> ces 6 dernières heures. Je recommande d'augmenter votre position de 10 %",
+    "tokenCta": "Acheter du {symbol}",
+    "tokenFallbackPrice": "1 876 617 $",
+    "tokenFallbackChange": "+12,8 %",
+    "tokenFallbackMove": "12,8 %",
+    "memeUpTitle": "{name} est en hausse",
+    "memeDownTitle": "{name} est en baisse",
+    "predictionNoDeadline": "Sans échéance"
+  },
+  "carousel": {
+    "previous": "Diapositive précédente",
+    "next": "Diapositive suivante"
   }
 }

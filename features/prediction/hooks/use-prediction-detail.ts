@@ -89,10 +89,24 @@ export function useGroupChart(idOrSlug: string | null, interval: ChartInterval) 
   });
 }
 
-export function useGroups(filter?: { category?: string; status?: string }) {
+interface UseGroupsOptions {
+  /**
+   * Whether to fetch. Defaults to true, so a caller that only wants the list
+   * passes nothing. The dashboard's discovery row wants it only when it has
+   * on-chain markets to join the event artwork onto, and gating it here rather
+   * than at the call site keeps that row off a second copy of this query.
+   */
+  enabled?: boolean;
+}
+
+export function useGroups(
+  filter?: { category?: string; status?: string },
+  { enabled = true }: UseGroupsOptions = {}
+) {
   return useQuery({
     queryKey: ["prediction", "groups", filter?.category ?? null, filter?.status ?? null],
     queryFn: () => listGroups(filter),
+    enabled,
     staleTime: 15_000,
   });
 }

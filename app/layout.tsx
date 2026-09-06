@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Noto_Sans, Roboto } from "next/font/google";
+import { Chewy, Geist, Noto_Sans, Quicksand, Roboto } from "next/font/google";
 import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -18,6 +18,21 @@ const monaSans = localFont({
   src: "./fonts/mona-sans-latin.woff2",
   weight: "500 700",
   variable: "--font-display",
+});
+
+// The balance figure and the headline on every illustrated card. Chewy ships a
+// single weight, so the design's one size fits all of them.
+const chewy = Chewy({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-poster",
+});
+
+// Headings above the dashboard's discovery rows. Variable, so the design's bold
+// costs no extra request.
+const quicksand = Quicksand({
+  subsets: ["latin"],
+  variable: "--font-discovery",
 });
 
 // Chess round uses the same type families Lichess does: Noto Sans for the
@@ -63,7 +78,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geist.variable} ${monaSans.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
+      className={`${geist.variable} ${monaSans.variable} ${chewy.variable} ${quicksand.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>

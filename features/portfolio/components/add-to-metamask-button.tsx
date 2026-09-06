@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MetaMaskIcon } from "@/components/ui/metamask-icon";
 import { toast } from "@/lib/toast";
 import { useKashStatus } from "@/features/portfolio/hooks/use-kash";
 import {
@@ -10,6 +9,9 @@ import {
   MetaMaskDeclinedError,
   MetaMaskUnavailableError,
 } from "@/features/portfolio/lib/metamask";
+
+// The MetaMask mark, exported from the design.
+const METAMASK_MARK = "/market/kash-icon-metamask.svg";
 
 // A shortcut, placed in the Kash card's corner, to get KASH showing up as a
 // balance inside MetaMask itself, not just in-app. wallet_watchAsset talks to
@@ -49,9 +51,14 @@ export function AddToMetaMaskButton() {
       disabled={busy}
       aria-label={t("addToMetaMask")}
       title={t("addToMetaMask")}
-      className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/12 bg-white/6 transition-colors hover:border-white/22 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      className="ws-pressable grid h-[52.96px] w-[44px] shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-[1.06px] border-white/10 bg-[rgba(15,15,15,0.01)] disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <MetaMaskIcon size={16} />
+      {/* The MetaMask mark at the design's size. Fixed aspect ratio, so the
+          box is 28.42 x 27.54 rather than square. */}
+      <span className="block h-[27.54px] w-[28.42px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={METAMASK_MARK} alt="" className="size-full" />
+      </span>
     </button>
   );
 }

@@ -8,8 +8,8 @@ import { MarketLogo } from "@/components/ui/market-logo";
 import { Avatar } from "@/components/ui/avatar";
 import type { NavItem } from "@/components/layout/nav-items";
 import type { DashboardSection } from "@/lib/modal-types";
-import { deriveProfile } from "@/lib/user";
-import { GoLiveControl } from "@/components/broadcast/go-live-control";
+import { truncateAddress } from "@/lib/format";
+import { deriveProfile, getWalletAddress } from "@/lib/user";
 import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
 
 /** Four seats around an open square — people gathered, not a shop front. */
@@ -32,6 +32,32 @@ function SquareIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+/**
+ * One exported SVG per nav glyph, straight from the design file.
+ *
+ * Each was exported in the state its row happened to be in: Portfolio was the
+ * selected row, so its file carries full-strength white, while the other seven
+ * bake in the 60% wash of an unselected row. The bytes are used as exported
+ * rather than recoloured, so the only correction the rail makes is dimming the
+ * Portfolio glyph when its row is not the active one. `earn` is absent from the
+ * design and from the nav order, and falls back to the section's own icon.
+ */
+// The design's own glyph exports. Figma bakes each icon at the opacity of the
+// row it was drawn in, so the inactive rows came out at 0.6 and Portfolio, the
+// selected one, at full strength. The baked value is stripped from the files so
+// every glyph is state-neutral and the row below decides how bright it is.
+// `earn` has no glyph in the design and keeps its own icon component.
+const NAV_GLYPH: Partial<Record<NavItem["id"], string>> = {
+  portfolio: "/market/sidebar-icon-portfolio.svg",
+  spot: "/market/sidebar-icon-spot.svg",
+  perps: "/market/sidebar-icon-perps.svg",
+  meme: "/market/sidebar-icon-meme.svg",
+  rwa: "/market/sidebar-icon-rwa.svg",
+  prediction: "/market/sidebar-icon-prediction.svg",
+  casino: "/market/sidebar-icon-arkade.svg",
+  activity: "/market/sidebar-icon-arktivity.svg",
+};
 
 interface SidebarProps {
   items: NavItem[];
@@ -58,6 +84,11 @@ export function Sidebar({
 }: SidebarProps) {
   const { user } = usePrivy();
   const profile = deriveProfile(user);
+  // The rail names the wallet that holds the money, not the login. Falls back
+  // to the email so the second line is never blank while wallets are still
+  // being created.
+  const address = getWalletAddress(user, "ethereum");
+  const subtitle = address ? truncateAddress(address) : profile.email;
   const t = useTranslations("topbar");
   // Null while the square is hidden, which is the same state a deployment
   // without the URL is in, so the entry below needs no second condition.
@@ -106,7 +137,7 @@ export function Sidebar({
               reads on this dark chrome, so auth and the landing keep the Ark
               wordmark. */}
           <Link href="/dashboard" onClick={onClose} className="flex items-center">
-            <MarketLogo className="h-[21px] w-auto" />
+            <MarketLogo className="h-[21px] w-[130px]" />
           </Link>
           <button
             type="button"
@@ -124,13 +155,6 @@ export function Sidebar({
             </svg>
           </button>
         </div>
-
-        {/* M3 puts the rail's primary action at the top, above a divider.
-            Never a floating overlay on desktop. */}
-        <div className="pb-3">
-          <GoLiveControl variant="rail" />
-        </div>
-        <div className="mb-3 h-px bg-white/8" />
 
         {/* Market Square sits ABOVE the product sections, not among them.
             The PRD makes it the platform's social and discovery surface — the
@@ -168,19 +192,28 @@ export function Sidebar({
         <nav className="flex flex-col gap-[3px]">
           {items.map((n) => {
             const active = activeSection === n.id;
+            const glyph = NAV_GLYPH[n.id];
             return (
               <button
                 key={n.id}
                 data-tour-nav={n.id}
                 onClick={() => choose(n.id)}
-                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
+                className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] leading-[21.75px] font-medium transition-colors ${
                   active
-                    ? "bg-accent/14 shadow-[inset_0_0_0_1px_rgba(255, 255, 255, 0.3)] text-white"
+                    ? "bg-accent/14 text-white"
                     : "text-white/60 hover:bg-white/6 hover:text-white"
                 }`}
               >
-                <span className="grid h-5 w-5 place-items-center">
-                  <n.icon size={20} />
+                <span
+                  className={`grid size-5 shrink-0 place-items-center transition-opacity ${
+                    active ? "" : "opacity-60 group-hover:opacity-100"
+                  }`}
+                >
+                  {glyph ? (
+                    <img src={glyph} alt="" width={20} height={20} className="block size-5" />
+                  ) : (
+                    <n.icon size={20} />
+                  )}
                 </span>
                 <span className="flex-1">{n.label}</span>
               </button>
@@ -198,22 +231,20 @@ export function Sidebar({
         >
           <Avatar seed={profile.avatarSeed} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-sans text-[13px] font-medium text-white">
+            <span className="block truncate font-sans text-[13px] leading-[19.5px] font-medium text-white">
               {profile.name}
             </span>
-            <span className="block truncate text-xs font-normal text-white/50">
-              {profile.email}
+            <span className="tnum block truncate font-serif text-[10px] leading-[15.8px] font-medium text-white/45">
+              {subtitle}
             </span>
           </span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M8 9l4-4 4 4M8 15l4 4 4-4"
-              stroke="rgba(255,255,255,0.4)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <img
+            src="/market/sidebar-icon-switch.svg"
+            alt=""
+            width={16}
+            height={16}
+            className="block size-4 shrink-0"
+          />
         </button>
       </aside>
     </>

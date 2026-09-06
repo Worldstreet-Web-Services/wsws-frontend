@@ -61,6 +61,30 @@ if (typeof window !== "undefined" && !hasUsableLocalStorage) {
   Object.defineProperty(window, "localStorage", { value: memoryStorage, configurable: true });
 }
 
+// jsdom implements no media queries at all, so any component that asks whether
+// the reader prefers reduced motion throws on `window.matchMedia` rather than
+// failing on what it asserts. The carousel asks on mount. A stub that reports
+// "no match" gives the suite the browser default, which is the behaviour we
+// want under test: motion on, so a test can still observe a slide moving.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        // Superseded by addEventListener, but still on the interface and still
+        // called by some libraries, so the stub has to carry them.
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList,
+  });
+}
+
 afterEach(() => {
   cleanup();
 });

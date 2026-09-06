@@ -7,8 +7,19 @@ import { apiFetch } from "@/lib/api";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function usePredictions() {
+interface UsePredictionsOptions {
+  /**
+   * Whether to fetch. Defaults to true. The dashboard's discovery shelf only
+   * wants this feed when the on-chain markets come back empty, and a caller
+   * that copied the query to get a gate would be a second path to the same
+   * endpoint.
+   */
+  enabled?: boolean;
+}
+
+export function usePredictions({ enabled = true }: UsePredictionsOptions = {}) {
   return useQuery<Prediction[]>({
+    enabled,
     queryKey: ["predictions"],
     staleTime: FIVE_MINUTES,
     gcTime: PERSISTED_GC_TIME,

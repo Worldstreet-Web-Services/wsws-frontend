@@ -13,6 +13,7 @@ import type { BalanceCardViewProps } from "@/features/portfolio/components/balan
 interface BalanceCardProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  onTakeTour: () => void;
 }
 
 // Owns the data and the rules; the two screens below it only draw. The phone
@@ -20,7 +21,7 @@ interface BalanceCardProps {
 // fighting itself, so each is its own component and this picks between them
 // with CSS. Both are presentational, so mounting both runs no effect twice and
 // costs no extra request.
-export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
+export function BalanceCard({ onOpenFunds, onOpenWithdraw, onTakeTour }: BalanceCardProps) {
   const { totalUsd, tokens, loading, refreshing, error } = usePortfolio();
   const money = useMoney();
   const { hidden, toggle, mask } = useBalanceVisibility();
@@ -57,6 +58,7 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
     formatMasked: (amount) => mask(money.format(amount)),
     onOpenFunds,
     onOpenWithdraw,
+    onTakeTour,
   };
 
   return (

@@ -17,8 +17,8 @@ const NETWORK_ICONS: Record<string, IconComponent> = {
   Arbitrum: NetworkArbitrumOne,
   "polygon-mainnet": NetworkPolygon,
   Polygon: NetworkPolygon,
-  // Display-only: cbBTC actually settles on Base (see displayNetworkLabel in
-  // portfolio-view.tsx), this key is never a real TokenBalance.network value.
+  // Display-only: cbBTC actually settles on Base, so this key is never a real
+  // TokenBalance.network value.
   Bitcoin: NetworkBitcoin,
 };
 

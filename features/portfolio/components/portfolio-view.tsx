@@ -1,20 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from "@tanstack/react-table";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
+import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
 import { KashCard } from "@/features/portfolio/components/kash-card";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
 import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
@@ -22,233 +13,64 @@ import { KashHistoryModal } from "@/features/portfolio/components/kash-history-m
 import { KashUpgradeModal } from "@/features/portfolio/components/kash-upgrade-modal";
 import { KashSendModal } from "@/features/portfolio/components/kash-send-modal";
 import { useKashAccount, useKashClaim } from "@/features/portfolio/hooks/use-kash";
-import { Switch } from "@/components/ui/switch";
-import { HoldingsMobile } from "@/features/portfolio/components/holdings-mobile";
-import { TypeChip } from "@/features/portfolio/components/type-chip";
-import { displayNetworkIconKey, displayNetworkLabel } from "@/features/portfolio/lib/network-label";
-import { AssetIcon } from "@/components/ui/asset-icon";
-import { tokenBg } from "@/lib/trade/assets";
 import { track } from "@/lib/analytics/mixpanel";
-import { NetworkIcon } from "@/components/ui/network-icon";
-import { useMoney } from "@/components/ui/currency-select";
-import { Eyebrow } from "@/components/ui/eyebrow";
-import { SearchIcon, WalletIcon } from "@/components/ui/icons";
-import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
-import { isZeroValueHolding, selectHoldings } from "@/features/portfolio/lib/holdings";
-import { canSellAsset } from "@/lib/sell";
-import { isPolymarketCollateral } from "@/lib/polymarket/config";
-import type { MemeToken } from "@/lib/meme/api";
-import { coingeckoId } from "@/lib/coingecko";
-import { formatQty } from "@/lib/format";
-import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/lib/modal-types";
 
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  /** Replays the walkthrough; owned by the route, see BalanceCardViewProps. */
+  onTakeTour: () => void;
+  /**
+   * The cross-border announcement banner. Parked: the section that rendered it
+   * is commented out at the board's request until cross-border is a live flow,
+   * and the slot is kept so turning it back on is one line here and nothing at
+   * the route.
+   */
   crossBorderSlot: ReactNode;
-  onOpenDetail: (detail: DetailPayload) => void;
-  onOpenBuy: (buy: BuyPayload) => void;
-  onOpenSell: (sell: SellPayload) => void;
-  onOpenRwaTrade: (rwaTrade: RwaTradePayload) => void;
-  onOpenMemeSell: (token: MemeToken) => void;
 }
 
-// A held meme balance as the trade sheet's listing shape; the sheet re-fetches
-// the fresh catalog entry (risk, tradability) by address itself.
-function toMemeToken(t: TokenBalance): MemeToken {
-  return {
-    chainId: 8453,
-    address: t.address as string,
-    name: t.name,
-    symbol: t.symbol,
-    decimals: t.decimals,
-    logoUrl: t.logo,
-    priceUsd: t.priceUsd > 0 ? String(t.priceUsd) : null,
-    liquidityUsd: null,
-    volume24hUsd: null,
-    priceChange24hPercent: null,
-    marketCapUsd: null,
-    fdvUsd: null,
-    pairAddress: null,
-    dexName: null,
-    riskLevel: "UNKNOWN",
-    buyEnabled: true,
-    sellEnabled: true,
-    warnings: [],
-  };
-}
-
-const holdingsColumn = createColumnHelper<TokenBalance>();
-const HOLDINGS_COLUMNS = [
-  holdingsColumn.accessor((t) => `${t.symbol} ${t.name}`, { id: "search", enableSorting: false }),
-  holdingsColumn.accessor((t) => t.priceUsd, { id: "price" }),
-  holdingsColumn.accessor((t) => t.valueUsd, { id: "value" }),
-];
-
-export function PortfolioView({
-  onOpenFunds,
-  onOpenWithdraw,
-  // crossBorderSlot is unused while the section below is commented out.
-  onOpenDetail,
-  onOpenBuy,
-  onOpenSell,
-  onOpenRwaTrade,
-  onOpenMemeSell,
-}: PortfolioViewProps) {
-  const { tokens, loading, error, refetch } = usePortfolio();
-  const money = useMoney();
-  const router = useRouter();
-  const t = useTranslations("portfolio");
+// The head of the dashboard as the Market design draws it: the two balance
+// cards, then the promo rail. The holdings table that used to sit under them
+// is gone at the board's request, and with it the phone's holdings list; the
+// design ends this block at the rail.
+export function PortfolioView({ onOpenFunds, onOpenWithdraw, onTakeTour }: PortfolioViewProps) {
+  const tDiscovery = useTranslations("discovery");
   const { wallet: kashWallet } = useKashAccount();
   const claimPoints = useKashClaim();
   const [kashModal, setKashModal] = useState<
     "buy" | "send" | "convert" | "history" | "upgrade" | null
   >(null);
-  // Distinguish "we couldn't load it" from "you have nothing". A failed request
-  // with no cached tokens is an error, not an empty wallet; if a cached balance
-  // survives (persisted), keep showing it rather than an error.
-  const errored = !loading && error && tokens.length === 0;
-  const isEmpty = !loading && !error && tokens.length === 0;
 
-  const [search, setSearch] = useState("");
-  const [hideZero, setHideZero] = useState(true);
-  // A meme holding being sold through the meme trade sheet.
-  const [sorting, setSorting] = useState<SortingState>([{ id: "value", desc: true }]);
-
-  // The table shows bought assets only, so drop the USDC-on-Base deposit float
-  // first (see selectHoldings). Then, when hideZero is on, drop rows with no real
-  // value — the always-present USDC/USDT/native baseline (shown at $0) plus dust
-  // that rounds to $0.00. A held balance we could not price is not zero-value and
-  // survives the toggle; see isZeroValueHolding.
-  const visibleTokens = useMemo(() => {
-    const holdings = selectHoldings(tokens);
-    return hideZero ? holdings.filter((t) => !isZeroValueHolding(t)) : holdings;
-  }, [tokens, hideZero]);
-
-  const table = useReactTable({
-    data: visibleTokens,
-    columns: HOLDINGS_COLUMNS,
-    state: { globalFilter: search, sorting },
-    onGlobalFilterChange: setSearch,
-    onSortingChange: setSorting,
-    globalFilterFn: (row, _id, value) =>
-      String(row.getValue("search")).toLowerCase().includes(String(value).toLowerCase()),
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
-  });
-  const holdingRows = table.getRowModel().rows;
-  const holdingsPage = table.getState().pagination.pageIndex + 1;
-  const holdingsPages = table.getPageCount();
-
-  const sortBtn = (id: string, label: string, extra: string) => {
-    const col = table.getColumn(id);
-    const s = col?.getIsSorted();
-    return (
-      <button
-        onClick={() => col?.toggleSorting()}
-        className={`flex cursor-pointer items-center gap-1 hover:text-white/70 ${extra}`}
-      >
-        {label}
-        <span className="text-white/30">{s === "asc" ? "↑" : s === "desc" ? "↓" : ""}</span>
-      </button>
-    );
-  };
-
-  const openToken = (token: TokenBalance) => {
-    // RWA tokens trade through the RWA service (quote + build), never Dextopus,
-    // which cannot source or deliver them. Route both buy and sell to the RWA
-    // panel. `address` is always set for an RWA (it is never a native balance).
-    const isRwa = token.kind === "rwa" && token.address !== null;
-    // Trade-catalog memecoins sell through the meme trade service; Dextopus
-    // cannot quote them, so its sell sheet always fails for these.
-    const isMeme = token.meme === true && token.address !== null;
-    const isPredictionCollateral = isPolymarketCollateral(token.network, token.address);
-    // Otherwise offer "Sell" only for assets Dextopus can take as an origin;
-    // native POL/SOL, for example, cannot be sold, so we don't dead-end the user.
-    const sellable = canSellAsset(token.network, token.address);
-
-    const buyAction = isPredictionCollateral
-      ? () => router.push("/prediction")
-      : isRwa
-        ? () =>
-            onOpenRwaTrade({
-              network: token.network,
-              address: token.address as string,
-              symbol: token.symbol,
-              mode: "buy",
-            })
-        : () =>
-            onOpenBuy({
-              symbol: token.symbol,
-              name: token.name,
-              priceUsd: token.priceUsd,
-              logo: token.logo,
-            });
-
-    const sellAction = isRwa
-      ? {
-          cta2: t("sell", { name: token.name }),
-          onCta2: () =>
-            onOpenRwaTrade({
-              network: token.network,
-              address: token.address as string,
-              symbol: token.symbol,
-              mode: "sell",
-            }),
-        }
-      : isMeme
-        ? {
-            cta2: t("sell", { name: token.name }),
-            onCta2: () => onOpenMemeSell(toMemeToken(token)),
-          }
-        : sellable
-          ? {
-              cta2: t("sell", { name: token.name }),
-              onCta2: () =>
-                onOpenSell({
-                  symbol: token.symbol,
-                  name: token.name,
-                  network: token.network,
-                  address: token.address,
-                  decimals: token.decimals,
-                  balance: token.balance,
-                  rawBalance: token.rawBalance,
-                  priceUsd: token.priceUsd,
-                  logo: token.logo,
-                }),
-            }
-          : {};
-
-    onOpenDetail({
-      sym: token.symbol,
-      name: token.name,
-      sub: `${formatQty(token.balance)} ${token.symbol}`,
-      price: money.format(token.priceUsd),
-      chg: "",
-      bg: tokenBg(token.symbol),
-      stats: [
-        { k: t("holdings"), v: `${formatQty(token.balance)} ${token.symbol}` },
-        { k: t("marketPrice"), v: money.format(token.priceUsd) },
-        { k: t("network"), v: displayNetworkLabel(token) },
-        { k: t("positionValue"), v: money.format(token.valueUsd) },
-      ],
-      cta: isPredictionCollateral ? t("managePrediction") : t("buyMore", { name: token.name }),
-      onCta: buyAction,
-      ...sellAction,
-      coingeckoId: coingeckoId(token.symbol) ?? undefined,
-      up: true,
-      logo: token.logo,
-    });
-  };
+  // Declared once because the rail shows it twice: see the note on the strip.
+  const stakeBanner = (
+    <PromoBanner
+      href="/casino"
+      title={tDiscovery("stakeTitle")}
+      subtitle={tDiscovery("stakeSubtitle")}
+      background="#ed2b07"
+      glyph="/market/promo-stake-flame.svg"
+      scallop="/market/promo-stake-scallop.svg"
+      art={[
+        {
+          src: "/market/promo-stake-glow-left.svg",
+          top: -17.38,
+          left: -19.85,
+          width: 253.22,
+          height: 253.22,
+        },
+        {
+          src: "/market/promo-stake-glow-right.svg",
+          top: -71.99,
+          left: 188.68,
+          width: 439.41,
+          height: 439.41,
+        },
+      ]}
+    />
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="mb-4">
-        <KashBanner onBuy={() => setKashModal("buy")} />
-      </div>
       <KashBuyModal
         open={kashModal === "buy"}
         wallet={kashWallet}
@@ -259,10 +81,12 @@ export function PortfolioView({
       <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
       <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
 
-      <Eyebrow>{t("eyebrow")}</Eyebrow>
-
-      <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <BalanceCard
+          onOpenFunds={onOpenFunds}
+          onOpenWithdraw={onOpenWithdraw}
+          onTakeTour={onTakeTour}
+        />
         <KashCard
           onBuy={() => setKashModal("buy")}
           onClaim={
@@ -287,187 +111,22 @@ export function PortfolioView({
         />
       </div>
 
+      {/* The design's promo strip, under the balance cards. Desktop only: the
+          phone has its own redesign. Market Square has no banner here while the
+          square itself is switched off, so the rail carries two designs; the
+          stake banner repeats as a third stop so the carousel has something to
+          move to. */}
+      <div className="mt-3 hidden md:block">
+        <PromoRail label={tDiscovery("promoRailCarousel")}>
+          {stakeBanner}
+          <KashBanner onBuy={() => setKashModal("buy")} />
+          {stakeBanner}
+        </PromoRail>
+      </div>
+
       {/* Commented out for now, at explicit request — cross-border is still
           just a "coming soon" announcement banner, not a live flow. */}
       {/* <div className="mt-3">{crossBorderSlot}</div> */}
-
-      {errored ? (
-        <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/6">
-            <WalletIcon size={22} />
-          </div>
-          <div className="ws-display text-[22px]">{t("errorTitle")}</div>
-          <p className="max-w-[320px] text-[13.5px] font-normal text-white/55">{t("errorBody")}</p>
-          <button
-            onClick={() => refetch()}
-            className="text-ink mt-1 cursor-pointer rounded-xl bg-white px-5 py-2.5 font-sans text-[13px] font-semibold hover:opacity-90"
-          >
-            {t("tryAgain")}
-          </button>
-        </div>
-      ) : isEmpty ? (
-        <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/6">
-            <WalletIcon size={22} />
-          </div>
-          <div className="ws-display text-[22px]">{t("emptyTitle")}</div>
-          <p className="max-w-[320px] text-[13.5px] font-normal text-white/55">{t("emptyBody")}</p>
-          <button
-            onClick={onOpenFunds}
-            className="text-ink mt-1 cursor-pointer rounded-xl bg-white px-5 py-2.5 font-sans text-[13px] font-semibold hover:opacity-90"
-          >
-            {t("addFunds")}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="mt-[18px] md:hidden">
-            <HoldingsMobile
-              rows={holdingRows.map((row) => row.original)}
-              loading={loading}
-              search={search}
-              onSearch={setSearch}
-              hideZero={hideZero}
-              onHideZero={setHideZero}
-              page={holdingsPage}
-              pages={holdingsPages}
-              canPrev={table.getCanPreviousPage()}
-              canNext={table.getCanNextPage()}
-              onPrev={() => table.previousPage()}
-              onNext={() => table.nextPage()}
-              onOpenToken={openToken}
-            />
-          </div>
-          <div className="ws-card mt-[18px] hidden overflow-hidden md:block">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-5 pb-3.5 sm:px-6">
-              <span className="ws-display text-[22px]">{t("yourHoldings")}</span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-[12.5px] font-normal whitespace-nowrap text-white/60">
-                  <span>{t("hideZeroValue")}</span>
-                  <Switch
-                    size="sm"
-                    checked={hideZero}
-                    onCheckedChange={(checked) => setHideZero(checked)}
-                  />
-                </div>
-                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <SearchIcon />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("searchPlaceholder")}
-                    className="w-[130px] min-w-0 border-none bg-transparent text-[13px] font-normal text-white outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-[1.7fr_auto] gap-3.5 px-4 pb-2.5 text-[11.5px] tracking-[0.04em] text-white/40 uppercase min-[560px]:grid-cols-[2fr_1fr_1fr_1fr_1fr] sm:px-6">
-              <span>{t("asset")}</span>
-              <span className="hidden min-[560px]:block">{t("type")}</span>
-              {sortBtn("price", t("price"), "hidden justify-end text-right min-[560px]:flex")}
-              <span className="hidden text-right min-[560px]:block">{t("network")}</span>
-              {sortBtn("value", t("value"), "justify-end text-right")}
-            </div>
-
-            {loading ? (
-              [0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 border-t border-white/6 px-4 py-3.5 sm:px-6"
-                >
-                  <span className="h-9 w-9 shrink-0 animate-pulse rounded-[11px] bg-white/8" />
-                  <span className="h-4 w-32 animate-pulse rounded bg-white/8" />
-                  <span className="ml-auto h-4 w-16 animate-pulse rounded bg-white/8" />
-                </div>
-              ))
-            ) : holdingRows.length === 0 ? (
-              <div className="border-t border-white/6 px-6 py-8 text-center text-[13px] font-normal text-white/45">
-                {search
-                  ? t("noSearchMatches")
-                  : hideZero
-                    ? t("noZeroHiddenAssets")
-                    : t("noHoldingsYet")}
-              </div>
-            ) : (
-              <>
-                {holdingRows.map((row) => {
-                  const t = row.original;
-                  return (
-                    <button
-                      key={t.symbol + t.network}
-                      onClick={() => openToken(t)}
-                      className="grid w-full cursor-pointer grid-cols-[1.7fr_auto] items-center gap-3.5 border-t border-white/6 px-4 py-3.5 text-left transition-colors hover:bg-white/4 min-[560px]:grid-cols-[2fr_1fr_1fr_1fr_1fr] sm:px-6"
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="relative shrink-0">
-                          <AssetIcon
-                            sym={t.symbol}
-                            bg={tokenBg(t.symbol)}
-                            logo={t.logo}
-                            fallback="gradient"
-                          />
-                          <span className="absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-[#0d0d0f] p-[1.5px]">
-                            <NetworkIcon network={displayNetworkIconKey(t)} size={14} />
-                          </span>
-                        </span>
-                        <span className="min-w-0">
-                          <span className="flex items-center gap-1.5">
-                            <span className="truncate font-sans text-[14.5px] font-medium">
-                              {t.symbol}
-                            </span>
-                            <span className="shrink-0 min-[560px]:hidden">
-                              <TypeChip kind={t.kind} />
-                            </span>
-                          </span>
-                          <span className="block truncate text-xs font-normal text-white/50">
-                            {formatQty(t.balance)} · {displayNetworkLabel(t)}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="hidden min-[560px]:flex">
-                        <TypeChip kind={t.kind} />
-                      </span>
-                      <span className="tnum hidden text-right text-sm font-normal min-[560px]:block">
-                        {money.format(t.priceUsd)}
-                      </span>
-                      <span className="hidden items-center justify-end gap-1.5 text-[13px] font-normal text-white/60 min-[560px]:flex">
-                        <NetworkIcon network={displayNetworkIconKey(t)} size={16} />
-                        {displayNetworkLabel(t)}
-                      </span>
-                      <span className="tnum text-right font-sans text-sm font-medium">
-                        {money.format(t.valueUsd)}
-                      </span>
-                    </button>
-                  );
-                })}
-                {holdingsPages > 1 ? (
-                  <div className="flex items-center justify-between border-t border-white/6 px-4 py-3.5 sm:px-6">
-                    <span className="text-[12.5px] font-normal text-white/45">
-                      {t("pageOfPages", { page: holdingsPage, pages: holdingsPages })}
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                        className="cursor-pointer rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-[12.5px] font-medium text-white/75 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {t("prev")}
-                      </button>
-                      <button
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                        className="cursor-pointer rounded-lg border border-white/12 bg-white/5 px-3 py-1.5 text-[12.5px] font-medium text-white/75 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {t("next")}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -52,6 +52,12 @@
   --color-grey-800: #1c1c1c;
   --color-grey-900: #0f0f0f;
 
+  /* The two brand accents the designer names in the Market file. Kash surfaces
+     (the balance card, the Get Kash+ banner) are yellow; the Set the Stake
+     banner is the deep orange. */
+  --color-kash: #ffd62f;
+  --color-ember: #ed2b07;
+
   /* Semantic tokens used by shadcn-style primitives (e.g. the Switch), mapped to
      this app's dark palette so those components render without a separate token
      layer. */
@@ -102,6 +108,47 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* The one hover treatment for anything clickable in the Market redesign: the
+   thing lifts and grows a little, and presses back in on click. Transform only,
+   deliberately: a shadow on hover reads as a different surface rather than the
+   same one responding, and Tailwind's `ring-*` is a box-shadow too, so it is out
+   for the same reason. One utility rather than a per-file class string, so every
+   pill, card, banner and control answers a pointer identically.
+
+   Reduced motion keeps the press but drops the travel, so the affordance still
+   exists for a reader who has asked the page to hold still. */
+@utility ws-pressable {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    opacity 180ms ease-out;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 180ms ease-out;
+
+    &:hover,
+    &:active {
+      transform: none;
+    }
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+}
+
 @utility ws-card {
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.05);
@@ -143,6 +190,60 @@ body {
       0 2px 8px rgba(0, 0, 0, 0.5);
     border-radius: 9999px;
   }
+}
+
+/* The same brushed chrome as .ws-chrome, but at every width. The desktop
+   Market design puts this treatment on the balance card's primary action, so it
+   cannot be gated to phones the way the original was. Kept separate rather than
+   widening .ws-chrome, which mobile still owns. */
+@utility ws-chrome-pill {
+  background-image: linear-gradient(
+    178.96deg,
+    #ffffff 2.36%,
+    #ededf0 38.57%,
+    #cbcbd1 62.39%,
+    #f5f5f8 97.64%
+  );
+  box-shadow:
+    inset 0 1.24px 0 rgba(255, 255, 255, 0.95),
+    0 2.49px 4.97px rgba(0, 0, 0, 0.5);
+  border-radius: 9999px;
+}
+
+/* Chewy, the face the designer uses for the balance figure and for the headline
+   on each illustrated card. */
+@utility ws-poster {
+  font-family: var(--font-poster), var(--font-serif), sans-serif;
+  font-weight: 400;
+}
+
+/* The heading above a discovery row. Quicksand bold, per the design. */
+@utility ws-discovery-title {
+  font-family: var(--font-discovery), var(--font-sans), sans-serif;
+  font-weight: 700;
+}
+
+/* Both ink utilities below carry the glyph colour in the background layer, which
+   is painted before inline content. A `text-shadow` on text using either one
+   therefore lands on top of the letters and fills them with the shadow colour.
+   Reach for `filter: drop-shadow()` instead, which shadows the element as it has
+   already been painted. */
+
+/* The balance figure's fill: white at the cap height falling to grey at the
+   baseline. Applied to the text itself, so it needs the clip. */
+@utility ws-balance-ink {
+  background-image: linear-gradient(to bottom, #ffffff, #c4c4c4);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* The arena card's headline: white falling to the design's pale violet. */
+@utility ws-arena-ink {
+  background-image: linear-gradient(99.3123deg, #ffffff 1.5687%, #e3c0ff 96.946%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 @utility ws-glass {

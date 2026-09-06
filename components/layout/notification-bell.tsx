@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { NetworkIcon } from "@/components/ui/network-icon";
-import { BellIcon } from "@/components/ui/icons";
 import {
   BELL_POLL_MS,
   useActivity,
@@ -127,9 +126,19 @@ export function NotificationBell() {
         onClick={toggle}
         aria-label={t("notifications")}
         aria-expanded={open}
-        className="relative grid size-[38px] cursor-pointer place-items-center rounded-full border border-white/12 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        className="ws-pressable group relative grid size-[38px] cursor-pointer place-items-center rounded-full border border-white/12 bg-white/5 md:size-[46px] md:border-white/12 md:bg-black/[0.19]"
       >
-        <BellIcon size={17} />
+        {/* The design's own bell, exported as SVG. It is a white glyph rather
+            than a currentColor one, so the phone's dimmer resting state is an
+            opacity, not a text colour. Sized in CSS so the phone and the
+            desktop head can differ from the file's intrinsic 20.65px. */}
+        <img
+          src="/market/topbar-icon-bell.svg"
+          alt=""
+          width={21}
+          height={21}
+          className="block size-[17px] opacity-70 transition-opacity group-hover:opacity-100 md:size-[20.65px] md:opacity-100"
+        />
         {badge ? (
           <span className="text-ink absolute -top-0.5 -right-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-white px-1 text-[10px] font-bold">
             {badge}

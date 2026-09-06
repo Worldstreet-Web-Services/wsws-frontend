@@ -178,7 +178,8 @@
     "slice_cash": "Cash",
     "slice_coins": "Coins",
     "slice_realAssets": "Real assets",
-    "slice_tokens": "Tokens"
+    "slice_tokens": "Tokens",
+    "portfolioAllocation": "Portfolio allocation"
   },
   "remitBanner": {
     "title": "Send money across borders",
@@ -2290,7 +2291,9 @@
     "comingSoonToast": "Kash is almost here. Buying, earning and converting open soon.",
     "redeemReserve": "Redemption reserve",
     "reserveCannotCover": "The redemption reserve can't cover this amount right now. Try a smaller amount or check back soon.",
-    "buyingPaused": "Buying is paused right now. Check back soon."
+    "buyingPaused": "Buying is paused right now. Check back soon.",
+    "railTitle": "Get Kash+",
+    "railSubtitle": "And Start Earning Extra Cash With What You Do!"
   },
   "referral": {
     "title": "Invite Friends",
@@ -2576,5 +2579,54 @@
     "retryIn": "Retrying in {seconds}s",
     "retryNow": "Try now",
     "reconnecting": "Reconnecting…"
+  },
+  "discovery": {
+    "tokenMovesTitle": "Stay Ahead of Token Moves",
+    "ethAfricaTitle": "Eth Africa",
+    "ethAfricaBody": "ETH Africa is hitting a <strong>70% win rate</strong> on ETH predictions.",
+    "ethAfricaBuy": "Buy Eth",
+    "ethAfricaJoin": "Join Eth Africa",
+    "conversationTitle": "Join the Conversation",
+    "conversationRoom": "Mitolyx Playroom",
+    "conversationHeadline": "How to think like a chess grandmaster",
+    "conversationJoin": "Join Space",
+    "conversationPlay": "Play Chess",
+    "ownMarketTitle": "Own The Market.",
+    "arenaTitle": "Enter The Arena",
+    "arenaBody": "Make your move. Manage your risk. Own the market.",
+    "arenaCta": "Trade Now",
+    "next100xTitle": "Find the next <hot>100X</hot>",
+    "pepeTitle": "Pepe is Booming",
+    "pepeCta": "Buy Pepe",
+    "shibaTitle": "Shiba Is Hearing Things !",
+    "shibaCta": "Check Chart",
+    "predictionTitle": "Your Next <accent>Prediction</accent> Starts Here",
+    "predictionCountdown": "01:46:55:22",
+    "predictionOneTitle": "Will Pastor Benny Hinn Be At Healing Stream",
+    "predictionOneBody": "<strong>ETH is up 3.5%</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "predictionTwoTitle": "Who's Gonna take the Belt Home, <strong>Predict Now!</strong>",
+    "predictNow": "Predict Now",
+    "predictionOther": "See Other Prediction",
+    "stakeTitle": "Set the stake",
+    "stakeSubtitle": "Everyone plays to win",
+    "tokenMovesCarousel": "Token moves",
+    "conversationCarousel": "Conversation and markets",
+    "next100xCarousel": "Next 100X",
+    "predictionCarousel": "Prediction markets",
+    "promoRailCarousel": "Promotions",
+    "tokenTicker": "{price}  <change>{delta}</change>",
+    "tokenTipUp": "<strong>{symbol} is up {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "tokenTipDown": "<strong>{symbol} is down {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "tokenCta": "Buy {symbol}",
+    "tokenFallbackPrice": "$1,876,617",
+    "tokenFallbackChange": "+12.8%",
+    "tokenFallbackMove": "12.8%",
+    "memeUpTitle": "{name} is up",
+    "memeDownTitle": "{name} is down",
+    "predictionNoDeadline": "No deadline"
+  },
+  "carousel": {
+    "previous": "Previous slide",
+    "next": "Next slide"
   }
 }

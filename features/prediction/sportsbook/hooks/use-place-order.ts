@@ -78,11 +78,9 @@ export function usePlaceSportsbookOrder() {
     mutationFn: async ({
       selections,
       stakeUsdc,
-      expectedWeth,
     }: {
       selections: SlipSelection[];
       stakeUsdc: string;
-      expectedWeth: string;
     }) => {
       const ownerWallet = getWalletAddress(user, "ethereum");
       const usdcAmount = decimalToAtomic(stakeUsdc, 6);
@@ -93,10 +91,6 @@ export function usePlaceSportsbookOrder() {
 
       setPhase("quoting");
       const conversion = await quoteUsdcToWeth(usdcAmount);
-      const expectedWethAtomic = decimalToAtomic(expectedWeth, 18);
-      if (!expectedWethAtomic || conversion.minimumAmountOut * 100n < expectedWethAtomic * 95n) {
-        throw new Error("The USDC conversion rate moved too far. Refresh and try again.");
-      }
       const stake = atomicToDecimal(conversion.minimumAmountOut, 18, 18);
 
       setPhase("preparing");

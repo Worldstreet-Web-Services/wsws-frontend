@@ -86,12 +86,7 @@ export function BetSlipPanel({
     calculation.data && tokenPriceUsd
       ? tokenToUsdcAmount(calculation.data.minimumStake, tokenPriceUsd, decimals)
       : null;
-  const invalidStake =
-    stakeAtomic == null ||
-    stakeAtomic <= 0n ||
-    settlementStake === null ||
-    belowMinimum ||
-    aboveMaximum;
+  const invalidStake = stakeAtomic == null || stakeAtomic <= 0n || belowMinimum || aboveMaximum;
   const busy = placement.isPending;
   const slipFingerprint = `${slip.stake}:${slip.selections
     .map(({ id, odds: selectionOdds }) => `${id}@${selectionOdds}`)
@@ -125,7 +120,7 @@ export function BetSlipPanel({
       login();
       return;
     }
-    if (invalidStake || !settlementStake || slip.selections.length === 0) return;
+    if (invalidStake || slip.selections.length === 0) return;
     if (comboNeedsReview) {
       setReviewedFingerprint(slipFingerprint);
       return;
@@ -133,7 +128,6 @@ export function BetSlipPanel({
     const order = await placement.mutateAsync({
       selections: slip.selections,
       stakeUsdc: slip.stake,
-      expectedWeth: settlementStake,
     });
     updateSportsbookSlip((current) => ({ ...current, selections: [] }));
     onTicket(order.ticketId);
@@ -304,8 +298,8 @@ export function BetSlipPanel({
                 </p>
               ) : null}
               {tokenPriceUsd === null ? (
-                <p className="text-[10px] font-medium text-[#efb72a]">
-                  Live USDC conversion is unavailable. Try again shortly.
+                <p className="text-[10px] font-medium text-[#999]">
+                  The final USDC conversion rate will be quoted when you place the bet.
                 </p>
               ) : null}
               {placement.error ? (
@@ -344,7 +338,7 @@ export function BetSlipPanel({
               <p className="text-center text-[9px] leading-4 text-[#7e7e7e]">
                 {settlementPreview
                   ? `Estimated settlement: ${settlementPreview} ${token}. Uniswap V3 converts the stake and redeemed winnings return as USDC.`
-                  : "Loading the live USDC conversion rate..."}
+                  : "The final settlement amount is quoted through Uniswap V3 at placement."}
               </p>
               <p className="text-center text-[9px] text-[#7e7e7e]">
                 Combined odds {odds} · 1% slippage

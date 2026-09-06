@@ -158,6 +158,24 @@ page.tsx -> lib/server/session.ts (cookie -> verified user) -> lib/server/<data>
   `useSessionWallet` gives hooks a wallet to key on until Privy knows the
   user. Privy remains the authority once it has answered.
 
+**The dashboard feed.** Everything the dashboard shows that is the same for
+every user, the four briefs and the marquee's live events, is composed once on
+the server (`lib/server/dashboard-feed.ts`), cached for twenty seconds, served
+anonymously by `app/api/dashboard/feed` with `public, s-maxage`, and
+dehydrated into the first HTML beside the balance. The briefs and the marquee
+read it through one query (`hooks/use-dashboard-feed.ts`), so an idle dashboard
+makes one public request every thirty seconds where it made thirteen. A section
+whose upstream is down is `null`; the brief shows its unavailable state and no
+browser asks that upstream itself.
+
+The rules the feed applies are the ones the features apply, because they now
+live in `lib/`: `lib/rwa/catalog.ts` (what is listed), `lib/chess/live-match.ts`
+(what is still being played), `lib/vault/read.ts` (the contract read),
+`lib/spot-markets.ts` and `lib/perp/brief.ts` (the compositions),
+`lib/meme/catalog.ts` (the normalisation). The feature files re-export them, so
+their callers did not change. Nothing per user may enter the feed; per-user
+reads stay on their own `private` routes.
+
 ---
 
 ## 4. Composing across features

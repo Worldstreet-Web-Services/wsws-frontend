@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PrivyProvider, type PrivyClientConfig } from "@privy-io/react-auth";
-import { createSolanaRpcSubscriptions } from "@solana/kit";
-import { createAppSolanaRpc } from "@/lib/solana-rpc";
+import { DecaneKit } from "decane-connect-kit";
 import { defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
@@ -18,6 +16,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusProvider } from "@/components/providers/network-status";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
+import { DecaneTokenBridge } from "@/components/providers/decane-token-bridge";
+import { DecaneRecoveryHost } from "@/components/providers/decane-recovery-host";
+import {
+  collectRotatedRecoveryPassword,
+  deliverRecoveryFile,
+  promptForRecoveryFile,
+  promptPin,
+} from "@/lib/decane-recovery";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { ClickRipple } from "@/components/ui/click-ripple";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
@@ -26,33 +32,19 @@ import { ClickRipple } from "@/components/ui/click-ripple";
 // for one timer. optimizePackageImports only rewrites npm barrels, not ours.
 import { MiniTimerHost } from "@/features/casino/components/last-standing/mini-timer";
 import { BroadcastSessionProvider } from "@/components/broadcast/broadcast-session";
-import { PrivyModalWatch } from "@/components/broadcast/privy-modal-watch";
-import { WALLET_CHAINS } from "@/lib/trade/wallet-chains";
-import { base } from "viem/chains";
 
-// Well-formed placeholder lets the app build before env vars are set.
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cl0123456789abcdefghijklm";
+// Well-formed placeholders let the app build before env vars are set. Decane
+// only talks to its backend when a sign-in is attempted, so mounting the kit
+// with these is inert.
+const DECANE_APP_ID = process.env.NEXT_PUBLIC_DECANE_APP_ID || "wsws-placeholder";
+const DECANE_API_KEY = process.env.NEXT_PUBLIC_DECANE_API_KEY || "dck_test_placeholder";
 
-type SolanaRpcs = NonNullable<NonNullable<PrivyClientConfig["solana"]>["rpcs"]>;
-type SolanaRpcEntry = NonNullable<SolanaRpcs[keyof SolanaRpcs]>;
+// The chains the app holds value on, in Decane's social chain-id format. Keep
+// in sync with EVM_NETWORKS in lib/server/alchemy.ts.
+const DECANE_CHAINS = ["evm:8453", "evm:1", "evm:42161", "evm:10", "evm:137", "solana:mainnet"];
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
-  // Without this Privy has nowhere to broadcast a Solana transaction and every
-  // Solana signature fails with "No RPC configuration found for chain
-  // solana:mainnet". Reads and sends go through our proxy; the subscription
-  // endpoint is only consulted when waiting for confirmation, which we skip
-  // (optimisticBroadcast) and do ourselves against the same proxy.
-  const [solanaRpcs] = useState<SolanaRpcs>(() => ({
-    "solana:mainnet": {
-      // Privy declares this against the test-cluster RPC API, which includes
-      // requestAirdrop — a method mainnet does not have. The client is right;
-      // only the declaration is too narrow.
-      rpc: createAppSolanaRpc() as SolanaRpcEntry["rpc"],
-      rpcSubscriptions: createSolanaRpcSubscriptions("wss://api.mainnet-beta.solana.com"),
-      blockExplorerUrl: "https://explorer.solana.com",
-    },
-  }));
   // Storage is undefined on the server, which makes the persister a no-op there,
   // so the same provider tree renders on both sides without a hydration mismatch.
   const [persister] = useState(() =>
@@ -63,40 +55,35 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     })
   );
   return (
-    <PrivyProvider
-      appId={PRIVY_APP_ID}
+    <DecaneKit
       config={{
-        loginMethods: ["google", "twitter", "email", "passkey"],
-        // Named explicitly so a chain id resolves to the chain we mean. See
-        // lib/trade/wallet-chains: 999 is HyperEVM here, not Zora Goerli.
-        supportedChains: [...WALLET_CHAINS],
-        defaultChain: base,
-        embeddedWallets: {
-          // Sign and send under the hood — no confirmation modal. The app
-          // abstracts web3 away, so transactions (RWA buys, vault wagers,
-          // swaps, deposits) go through without a Privy approval prompt. Can be
-          // overridden per call with uiOptions.showWalletUIs when a specific
-          // action ever needs an explicit confirmation.
-          showWalletUIs: false,
-          ethereum: {
-            createOnLogin: "users-without-wallets",
-          },
-          solana: {
-            createOnLogin: "users-without-wallets",
-          },
-        },
-        solana: { rpcs: solanaRpcs },
-        appearance: {
-          walletChainType: "ethereum-and-solana",
-          // Login modal only — tx signing stays headless (showWalletUIs: false).
-          theme: "#0c0c0e",
-          accentColor: "#d4d4d8",
-          // Root-relative, not `${window.location.origin}/…`. That branch made
-          // the logo undefined on the server and a string on the client, so
-          // Privy's hidden preload <img> existed only in the client render and
-          // every page load failed hydration. The browser resolves this against
-          // the current origin anyway, which is all the branch was computing.
-          logo: "/ark-logo.svg",
+        appId: DECANE_APP_ID,
+        mode: "social",
+        theme: "dark",
+        social: {
+          apiKey: DECANE_API_KEY,
+          authMethods: ["google", "email", "kingschat"],
+          chains: DECANE_CHAINS,
+          // The kit's own full-screen "Creating your wallet" overlay is off:
+          // the sign-in page shows its branded busy panel for the creating
+          // window (it is where the Google redirect lands), and AuthGuard's
+          // loading screen covers the unlocking window on every other route.
+          showStatusOverlay: false,
+          // Wallet recovery rotates the share set and must hand the user a
+          // fresh recovery file; these bridge into the dialogs rendered by
+          // DecaneRecoveryHost below. Without onRecoveryRotated the kit
+          // refuses to run recovery at all. No signup-time offer: new devices
+          // are provisioned from the sign-in alone since 2.7.4.
+          onRecoveryRotated: collectRotatedRecoveryPassword,
+          onRecoveryFileReady: deliverRecoveryFile,
+          // Without this, a device with no share and no passkey throws
+          // NewDeviceError instantly instead of asking for the saved file.
+          promptForRecoveryFile,
+          // A device that cannot reach a passkey — an unreachable password
+          // manager, no WebAuthn PRF, or a declined prompt — wraps its device
+          // share with a PIN instead. Without this the kit throws
+          // PromptPinNotConfiguredError and the user cannot sign in at all.
+          promptPin,
         },
       }}
     >
@@ -114,22 +101,18 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       >
         <NetworkStatusProvider>
           <BalanceVisibilityProvider>
-            {/* The broadcast session sits above the router on purpose: it holds
-                the LiveKit room and the Market Square stream, so a broadcast
-                started on the chess board survives navigating to the portfolio
-                instead of dying with the page that started it. */}
             <BroadcastSessionProvider>
               <ClickRipple />
               {children}
-              {/* Holds the outgoing video while Privy's dialog is open, which is
-                where wallet export, recovery phrases and private-key reveal
-                live. Needs both contexts, so it mounts here rather than beside
-                the session provider. Renders nothing. */}
-              <PrivyModalWatch />
-              {/* Syncs Mixpanel's identity to Privy auth state; needs to sit
-                inside PrivyProvider to read it. Renders nothing. */}
+              {/* Syncs Mixpanel's identity to the auth session; needs to sit
+                  inside DecaneKit to read it. Renders nothing. */}
               <AnalyticsIdentity />
               <AnalyticsSegments />
+              {/* Hands the Decane access-token getter to lib/auth-token so
+                  apiFetch can attach it. Renders nothing. */}
+              <DecaneTokenBridge />
+              {/* The wallet-recovery dialogs Decane's callbacks block on. */}
+              <DecaneRecoveryHost />
               {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
                 the app; it only subscribes to game data while open. */}
@@ -139,6 +122,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         </NetworkStatusProvider>
         <Toaster />
       </PersistQueryClientProvider>
-    </PrivyProvider>
+    </DecaneKit>
   );
 }

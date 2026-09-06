@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { NetworkTabs } from "@/features/funds/components/network-tabs";
 import { TokenList } from "@/features/funds/components/token-list";
@@ -18,7 +18,6 @@ import {
   useStaticDepositAddress,
 } from "@/hooks/use-deposit";
 import { usePortfolio } from "@/hooks/use-portfolio";
-import { getWalletAddress } from "@/lib/user";
 import { isRefundOptional, originFamily, refundChainType } from "@/lib/deposit-catalog";
 import {
   depositMinimumUsd,
@@ -27,6 +26,7 @@ import {
   type DepositChain,
   type DepositToken,
   type StaticAddressRequest,
+  type WalletChainType,
 } from "@/lib/deposit";
 import { matchDepositChain } from "@/lib/voice/chain-match";
 import type { DepositPrefill } from "@/lib/voice/intent";
@@ -43,8 +43,12 @@ const settle = SETTLE_CHAINS.base;
 
 export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScreenProps) {
   const t = useTranslations("fundsFlow");
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const { refetch } = usePortfolio();
+
+  // The session holds one wallet per chain family.
+  const addressFor = (chainType: WalletChainType): string | null =>
+    chainType === "solana" ? solanaAddress : evmAddress;
 
   const [originChain, setOriginChain] = useState<DepositChain | null>(null);
   const [originToken, setOriginToken] = useState<DepositToken | null>(null);
@@ -86,7 +90,7 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
     }
   }, [initialDeposit, prefillChain, originChain, tokens.data]);
 
-  const settlementAddress = getWalletAddress(user, settle.chainType);
+  const settlementAddress = addressFor(settle.chainType);
 
   // A static address wants a refund address on the origin's own VM family.
   // Where we hold a wallet on that family it is sent; for refund-optional
@@ -94,13 +98,15 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
   // account's dashboard-configured default address instead.
   const family = originChain ? originFamily(originChain.chainId) : null;
   const refundType = family ? refundChainType(family) : null;
-  const refundTo = refundType ? getWalletAddress(user, refundType) : null;
+  const refundTo = refundType ? addressFor(refundType) : null;
   const refundReady = family != null && (refundTo != null || isRefundOptional(family));
 
+  // Dextopus keys static addresses by an opaque userId. The EVM address is the
+  // stable per-user identifier now that there is no auth-provider user id.
   const req: StaticAddressRequest | null =
-    user?.id && originChain && originToken && settlementAddress && refundReady
+    evmAddress && originChain && originToken && settlementAddress && refundReady
       ? {
-          userId: user.id,
+          userId: evmAddress,
           originChainId: originChain.chainId,
           originAsset: originToken.address,
           settlementChainId: settle.chainId,

@@ -31,6 +31,17 @@ export function isConflictError(e: unknown): boolean {
   return gateway.status === 409 || gateway.code === "CONFLICT";
 }
 
+// A call asked for the legacy (Privy) identity and there is no Privy session
+// to supply it. Distinct from the retryable "auth not ready": waiting will not
+// help, the user has to sign in to the old account.
+export class LegacySessionError extends Error {
+  readonly code = "LEGACY_SESSION";
+  constructor() {
+    super("Sign in to your old account to continue.");
+    this.name = "LegacySessionError";
+  }
+}
+
 function looksSafeServerMessage(message: string): boolean {
   const trimmed = message.trim();
   if (!trimmed || trimmed.length > 160) return false;

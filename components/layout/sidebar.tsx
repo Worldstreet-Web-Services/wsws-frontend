@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { Avatar } from "@/components/ui/avatar";
 import type { NavItem } from "@/components/layout/nav-items";
 import type { DashboardSection } from "@/lib/modal-types";
-import { deriveProfile } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { GoLiveControl } from "@/components/broadcast/go-live-control";
 import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
 
@@ -56,8 +55,7 @@ export function Sidebar({
   open,
   onClose,
 }: SidebarProps) {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
+  const { profile } = useAuthSession();
   const t = useTranslations("topbar");
   // Null while the square is hidden, which is the same state a deployment
   // without the URL is in, so the entry below needs no second condition.

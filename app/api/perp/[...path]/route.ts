@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequestUser, verifyRequest } from "@/lib/server/auth";
-import { walletOfUser } from "@/lib/server/chess-identity";
+import { getRequestIdentity, verifyRequest } from "@/lib/server/auth";
 import { isAllowedPerpPath, perpRevalidate, wsapiPerpRequest } from "@/lib/server/wsapi";
 
 // Server-side proxy for the perp gateway (Avantis perpetuals on Base). Reads
@@ -30,7 +29,7 @@ async function proxy(req: NextRequest, path: string[], method: "GET" | "POST", b
     // The trader in a build body must be the wallet the session owns.
     if (body != null && typeof body === "object" && "trader" in body) {
       const claimed = (body as { trader?: unknown }).trader;
-      const wallet = walletOfUser(await getRequestUser(req, claims));
+      const wallet = (await getRequestIdentity(req, claims))?.evmAddress ?? null;
       if (
         typeof claimed !== "string" ||
         !wallet ||

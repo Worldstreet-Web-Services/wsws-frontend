@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { useWallets as useSolanaWallets } from "@privy-io/react-auth/solana";
 import { useTranslations } from "next-intl";
 import { useExecuteRwa } from "@/features/rwa/hooks/use-execute-rwa";
 import { buildRwaAction, USDC_BY_CHAIN } from "@/features/rwa/lib/api";
@@ -12,7 +10,7 @@ import { useSolanaToBase } from "@/hooks/use-solana-to-base";
 import { depositProgress } from "@/lib/deposit";
 import { track } from "@/lib/analytics/mixpanel";
 import { toast } from "@/lib/toast";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { fetchConfirmedSolanaBalance } from "@/lib/trade/solana-balance";
 import {
   clearPendingRwaSettlement,
@@ -33,8 +31,7 @@ const PROVIDER_BACKOFF_MS = [30_000, 60_000, 120_000] as const;
 // or reloading cannot strand confirmed sale proceeds on Solana.
 export function RwaSettlementTracker() {
   const t = useTranslations("rwa");
-  const { user } = usePrivy();
-  const { wallets: solanaWallets } = useSolanaWallets();
+  const { solanaAddress } = useAuthSession();
   const execute = useExecuteRwa();
   const settleSolanaToBase = useSolanaToBase();
   const { refetchFresh, refetchUntilChanged } = usePortfolio();
@@ -53,9 +50,10 @@ export function RwaSettlementTracker() {
     }
   }, [pending]);
 
-  const solanaTaker = getWalletAddress(user, "solana");
-  const solanaWalletReady =
-    solanaTaker !== null && solanaWallets.some((wallet) => wallet.address === solanaTaker);
+  const solanaTaker = solanaAddress;
+  // With Decane the session's address IS the wallet: there is no separate
+  // wallet object to wait for, so a known address means the signer is ready.
+  const solanaWalletReady = solanaTaker !== null;
 
   useEffect(() => {
     if (pending.length === 0) return;

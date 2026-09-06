@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWallets } from "@privy-io/react-auth";
-import type { EIP1193Provider } from "viem";
+import { useSocialWallet } from "decane-connect-kit";
+import { ensureUnlocked } from "@/lib/decane";
 import { publicClientForChain } from "@/lib/trade/receipt";
 import {
   buildKashPermitTypedData,
@@ -27,7 +27,7 @@ const NONCES_ABI = [
 // sign it. Free for the user, no transaction. Returns the split signature the
 // engine forwards to token.permit().
 export function useKashPermitSigner() {
-  const { wallets } = useWallets();
+  const wallet = useSocialWallet();
 
   return useCallback(
     async (
@@ -35,8 +35,12 @@ export function useKashPermitSigner() {
       owner: string,
       kashAmount: string
     ): Promise<KashPermitSignature> => {
-      const wallet = wallets.find((w) => w.address.toLowerCase() === owner.toLowerCase());
-      if (!wallet) throw new Error("Signing wallet is not connected.");
+      // The permit is only valid signed by the owner, and the session holds
+      // exactly one EVM wallet, so anything else here is a caller bug.
+      const signer = wallet.addresses?.evm;
+      if (!signer || signer.toLowerCase() !== owner.toLowerCase()) {
+        throw new Error("Signing wallet is not connected.");
+      }
 
       const client = publicClientForChain(chain.chainId);
       const nonce = await client.readContract({
@@ -49,14 +53,17 @@ export function useKashPermitSigner() {
       const deadline = permitDeadline(Date.now());
       const typedData = buildKashPermitTypedData({ chain, owner, kashAmount, nonce, deadline });
 
-      const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
-      const signature = (await provider.request({
-        method: "eth_signTypedData_v4",
-        params: [owner as `0x${string}`, JSON.stringify(typedData)],
-      })) as string;
+      await ensureUnlocked(wallet);
+      const signature = await wallet.signTypedData({
+        chain: `evm:${chain.chainId}`,
+        domain: typedData.domain,
+        types: typedData.types,
+        message: typedData.message,
+        primaryType: typedData.primaryType,
+      });
 
       return splitPermitSignature(signature, deadline);
     },
-    [wallets]
+    [wallet]
   );
 }

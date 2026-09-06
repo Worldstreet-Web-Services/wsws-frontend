@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useIdleLogout } from "@/hooks/use-idle-logout";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { toast } from "@/lib/toast";
@@ -12,7 +12,7 @@ import { toast } from "@/lib/toast";
 const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useAuthSession();
   const router = useRouter();
 
   useEffect(() => {

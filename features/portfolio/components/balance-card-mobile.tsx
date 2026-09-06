@@ -24,6 +24,7 @@ export function BalanceCardMobile({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
+  updateBalanceSlot,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
   const money = useMoney();
@@ -80,6 +81,7 @@ export function BalanceCardMobile({
           <WalletIcon size={17} />
           {t("addFunds")}
         </button>
+        {updateBalanceSlot}
         <button
           onClick={onOpenWithdraw}
           disabled={withdrawHeld}

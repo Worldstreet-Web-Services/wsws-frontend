@@ -22,6 +22,7 @@ export function BalanceCardDesktop({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
+  updateBalanceSlot,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
   const money = useMoney();
@@ -82,6 +83,7 @@ export function BalanceCardDesktop({
           >
             {t("addFunds")}
           </button>
+          {updateBalanceSlot}
           <button
             onClick={onOpenWithdraw}
             disabled={withdrawHeld}

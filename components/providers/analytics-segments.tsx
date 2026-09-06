@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { setProfile, setSuper } from "@/lib/analytics/mixpanel";
 import { tagClaritySession } from "@/lib/analytics/clarity";
 import { usePortfolio } from "@/hooks/use-portfolio";
@@ -35,7 +35,7 @@ function tierFor(totalUsd: number): UserTier {
  * Renders nothing.
  */
 export function AnalyticsSegments(): null {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useAuthSession();
   const { totalUsd, loading } = usePortfolio();
 
   useEffect(() => {

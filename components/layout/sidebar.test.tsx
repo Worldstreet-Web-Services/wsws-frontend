@@ -6,7 +6,15 @@ import { Sidebar } from "./sidebar";
 // labels come from a provider, the profile from Privy, Go Live from a
 // broadcast session, and next/link from a router that no test mounts.
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
-vi.mock("@privy-io/react-auth", () => ({ usePrivy: () => ({ user: null }) }));
+vi.mock("@/hooks/use-auth-session", () => ({
+  useAuthSession: () => ({
+    ready: true,
+    authenticated: true,
+    evmAddress: null,
+    solanaAddress: null,
+    profile: { name: "Test", email: null, avatarSeed: "seed" },
+  }),
+}));
 vi.mock("@/components/broadcast/go-live-control", () => ({
   GoLiveControl: () => <button type="button">Go Live</button>,
 }));

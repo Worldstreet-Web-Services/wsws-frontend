@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const auth = vi.hoisted(() => ({
   verifyRequest: vi.fn(),
-  getRequestUser: vi.fn(),
+  getRequestIdentity: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => auth);
 
@@ -19,16 +19,8 @@ function makeReq(
   } as unknown as NextRequest;
 }
 
-function walletUser(address: string) {
-  return {
-    linked_accounts: [
-      {
-        type: "wallet",
-        chain_type: "ethereum",
-        address,
-      },
-    ],
-  };
+function walletIdentity(address: string) {
+  return { userId: "user-1", evmAddress: address, solanaAddress: null };
 }
 
 async function loadRoute(env: { chessApiUrl?: string; publicChessApiUrl?: string } = {}) {
@@ -42,7 +34,7 @@ async function loadRoute(env: { chessApiUrl?: string; publicChessApiUrl?: string
 describe("chess proxy route", () => {
   beforeEach(() => {
     auth.verifyRequest.mockReset();
-    auth.getRequestUser.mockReset();
+    auth.getRequestIdentity.mockReset();
     global.fetch = vi.fn(
       async () =>
         new Response(JSON.stringify({ success: true }), {
@@ -133,7 +125,7 @@ describe("chess proxy route", () => {
 
   it("never caches player coach state", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    auth.getRequestIdentity.mockResolvedValue(walletIdentity("0xabc"));
     const { GET } = await loadRoute();
     const request = () => makeReq("https://app.test/api/chess/players/0xabc/coach/home");
     const context = { params: Promise.resolve({ path: ["players", "0xabc", "coach", "home"] }) };
@@ -179,7 +171,7 @@ describe("chess proxy route", () => {
 
   it("forwards the verified wallet on match notes", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    auth.getRequestIdentity.mockResolvedValue(walletIdentity("0xabc"));
     const { GET } = await loadRoute();
     const res = await GET(makeReq("https://app.test/api/chess/matches/match-1/note"), {
       params: Promise.resolve({ path: ["matches", "match-1", "note"] }),
@@ -193,7 +185,7 @@ describe("chess proxy route", () => {
 
   it("forwards the verified wallet on private chess reads", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    auth.getRequestIdentity.mockResolvedValue(walletIdentity("0xabc"));
     const { GET } = await loadRoute();
     const res = await GET(makeReq("https://app.test/api/chess/cashier/players/0xstale/balance"), {
       params: Promise.resolve({ path: ["cashier", "players", "0xstale", "balance"] }),
@@ -207,7 +199,7 @@ describe("chess proxy route", () => {
 
   it("forwards signed Privy credentials on authenticated lottery reads", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    auth.getRequestIdentity.mockResolvedValue(walletIdentity("0xabc"));
     global.fetch = vi.fn(
       async () =>
         new Response(JSON.stringify({ success: true, data: [] }), {
@@ -238,7 +230,7 @@ describe("chess proxy route", () => {
 
   it("rejects writes until the proxy can prove the caller's wallet", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(null);
+    auth.getRequestIdentity.mockResolvedValue(null);
     const { POST } = await loadRoute();
     const res = await POST(
       makeReq("https://app.test/api/chess/matches/abc/join", {
@@ -253,7 +245,7 @@ describe("chess proxy route", () => {
 
   it("forwards the verified wallet in both header and body on writes", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
-    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    auth.getRequestIdentity.mockResolvedValue(walletIdentity("0xabc"));
     const { POST } = await loadRoute();
     const res = await POST(
       makeReq("https://app.test/api/chess/betting/bets", {

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const auth = vi.hoisted(() => ({
   verifyRequest: vi.fn(),
-  getRequestUser: vi.fn(),
+  getRequestIdentity: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => auth);
 
@@ -17,7 +17,7 @@ function request(): NextRequest {
 describe("authenticated user route", () => {
   beforeEach(() => {
     auth.verifyRequest.mockReset();
-    auth.getRequestUser.mockReset();
+    auth.getRequestIdentity.mockReset();
   });
 
   it("uses verified access claims when resolving a bearer-only user", async () => {
@@ -27,26 +27,20 @@ describe("authenticated user route", () => {
       issuedAt: 1,
       expiration: 2,
     };
-    const user = {
-      id: claims.userId,
-      created_at: new Date("2026-08-16T00:00:00.000Z"),
-      linked_accounts: [
-        {
-          type: "wallet",
-          address: "0x1111111111111111111111111111111111111111",
-          chain_type: "ethereum",
-        },
-      ],
+    const identity = {
+      userId: claims.userId,
+      evmAddress: "0x1111111111111111111111111111111111111111",
+      solanaAddress: null,
     };
     auth.verifyRequest.mockResolvedValue(claims);
-    auth.getRequestUser.mockResolvedValue(user);
+    auth.getRequestIdentity.mockResolvedValue(identity);
     const req = request();
     const { GET } = await import("@/app/api/auth/me/route");
 
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(auth.getRequestUser).toHaveBeenCalledWith(req, claims);
+    expect(auth.getRequestIdentity).toHaveBeenCalledWith(req, claims);
     await expect(response.json()).resolves.toMatchObject({
       userId: claims.userId,
       user: {
@@ -68,6 +62,6 @@ describe("authenticated user route", () => {
     const response = await GET(request());
 
     expect(response.status).toBe(401);
-    expect(auth.getRequestUser).not.toHaveBeenCalled();
+    expect(auth.getRequestIdentity).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequestUser, verifyRequest } from "@/lib/server/auth";
-import { walletOfUser } from "@/lib/server/chess-identity";
+import { getRequestIdentity, verifyRequest } from "@/lib/server/auth";
 import { wsapiService } from "@/lib/wsapi-base";
 
 // Server-side proxy for the Kash rewards engine (buy KSH, earn on activity,
@@ -115,7 +114,7 @@ async function walletGate(req: NextRequest, claimed: string | null): Promise<Nex
   const claims = await verifyRequest(req);
   if (!claims) return unauthorized();
   if (!claimed) return forbidden();
-  const wallet = walletOfUser(await getRequestUser(req, claims));
+  const wallet = (await getRequestIdentity(req, claims))?.evmAddress ?? null;
   if (!wallet || claimed.toLowerCase() !== wallet.toLowerCase()) return forbidden();
   return null;
 }

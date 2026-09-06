@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getRequestUser, verifyRequest } from "@/lib/server/auth";
+import { getRequestIdentity, verifyRequest } from "@/lib/server/auth";
 
 export async function GET(req: NextRequest) {
   const claims = await verifyRequest(req);
@@ -7,22 +7,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await getRequestUser(req, claims);
+  const identity = await getRequestIdentity(req, claims);
 
   return NextResponse.json({
     userId: claims.userId,
     sessionId: claims.sessionId,
-    user: user
+    user: identity
       ? {
-          id: user.id,
-          createdAt: user.created_at,
-          linkedAccounts: user.linked_accounts.map((a) => a.type),
-          wallets: user.linked_accounts
-            .filter((a) => a.type === "wallet")
-            .map((a) => ({
-              address: "address" in a ? a.address : null,
-              chainType: "chain_type" in a ? a.chain_type : null,
-            })),
+          id: identity.userId,
+          wallets: [
+            { address: identity.evmAddress, chainType: "ethereum" },
+            { address: identity.solanaAddress, chainType: "solana" },
+          ].filter((w) => w.address !== null),
         }
       : null,
   });

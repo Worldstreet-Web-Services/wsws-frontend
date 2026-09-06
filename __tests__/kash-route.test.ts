@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const auth = vi.hoisted(() => ({
   verifyRequest: vi.fn(),
-  getRequestUser: vi.fn(),
+  getRequestIdentity: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => auth);
 
@@ -19,10 +19,8 @@ function makeReq(url: string, init: { body?: string } = {}): NextRequest {
   } as unknown as NextRequest;
 }
 
-function walletUser(address: string) {
-  return {
-    linked_accounts: [{ type: "wallet", chain_type: "ethereum", address }],
-  };
+function walletIdentity(address: string) {
+  return { userId: "user-1", evmAddress: address, solanaAddress: null };
 }
 
 async function loadRoute() {
@@ -33,13 +31,13 @@ async function loadRoute() {
 
 function signIn(address: string) {
   auth.verifyRequest.mockResolvedValue({ userId: "user-1" });
-  auth.getRequestUser.mockResolvedValue(walletUser(address));
+  auth.getRequestIdentity.mockResolvedValue(walletIdentity(address));
 }
 
 describe("kash proxy route", () => {
   beforeEach(() => {
     auth.verifyRequest.mockReset();
-    auth.getRequestUser.mockReset();
+    auth.getRequestIdentity.mockReset();
     global.fetch = vi.fn(
       async () =>
         new Response(JSON.stringify({ success: true, data: {} }), {

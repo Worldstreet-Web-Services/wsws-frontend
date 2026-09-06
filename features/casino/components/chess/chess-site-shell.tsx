@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
 import { AccountModal } from "@/components/layout/modals/account-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -11,7 +10,7 @@ import { useCasinoNavGuard } from "@/features/casino/components/casino-nav-guard
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { markKnownUser } from "@/lib/known-user";
-import { deriveProfile } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { cn } from "@/lib/utils";
 
 interface ChessNavItem {
@@ -116,8 +115,7 @@ function ChessNavLink({
 }
 
 export function ChessSiteHeader({ compact = false }: { compact?: boolean }) {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
+  const { profile } = useAuthSession();
   const wallet = useCasinoWallet();
   const [accountOpen, setAccountOpen] = useState(false);
 

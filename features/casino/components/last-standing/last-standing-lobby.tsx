@@ -2,8 +2,7 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import type { SellPayload } from "@/lib/modal-types";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -33,8 +32,7 @@ interface LastStandingLobbyProps {
 
 export function LastStandingLobby({ renderWithdrawSheet }: LastStandingLobbyProps) {
   const t = useTranslations("casino.lastStanding");
-  const { user } = usePrivy();
-  const address = getWalletAddress(user, "ethereum");
+  const { evmAddress: address } = useAuthSession();
   const { games, gamesLoading, gamesError, refetchGames, connected, resync } = useVaultLobby();
 
   const [startOpen, setStartOpen] = useState(false);

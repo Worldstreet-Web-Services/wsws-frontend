@@ -11,6 +11,7 @@
 // checks stable across devices.
 
 import { chessGet, chessPost } from "@/features/casino/lib/api/chess-client";
+import type { AuthIdentity } from "@/lib/auth-token";
 import { apiError } from "@/lib/api/envelope";
 import { formatTimeControl, isMatchId } from "@/features/casino/lib/api/chess-wire";
 
@@ -595,12 +596,20 @@ export interface WithdrawSwissInput {
   forfeit?: boolean;
 }
 
-export async function withdrawSwiss(id: string, input: WithdrawSwissInput): Promise<SwissDetail> {
-  const wire = await chessPost<SwissDetailWire>(`/swiss/${requireSwissId(id)}/withdraw`, {
-    name: input.name,
-    walletAddress: input.walletAddress,
-    ...(input.forfeit ? { forfeit: true } : {}),
-  });
+export async function withdrawSwiss(
+  id: string,
+  input: WithdrawSwissInput,
+  identity: AuthIdentity = "current"
+): Promise<SwissDetail> {
+  const wire = await chessPost<SwissDetailWire>(
+    `/swiss/${requireSwissId(id)}/withdraw`,
+    {
+      name: input.name,
+      walletAddress: input.walletAddress,
+      ...(input.forfeit ? { forfeit: true } : {}),
+    },
+    { identity }
+  );
   return toSwissDetail(wire);
 }
 

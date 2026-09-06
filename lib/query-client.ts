@@ -10,7 +10,9 @@ export function createQueryClient(): QueryClient {
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
         // Never retry a rate-limited request — retrying an already-throttled
-        // endpoint only deepens the 429. Retry other transient failures twice.
+        // endpoint only deepens the 429. A missing legacy session is not
+        // transient either: only the user signing in fixes it. Retry other
+        // transient failures twice.
         retry: (failureCount, error) => {
           const message = (error as { message?: string })?.message?.toLowerCase() ?? "";
           const code = String((error as { code?: unknown })?.code ?? "").toUpperCase();
@@ -19,7 +21,8 @@ export function createQueryClient(): QueryClient {
             message.includes("rate limit") ||
             code.includes("RATE") ||
             code === "429" ||
-            code === "TOO_MANY_REQUESTS"
+            code === "TOO_MANY_REQUESTS" ||
+            code === "LEGACY_SESSION"
           ) {
             return false;
           }

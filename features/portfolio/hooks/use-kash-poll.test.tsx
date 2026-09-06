@@ -23,13 +23,15 @@ vi.mock("@/features/portfolio/lib/kash", async (importOriginal) => {
 });
 
 const WALLET = "0x1111111111111111111111111111111111111111";
-vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({ user: {}, ready: true, authenticated: true }),
-  // lib/privy-token.ts binds both of these at module load.
-  getAccessToken: () => Promise.resolve("test-token"),
-  getIdentityToken: () => Promise.resolve("test-id-token"),
+vi.mock("@/hooks/use-auth-session", () => ({
+  useAuthSession: () => ({
+    ready: true,
+    authenticated: true,
+    evmAddress: WALLET,
+    solanaAddress: null,
+    profile: { name: "Test", email: null, avatarSeed: "seed" },
+  }),
 }));
-vi.mock("@/lib/user", () => ({ getWalletAddress: () => WALLET }));
 
 function visibility(state: "visible" | "hidden") {
   Object.defineProperty(document, "visibilityState", { value: state, configurable: true });

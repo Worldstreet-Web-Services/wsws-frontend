@@ -8,7 +8,6 @@ import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { parseEther } from "viem";
-import { usePrivy } from "@privy-io/react-auth";
 import { formatEther } from "viem";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -58,7 +57,7 @@ import { useVaultPendingWinnings } from "@/features/casino/hooks/use-vault-winni
 import { useInvalidateOnBlock } from "@/hooks/use-base-block";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePaged } from "@/hooks/use-paged";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { truncateAddress } from "@/lib/format";
 import { friendlyError, isAlreadySettledError } from "@/lib/errors";
 import {
@@ -191,7 +190,7 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
   const t = useTranslations("casino.lastStanding");
   const tBuySell = useTranslations("buySell");
   const tBuySellNotEnough = tBuySell("notEnoughBalance");
-  const { user } = usePrivy();
+  const { evmAddress } = useAuthSession();
   const money = useMoney();
   const { tokens, refetch: refetchPortfolio } = usePortfolio();
   const {
@@ -258,7 +257,7 @@ export function LastStandingSection({ gameId, renderWithdrawSheet }: LastStandin
   const [recentWinUsd, setRecentWinUsd] = useState<number | null>(null);
 
   const reduce = useReducedMotion();
-  const address = getWalletAddress(user, "ethereum");
+  const address = evmAddress;
 
   // Leaving the arena stops the track — background music must not follow the
   // user to the portfolio.

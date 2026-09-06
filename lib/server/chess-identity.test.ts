@@ -3,7 +3,6 @@ import type { User } from "@privy-io/node";
 import {
   chessDisplayNameOfUser,
   chessReadNeedsSession,
-  walletOfUser,
   withChessCountry,
   withChessReadIdentity,
   withChessIdentity,
@@ -36,11 +35,6 @@ function userWithWallet(address: string): User {
 }
 
 describe("chess identity helper", () => {
-  it("finds the caller's ethereum wallet on the verified Privy user", () => {
-    expect(walletOfUser(userWithWallet("0xabc"))).toBe("0xabc");
-    expect(walletOfUser(null)).toBeNull();
-  });
-
   it("derives the public chess name from the verified Privy profile", () => {
     const user = userWithWallet("0xabc");
     (user as unknown as { linked_accounts: unknown[] }).linked_accounts.unshift({
@@ -54,31 +48,6 @@ describe("chess identity helper", () => {
     });
     expect(chessDisplayNameOfUser(user)).toBe("Abraham Anavheoba");
     expect(chessDisplayNameOfUser(userWithWallet("0xabc"))).toBe("player");
-  });
-
-  it("prefers the embedded Privy wallet over an external wallet listed first", () => {
-    const user = userWithWallet("0xembedded");
-    (user as unknown as { linked_accounts: unknown[] }).linked_accounts.unshift({
-      type: "wallet",
-      chain_type: "ethereum",
-      wallet_client_type: "metamask",
-      connector_type: "injected",
-      address: "0xexternal",
-      first_verified_at: 0,
-      latest_verified_at: 0,
-      id: "wallet_ext",
-    });
-    expect(walletOfUser(user)).toBe("0xembedded");
-  });
-
-  it("falls back to any ethereum wallet when no embedded wallet exists", () => {
-    const user = userWithWallet("0xembedded");
-    const record = user as unknown as {
-      linked_accounts: { type: string; wallet_client_type?: string }[];
-    };
-    const wallet = record.linked_accounts.find((a) => a.type === "wallet");
-    if (wallet) wallet.wallet_client_type = "metamask";
-    expect(walletOfUser(user)).toBe("0xembedded");
   });
 
   it("marks per-caller chess reads as session-bound", () => {

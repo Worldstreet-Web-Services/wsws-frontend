@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
 import { useCreateArena } from "@/features/casino/hooks/use-casino-arena";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { friendlyError } from "@/lib/errors";
@@ -50,7 +49,6 @@ function ChoiceButton({
 
 export function ArenaCreateForm() {
   const router = useRouter();
-  const { login } = usePrivy();
   const wallet = useCasinoWallet();
   const create = useCreateArena();
   const [name, setName] = useState("");
@@ -70,7 +68,7 @@ export function ArenaCreateForm() {
   const submit = async () => {
     setTouched(true);
     if (!wallet.connected) {
-      login();
+      router.push("/auth");
       return;
     }
     if (nameError || create.isPending) return;

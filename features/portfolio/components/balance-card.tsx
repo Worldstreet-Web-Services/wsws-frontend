@@ -8,11 +8,29 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePendingBankDeposit } from "@/hooks/use-ramping";
 import { readyToSpendUsd } from "@/features/portfolio/lib/breakdown";
 import { OFFRAMP_MIN_USDC } from "@/lib/ramping/orders";
+import type { ReactNode } from "react";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
+
+// Refresh the portfolio on Base blocks, so a deposit, withdrawal or add-money
+// shows in the balance quickly instead of on the slow poll. Rate-limited:
+// every refetch is a real Alchemy round trip, and an unthrottled per-block
+// (~2s) cadence ran the shared key into 429s.
+const PORTFOLIO_KEY = [["portfolio"]] as const;
+const PORTFOLIO_REFRESH_MIN_MS = 10_000;
+
+// The masked placeholder, matching what the eye toggle shows.
+const LOCKED_MASK = "••••••";
 
 interface BalanceCardProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  // Rendered between Add funds and Withdraw; the dashboard passes the
+  // one-click wallet-migration button here while the migration window is open.
+  updateBalanceSlot?: ReactNode;
+  // Forces the figures to the masked placeholder regardless of the eye
+  // toggle. Set while the user's money still sits in their old wallets, where
+  // showing this (new, empty) wallet's zero would read as "your funds are gone".
+  balanceLocked?: boolean;
 }
 
 // Owns the data and the rules; the two screens below it only draw. The phone
@@ -20,7 +38,12 @@ interface BalanceCardProps {
 // fighting itself, so each is its own component and this picks between them
 // with CSS. Both are presentational, so mounting both runs no effect twice and
 // costs no extra request.
-export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
+export function BalanceCard({
+  onOpenFunds,
+  onOpenWithdraw,
+  updateBalanceSlot,
+  balanceLocked,
+}: BalanceCardProps) {
   const { totalUsd, tokens, loading, refreshing, error } = usePortfolio();
   const money = useMoney();
   const { hidden, toggle, mask } = useBalanceVisibility();
@@ -54,9 +77,10 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw }: BalanceCardProps) {
     withdrawHeld,
     hidden,
     onToggleHidden: toggle,
-    formatMasked: (amount) => mask(money.format(amount)),
+    formatMasked: (amount) => (balanceLocked ? LOCKED_MASK : mask(money.format(amount))),
     onOpenFunds,
     onOpenWithdraw,
+    updateBalanceSlot,
   };
 
   return (

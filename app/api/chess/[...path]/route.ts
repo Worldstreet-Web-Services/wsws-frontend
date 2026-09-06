@@ -1,10 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Buffer } from "node:buffer";
-import { getRequestUser, verifyRequest } from "@/lib/server/auth";
+import { getRequestIdentity, getRequestUser, verifyRequest } from "@/lib/server/auth";
 import {
   chessDisplayNameOfUser,
   chessReadNeedsSession,
-  walletOfUser,
   withChessCountry,
   withChessReadIdentity,
   withChessIdentity,
@@ -208,9 +207,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   const needsSession = chessReadNeedsSession(joined, req.nextUrl.searchParams);
   const claims = needsSession ? await verifyRequest(req) : null;
   if (needsSession && !claims) return unauthorized();
-  const user = needsSession ? await getRequestUser(req, claims) : null;
-  const wallet = needsSession ? walletOfUser(user) : null;
-  if (needsSession && !user) return walletUnavailable();
+  const identity = needsSession ? await getRequestIdentity(req, claims) : null;
+  const wallet = identity?.evmAddress ?? null;
+  if (needsSession && !identity) return walletUnavailable();
   if (needsSession && !wallet) return noWallet();
   const forwardedSearch = wallet
     ? withChessReadIdentity(joined, req.nextUrl.searchParams, wallet)
@@ -242,16 +241,22 @@ async function authedWrite(
   const claims = await verifyRequest(req);
   if (!claims) return unauthorized();
 
-  const user = await getRequestUser(req, claims);
-  if (!user) return walletUnavailable();
-  const wallet = walletOfUser(user);
+  const identity = await getRequestIdentity(req, claims);
+  if (!identity) return walletUnavailable();
+  const wallet = identity.evmAddress;
   if (!wallet) return noWallet();
 
   const raw = await req.text();
   const joined = path.join("/");
   const identified = withChessIdentity(joined, raw, wallet);
   const country = COUNTRY_WRITE.test(joined) ? await detectRequestCountry(req.headers) : null;
-  const displayName = PLAYER_PROFILE_WRITE.test(joined) ? chessDisplayNameOfUser(user) : null;
+  // Derived from the Privy user's linked accounts, so it only exists for
+  // un-migrated (Privy) sessions. Decane stores no profile server-side; a
+  // migrated player's profile write goes up without a derived name until the
+  // client passes the one it holds.
+  const displayName = PLAYER_PROFILE_WRITE.test(joined)
+    ? chessDisplayNameOfUser(await getRequestUser(req, claims))
+    : null;
   return forward(
     req,
     joined,

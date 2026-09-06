@@ -3,7 +3,6 @@
 import { friendlyError } from "@/lib/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { RwaIssuerCard } from "@/features/rwa/components/rwa-issuer-card";
@@ -21,7 +20,7 @@ import {
   type RwaQuote,
   type RwaQuoteRequest,
 } from "@/features/rwa/lib/api";
-import { getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 import { depositProgress, quoteFee, settlementFor } from "@/lib/deposit";
@@ -150,7 +149,7 @@ export function RwaTradePanel({
 }: RwaTradePanelProps) {
   const t = useTranslations("rwa");
   const tBuySell = useTranslations("buySell");
-  const { user } = usePrivy();
+  const { evmAddress, solanaAddress } = useAuthSession();
   const portfolio = usePortfolio();
   const { refetchFresh: refreshPortfolio } = portfolio;
   const { mutateAsync: quoteAsync } = useRwaQuote();
@@ -459,7 +458,7 @@ export function RwaTradePanel({
       return;
     }
 
-    const taker = getWalletAddress(user, asset.chain === "solana" ? "solana" : "ethereum");
+    const taker = asset.chain === "solana" ? solanaAddress : evmAddress;
     if (!taker) {
       setNotice({ kind: "error", message: t("connectWallet") });
       return;
@@ -575,8 +574,8 @@ export function RwaTradePanel({
         return;
       }
 
-      const baseWallet = getWalletAddress(user, "ethereum");
-      const solanaWallet = getWalletAddress(user, "solana");
+      const baseWallet = evmAddress;
+      const solanaWallet = solanaAddress;
       if (!baseWallet || !solanaWallet) {
         setNotice({ kind: "error", message: t("connectWallet") });
         return;

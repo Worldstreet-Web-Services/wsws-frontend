@@ -1,13 +1,12 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
 import { useTranslations } from "next-intl";
 import { LanguageSelect } from "@/components/ui/language-select";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { Avatar } from "@/components/ui/avatar";
 import { truncateAddress } from "@/lib/format";
-import { deriveProfile, getWalletAddress } from "@/lib/user";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { requestTourReplay, startDashboardTour } from "@/features/tour";
 
 interface TopbarProps {
@@ -29,9 +28,7 @@ function CompassIcon({ size = 17 }: { size?: number }) {
 }
 
 export function Topbar({ onOpenAccount }: TopbarProps) {
-  const { user } = usePrivy();
-  const profile = deriveProfile(user);
-  const address = getWalletAddress(user, "ethereum");
+  const { profile, evmAddress: address } = useAuthSession();
   const t = useTranslations("topbar");
   const tTour = useTranslations("tour");
   const router = useRouter();

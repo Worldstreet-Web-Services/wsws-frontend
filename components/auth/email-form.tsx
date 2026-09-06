@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useLoginWithEmail } from "@privy-io/react-auth";
+import { useSocialAuth } from "decane-connect-kit";
 import { useTranslations } from "next-intl";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import { OtpInput } from "@/components/auth/otp-input";
+import { recordAuthMethod } from "@/lib/analytics/auth-method";
+import { rememberDisplayProfile } from "@/lib/display-profile";
 
 const PRIMARY =
   "ws-chrome flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-4 py-4 font-sans md:rounded-[14px] md:p-3.5 text-[15px] font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60";
@@ -17,9 +19,7 @@ export function EmailForm() {
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
-  const { sendCode, loginWithCode, state } = useLoginWithEmail();
-
-  const busy = state.status === "sending-code" || state.status === "submitting-code";
+  const { sendEmailCode, confirmEmailCode, emailLoading } = useSocialAuth();
 
   const submitEmail = async () => {
     if (!email.includes("@")) {
@@ -28,7 +28,7 @@ export function EmailForm() {
     }
     setError(null);
     try {
-      await sendCode({ email });
+      await sendEmailCode(email);
       setStep("code");
     } catch (err) {
       console.error("Sending login code failed:", err);
@@ -39,7 +39,11 @@ export function EmailForm() {
   const submitCode = async (value: string) => {
     setError(null);
     try {
-      await loginWithCode({ code: value });
+      recordAuthMethod("email");
+      await confirmEmailCode(email, value);
+      // Email sign-in returns no profile from Decane, but we hold the one
+      // fact it proves: the address. Greetings use its local part.
+      rememberDisplayProfile({ email });
     } catch (err) {
       console.error("Code verification failed:", err);
       setCode("");
@@ -60,13 +64,13 @@ export function EmailForm() {
             email: () => <span className="font-medium text-white">{email}</span>,
           })}
         </p>
-        <OtpInput value={code} onChange={setCode} onComplete={submitCode} disabled={busy} />
+        <OtpInput value={code} onChange={setCode} onComplete={submitCode} disabled={emailLoading} />
         <button
           onClick={() => submitCode(code)}
-          disabled={busy || code.length !== 6}
+          disabled={emailLoading || code.length !== 6}
           className={PRIMARY}
         >
-          {busy ? t("checking") : t("verifyContinue")}
+          {emailLoading ? t("checking") : t("verifyContinue")}
           <ArrowRightIcon className="text-arrow" />
         </button>
         {error ? <p className="text-down text-[13px]">{error}</p> : null}
@@ -82,8 +86,8 @@ export function EmailForm() {
             {t("differentEmail")}
           </button>
           <button
-            onClick={() => sendCode({ email })}
-            disabled={busy}
+            onClick={() => sendEmailCode(email)}
+            disabled={emailLoading}
             className="hover:text-accent cursor-pointer text-white/60"
           >
             {t("resendCode")}
@@ -109,8 +113,8 @@ export function EmailForm() {
         placeholder="you@email.com"
         className={INPUT}
       />
-      <button onClick={submitEmail} disabled={busy} className={PRIMARY}>
-        {busy ? t("sendingCode") : t("continueEmail")}
+      <button onClick={submitEmail} disabled={emailLoading} className={PRIMARY}>
+        {emailLoading ? t("sendingCode") : t("continueEmail")}
         <ArrowRightIcon className="text-arrow" />
       </button>
       {error ? <p className="text-down text-[13px]">{error}</p> : null}

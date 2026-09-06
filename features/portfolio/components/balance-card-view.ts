@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { TokenBalance } from "@/hooks/use-portfolio";
 
 // What both balance screens render from. The card itself owns the hooks and
@@ -19,4 +20,7 @@ export interface BalanceCardViewProps {
   formatMasked: (amount: number) => string;
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  /** The one-click wallet-migration button, between Add funds and Withdraw
+   *  while the migration window is open. */
+  updateBalanceSlot?: ReactNode;
 }

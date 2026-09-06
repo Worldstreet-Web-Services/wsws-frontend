@@ -14,6 +14,7 @@
 // money. Keep amounts as strings end to end and only parse for display math.
 
 import { createServiceClient } from "@/lib/api/service";
+import type { AuthIdentity } from "@/lib/auth-token";
 
 const kash = createServiceClient("/api/kash", "Kash is unavailable right now.");
 
@@ -196,13 +197,13 @@ export interface KashLedgerEntry {
  * Settle this wallet's accrued points into KSH now, instead of waiting for the
  * weekly batch. Only ever affects the caller's own wallet.
  */
-export const postKashClaim = (wallet: string) =>
-  kash.post<KashClaim>("/settlements/claim", { wallet });
+export const postKashClaim = (wallet: string, identity: AuthIdentity = "current") =>
+  kash.as(identity).post<KashClaim>("/settlements/claim", { wallet });
 
 export const getKashStatus = () => kash.get<KashStatus>("/status");
 
-export const getKashAccount = (wallet: string) =>
-  kash.authedGet<KashAccount>(`/accounts/${wallet}`);
+export const getKashAccount = (wallet: string, identity: AuthIdentity = "current") =>
+  kash.as(identity).authedGet<KashAccount>(`/accounts/${wallet}`);
 
 export const getKashLedger = (wallet: string, limit = 20) =>
   kash.authedGet<KashLedgerEntry[]>(`/accounts/${wallet}/ledger`, { limit });
@@ -210,8 +211,8 @@ export const getKashLedger = (wallet: string, limit = 20) =>
 export const getKashSubscriptionTiers = () =>
   kash.get<KashSubscriptionTier[]>("/subscriptions/tiers");
 
-export const getKashSubscription = (wallet: string) =>
-  kash.authedGet<KashSubscription>(`/subscriptions/${wallet}`);
+export const getKashSubscription = (wallet: string, identity: AuthIdentity = "current") =>
+  kash.as(identity).authedGet<KashSubscription>(`/subscriptions/${wallet}`);
 
 export const postKashSubscribe = (wallet: string, tier: number, paymentTxHash?: string) =>
   kash.post<KashSubscription>("/subscriptions", { wallet, tier, paymentTxHash });

@@ -7,6 +7,8 @@ import { toast } from "@/lib/toast";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buildNav } from "@/components/layout/nav-items";
 import { PortfolioView } from "@/features/portfolio";
+import { UpdateBalanceButton, useMaskBalance } from "@/features/migrate";
+import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 import { SectionOverview } from "@/components/ui/section-overview";
 import { SpotOverview } from "@/features/trade/components/spot-overview";
 import { PerpsOverview } from "@/features/trade/components/perps-overview";
@@ -137,6 +139,9 @@ export default function DashboardPage() {
     // Otherwise the tab changes off-screen and the tap reads as doing nothing.
     document.getElementById("market-square")?.scrollIntoView({ behavior: "smooth" });
   }, []);
+  // True while this device's money still sits in the old Privy wallets: the
+  // balance card masks its figures and offers the one-click update instead.
+  const maskBalance = useMaskBalance();
   useDashboardTour();
 
   const modals = useAppModals();
@@ -230,6 +235,8 @@ export default function DashboardPage() {
             onOpenFunds={modals.openFunds}
             onOpenWithdraw={modals.openWithdraw}
             crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
+            updateBalanceSlot={<UpdateBalanceButton adapters={MIGRATION_ADAPTERS} />}
+            balanceLocked={maskBalance}
             onOpenDetail={modals.openDetail}
             onOpenBuy={modals.openBuy}
             onOpenSell={modals.openSell}

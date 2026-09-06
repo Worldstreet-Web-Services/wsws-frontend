@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteMatchComment,
@@ -783,7 +783,7 @@ export function useChessMatchSocial(
 ) {
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useAuthSession();
   // On a tournament board the caller is their seat name; otherwise the wallet.
   // The note is per-caller, so it is cached under whichever identity acts.
   const viewer = seatName ?? wallet.address?.toLowerCase() ?? "anon";

@@ -8,6 +8,8 @@ import {
 import { signerFrom } from "@polymarket/client/viem";
 import { createWalletClient, custom, type EIP1193Provider } from "viem";
 import { polygon } from "viem/chains";
+import { authHeaders } from "@/lib/api";
+import type { AuthIdentity } from "@/lib/auth-token";
 import { BUILDER_SIGN_PATH, POLYGON_RPC_PATH } from "@/lib/polymarket/config";
 
 export type SecureClient = Awaited<ReturnType<typeof createSecureClient>>;
@@ -31,15 +33,19 @@ function appEnvironment() {
   });
 }
 
-// Builds an authenticated Polymarket client from the user's Privy embedded EOA.
-// The EOA signs orders and wallet ops in the browser; the account/funder wallet
-// is the signer's deterministic Deposit Wallet (created on first use). Builder
-// authentication is remote — the secret lives in /api/polymarket/sign and never
-// reaches the client.
+// Builds an authenticated Polymarket client from the user's embedded EOA. The
+// EOA signs orders and wallet ops in the browser; the account/funder wallet is
+// the signer's deterministic Deposit Wallet (created on first use). Builder
+// authentication is remote: the secret lives in /api/polymarket/sign and never
+// reaches the client. That proxy verifies the caller's session, and a Decane
+// session sets no cookie, so the SDK's own requests carry the bearer for the
+// named identity ("legacy" when the migration flow drives the OLD wallet).
 export async function buildSecureClient(
   address: string,
-  provider: EIP1193Provider
+  provider: EIP1193Provider,
+  options: { identity?: AuthIdentity } = {}
 ): Promise<SecureClient> {
+  const identity = options.identity ?? "current";
   const walletClient = createWalletClient({
     account: address as `0x${string}`,
     chain: polygon,
@@ -47,7 +53,7 @@ export async function buildSecureClient(
   });
   return createSecureClient({
     signer: signerFrom(walletClient),
-    apiKey: remoteBuilderSigning({ url: BUILDER_SIGN_PATH }),
+    apiKey: remoteBuilderSigning({ url: BUILDER_SIGN_PATH, headers: () => authHeaders(identity) }),
     environment: appEnvironment(),
   });
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import {
   cashierLockBuckets,
   confirmChessDeposit,
@@ -16,7 +16,6 @@ import {
   type CashierWithdrawal,
 } from "@/features/casino/lib/api/cashier";
 import { useSendToken } from "@/hooks/use-withdraw";
-import { getWalletAddress } from "@/lib/user";
 import { toBaseUnits } from "@/lib/trade/math";
 
 // The chess cashier's balance and money movements. Everything hangs off the
@@ -64,8 +63,7 @@ export interface ChessDepositOutcome {
 // mount; it touches no wallet SDK, so it is safe on screens that never move
 // money.
 export function useChessCashierStatus() {
-  const { user, ready, authenticated } = usePrivy();
-  const wallet = getWalletAddress(user, "ethereum");
+  const { evmAddress: wallet, ready, authenticated } = useAuthSession();
 
   const config = useQuery({
     queryKey: CASHIER_KEYS.config,
@@ -83,7 +81,7 @@ export function useChessCashierStatus() {
     queryKey: CASHIER_KEYS.balance(wallet ?? "none"),
     queryFn: () => fetchChessBalance(wallet as string),
     enabled,
-    // Private reads need the verified Privy session. If the session is cold,
+    // Private reads need the verified Decane session. If the session is cold,
     // apiFetch throws before any request goes out; keep retrying that warm-up.
     // A real 401/NO_WALLET from the proxy is terminal until the user signs in
     // again or links the wallet, so stop there instead of hammering the route.

@@ -2,7 +2,7 @@
 
 import { fetchBalanceAllowance } from "@polymarket/client/actions";
 import { erc20Abi } from "viem";
-import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
+import type { SecureClient } from "@/lib/polymarket/secure-client";
 import { CONTRACTS, POLYGON_CHAIN_ID, PUSD_DECIMALS } from "@/lib/polymarket/config";
 import { publicClientForChain } from "@/lib/trade/receipt";
 

@@ -65,14 +65,18 @@ component that happens to live upstairs.
 
 ```
 app/                    routes and BFF only
-  (app)/                the signed-in product routes, under one mounted shell
-    layout.tsx          AppShell: auth guard + DashboardShell, once
-    loading.tsx         the content column while a route loads
-    error.tsx           catches a route crash below the shell
-    dashboard/ spot/ perps/ meme/ rwa/ prediction/ activity/
+  layout.tsx            root: fonts, locale, and providers.tsx (query, toaster)
+  page.tsx  privacy/  welcome/  r/   outside every group: no wallet SDK
+  (session)/            everything that needs Privy; see section 9
+    layout.tsx          providers.tsx: Privy, broadcast, analytics, once
+    (app)/              the product routes, under one mounted shell
+      layout.tsx        AppShell: auth guard + DashboardShell, once
+      loading.tsx       the content column while a route loads
+      error.tsx         catches a route crash below the shell
+      dashboard/ spot/ perps/ meme/ rwa/ prediction/ activity/
+    auth/  interests/   sign-in and onboarding
+    casino/  earn/      still mount the shell per page; see section 9
   api/                  49 route handlers, one folder per upstream service
-  casino/ earn/         still mount the shell per page; see section 9
-  layout.tsx  providers.tsx  globals.css
 
 features/               9 slices, 329 files. Each owns its whole vertical.
   <slice>/
@@ -290,6 +294,17 @@ Recorded so they are chosen rather than defaulted into.
    The group also carries `loading.tsx` and `error.tsx`. Before it there was
    no loading boundary anywhere and one error boundary at the root, above the
    shell, so a crashing page took the navigation down with it.
+
+   Above `(app)` sits `(session)`, whose layout mounts the Privy wallet SDK,
+   the broadcast session and the analytics identity: everything a signed-in
+   session needs and a signed-out page does not. Those used to be root
+   providers, which put Privy, viem and livekit-client in front of the
+   landing page and the privacy policy. Measured on the first-load path,
+   the landing page went from 1,270 kB gzip to 249 kB and the privacy
+   policy from 1,255 kB to 182 kB; the product routes did not change, as
+   they pay for the session either way. Sign-in, onboarding, casino, earn
+   and the legacy prediction reclaim are inside `(session)` because each
+   reaches Privy.
 
 3. **The casino hub.** `/casino` is a live route whose live-data path was
    deleted with the dead service. It degrades by design and stays, but the tiles

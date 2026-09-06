@@ -10,9 +10,9 @@ const withNextIntl = createNextIntlPlugin();
 // production build that is missing it should not produce a bundle at all.
 //
 // The check belongs here because this file runs during the build. The same
-// throw inside app/providers.tsx does nothing: that is a client module, its
-// scope is not evaluated while building, and the failure would surface as a
-// blank page in the browser instead.
+// throw inside app/(session)/providers.tsx does nothing: that is a client
+// module, its scope is not evaluated while building, and the
+// failure would surface as a blank page in the browser instead.
 if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
   throw new Error(
     "NEXT_PUBLIC_PRIVY_APP_ID is not set. Set it in the environment before building for production."

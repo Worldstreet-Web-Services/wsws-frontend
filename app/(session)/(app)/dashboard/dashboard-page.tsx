@@ -113,7 +113,10 @@ const BRIEF_BODY: Record<BriefedSectionId, (props: { rows: number }) => React.Re
   rwa: Rwa,
 };
 
-export default function DashboardPage() {
+// The dashboard as the browser runs it. page.tsx beside this file is the
+// server half: it starts the balance prefetch and streams it into the query
+// cache while this renders.
+export function DashboardPage() {
   const tSections = useTranslations("sections");
   const tOverview = useTranslations("overview");
   const tRemit = useTranslations("remitBanner");

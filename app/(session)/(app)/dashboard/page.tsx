@@ -12,6 +12,13 @@ import { DashboardPage } from "./dashboard-page";
 // The Suspense boundary is around the hydration alone. Awaiting the snapshot
 // here would block the whole page on it, which is the one thing this must not
 // do; wrapped this way the fallback is nothing and the rest renders freely.
+// Rendered per request. The page is dynamic at runtime already, through the
+// cookie its layout reads, but the build's static pass still evaluates it,
+// and the feed prefetch starts before any request API is touched, so the
+// composer ran on the build machine against live upstreams. Declaring it
+// keeps the build off the network entirely.
+export const dynamic = "force-dynamic";
+
 export default function Page() {
   const snapshot = dehydratedDashboard();
   return (

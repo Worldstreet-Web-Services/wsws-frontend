@@ -12,7 +12,6 @@ describe("Alchemy sponsorship proxy", () => {
   beforeEach(() => {
     verifyRequest.mockReset();
     verifyRequest.mockResolvedValue({ userId: "user" });
-    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "policy-owner-key");
     vi.stubEnv("ALCHEMY_API_KEY", "data-api-key");
     vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "different-account-key");
     vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "base-policy");
@@ -33,29 +32,14 @@ describe("Alchemy sponsorship proxy", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses only the policy-owning primary key for Base sponsorship", async () => {
-    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
-    const response = await forwardAlchemyBundlerRequest(
-      makeReq({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "eth_sendUserOperation",
-        params: [{ sender: "0x1" }, "0xentrypoint"],
-      }),
-      "base-mainnet"
-    );
-
-    expect(response.status).toBe(200);
-    expect(fetch).toHaveBeenCalledOnce();
-    const [url, init] = vi.mocked(fetch).mock.calls[0];
-    expect(String(url)).toContain("base-mainnet.g.alchemy.com/v2/policy-owner-key");
-    expect(String(url)).not.toContain("data-api-key");
-    expect(String(url)).not.toContain("different-account-key");
-    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBe("base-policy");
-  });
-
-  it("keeps the existing primary key as a compatibility fallback", async () => {
-    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "");
+  // Regression: a stale ALCHEMY_GAS_MANAGER_API_KEY once took precedence over
+  // ALCHEMY_API_KEY and built the whole bundler URL from it, so rotating
+  // ALCHEMY_API_KEY changed nothing and every sponsored call kept going to an
+  // account that was over its monthly capacity. Spot, perps and withdrawals
+  // all failed with a 429 that named no cause. The variable is gone; this
+  // proves nothing reads it again.
+  it("ignores ALCHEMY_GAS_MANAGER_API_KEY entirely, even when it is set", async () => {
+    vi.stubEnv("ALCHEMY_GAS_MANAGER_API_KEY", "stale-dead-key");
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     const response = await forwardAlchemyBundlerRequest(
       makeReq({ method: "eth_sendUserOperation", params: [] }),
@@ -63,9 +47,55 @@ describe("Alchemy sponsorship proxy", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain(
-      "base-mainnet.g.alchemy.com/v2/data-api-key"
+    const url = String(vi.mocked(fetch).mock.calls[0][0]);
+    expect(url).toContain("base-mainnet.g.alchemy.com/v2/data-api-key");
+    expect(url).not.toContain("stale-dead-key");
+  });
+
+  // Base runs through the paymaster path: the policy the team holds is a
+  // paymaster-type policy, and Alchemy answers the bundler header path for it
+  // with "does not support bundler sponsorship" (ADR-2026-09-06-base-
+  // sponsorship-via-paymaster). The proxy injects Base's own policy into the
+  // paymaster context and sends no bundler header.
+  it("injects the Base policy into paymaster context and sends no bundler header", async () => {
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "pm_getPaymasterStubData",
+        params: [{ sender: "0x1" }, "0xentrypoint", "0x2105", {}],
+      }),
+      "base-mainnet"
     );
+
+    expect(response.status).toBe(200);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("base-mainnet.g.alchemy.com/v2/data-api-key");
+    expect(JSON.parse(String(init?.body)).params[3]).toEqual({ policyId: "base-policy" });
+    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
+  });
+
+  it("never rotates sponsorship onto the fallback key", async () => {
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).not.toContain("different-account-key");
+  });
+
+  it("answers 503 when no Alchemy key is configured at all", async () => {
+    vi.stubEnv("ALCHEMY_API_KEY", "");
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+
+    expect(response.status).toBe(503);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("rejects ordinary node reads so they stay on ZeroDev", async () => {
@@ -101,11 +131,12 @@ describe("Alchemy sponsorship proxy", () => {
     vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "");
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     const response = await forwardAlchemyBundlerRequest(
-      makeReq({ method: "eth_sendUserOperation", params: [] }),
+      makeReq({ method: "pm_getPaymasterData", params: [{}, "0xentrypoint", "0x2105", {}] }),
       "base-mainnet"
     );
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(424);
+    expect(await response.json()).toMatchObject({ error: expect.stringMatching(/base-mainnet/) });
     expect(fetch).not.toHaveBeenCalled();
   });
 

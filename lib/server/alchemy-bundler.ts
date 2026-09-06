@@ -1,7 +1,10 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
-import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
+import {
+  getSponsoredEvmChainByNetwork,
+  type SponsoredEvmChainConfig,
+} from "@/lib/trade/sponsored-evm";
 
 const USER_OPERATION_METHODS = new Set([
   "eth_estimateUserOperationGas",
@@ -23,10 +26,30 @@ interface RpcCall {
   params?: unknown[];
 }
 
+// The Gas Manager policy is scoped to the Alchemy account owning this key, so
+// sponsorship reads ALCHEMY_API_KEY and nothing else.
+//
+// There used to be an ALCHEMY_GAS_MANAGER_API_KEY read ahead of this one, for
+// a policy-owning key on a separate account from the portfolio reads. It was
+// preferred silently, so when the account behind it ran out of monthly
+// capacity, rotating ALCHEMY_API_KEY fixed nothing and every sponsored call
+// kept 429ing. Restore that indirection only alongside a way to tell which key
+// is in play, and never leave it set to a key that is not the policy's.
 function primaryAlchemyKey(): string | null {
-  return (
-    process.env.ALCHEMY_GAS_MANAGER_API_KEY?.trim() || process.env.ALCHEMY_API_KEY?.trim() || null
-  );
+  return process.env.ALCHEMY_API_KEY?.trim() || null;
+}
+
+// The policy a paymaster-mode network sponsors under. Polygon keeps the
+// variable it launched with; every other paymaster network, Base since
+// ADR-2026-09-06-base-sponsorship-via-paymaster, uses the shared one. Base
+// moved here because the team's policy is a paymaster-type policy, which the
+// bundler header path answers with "does not support bundler sponsorship".
+function paymasterPolicyIdFor(target: SponsoredEvmChainConfig): string | undefined {
+  const raw =
+    target.network === "polygon-mainnet"
+      ? process.env.ALCHEMY_POLYGON_GAS_POLICY_ID
+      : process.env.ALCHEMY_GAS_POLICY_ID;
+  return raw?.trim() || undefined;
 }
 
 function withPaymasterPolicy(call: RpcCall, policyId: string): RpcCall {
@@ -72,7 +95,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
   }
 
   const bsoPolicyId = process.env.ALCHEMY_GAS_POLICY_ID?.trim();
-  const polygonPolicyId = process.env.ALCHEMY_POLYGON_GAS_POLICY_ID?.trim();
+  const paymasterPolicyId = paymasterPolicyIdFor(target);
   const needsPaymasterPolicy =
     target.sponsorshipMode === "paymaster" &&
     calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)));
@@ -80,9 +103,9 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     target.sponsorshipMode === "bso" &&
     calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
 
-  if (needsPaymasterPolicy && !polygonPolicyId) {
+  if (needsPaymasterPolicy && !paymasterPolicyId) {
     return NextResponse.json(
-      { error: "Polygon gas sponsorship policy is missing" },
+      { error: `Gas sponsorship policy for ${network} is missing` },
       { status: 424 }
     );
   }
@@ -91,8 +114,8 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
   }
 
   const attachPaymasterPolicy = (call: RpcCall | null): RpcCall | null =>
-    call && needsPaymasterPolicy && polygonPolicyId
-      ? withPaymasterPolicy(call, polygonPolicyId)
+    call && needsPaymasterPolicy && paymasterPolicyId
+      ? withPaymasterPolicy(call, paymasterPolicyId)
       : call;
   const upstreamBody = Array.isArray(body)
     ? calls.map(attachPaymasterPolicy)

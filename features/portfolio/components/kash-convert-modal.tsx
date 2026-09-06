@@ -47,13 +47,15 @@ export function KashConvertModal({ open, onClose }: KashConvertModalProps) {
     isError: accountFailed,
     wallet,
   } = useKashAccount();
-  const deskInfo = useKashDeskInfo(status?.chainMode === "ethers");
+  // Gated on `open`, like the buy sheet: mounted from the portfolio whether
+  // showing or not, and its reads must not run for a closed sheet.
+  const deskInfo = useKashDeskInfo(open && status?.chainMode === "ethers");
   const deskConfigured = Boolean(deskInfo.data);
   // Not-configured and explicitly-paused both mean the same thing to a
   // seller: nothing can be redeemed right now. One state, one message,
   // rather than separate copy for a config gap versus an intentional halt.
   const paused = !deskConfigured || deskInfo.data?.paused.redeem === true;
-  const deskQuote = useKashDeskSellQuote(amount, !paused);
+  const deskQuote = useKashDeskSellQuote(amount, open && !paused);
   const deskSell = useKashDeskSell();
 
   // The desk redeems against the wallet's real on-chain KASH+ balance, gated

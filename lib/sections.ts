@@ -20,7 +20,10 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 const PINNED: SectionId = "portfolio";
 const REORDERABLE: SectionId[] = [
   "spot",
-  "perps",
+  // Perpetuals are hidden from the nav for now, like earn. The desk stays at
+  // /perps; dropping it here also drops its dashboard brief, its marquee item
+  // and its tab, all of which follow the nav.
+  // "perps",
   "meme",
   "rwa",
   "prediction",
@@ -30,12 +33,39 @@ const REORDERABLE: SectionId[] = [
   "activity",
 ];
 
+// Sections that are their own page rather than an anchor on /dashboard.
+// Portfolio is the dashboard itself, so it has no entry here.
+export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
+  spot: "/spot",
+  perps: "/perps",
+  meme: "/meme",
+  rwa: "/rwa",
+  casino: "/casino",
+  earn: "/earn",
+  prediction: "/prediction",
+  activity: "/activity",
+};
+
+// The section a path belongs to, for the rail's highlight: the route whose
+// prefix matches, so /prediction/event/abc lights Prediction, or portfolio,
+// which is the dashboard and the account home. A route fact, so the shell can
+// derive it once for every page; only the dashboard overrides it, from its
+// scroll position.
+export function sectionForPathname(pathname: string | null): SectionId {
+  if (!pathname) return "portfolio";
+  for (const [id, route] of Object.entries(SECTION_ROUTES) as [SectionId, string][]) {
+    if (pathname === route || pathname.startsWith(`${route}/`)) return id;
+  }
+  return "portfolio";
+}
+
 // Maps an onboarding interest to the section it should surface first.
 const INTEREST_TO_SECTION: Record<string, SectionId> = {
   stocks: "rwa",
   gold: "rwa",
   crypto: "spot",
-  perps: "perps",
+  // Perpetuals are hidden from the nav for now; the interest falls back to the default order.
+  // perps: "perps",
   meme: "meme",
   prediction: "prediction",
   casino: "casino",

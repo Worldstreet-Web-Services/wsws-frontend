@@ -330,6 +330,7 @@
     "soon": "Soon"
   },
   "auth": {
+    "idleSignedOut": "Signed out after {hours} hours of inactivity. Please sign in again.",
     "beta": "Beta",
     "earlyAccess": "Early access is open",
     "welcome": "Welcome to",
@@ -2187,6 +2188,8 @@
     "bannerSub": "Trade, play and refer. Every activity pays you back in Kash+.",
     "bannerCta": "Buy Kash+",
     "balanceTitle": "Kash+ balance",
+    "balanceUnavailable": "Couldn't load your balance. It is safe; retrying…",
+    "balanceNoWallet": "Your wallet is still setting up. Your balance appears once it is ready.",
     "buy": "Buy",
     "convert": "Convert",
     "gateTitle": "Progress to earning",
@@ -2462,6 +2465,14 @@
     "title": "Coming soon",
     "body": "We're putting the finishing touches on {brand}. Check back shortly. It'll be worth the wait.",
     "close": "Got it"
+  },
+  "maintenance": {
+    "eyebrow": "Scheduled maintenance",
+    "title": "We are working on some updates to serve you better.",
+    "funds": "Your money is untouched. Balances, positions and holdings are exactly where you left them.",
+    "back": "We'll be back shortly. You can check in with us if you need anything in the meantime.",
+    "contactTitle": "Need us before then?",
+    "email": "Email support"
   },
   "waitlist": {
     "countdownTitle": "The whole market, <accent>about to open.</accent>",

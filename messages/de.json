@@ -330,6 +330,7 @@
     "soon": "Bald"
   },
   "auth": {
+    "idleSignedOut": "Nach {hours} Stunden Inaktivität abgemeldet. Bitte melden Sie sich erneut an.",
     "beta": "Beta",
     "earlyAccess": "Der frühe Zugang ist offen",
     "welcome": "Willkommen bei",
@@ -2187,6 +2188,8 @@
     "bannerSub": "Handeln, spielen, empfehlen. Jede Aktivität zahlt sich in Kash+ aus.",
     "bannerCta": "Kash+ kaufen",
     "balanceTitle": "Kash+ Guthaben",
+    "balanceUnavailable": "Dein Guthaben konnte nicht geladen werden. Es ist sicher; neuer Versuch…",
+    "balanceNoWallet": "Deine Wallet wird noch eingerichtet. Dein Guthaben erscheint, sobald sie bereit ist.",
     "buy": "Kaufen",
     "convert": "Umwandeln",
     "gateTitle": "Fortschritt zum Verdienen",
@@ -2462,6 +2465,14 @@
     "title": "Bald verfügbar",
     "body": "Wir legen gerade letzte Hand an {brand}. Schauen Sie in Kürze wieder vorbei. Es lohnt sich.",
     "close": "Verstanden"
+  },
+  "maintenance": {
+    "eyebrow": "Geplante Wartung",
+    "title": "Wir arbeiten an einigen Updates, um dich besser zu bedienen.",
+    "funds": "Dein Geld bleibt unberührt. Guthaben, Positionen und Bestände sind genau dort, wo du sie gelassen hast.",
+    "back": "Wir sind bald zurück. Melde dich gern bei uns, falls du in der Zwischenzeit etwas brauchst.",
+    "contactTitle": "Brauchst du uns vorher?",
+    "email": "Support per E-Mail"
   },
   "waitlist": {
     "countdownTitle": "Der ganze Markt <accent>öffnet gleich.</accent>",

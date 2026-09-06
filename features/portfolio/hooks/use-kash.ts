@@ -32,7 +32,11 @@ const STATUS_STALE_MS = 60 * 1000;
 //
 // A minute of lag there reads as "the points never arrived". Ten seconds costs
 // one small authed GET per wallet and makes the number appear on its own.
-const ACCOUNT_POLL_MS = 10 * 1000;
+// Thirty seconds, down from ten. At ten this one read was a fifth of every
+// request an idle dashboard made, for a points balance that changes when the
+// user acts, and refetchOnWindowFocus already covers the case of coming back
+// from a wallet or an explorer expecting a new number.
+const ACCOUNT_POLL_MS = 30 * 1000;
 
 export function useKashStatus() {
   return useQuery({
@@ -68,7 +72,12 @@ export function useKashAccount() {
     refetchOnWindowFocus: true,
   });
 
-  return { ...query, wallet };
+  // The query only runs once Privy has resolved an embedded EVM wallet, so a
+  // signed-in user without one stays pending forever. Callers have to tell that
+  // apart from a load that is still in flight.
+  const walletMissing = ready && authenticated && !wallet;
+
+  return { ...query, wallet, walletMissing };
 }
 
 // The tier catalogue is engine config; it moves on deploys, not minutes.

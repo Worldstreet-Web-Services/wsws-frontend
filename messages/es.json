@@ -330,6 +330,7 @@
     "soon": "Pronto"
   },
   "auth": {
+    "idleSignedOut": "Sesión cerrada tras {hours} horas de inactividad. Vuelve a iniciar sesión.",
     "beta": "Beta",
     "earlyAccess": "El acceso anticipado está abierto",
     "welcome": "Bienvenido a",
@@ -2187,6 +2188,8 @@
     "bannerSub": "Opera, juega y refiere. Cada actividad te recompensa en Kash+.",
     "bannerCta": "Comprar Kash+",
     "balanceTitle": "Saldo de Kash+",
+    "balanceUnavailable": "No pudimos cargar tu saldo. Está seguro; reintentando…",
+    "balanceNoWallet": "Tu monedero aún se está configurando. Tu saldo aparecerá cuando esté listo.",
     "buy": "Comprar",
     "convert": "Convertir",
     "gateTitle": "Progreso para ganar",
@@ -2462,6 +2465,14 @@
     "title": "Muy pronto",
     "body": "Estamos dando los últimos toques a {brand}. Vuelve pronto. Valdrá la pena.",
     "close": "Entendido"
+  },
+  "maintenance": {
+    "eyebrow": "Mantenimiento programado",
+    "title": "Estamos trabajando en algunas mejoras para atenderte mejor.",
+    "funds": "Tu dinero está intacto. Los saldos, las posiciones y las tenencias están exactamente donde los dejaste.",
+    "back": "Volvemos en breve. Escríbenos si necesitas algo mientras tanto.",
+    "contactTitle": "¿Nos necesitas antes?",
+    "email": "Escribir a soporte"
   },
   "waitlist": {
     "countdownTitle": "Todo el mercado, <accent>a punto de abrir.</accent>",

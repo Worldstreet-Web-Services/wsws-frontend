@@ -127,10 +127,15 @@ export function DashboardPage() {
   useReportActiveSection(activeSection);
   // The services briefed on this page, in the nav's own order.
   const briefs = useMemo(() => nav.map((n) => n.id).filter(isBriefed), [nav]);
+  const buyParam = useSearchParams().get("buy");
   // The tradeable universe, so a $TICKER in a square post can open the real
-  // buy sheet. The spot brief above already caches this, so it costs nothing
-  // extra; the square slice takes a plain shape and never imports trade.
-  const { markets: spotMarkets } = useSpotMarkets();
+  // buy sheet. Only gathered while something can use it: the square, when it
+  // is shown, or a ?buy= deep link. The brief above reads the dashboard feed
+  // now, so without one of those this would have been a price poll under a
+  // page that already had its numbers.
+  const { markets: spotMarkets } = useSpotMarkets({
+    enabled: !MARKET_SQUARE_HIDDEN || buyParam !== null,
+  });
   // The square's feed tab lives here because two siblings drive it: the
   // section's own strip, and the plus sheet's discussions.
   const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
@@ -181,7 +186,6 @@ export function DashboardPage() {
    * An unknown symbol opens nothing: the square cannot know what this
    * deployment lists, and an empty sheet is worse than no sheet.
    */
-  const buyParam = useSearchParams().get("buy");
   const [deepLinkDismissed, setDeepLinkDismissed] = useState(false);
   const deepLinkBuy = useMemo((): DashboardModal => {
     if (!buyParam || deepLinkDismissed) return null;

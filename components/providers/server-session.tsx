@@ -24,12 +24,16 @@ export function useServerSession(): ServerSession | null {
   return useContext(ServerSessionContext);
 }
 
-// The session's embedded wallet on a chain. Privy is the authority once it is
-// ready: it reflects a sign-out or a new sign-in the moment they happen. Until
-// then the server's answer stands in, which is the same wallet, read from the
-// same account, a moment earlier. Null when neither knows of one.
+// The session's embedded wallet on a chain. Until Privy is ready the server's
+// answer stands in: the same wallet, read from the same account, a moment
+// earlier. Once Privy is ready its answer is the only one, including "none":
+// a browser that has signed out, or signed in as someone without a wallet on
+// this chain, must not inherit the address the cookie named when the page
+// rendered. Falling back on null here was the review finding that a stale
+// server wallet could outlive the session that produced it.
 export function useSessionWallet(chain: "ethereum" | "solana"): string | null {
-  const { user } = usePrivy();
+  const { ready, user } = usePrivy();
   const server = useServerSession();
-  return getWalletAddress(user, chain) ?? server?.wallets[chain] ?? null;
+  if (!ready) return server?.wallets[chain] ?? null;
+  return getWalletAddress(user, chain);
 }

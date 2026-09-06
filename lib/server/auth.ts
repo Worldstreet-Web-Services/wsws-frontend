@@ -73,6 +73,12 @@ export async function verifyRequest(req: NextRequest): Promise<AccessClaims | nu
 // Resolves the full Privy user from an identity token, when the client sent
 // one. When the identity token is missing or cold, fall back to the verified
 // user id so money-moving routes can still prove which wallet the session owns.
+//
+// The identity token is client-supplied, so with a verified session it is only
+// a shortcut: it must name the same user the access token does. Otherwise a
+// caller could pair their own session with someone else's identity token and
+// the wallet gates in kash and perp would treat them as that wallet's owner.
+// A mismatch is ignored and the verified user id is loaded instead.
 export async function getRequestUser(
   req: NextRequest,
   claims: AccessClaims | null = null
@@ -81,7 +87,8 @@ export async function getRequestUser(
   const load = async (): Promise<User | null> => {
     if (idToken) {
       try {
-        return await getPrivyClient().users().get({ id_token: idToken });
+        const user = await getPrivyClient().users().get({ id_token: idToken });
+        if (!claims || user.id === claims.userId) return user;
       } catch {
         // Fall through to the verified user id below.
       }

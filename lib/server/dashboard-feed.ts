@@ -236,19 +236,31 @@ async function liveSection(): Promise<DashboardLive> {
     getJson(`${VAULT_BASE}/games`, 5)
       .then((res) => envelopeData<{ games: IndexedGame[] }>(res))
       .then((data) => data.games)
-      .catch((): IndexedGame[] => []),
-    readActiveGamesWith(baseReadClient(), now).catch(() => []),
+      .catch((error): IndexedGame[] => {
+        console.warn("[dashboard-feed] live: vault index unavailable:", error);
+        return [];
+      }),
+    readActiveGamesWith(baseReadClient(), now).catch((error) => {
+      console.warn("[dashboard-feed] live: chain read unavailable:", error);
+      return [];
+    }),
     priceMap(["ETH"])
       .then((p) => p.ETH ?? 0)
       .catch(() => 0),
     getJson(`${CHESS_BASE}/matches?status=active&limit=50`, 5)
       .then((res) => envelopeData<{ items: ChessMatchWireLite[] }>(res))
       .then((data) => data.items)
-      .catch((): ChessMatchWireLite[] => []),
+      .catch((error): ChessMatchWireLite[] => {
+        console.warn("[dashboard-feed] live: chess unavailable:", error);
+        return [];
+      }),
     getJson(`${CHESS_BASE}/draughts/matches?status=active&limit=50`, 5)
       .then((res) => envelopeData<{ items: DraughtsMatchWireLite[] }>(res))
       .then((data) => data.items)
-      .catch((): DraughtsMatchWireLite[] => []),
+      .catch((error): DraughtsMatchWireLite[] => {
+        console.warn("[dashboard-feed] live: draughts unavailable:", error);
+        return [];
+      }),
   ]);
 
   const live = indexed.filter((g) => g.active && !g.settled && g.endTime > now);
@@ -285,21 +297,25 @@ async function liveSection(): Promise<DashboardLive> {
   };
 }
 
-async function section<T>(load: () => Promise<T>): Promise<T | null> {
+// A section that cannot be built is null, never a guess: the brief shows its
+// unavailable state. The failure is logged with its section so an upstream
+// that is down shows up in the server logs rather than only as a quiet gap.
+async function section<T>(name: keyof DashboardFeed, load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
-  } catch {
+  } catch (error) {
+    console.warn(`[dashboard-feed] ${name} unavailable:`, error);
     return null;
   }
 }
 
 async function compose(): Promise<DashboardFeed> {
   const [spot, perps, memes, rwa, live] = await Promise.all([
-    section(spotSection),
-    section(perpsSection),
-    section(memesSection),
-    section(rwaSection),
-    section(liveSection),
+    section("spot", spotSection),
+    section("perps", perpsSection),
+    section("memes", memesSection),
+    section("rwa", rwaSection),
+    section("live", liveSection),
   ]);
   return { asOf: Date.now(), spot, perps, memes, rwa, live };
 }

@@ -65,7 +65,13 @@ component that happens to live upstairs.
 
 ```
 app/                    routes and BFF only
-  api/                  44 route handlers, one folder per upstream service
+  (app)/                the signed-in product routes, under one mounted shell
+    layout.tsx          AppShell: auth guard + DashboardShell, once
+    loading.tsx         the content column while a route loads
+    error.tsx           catches a route crash below the shell
+    dashboard/ spot/ perps/ meme/ rwa/ prediction/ activity/
+  api/                  49 route handlers, one folder per upstream service
+  casino/ earn/         still mount the shell per page; see section 9
   layout.tsx  providers.tsx  globals.css
 
 features/               9 slices, 329 files. Each owns its whole vertical.
@@ -141,7 +147,7 @@ neither owns state:
 
 **The feature triggers, the route owns the modal: raise a callback.** Portfolio
 opens trade's sell sheet, so it raises `onOpenMemeSell(token)` and
-`app/dashboard` renders the sheet. This matches the `onOpen*` convention
+`app/(app)/dashboard` renders the sheet. This matches the `onOpen*` convention
 portfolio already uses for buy, sell, detail and rwa.
 
 **The feature owns the state and is too large to safely reshape: take a render
@@ -262,19 +268,28 @@ Recorded so they are chosen rather than defaulted into.
    architecture, the App Router as a client router over a proxy layer, but it
    should be a decision. Current position: new read-heavy pages fetch on the
    server; existing pages are not migrated for their own sake.
-2. **Route groups.** This repository has never used them. Every page imports
-   `DashboardShell` itself rather than inheriting it from an `(app)/layout.tsx`.
-   An earlier draft of this document listed `(marketing)` and `(app)` in its
-   target tree, which was a proposal that was never built, not a structure that
-   was removed.
+2. **Route groups.** Built, for the product routes. `app/(app)/layout.tsx`
+   mounts the shell once, so moving between the dashboard and the perps desk
+   no longer tears down and rebuilds the sidebar, topbar, tab bar, funds modal
+   and broadcast dock, and no longer re-runs their effects.
 
-   Current position: leave it. Grouping the folders is easy, but it does not buy
-   the thing that would make it worth doing, because the shell cannot move into a
-   shared layout as it stands. `DashboardShell` takes `activeSection`, and on
-   `/dashboard` that is scroll-spy state rather than a route fact, so a layout
-   has no way to derive it from the URL. Sharing the shell would mean lifting
-   that into context, which is a real change to how the sidebar highlight works,
-   not a folder move.
+   The objection that held this back was `activeSection`: on `/dashboard` it
+   is scroll-spy state, not a route fact, so a layout could not derive it. It
+   is now context. `AppChromeProvider` (`components/layout/app-chrome.tsx`)
+   derives the highlight from the path with `sectionForPathname`, and the
+   dashboard reports its scroll-spy value as an override while it is mounted.
+   The same provider builds the nav once, which removed nine copies of
+   `buildNav(loadInterest(), t)`.
+
+   Casino and earn are still outside the group. Casino switches its chrome by
+   route from inside the feature (chess site shell, bare board, or the app
+   shell), and earn wraps its ten routes the same way. Bringing each in is a
+   change of its own: casino needs its immersive routes split into a sibling
+   group, earn needs `EarnPage` reduced to its back link.
+
+   The group also carries `loading.tsx` and `error.tsx`. Before it there was
+   no loading boundary anywhere and one error boundary at the root, above the
+   shell, so a crashing page took the navigation down with it.
 
 3. **The casino hub.** `/casino` is a live route whose live-data path was
    deleted with the dead service. It degrades by design and stays, but the tiles

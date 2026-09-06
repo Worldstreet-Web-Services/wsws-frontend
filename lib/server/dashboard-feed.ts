@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createPublicClient, custom } from "viem";
+import { createPublicClient, custom, formatEther } from "viem";
 import { base } from "viem/chains";
 import { fetchPrices } from "@/lib/server/alchemy";
 import { dextopusRequest } from "@/lib/server/dextopus";
@@ -277,8 +277,11 @@ async function liveSection(): Promise<DashboardLive> {
     ...chain
       .filter((g) => !indexedIds.has(g.gameId) && g.endTime > now)
       .map((g) => {
-        const eth = Number(g.potWei) / 1e18;
-        const usd = ethUsd > 0 ? eth * ethUsd : 0;
+        // Wei to ether as an exact decimal string; the label carries every
+        // digit. The USD figure is display only, a sort key and a rounded
+        // label, and is the one place a float is allowed to enter.
+        const eth = formatEther(g.potWei);
+        const usd = ethUsd > 0 ? Number(eth) * ethUsd : 0;
         return {
           gameId: g.gameId,
           endTime: g.endTime,

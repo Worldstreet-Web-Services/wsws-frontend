@@ -279,6 +279,34 @@ describe("buildDashboardFeed", () => {
     });
   });
 
+  it("labels a chain round's pot exactly when it cannot be priced", async () => {
+    healthyUpstreams();
+    // No ETH price: the label falls back to the pot in ETH, and wei must reach
+    // it as an exact decimal, not through a float that rounds the last digits.
+    upstream.fetchPrices.mockImplementation(async (symbols: string[]) =>
+      symbols.filter((s) => s !== "ETH").map((symbol) => ({ symbol, priceUsd: 1 }))
+    );
+    upstream.readActiveGamesWith.mockResolvedValue([
+      {
+        gameId: 9,
+        starter: "0x1",
+        king: "0x2",
+        potWei: 1234567890123456789n,
+        minWagerWei: 0n,
+        endTime: NOW + 600,
+      },
+    ]);
+    upstream.fetch.mockImplementation(async (url: string) => {
+      if (url.startsWith("https://vault.test/games")) return ok({ games: [] });
+      if (url.startsWith("https://trade.test"))
+        return ok({ items: [], meta: { page: 1, limit: 8, total: 0 } });
+      return down();
+    });
+
+    const feed = await buildDashboardFeed();
+    expect(feed.live?.rounds[0]?.pot).toBe("1.234567890123456789 ETH");
+  });
+
   it("serves the same composed value to every caller inside the window", async () => {
     healthyUpstreams();
     const [a, b] = await Promise.all([buildDashboardFeed(), buildDashboardFeed()]);

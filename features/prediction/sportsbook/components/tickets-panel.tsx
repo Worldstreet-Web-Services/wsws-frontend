@@ -9,6 +9,7 @@ import {
   settlementTokenPriceUsd,
   tokenToUsdcAmount,
 } from "../money";
+import { isLostSelectionResult } from "../ticket-status";
 import { useSportsbookOrderHistory } from "../hooks/use-sportsbook";
 
 const POSITIVE = new Set(["won", "redeemable", "redeemed"]);
@@ -65,8 +66,9 @@ function TicketRow({
   onOpen: (id: string) => void;
   ethPriceUsd: number;
 }) {
-  const positive = POSITIVE.has(order.status);
-  const negative = NEGATIVE.has(order.status);
+  const lostLegs = order.legs.filter((leg) => isLostSelectionResult(leg.result));
+  const positive = POSITIVE.has(order.status) && lostLegs.length === 0;
+  const negative = NEGATIVE.has(order.status) || lostLegs.length > 0;
   const tokenPriceUsd = settlementTokenPriceUsd(order.token.symbol, ethPriceUsd);
   const stakeUsdc = tokenPriceUsd
     ? tokenToUsdcAmount(
@@ -101,6 +103,11 @@ function TicketRow({
         <span className="mt-1 block text-[9px] font-medium text-[#7e7e7e] uppercase">
           {order.bookingCode} · {order.status.replaceAll("_", " ")}
         </span>
+        {lostLegs.length > 0 ? (
+          <span className="mt-1 block truncate text-[9px] font-medium text-[#f42e52]">
+            Lost: {lostLegs.map((leg) => leg.outcomeTitle).join(", ")}
+          </span>
+        ) : null}
       </span>
       <span className="shrink-0 text-right">
         <span className="block text-[11px] font-semibold text-[#ebebeb] tabular-nums">

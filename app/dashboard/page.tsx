@@ -13,11 +13,15 @@ import { PerpsOverview } from "@/features/trade/components/perps-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { ExploreBanners } from "@/components/layout/explore-banners";
-import { DepositAnalytics } from "@/features/activity";
+// Deep imports for activity and remit, not their barrels. The activity barrel
+// also exports the full ActivityView and the remit barrel the CrossBorderModal;
+// neither renders here, and through the barrels both shipped in the dashboard's
+// first load. optimizePackageImports only rewrites npm barrels, not ours.
+import { DepositAnalytics } from "@/features/activity/components/deposit-analytics";
 import { SectionVisibility } from "@/components/ui/section-visibility";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { BankDepositAnalytics } from "@/features/funds";
-import { CrossBorderBanner } from "@/features/remit";
+import { CrossBorderBanner } from "@/features/remit/components/cross-border-banner";
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { SquareComposeFab, SquareSection } from "@/features/square";

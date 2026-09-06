@@ -63,6 +63,14 @@ const nextConfig: NextConfig = {
       "sonner",
       "embla-carousel-react",
       "tailwind-merge",
+      // The heaviest packages on the first-load path that were missing from
+      // this list: viem is 532 kB gzip reachable from the root providers, and
+      // the other three are barrels whose whole graph came along for one
+      // import each.
+      "viem",
+      "livekit-client",
+      "lightweight-charts",
+      "next-intl",
     ],
   },
 };

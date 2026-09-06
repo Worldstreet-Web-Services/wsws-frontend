@@ -152,6 +152,11 @@ page.tsx -> lib/server/session.ts (cookie -> verified user) -> lib/server/<data>
   already there. The dashboard's balance is the first route on this path.
 - Per-user reads on this path are never cached across requests. The only
   cache they touch is the per-wallet process cache the route handler shares.
+- The `(app)` layout calls `getServerSession` and hands the browser the user
+  id and wallet addresses (`lib/session.ts`). `AuthGuard` then shows the page
+  at the first byte instead of waiting for Privy to start, and
+  `useSessionWallet` gives hooks a wallet to key on until Privy knows the
+  user. Privy remains the authority once it has answered.
 
 ---
 

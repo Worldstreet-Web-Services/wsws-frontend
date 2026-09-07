@@ -265,6 +265,8 @@
     "title": "Sacar para o banco",
     "subtitle": "Saque para uma conta bancária da Nigéria em naira.",
     "bankLabel": "Banco",
+    "selectBank": "Selecionar banco",
+    "loadingBanks": "Carregando bancos…",
     "change": "Alterar",
     "searchBank": "Busque seu banco",
     "banksFailed": "Não foi possível carregar os bancos. Tente novamente.",

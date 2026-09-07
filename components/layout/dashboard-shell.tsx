@@ -109,7 +109,7 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
         <AccountModal onClose={() => setAccountOpen(false)} />
       </ModalShell>
 
-      <ModalShell open={fundsOpen} onClose={() => setFundsOpen(false)} size="lg">
+      <ModalShell open={fundsOpen} onClose={() => setFundsOpen(false)} size="lg" placement="center">
         <FundsModal onClose={() => setFundsOpen(false)} />
       </ModalShell>
     </div>

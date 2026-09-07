@@ -16,6 +16,7 @@ interface ModalShellProps {
   // Desktop width. Defaults to the standard sheet; "lg" gives form-heavy modals
   // (e.g. the funding flow) more room.
   size?: "md" | "lg";
+  placement?: "bottom" | "center";
   panelClassName?: string;
   contentClassName?: string;
   closeButtonClassName?: string;
@@ -32,11 +33,13 @@ export function ModalShell({
   children,
   contentKey,
   size = "md",
+  placement = "bottom",
   panelClassName,
   contentClassName,
   closeButtonClassName,
 }: ModalShellProps) {
   const reduce = useReducedMotion();
+  const isCenter = placement === "center";
 
   return (
     // Portalled so a sheet is always measured against the viewport. Opened
@@ -51,12 +54,29 @@ export function ModalShell({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             onClick={onClose}
-            className="fixed inset-0 z-[300] flex items-end justify-center bg-black/62 backdrop-blur-[7px] md:pb-6"
+            className={cn(
+              "fixed inset-0 z-[300] flex justify-center bg-black/62 backdrop-blur-[7px]",
+              isCenter ? "items-center p-4 md:p-6" : "items-end md:items-center md:p-6"
+            )}
           >
             <motion.div
-              initial={reduce ? { opacity: 0 } : { y: "100%" }}
-              animate={reduce ? { opacity: 1 } : { y: 0 }}
-              exit={reduce ? { opacity: 0 } : { y: "100%" }}
+              initial={
+                reduce
+                  ? { opacity: 0 }
+                  : isCenter
+                    ? { opacity: 0, scale: 0.96, y: 16 }
+                    : { y: "100%" }
+              }
+              animate={
+                reduce ? { opacity: 1 } : isCenter ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }
+              }
+              exit={
+                reduce
+                  ? { opacity: 0 }
+                  : isCenter
+                    ? { opacity: 0, scale: 0.96, y: 16 }
+                    : { y: "100%" }
+              }
               transition={
                 reduce
                   ? { duration: 0.15 }
@@ -64,15 +84,20 @@ export function ModalShell({
               }
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "bg-sheet ws-no-scrollbar relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px] md:pt-[26px]",
-                SIZE_WIDTH[size],
+                "bg-sheet ws-no-scrollbar relative max-h-[92vh] w-full overflow-y-auto border border-white/14 px-[26px] pt-4 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)]",
+                isCenter
+                  ? "w-[min(440px,100%)] rounded-[24px] pt-[26px]"
+                  : "rounded-t-[24px] md:rounded-[24px] md:pt-[26px]",
+                isCenter && size === "lg" ? "w-[min(600px,100%)]" : SIZE_WIDTH[size],
                 panelClassName
               )}
             >
-              <span
-                aria-hidden
-                className="mx-auto mb-4 block h-1 w-9 rounded-full bg-white/20 md:hidden"
-              />
+              {!isCenter && (
+                <span
+                  aria-hidden
+                  className="mx-auto mb-4 block h-1 w-9 rounded-full bg-white/20 md:hidden"
+                />
+              )}
               <button
                 onClick={onClose}
                 aria-label="Close"

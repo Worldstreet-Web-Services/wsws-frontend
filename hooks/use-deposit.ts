@@ -12,6 +12,7 @@ import {
   eligibilityKey,
   eligibilityLookupAddress,
   findStaticAddress,
+  isStaticAddressBlocked,
   quoteReadyDestinationAsset,
   type AddressKind,
   type DepositChain,
@@ -200,6 +201,7 @@ export async function fetchMasterEligibility(): Promise<MasterEligibility> {
   const chainIds = new Set<number>();
   for (const t of data.tokens ?? []) {
     if (!t.supportsStaticAddress) continue;
+    if (isStaticAddressBlocked(t.chainId, t.address)) continue;
     keys.push(eligibilityKey(t.chainId, t.address));
     chainIds.add(t.chainId);
   }
@@ -342,9 +344,9 @@ export async function fetchDepositTokens(
       logoUrl: t.logoUrl ?? null,
       // Master eligibility keys SOL under the wrapped mint, so map the
       // normalized address back to that form for the lookup.
-      supportsStaticAddress: eligible.has(
-        eligibilityKey(t.chainId, eligibilityLookupAddress(t.chainId, address))
-      ),
+      supportsStaticAddress:
+        eligible.has(eligibilityKey(t.chainId, eligibilityLookupAddress(t.chainId, address))) &&
+        !isStaticAddressBlocked(t.chainId, address),
     };
   });
 }

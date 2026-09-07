@@ -50,6 +50,14 @@ describe("friendlyError", () => {
     );
     expect(friendlyError("No deposit quote available")).toMatch(/couldn't complete this/i);
     expect(friendlyError("Unsupported network")).toMatch(/couldn't complete this/i);
+    expect(
+      friendlyError(
+        "Request validation failed: Swap output amount is too small to cover fees required to execute swap"
+      )
+    ).toMatch(/unavailable for direct deposit|try another token/i);
+    expect(
+      friendlyError("Request validation failed: Deposit addresses only supported for major tokens")
+    ).toMatch(/supported for major tokens|choose another token/i);
   });
 
   it("explains unavailable ZeroDev sponsorship", () => {

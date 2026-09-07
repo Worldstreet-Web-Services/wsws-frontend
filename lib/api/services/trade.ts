@@ -11,3 +11,13 @@ export const perpClient = createServiceClient(
   "/api/perp",
   "Perpetuals service unavailable right now."
 );
+
+export const exchangeClient = createServiceClient(
+  "/api/dextopus",
+  "Exchange service unavailable right now."
+);
+
+export const bridgeClient = createServiceClient(
+  "/api/bridge",
+  "Bridge service unavailable right now."
+);

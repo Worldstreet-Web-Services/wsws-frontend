@@ -265,6 +265,8 @@
     "title": "Withdraw to bank",
     "subtitle": "Cash out to a Nigerian bank account in naira.",
     "bankLabel": "Bank",
+    "selectBank": "Select bank",
+    "loadingBanks": "Loading banks…",
     "change": "Change",
     "searchBank": "Search your bank",
     "banksFailed": "Couldn't load banks. Please try again.",

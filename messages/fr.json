@@ -265,6 +265,8 @@
     "title": "Retirer vers la banque",
     "subtitle": "Retirez vers un compte bancaire nigérian en naira.",
     "bankLabel": "Banque",
+    "selectBank": "Sélectionner une banque",
+    "loadingBanks": "Chargement des banques…",
     "change": "Modifier",
     "searchBank": "Cherchez votre banque",
     "banksFailed": "Impossible de charger les banques. Veuillez réessayer.",

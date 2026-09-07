@@ -6,7 +6,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
 import { MASK_ATTRIBUTE, NO_AUTOCAPTURE_CLASS } from "@/lib/analytics/clarity";
 import { track } from "@/lib/analytics/mixpanel";
-import { ArrowUpRightIcon, CheckIcon, SearchIcon, SwapIcon } from "@/components/ui/icons";
+import { ArrowUpRightIcon, CheckIcon, SwapIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useSendToken } from "@/hooks/use-withdraw";
 import {
@@ -27,8 +27,8 @@ import {
   OFFRAMP_MIN_USDC,
   usdcForNgnExact,
   type OfframpOrder,
-  type RampBank,
 } from "@/lib/ramping/orders";
+import { BankDropdown, type SelectedBank } from "@/features/funds/components/bank-dropdown";
 
 interface BankWithdrawScreenProps {
   onBack: () => void;
@@ -58,36 +58,6 @@ const POPULAR = [
   { match: /^wema/i, label: "Wema Bank", initials: "WE", color: "#76287b" },
 ] as const;
 
-const AVATAR_COLORS = [
-  "#3b6ea5",
-  "#8b5cf6",
-  "#c2410c",
-  "#0f766e",
-  "#a21caf",
-  "#b45309",
-  "#2563eb",
-  "#be123c",
-  "#4d7c0f",
-  "#0891b2",
-];
-
-function colorForName(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
-
-function initialsForName(name: string): string {
-  const words = name
-    .replace(/[^\p{L}\s]/gu, "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const first = words[0]?.[0] ?? "";
-  const second = words[1]?.[0] ?? words[0]?.[1] ?? "";
-  return (first + second).toUpperCase() || "?";
-}
-
 function formatNgn(amount: number): string {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 }).format(amount);
 }
@@ -100,44 +70,6 @@ function formatAmountInput(raw: string): string {
   const [int, dec] = raw.split(".");
   const grouped = int === "" ? "" : new Intl.NumberFormat("en-US").format(BigInt(int));
   return raw.includes(".") ? `${grouped}.${dec ?? ""}` : grouped;
-}
-
-interface SelectedBank {
-  uuid: string;
-  // What the picker shows. The popular tiles use a short, recognisable label
-  // ("OPay", "First Bank") rather than the registry's full legal name.
-  name: string;
-  /**
-   * The bank registry's own name for the same institution.
-   *
-   * The two lists reached the same bank by different names: a popular tile
-   * carried our label, a search result carried the registry's, so one bank
-   * arrived at analytics as both "OPay" and "Opay" and split every breakdown
-   * in two. This is the one name that is reported.
-   */
-  railName: string;
-  initials: string;
-  color: string;
-}
-
-function BankAvatar({
-  initials,
-  color,
-  size = 34,
-}: {
-  initials: string;
-  color: string;
-  size?: number;
-}) {
-  return (
-    <span
-      className="grid shrink-0 place-items-center rounded-full font-sans text-[12px] font-semibold text-white"
-      style={{ width: size, height: size, backgroundColor: color }}
-      aria-hidden
-    >
-      {initials}
-    </span>
-  );
 }
 
 // Withdraw USDC to a Nigerian bank over the ramping rail. The user picks a
@@ -157,7 +89,6 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
   const resolve = useResolveBankAccount();
   const create = useCreateOfframpOrder();
 
-  const [query, setQuery] = useState("");
   const [bank, setBank] = useState<SelectedBank | null>(null);
   const [account, setAccount] = useState("");
   // Users type Naira by default (the amount they want in their bank) and can
@@ -277,27 +208,12 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
     }).filter((b): b is SelectedBank => b != null);
   }, [banks.data]);
 
-  // Search the live list client-side; it is one fetch, cached for the session.
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return (banks.data ?? [])
-      .filter((n: RampBank) => n.name.toLowerCase().includes(q))
-      .slice(0, 40)
-      .map((n: RampBank) => ({
-        uuid: n.uuid,
-        name: n.name,
-        railName: n.name,
-        initials: initialsForName(n.name),
-        color: colorForName(n.name),
-      }));
-  }, [query, banks.data]);
-
   const pickBank = (b: SelectedBank) => {
-    setBank(b);
-    setQuery("");
-    setAccount("");
-    resolve.reset();
+    if (b.uuid !== bank?.uuid) {
+      setBank(b);
+      setAccount("");
+      resolve.reset();
+    }
   };
 
   const onAccountChange = (raw: string) => {
@@ -410,97 +326,19 @@ export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
       <SheetNav title={t("title")} subtitle={t("subtitle")} onBack={onBack} />
 
       {/* Step 1: bank */}
-      {bank ? (
-        <button
-          onClick={() => {
-            setBank(null);
-            setAccount("");
-            resolve.reset();
-          }}
-          className="flex w-full cursor-pointer items-center gap-3 rounded-[14px] border border-white/10 bg-white/4 px-3.5 py-3 text-left transition-colors hover:bg-white/6"
-        >
-          <BankAvatar initials={bank.initials} color={bank.color} />
-          <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-medium text-white">
-            {bank.name}
-          </span>
-          <span className="text-accent shrink-0 text-[12.5px] font-medium">{t("change")}</span>
-        </button>
-      ) : (
-        <div>
-          <label className="focus-within:border-accent/45 flex items-center gap-2.5 rounded-[14px] border border-white/10 bg-black/35 px-3.5 py-3 transition-colors">
-            <SearchIcon size={16} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchBank")}
-              className="w-full bg-transparent font-sans text-[14.5px] text-white outline-none placeholder:text-white/35"
-            />
-          </label>
-
-          {banks.isPending ? (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-[52px] animate-pulse rounded-[14px] bg-white/5" />
-              ))}
-            </div>
-          ) : banks.isError ? (
-            <div className="mt-3 rounded-[14px] border border-white/8 px-3.5 py-4 text-center">
-              <p className="text-[13px] text-white/55">{t("banksFailed")}</p>
-              <button
-                onClick={() => banks.refetch()}
-                className="mt-3 cursor-pointer rounded-[12px] border border-white/15 bg-white/8 px-4 py-2 font-sans text-[13px] font-medium text-white hover:bg-white/12"
-              >
-                {t("retry")}
-              </button>
-            </div>
-          ) : query.trim() ? (
-            // Search results across every bank.
-            <div className="mt-3 overflow-hidden rounded-[14px] border border-white/8">
-              {results.map((b) => (
-                <button
-                  key={b.uuid}
-                  onClick={() => pickBank(b)}
-                  className="flex w-full cursor-pointer items-center gap-3 border-b border-white/5 px-3.5 py-2.5 text-left transition-colors last:border-0 hover:bg-white/6"
-                >
-                  <BankAvatar initials={b.initials} color={b.color} size={30} />
-                  <span className="min-w-0 flex-1 truncate font-sans text-[13.5px] text-white/85">
-                    {b.name}
-                  </span>
-                </button>
-              ))}
-              {results.length === 0 ? (
-                <div className="px-3.5 py-4 text-center text-[13px] text-white/45">
-                  {t("noBankMatch")}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            // Popular banks as quick-pick tiles.
-            <>
-              <div className="mt-3.5 mb-2 text-[11.5px] font-medium tracking-[0.04em] text-white/40 uppercase">
-                {t("popular")}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {popularBanks.map((b) => (
-                  <button
-                    key={b.uuid}
-                    onClick={() => pickBank(b)}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-[14px] border border-white/8 bg-white/4 px-3 py-2.5 text-left transition-colors hover:border-white/16 hover:bg-white/8"
-                  >
-                    <BankAvatar initials={b.initials} color={b.color} size={30} />
-                    <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-white">
-                      {b.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2.5 text-center text-[12px] font-normal text-white/40">
-                {t("searchHint")}
-              </p>
-            </>
-          )}
-        </div>
-      )}
+      <div>
+        <div className="mb-2 text-xs font-normal text-white/55">{t("bankLabel")}</div>
+        <BankDropdown
+          banks={banks.data ?? []}
+          popularBanks={popularBanks}
+          selectedBank={bank}
+          onSelect={pickBank}
+          loading={banks.isPending}
+          error={banks.isError}
+          onRetry={() => banks.refetch()}
+          disabled={submitting}
+        />
+      </div>
 
       {/* Step 2: account number (auto-verifies at 10 digits) */}
       {bank ? (

@@ -9,6 +9,7 @@ import {
   eligibilityLookupAddress,
   encodeErc20Transfer,
   formatCountdown,
+  isStaticAddressBlocked,
   settlementFor,
   usdcBaseUnits,
 } from "@/lib/deposit";
@@ -157,5 +158,40 @@ describe("depositProgress", () => {
     expect(depositProgress("refund").stage).toBe("refunded");
     expect(depositProgress("failed").stage).toBe("failed");
     expect(depositProgress("refund").terminal).toBe(true);
+  });
+});
+
+describe("isStaticAddressBlocked", () => {
+  it("blocks BSC USDC and SOMI which Dextopus rejects with swap output too small", () => {
+    expect(isStaticAddressBlocked(56, "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d")).toBe(true);
+    expect(isStaticAddressBlocked(56, "0xa9616e5e23ec1582c2828b025becf3ef610e266f")).toBe(true);
+  });
+
+  it("blocks Polygon POL which Dextopus rejects as not a major token", () => {
+    expect(isStaticAddressBlocked(137, EVM_NATIVE_ETH)).toBe(true);
+  });
+
+  it("blocks other known unsupported tokens across chains", () => {
+    expect(isStaticAddressBlocked(8453, "0x11dc28d01984079b7efe7763b533e6ed9e3722b9")).toBe(true);
+    expect(isStaticAddressBlocked(42161, "0x7f9fbf9bdd3f4105c478b996b648fe6e828a1e98")).toBe(true);
+    expect(isStaticAddressBlocked(1, "0x6b175474e89094c44da98b954eedeac495271d0f")).toBe(true);
+    expect(isStaticAddressBlocked(792703809, WRAPPED_SOL_MINT)).toBe(true);
+  });
+
+  it("allows genuinely supported major tokens to pass through", () => {
+    // BSC BNB and USDT
+    expect(isStaticAddressBlocked(56, EVM_NATIVE_ETH)).toBe(false);
+    expect(isStaticAddressBlocked(56, "0x55d398326f99059ff775485246999027b3197955")).toBe(false);
+    // Ethereum ETH and USDC
+    expect(isStaticAddressBlocked(1, EVM_NATIVE_ETH)).toBe(false);
+    expect(isStaticAddressBlocked(1, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")).toBe(false);
+    // Base ETH and USDC
+    expect(isStaticAddressBlocked(BASE_CHAIN_ID, EVM_NATIVE_ETH)).toBe(false);
+    expect(isStaticAddressBlocked(BASE_CHAIN_ID, USDC_ON_BASE)).toBe(false);
+    // Solana native SOL and USDC
+    expect(isStaticAddressBlocked(SOLANA_CHAIN_ID, NATIVE_SOL_PLACEHOLDER)).toBe(false);
+    expect(
+      isStaticAddressBlocked(SOLANA_CHAIN_ID, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+    ).toBe(false);
   });
 });

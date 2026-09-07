@@ -265,6 +265,8 @@
     "title": "Auf Bankkonto auszahlen",
     "subtitle": "Zahle in Naira auf ein nigerianisches Bankkonto aus.",
     "bankLabel": "Bank",
+    "selectBank": "Bank auswählen",
+    "loadingBanks": "Banken werden geladen…",
     "change": "Ändern",
     "searchBank": "Bank suchen",
     "banksFailed": "Banken konnten nicht geladen werden. Bitte versuche es erneut.",

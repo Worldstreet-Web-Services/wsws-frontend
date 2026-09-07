@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { SheetNav } from "@/components/ui/sheet-nav";
-import { NetworkTabs } from "@/features/funds/components/network-tabs";
-import { TokenList } from "@/features/funds/components/token-list";
+import { NetworkDropdown } from "@/features/funds/components/network-dropdown";
+import { TokenDropdown } from "@/features/funds/components/token-dropdown";
 import { AddressPanel } from "@/features/funds/components/address-panel";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { friendlyError } from "@/lib/errors";
@@ -124,7 +124,12 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
     track("deposit_failed", { method: "crypto", reason: "address_unavailable" });
   }, [staticAddr.isError, originChain, originToken]);
 
-  const resetToken = () => setOriginToken(null);
+  const [openPicker, setOpenPicker] = useState<"network" | "token" | null>(null);
+
+  const resetToken = () => {
+    setOriginToken(null);
+    setOpenPicker("token");
+  };
 
   // Address view: a token is picked and its permanent address has been minted.
   if (originToken && originChain && staticAddr.data) {
@@ -200,17 +205,18 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
         onBack={onBack}
       />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3.5">
         <div>
           <div className="mb-2 text-xs font-normal text-white/55">{t("fromNetwork")}</div>
-          <NetworkTabs
+          <NetworkDropdown
             chains={chains.data ?? []}
             eligibleChainIds={eligibleChains.data ?? new Set()}
-            selectedId={originChain?.chainId ?? null}
+            selectedChain={originChain}
             onSelect={(c) => {
               track("deposit_network_selected", { network: c.name });
               setOriginChain(c);
               setOriginToken(null);
+              setOpenPicker("token");
             }}
             loading={chains.isPending || eligibleChains.isPending}
             error={chains.isError || eligibleChains.isError}
@@ -218,22 +224,30 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
               chains.refetch();
               eligibleChains.refetch();
             }}
+            open={openPicker === "network"}
+            onToggle={() => setOpenPicker((curr) => (curr === "network" ? null : "network"))}
+            onClose={() => setOpenPicker((curr) => (curr === "network" ? null : curr))}
           />
         </div>
 
-        {originChain ? (
-          <div>
-            <div className="mb-2 text-xs font-normal text-white/55">{t("tokenToSend")}</div>
-            <TokenList
-              tokens={tokens.data ?? []}
-              selected={originToken}
-              onSelect={setOriginToken}
-              loading={tokens.isPending}
-              error={tokens.isError}
-              onRetry={() => tokens.refetch()}
-            />
-          </div>
-        ) : null}
+        <div>
+          <div className="mb-2 text-xs font-normal text-white/55">{t("tokenToSend")}</div>
+          <TokenDropdown
+            tokens={tokens.data ?? []}
+            selectedToken={originToken}
+            onSelect={(tk) => {
+              setOriginToken(tk);
+              setOpenPicker(null);
+            }}
+            loading={tokens.isPending}
+            error={tokens.isError}
+            onRetry={() => tokens.refetch()}
+            disabled={!originChain}
+            open={openPicker === "token"}
+            onToggle={() => setOpenPicker((curr) => (curr === "token" ? null : "token"))}
+            onClose={() => setOpenPicker((curr) => (curr === "token" ? null : curr))}
+          />
+        </div>
 
         {req && staticAddr.isPending ? (
           <div className="py-4 text-center text-[13px] font-normal text-white/55">

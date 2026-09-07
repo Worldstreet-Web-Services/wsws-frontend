@@ -65,6 +65,59 @@ export function eligibilityLookupAddress(chainId: number, address: string): stri
   return address;
 }
 
+// Tokens that Dextopus's catalog erroneously flags as supporting static
+// deposit addresses (`supportsStaticAddress: true`), but whose solver or route
+// fails at generation (`deposit/static/generate`) with:
+//   - "Request validation failed: Swap output amount is too small to cover fees required to execute swap"
+//   - "Request validation failed: Deposit addresses only supported for major tokens"
+//   - "Insufficient liquidity available for this route"
+// Keyed as "{chainId}:{address.toLowerCase()}".
+const BLOCKED_STATIC_TOKENS = new Set<string>([
+  // BSC: USDC and SOMI (swap output too small), G, WBTC, WBNB
+  "56:0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+  "56:0xa9616e5e23ec1582c2828b025becf3ef610e266f",
+  "56:0x9c7beba8f6ef6643abd725e45a4e8387ef260649",
+  "56:0x0555e30da8f98308edb960aa94c0db47230d2b9c",
+  "56:0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+
+  // Polygon: native POL and pUSD
+  "137:0x0000000000000000000000000000000000000000",
+  "137:0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb",
+
+  // Base: SYND, DEGEN
+  "8453:0x11dc28d01984079b7efe7763b533e6ed9e3722b9",
+  "8453:0x4ed4e862860bed51a9570b96d89af5e1b0efefed",
+
+  // Arbitrum: APE, ANIME
+  "42161:0x7f9fbf9bdd3f4105c478b996b648fe6e828a1e98",
+  "42161:0x37a645648df29205c6261289983fb04ecd70b4b3",
+
+  // Avalanche: GUN
+  "43114:0x26debd39d5ed069770406fca10a0e4f8d2c743eb",
+
+  // Ethereum: DAI, SYND, USDe, APE, SIPHER, PLUME, USDG, AUSD, PYUSD
+  "1:0x6b175474e89094c44da98b954eedeac495271d0f",
+  "1:0x1bab804803159ad84b8854581aa53ac72455614e",
+  "1:0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+  "1:0x4d224452801aced8b2f0aebe155379bb5d594381",
+  "1:0x9f52c8ecbee10e00d9faaac5ee9ba0ff6550f511",
+  "1:0x4c1746a800d224393fe2470c70a35717ed4ea5f1",
+  "1:0xe343167631d89b6ffc58b88d6b7fb0228795491d",
+  "1:0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+  "1:0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+
+  // Solana: CASH, PYUSD, USDG, PENGU, Wrapped SOL (wrapped mint fails; native SOL works)
+  `792703809:${"CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH".toLowerCase()}`,
+  `792703809:${"2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo".toLowerCase()}`,
+  `792703809:${"2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH".toLowerCase()}`,
+  `792703809:${"2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv".toLowerCase()}`,
+  `792703809:${WRAPPED_SOL_MINT.toLowerCase()}`,
+]);
+
+export function isStaticAddressBlocked(chainId: number, address: string): boolean {
+  return BLOCKED_STATIC_TOKENS.has(`${chainId}:${address.toLowerCase()}`);
+}
+
 // The address family a chain's addresses belong to. Matches the enum the
 // validate-address endpoint accepts.
 export type AddressKind =

@@ -265,6 +265,8 @@
     "title": "Retirar al banco",
     "subtitle": "Retira a una cuenta bancaria de Nigeria en naira.",
     "bankLabel": "Banco",
+    "selectBank": "Seleccionar banco",
+    "loadingBanks": "Cargando bancos…",
     "change": "Cambiar",
     "searchBank": "Busca tu banco",
     "banksFailed": "No se pudieron cargar los bancos. Inténtalo de nuevo.",

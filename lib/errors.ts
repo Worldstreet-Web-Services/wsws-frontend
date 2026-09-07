@@ -183,6 +183,13 @@ export function friendlyError(
   ) {
     return "We couldn't complete this right now. Try again, or a different amount or asset.";
   }
+  // Dextopus static deposit address errors (solver route, liquidity, or fee capacity failures).
+  if (/swap output amount is too small|output amount is too small/.test(m)) {
+    return "This token is currently unavailable for direct deposit. Please try another token like USDT, ETH, or the network's native coin.";
+  }
+  if (/deposit addresses only supported for major tokens|supported for major tokens/.test(m)) {
+    return "Deposit addresses are only supported for major tokens on this network. Please choose another token.";
+  }
   // Solana failures arrive as RPC simulation dumps ("Transaction simulation
   // failed: ... custom program error: 0x1" plus pages of program logs), which
   // no user should ever face. 0x1 from the token program is an insufficient

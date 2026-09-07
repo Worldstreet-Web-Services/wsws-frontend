@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
   // needs to (and prints a "multiple lockfiles" warning on every start).
   turbopack: {
     root: import.meta.dirname,
+    resolveAlias: {
+      "@stripe/crypto": "./lib/stubs/empty.ts",
+      "@farcaster/mini-app-solana": "./lib/stubs/empty.ts",
+    },
   },
   webpack(config) {
     // Privy's root bundle references optional Stripe/Farcaster integrations
@@ -48,6 +52,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   experimental: {
+    turbopackFileSystemCacheForDev: true,
     // Import only the referenced members of these barrel packages instead of the
     // whole module graph. @privy-io/react-auth alone is a 332-module barrel and
     // loads on every route via the root Providers, so without this Turbopack
@@ -59,6 +64,11 @@ const nextConfig: NextConfig = {
       "@tanstack/react-query",
       "@tanstack/react-table",
       "@solana/kit",
+      "@solana-program/token",
+      "@polymarket/client",
+      "@livekit/components-react",
+      "@base-ui/react",
+      "chess.js",
       "motion",
       "sonner",
       "embla-carousel-react",

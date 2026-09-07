@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
-import { apiFetch } from "@/lib/api";
+import { fetchUserActivity } from "@/lib/api/services/activity";
 import { getWalletAddress } from "@/lib/user";
 import { buildActivityEntries, type ActivityEntry } from "@/lib/activity/entries";
 import type { ActivityItem } from "@/lib/server/activity";
@@ -38,18 +38,7 @@ export function useActivity({ pollMs = POLL_MS }: { pollMs?: number } = {}) {
   const query = useQuery<{ items: ActivityItem[] }>({
     queryKey: ["activity", evm, solana],
     enabled,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (evm) params.set("evm", evm);
-      if (solana) params.set("solana", solana);
-      const res = await apiFetch(`/api/activity?${params.toString()}`, {}, { requireAuth: true });
-      if (!res.ok) {
-        throw new Error(
-          res.status === 429 ? "Too many requests, try again shortly" : "Could not load activity"
-        );
-      }
-      return res.json();
-    },
+    queryFn: () => fetchUserActivity({ evm, solana }),
     refetchInterval: pollMs,
     staleTime: POLL_MS,
     // Keep the current list rendered while a poll refetches, so the feed never

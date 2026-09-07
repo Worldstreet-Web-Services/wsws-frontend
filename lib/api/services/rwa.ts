@@ -1,12 +1,7 @@
 "use client";
 
-export { USDC_BY_CHAIN } from "@/lib/trade/usdc";
-
-// The catalog's domain type and listing rules live in lib/rwa/catalog, below
-// the feature line, so the dashboard feed can apply the same rules on the
-// server. Re-exported here so the feature's own imports read as before.
-export { assetPriceUsd, type AccessMode, type RwaApiAsset, type RwaChain } from "@/lib/rwa/catalog";
-import { rwaLogoPath, type RwaApiAsset, type RwaChain } from "@/lib/rwa/catalog";
+import { createServiceClient, type QueryParams } from "@/lib/api/service";
+import type { RwaApiAsset, RwaChain } from "@/lib/rwa/catalog";
 
 export interface RwaCategory {
   category: string;
@@ -59,25 +54,32 @@ export interface RwaAction {
   warnings?: string[];
 }
 
-export interface RwaApiError {
-  code: string;
-  message: string;
-  details?: unknown;
+export const rwaClient = createServiceClient(
+  "/api/rwa",
+  "Real-world assets are unavailable right now."
+);
+
+export async function fetchRwaAssets(params: Record<string, string> = {}): Promise<RwaApiAsset[]> {
+  const query: QueryParams = { ...params };
+  return rwaClient.get<RwaApiAsset[]>("/assets", query);
 }
 
-export {
-  fetchRwaAssets,
-  fetchRwaCategories,
-  fetchYieldHistory,
-  fetchRwaQuote,
-  buildRwaAction,
-} from "@/lib/api/services/rwa";
-
-// The pairing currency for buy/sell. Note BSC USDC has 18 decimals, not 6.
-export function rwaLogoUrl(a: RwaApiAsset): string {
-  return rwaLogoPath(a.chain, a.address);
+export async function fetchRwaCategories(): Promise<RwaCategory[]> {
+  return rwaClient.get<RwaCategory[]>("/categories");
 }
 
-export function assetTvlUsd(a: RwaApiAsset): string | undefined {
-  return a.tvlUsd ?? a.issuerData?.tvlUsdTotal ?? undefined;
+export async function fetchYieldHistory(id: string, limit = 90): Promise<YieldHistoryPoint[]> {
+  return rwaClient.get<YieldHistoryPoint[]>(`/assets/${encodeURIComponent(id)}/yield-history`, {
+    limit,
+  });
+}
+
+export async function fetchRwaQuote(req: RwaQuoteRequest): Promise<RwaQuoteResult> {
+  return rwaClient.post<RwaQuoteResult>("/quote", req);
+}
+
+export async function buildRwaAction(
+  req: RwaQuoteRequest & { taker: string; provider?: string; simulate?: boolean }
+): Promise<RwaAction> {
+  return rwaClient.post<RwaAction>("/build", req);
 }

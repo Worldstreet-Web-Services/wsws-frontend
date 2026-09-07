@@ -105,7 +105,7 @@ export function Sidebar({
           {/* The dashboard alone wears the mARKet lockup: the two-tone only
               reads on this dark chrome, so auth and the landing keep the Ark
               wordmark. */}
-          <Link href="/dashboard" onClick={onClose} className="flex items-center">
+          <Link href="/portfolio" onClick={onClose} className="flex items-center">
             <MarketLogo className="h-[21px] w-auto" />
           </Link>
           <button

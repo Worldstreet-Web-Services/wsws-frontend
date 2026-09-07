@@ -27,7 +27,11 @@ const nextConfig: NextConfig = {
   // Powerball became ArkBall. Shared links and bookmarks to the old slug still
   // land on the game.
   async redirects() {
-    return [{ source: "/casino/powerball", destination: "/casino/arkball", permanent: true }];
+    return [
+      { source: "/casino/powerball", destination: "/casino/arkball", permanent: true },
+      { source: "/dashboard", destination: "/portfolio", permanent: true },
+      { source: "/dashboard/:path*", destination: "/portfolio/:path*", permanent: true },
+    ];
   },
   // Pin the Turbopack root to this project. Otherwise Next walks up the tree,
   // finds the stray ~/package-lock.json, and treats the whole home directory as

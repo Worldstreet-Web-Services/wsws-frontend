@@ -37,14 +37,14 @@ export function Topbar({ onOpenAccount }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Replays the walkthrough. The steps live on the dashboard, so any other
+  // Replays the walkthrough. The steps live on the portfolio, so any other
   // page parks a replay request and routes there first.
   const takeTour = () => {
-    if (pathname === "/dashboard") {
+    if (pathname === "/portfolio" || pathname === "/dashboard") {
       startDashboardTour(tTour);
     } else {
       requestTourReplay();
-      router.push("/dashboard");
+      router.push("/portfolio");
     }
   };
 

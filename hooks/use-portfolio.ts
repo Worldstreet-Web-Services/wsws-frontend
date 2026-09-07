@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
 import { apiFetch } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { useSessionWallet } from "@/components/providers/server-session";
 import type { Portfolio } from "@/lib/server/alchemy";
 
@@ -64,7 +65,7 @@ export function usePortfolio() {
   const evm = useSessionWallet("ethereum");
   const solana = useSessionWallet("solana");
   const enabled = ready && authenticated && Boolean(evm || solana);
-  const queryKey = ["portfolio", evm, solana] as const;
+  const queryKey = queryKeys.portfolio.byWallet(evm, solana);
 
   // Set while waiting for a just-made trade to show up, so those reads skip the
   // server's shared cache. A ref because the queryFn must see the current value

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
+import { queryKeys } from "@/lib/query-keys";
 import { getWalletAddress } from "@/lib/user";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { markKashSyncing } from "@/features/portfolio/hooks/use-kash-sync";
@@ -42,7 +43,7 @@ const ACCOUNT_POLL_MS = 30 * 1000;
 
 export function useKashStatus() {
   return useQuery({
-    queryKey: ["kash", "status"],
+    queryKey: queryKeys.kash.status(),
     queryFn: getKashStatus,
     staleTime: STATUS_STALE_MS,
     // Pre-launch the engine is not part of the page: no request, no error noise.
@@ -57,7 +58,7 @@ export function useKashAccount() {
   const wallet = getWalletAddress(user, "ethereum");
 
   const query = useQuery({
-    queryKey: ["kash", "account", wallet],
+    queryKey: queryKeys.kash.account(wallet),
     queryFn: () => getKashAccount(wallet as string),
     enabled: ready && authenticated && Boolean(wallet),
     refetchInterval: ACCOUNT_POLL_MS,

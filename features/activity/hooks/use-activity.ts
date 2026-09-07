@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
+import { queryKeys } from "@/lib/query-keys";
 import { fetchUserActivity } from "@/lib/api/services/activity";
 import { getWalletAddress } from "@/lib/user";
 import { buildActivityEntries, type ActivityEntry } from "@/lib/activity/entries";
@@ -36,7 +37,7 @@ export function useActivity({ pollMs = POLL_MS }: { pollMs?: number } = {}) {
   const enabled = ready && authenticated && Boolean(evm || solana);
 
   const query = useQuery<{ items: ActivityItem[] }>({
-    queryKey: ["activity", evm, solana],
+    queryKey: queryKeys.activity.byWallet(evm, solana),
     enabled,
     queryFn: () => fetchUserActivity({ evm, solana }),
     refetchInterval: pollMs,

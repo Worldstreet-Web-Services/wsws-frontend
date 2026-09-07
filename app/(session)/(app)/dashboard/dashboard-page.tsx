@@ -24,6 +24,9 @@ import { CrossBorderBanner } from "@/features/remit/components/cross-border-bann
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { SquareComposeFab, SquareSection } from "@/features/square";
 import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
+// The desktop "Join the Conversation" shelf (rotating Space / Chess / Arena
+// cards). With no live spaces it falls back to the static chess room.
+import { ConversationRow } from "@/features/discovery/components/conversation-row";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -261,6 +264,12 @@ export function DashboardPage() {
           card hides just its Join Space link then. */}
       <div className="md:hidden">
         <SquareLivePromo />
+      </div>
+
+      {/* Desktop: the "Join the Conversation" shelf, as the phone design's
+          desktop sibling draws it, under the balance cards. */}
+      <div className="mx-auto hidden w-full max-w-[1520px] px-4 pb-2 sm:px-6 md:block lg:px-8">
+        <ConversationRow />
       </div>
 
       {briefs.map((id, index) => {

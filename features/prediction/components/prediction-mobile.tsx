@@ -126,16 +126,19 @@ export function PredictionMobile() {
           peeks, signalling there is more to swipe to. Native scroll-snap, so
           each heavy card renders once (no carousel clones). */}
       <div className="mt-3 flex snap-x snap-mandatory [scrollbar-width:none] gap-2.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-        <div className="w-[91%] shrink-0 snap-center">
+        <div className="w-[88%] shrink-0 snap-start">
           <PredictionMobileCard prediction={current} />
         </div>
+        {/* The boxing card is a wider export than the "Starts Here" card, so it
+            sits in the same aspect box and fills it: the slides stay one height
+            and the carousel does not jump as it swipes. */}
         <Link
           href="/prediction"
           aria-label={t("beltCardAria")}
-          className="ws-pressable flex w-[91%] shrink-0 snap-center items-center"
+          className="ws-pressable aspect-[330/213] w-[88%] shrink-0 snap-start overflow-hidden rounded-[15px]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/prediction/boxing-card.png" alt="" className="block w-full" />
+          <img src="/prediction/boxing-card.png" alt="" className="h-full w-full object-cover" />
         </Link>
       </div>
     </div>

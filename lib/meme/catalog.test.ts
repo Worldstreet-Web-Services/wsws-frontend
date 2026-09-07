@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_DISCOVERY_LIQUIDITY_USD,
   impersonatesMajor,
   isTokenizedEquity,
   isWrappedMajor,
@@ -251,5 +252,47 @@ describe("hidden memecoins", () => {
       meta: { page: 1, limit: 2, total: 2 },
     });
     expect(page.items.map((t) => t.symbol)).toEqual(["AAA"]);
+  });
+});
+
+// "All these meme coins that can't be bought": a row the service marks
+// unbuyable, or not ACTIVE, or with too little liquidity to fill a buy, has no
+// business on a buy surface whatever its rating (2026-09-07). Holdings are
+// unaffected, as with every other discovery rule.
+describe("discovery keeps only coins that can actually be bought", () => {
+  const onBase = (symbol: string, extra: Partial<MemeToken>) =>
+    ({
+      chainId: BASE_CHAIN_ID,
+      address: `0x${symbol.toLowerCase().padEnd(40, "2")}`,
+      symbol,
+      name: symbol,
+      riskLevel: "LOW",
+      liquidityUsd: "150000",
+      ...extra,
+    }) as MemeToken;
+
+  it("drops rows the service marks unbuyable or not ACTIVE", () => {
+    const page = tradableHere({
+      items: [
+        onBase("AAA", {}),
+        onBase("BBB", { buyEnabled: false }),
+        onBase("CCC", { status: "BLOCKED" } as Partial<MemeToken>),
+        onBase("DDD", { status: "ACTIVE" } as Partial<MemeToken>),
+      ],
+      meta: { page: 1, limit: 4, total: 4 },
+    });
+    expect(page.items.map((t) => t.symbol)).toEqual(["AAA", "DDD"]);
+  });
+
+  it("drops rows under the liquidity floor and keeps rows with no liquidity figure", () => {
+    const page = tradableHere({
+      items: [
+        onBase("THIN", { liquidityUsd: String(MIN_DISCOVERY_LIQUIDITY_USD - 1) }),
+        onBase("OK", { liquidityUsd: String(MIN_DISCOVERY_LIQUIDITY_USD) }),
+        onBase("UNKNOWNLIQ", { liquidityUsd: null }),
+      ],
+      meta: { page: 1, limit: 3, total: 3 },
+    });
+    expect(page.items.map((t) => t.symbol)).toEqual(["OK", "UNKNOWNLIQ"]);
   });
 });

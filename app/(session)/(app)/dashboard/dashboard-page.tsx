@@ -61,6 +61,10 @@ const PREVIEW_ROWS = 4;
 const BRIEFED_SECTIONS = ["spot", "perps", "meme", "rwa"] as const;
 type BriefedSectionId = (typeof BRIEFED_SECTIONS)[number];
 
+// Briefs hidden from the dashboard at request. Spot and Real Assets stay full
+// routes; they just do not get a brief here. Empty this to show all four.
+const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa"];
+
 function isBriefed(id: SectionId): id is BriefedSectionId {
   return (BRIEFED_SECTIONS as readonly SectionId[]).includes(id);
 }
@@ -137,7 +141,16 @@ export function DashboardPage() {
   const activeSection = useScrollSpy(SCROLL_SECTIONS);
   useReportActiveSection(activeSection);
   // The services briefed on this page, in the nav's own order.
-  const briefs = useMemo(() => nav.map((n) => n.id).filter(isBriefed), [nav]);
+  const briefs = useMemo(
+    // Spot and Real Assets briefs are hidden at request; only Perps and Meme
+    // brief on the dashboard now. Remove an id here to bring its brief back.
+    () =>
+      nav
+        .map((n) => n.id)
+        .filter(isBriefed)
+        .filter((id) => !HIDDEN_BRIEFS.includes(id)),
+    [nav]
+  );
   const buyParam = useSearchParams().get("buy");
   // The tradeable universe, so a $TICKER in a square post can open the real
   // buy sheet. Only gathered while something can use it: the square, when it

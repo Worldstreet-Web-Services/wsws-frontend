@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { MarketLogo } from "@/components/ui/market-logo";
@@ -13,23 +14,18 @@ import { GoLiveControl } from "@/components/broadcast/go-live-control";
 import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
 
 /** Four seats around an open square — people gathered, not a shop front. */
+// The square's own logo mark (public/market-square-mark.svg, copied from the
+// Market Square repo's logo-mark.svg), 4:3, so the rail names the destination
+// the way the destination names itself. An SVG needs no optimisation pass.
 function SquareIcon({ size = 20 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="4.5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-      <circle cx="8.5" cy="8.5" r="1.6" fill="currentColor" />
-      <circle cx="15.5" cy="8.5" r="1.6" fill="currentColor" />
-      <circle cx="8.5" cy="15.5" r="1.6" fill="currentColor" />
-      <circle cx="15.5" cy="15.5" r="1.6" fill="currentColor" />
-    </svg>
+    <Image
+      src="/market-square-mark.svg"
+      alt=""
+      width={size}
+      height={Math.round(size * 0.75)}
+      unoptimized
+    />
   );
 }
 

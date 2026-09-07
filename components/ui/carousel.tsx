@@ -16,18 +16,40 @@ const SLIDE_MS = 420;
 // switches when that column gets narrow, not when the window does.
 const ONE_UP_BELOW = 640;
 
-// The narrowest slide a trim is allowed to touch, in pixels.
+// The narrowest frame a trim applies at, in pixels. Below it the row runs at its
+// untrimmed width.
 //
-// 481.94 is the artboard's own card, and it is also exactly where the Next 100X
-// card stops being able to draw its artwork at full size: that card reserves
-// 226.94px for the copy column and caps the art slot at 255px, and
-// 226.94 + 255 = 481.94. So at or above this width the art slot is at its
-// design size and a 50px trim costs the slide 10.4% of itself. Below it the
-// copy column is already eating the picture, and every pixel the trim takes
-// comes straight off the artwork: a 400px slide leaves 173px of art, and at the
-// 768px viewport these rows first render at, the untrimmed slide is 328.30px
-// and a trimmed one 278.30px, which leaves 51px and reads as a bug.
-const TRIM_MIN_SLIDE_PX = 481.94;
+// It is a frame width rather than a slide width, which is what keeps the four
+// discovery rows in step. They stack down the page and are meant to line up, and
+// their gaps differ (12px, 20px, 28px), so a floor read off the slide becomes
+// three different frame widths and leaves the rows up to 42px apart across a
+// band of viewport widths.
+//
+// What the floor is still for. The Next 100X card is the one that runs out of
+// room first, and it now holds its own line: below 327.05px of card it stops
+// drawing the artwork and gives the width to the copy, so a narrow card is a
+// copy-only card rather than a chip in the corner. The collapse this used to
+// guard against is handled at the card. What is left to guard is that a cosmetic
+// 50px trim is never the thing that takes the picture off a card wide enough to
+// have drawn it.
+//
+// That fixes the line. The card's floor is measured on its content box and the
+// card carries a 1.03px edge either side, so the slide it needs is
+// 327.05 + 2.06 = 329.11px, and a trimmed slide is that wide at
+//
+//   (frame - 2 * 12) / 2.12 - 50 = 329.11   ->   frame = 827.71
+//
+// on the geometry these rows ship with: two up, the 0.12 peek, the 12px default
+// gap. Rounded up to the next whole pixel, so the comparison is not settled by
+// the last decimal place: at 828 the card is 327.19px by the arithmetic and
+// 327.17px once the browser has rounded the layout, and it keeps its picture
+// either way.
+//
+// No row needs a floor above this. At 828 the widest-gap row, prediction at
+// 28px, is trimmed to a 314px card, and that same row already draws a 275px card
+// at the 640px frame where the one-up rule takes over. Below this line every row
+// is already handing out cards narrower than any the trim produces above it.
+const TRIM_MIN_FRAME_PX = 828;
 
 // The floating control's disc. 38 is the size the redesign already draws a
 // round icon button at: the notification bell's disc is `size-[38px]`. The
@@ -66,13 +88,6 @@ function slideWidthFor(slides: number, gapPx: number, peek: number, trimPx: numb
   return trimPx ? `calc(${share} - ${trimPx}px)` : `calc(${share})`;
 }
 
-// The frame width at which an untrimmed slide is exactly TRIM_MIN_SLIDE_PX.
-// It is `slideWidthFor` solved for the frame: a slide of `s` needs a frame of
-// s * (slides + peek) + slides * gap. Below this the trim is switched off.
-function trimFloorFrame(slides: number, gapPx: number, peek: number) {
-  return TRIM_MIN_SLIDE_PX * (slides + peek) + slides * gapPx;
-}
-
 interface CarouselProps {
   /** Each child is one slide. */
   children: React.ReactNode;
@@ -88,10 +103,9 @@ interface CarouselProps {
   gapPx?: number;
   /**
    * Pixels shaved off each fully-visible slide. The space becomes more peek, so
-   * the row still fills its frame and no gutter opens. Applied only while an
-   * untrimmed slide would be at least `TRIM_MIN_SLIDE_PX` wide, and never at the
-   * one-up layout: a fixed trim is a much larger share of a smaller card, and on
-   * a card that small it comes out of the artwork. Default 0.
+   * the row still fills its frame and no gutter opens. Applied only from a
+   * `TRIM_MIN_FRAME_PX` frame up, and never at the one-up layout: a fixed trim is
+   * a much larger share of a smaller card. Default 0.
    */
   trimPx?: number;
   /** Extra classes for the outer region. */
@@ -137,8 +151,8 @@ export function Carousel({
   // Enough copies on each side to fill the frame during a step off either end.
   // The clones cover the frame while cloneCount * (slide + gapPx) >= frame, and a
   // trim shrinks `slide`, so it eats into that margin. For the two-up default
-  // with a 50px trim and a 12px gap the trim only applies from a 1045.71px frame
-  // up, where three clones cover 1331.82px, and the margin only widens from
+  // with a 50px trim and a 12px gap the trim only applies from an 828px frame
+  // up, where three clones cover 1023.74px, and the margin only widens from
   // there. A much larger trim would need this raised.
   const cloneCount = loops ? Math.max(1, Math.ceil(perView + peek)) : 0;
 
@@ -226,21 +240,19 @@ export function Carousel({
   // this carousel's track, and everything that needs the width reads the
   // property rather than repeating the arithmetic.
   const trackSelector = `[data-ws-carousel="${trackId}"]`;
-  // Untrimmed is the base width, and the trim is layered on top of it only where
-  // the slide is wide enough to spare the pixels. A fixed trim is a bigger share
-  // of a smaller card: 50px is 10.4% of the artboard's 481.94px card, 12.5% of a
-  // 400px one and 15.2% of the 328.30px slide a 768px viewport gives. Below
-  // TRIM_MIN_SLIDE_PX it also stops coming out of slack and starts coming out of
-  // the artwork, so the gate is set there and read off the carousel's own frame,
-  // which is what the slide width derives from.
+  // Untrimmed is the base width, and the trim is layered on top of it only from
+  // the floor up. The query is on the carousel's own frame rather than on the
+  // viewport, so a carousel in a narrow column switches when that column gets
+  // narrow; and it is the same figure for every row, so rows with different gaps
+  // still switch at the same window width. See TRIM_MIN_FRAME_PX.
   const widthRule = `${trackSelector}{--ws-carousel-slide:${slideWidthFor(perView, gapPx, peek, 0)}}`;
   const trimRule = trimPx
-    ? `@container ws-carousel (width >= ${trimFloorFrame(perView, gapPx, peek).toFixed(2)}px){${trackSelector}{--ws-carousel-slide:${slideWidthFor(perView, gapPx, peek, trimPx)}}}`
+    ? `@container ws-carousel (width >= ${TRIM_MIN_FRAME_PX}px){${trackSelector}{--ws-carousel-slide:${slideWidthFor(perView, gapPx, peek, trimPx)}}}`
     : "";
   // The one-up layout is a different slide off a different formula, so it sets
   // its own width and never inherits a trim. It comes after the trim rule and
-  // wins any overlap, though on the two-up default there is none to win: the
-  // trim starts above a 1000px frame and this ends at 640px.
+  // wins any overlap, though there is none to win: the trim starts at an 828px
+  // frame and this ends at 640px.
   const oneUpRule =
     perView > 1
       ? `@container ws-carousel (width < ${ONE_UP_BELOW}px){${trackSelector}{--ws-carousel-slide:${slideWidthFor(1, gapPx, peek, 0)}}}`

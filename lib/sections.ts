@@ -20,15 +20,12 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 const PINNED: SectionId = "portfolio";
 const REORDERABLE: SectionId[] = [
   "spot",
-  // Perpetuals are hidden from the nav for now, like earn. The desk stays at
-  // /perps; dropping it here also drops its dashboard brief, its marquee item
-  // and its tab, all of which follow the nav.
-  // "perps",
+  // Perpetuals are hidden on production for now (#382). Staging is where the
+  // perps desk is exercised, so it stays in the nav here.
+  "perps",
   "meme",
-  // TEMPORARY: real assets are hidden from the nav for now, like perps and
-  // earn. The section stays at /rwa; dropping it here also drops its
-  // dashboard brief, its marquee item and its tab, all of which follow the nav.
-  // "rwa",
+  // Real assets are hidden on production for now; staging shows them.
+  "rwa",
   "prediction",
   // Earn is hidden from the nav for now.
   // "earn",
@@ -64,20 +61,18 @@ export function sectionForPathname(pathname: string | null): SectionId {
 
 // Maps an onboarding interest to the section it should surface first.
 const INTEREST_TO_SECTION: Record<string, SectionId> = {
-  // Real assets are hidden from the nav for now; these interests fall back to the default order.
-  // stocks: "rwa",
-  // gold: "rwa",
+  stocks: "rwa",
+  gold: "rwa",
   crypto: "spot",
-  // Perpetuals are hidden from the nav for now; the interest falls back to the default order.
-  // perps: "perps",
+  perps: "perps",
   meme: "meme",
   prediction: "prediction",
   casino: "casino",
   // Earn is hidden from the nav for now; the interest falls back to the default order.
   // earn: "earn",
-  // yield: "rwa",
-  // realestate: "rwa",
-  // treasuries: "rwa",
+  yield: "rwa",
+  realestate: "rwa",
+  treasuries: "rwa",
 };
 
 export function interestToSection(interest: string | null): SectionId | null {

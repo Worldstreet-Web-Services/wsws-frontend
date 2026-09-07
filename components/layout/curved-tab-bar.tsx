@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { marketSquareHref } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { NavItem } from "@/components/layout/nav-items";
@@ -39,6 +40,7 @@ const ZONES = [
 
 export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTabBarProps) {
   const reduce = useReducedMotion();
+  const router = useRouter();
   const squareHref = marketSquareHref() ?? "#";
   const active = TABS.find((t) => t.id === activeSection) ?? TABS[0];
 
@@ -47,7 +49,9 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
 
   const onZone = (i: number) => {
     if (i === 0) onNavigate("portfolio");
-    else if (i === 1) onNavigate("spot");
+    // The second icon opens the standalone Market page (its own route, not a
+    // dashboard section), so navigate rather than scroll-spy to a section.
+    else if (i === 1) router.push("/market");
     else if (i === 2) {
       if (squareHref !== "#") window.location.assign(squareHref);
     } else if (i === 3) onNavigate("casino");

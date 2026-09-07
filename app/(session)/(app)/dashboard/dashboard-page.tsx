@@ -13,6 +13,7 @@ import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { EnterTheArenaBanner } from "@/features/trade/components/enter-the-arena-banner";
 import { TokenMovesSection } from "@/features/trade/components/token-moves-section";
+import { MemeSection } from "@/features/trade/components/meme-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
@@ -283,6 +284,9 @@ export function DashboardPage() {
         {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
             the phone's stand-in for the desktop token-moves shelf. */}
         <TokenMovesSection onOpenBuy={modals.openBuy} />
+        {/* "Find the next 100X" — the mobile memecoins section (header, Shiba/
+            Pepe promos, simple/pro switch and the memecoins list). */}
+        <MemeSection />
         {/* "Own the Market" — the arena doorway, part of the phone home as
             new-approach draws it (its DashboardMobileHome renders it here). */}
         <EnterTheArenaBanner />

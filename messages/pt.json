@@ -8,7 +8,8 @@
     "prediction": "Previsão",
     "earn": "Ganhar",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Mercados de previsão",
@@ -101,7 +102,15 @@
     "chainAll": "Todas as redes",
     "chainBase": "Base",
     "chainSolana": "Solana",
-    "retry": "Tentar novamente"
+    "retry": "Tentar novamente",
+    "checkChart": "Check Chart",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",

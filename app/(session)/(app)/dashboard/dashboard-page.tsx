@@ -13,7 +13,6 @@ import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { EnterTheArenaBanner } from "@/features/trade/components/enter-the-arena-banner";
 import { TokenMovesSection } from "@/features/trade/components/token-moves-section";
-import { MemeSection } from "@/features/trade/components/meme-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
@@ -292,15 +291,19 @@ export function DashboardPage() {
           discovery shelves below (those are fixed desktop-pixel cards that do
           not reflow). "Join the Conversation" doorway, then the Prediction
           card; the trade sections follow as they are ported. */}
-      <div className="md:hidden">
+      <div className="flex flex-col gap-6 md:hidden">
         <SquareLivePromo />
         <PredictionMobile />
         {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
             the phone's stand-in for the desktop token-moves shelf. */}
         <TokenMovesSection onOpenBuy={modals.openBuy} />
-        {/* "Find the next 100X" — the mobile memecoins section (header, Shiba/
-            Pepe promos, simple/pro switch and the memecoins list). */}
-        <MemeSection />
+        {/* "Find the next 100X" — the same discovery carousel the desktop shows
+            (the Pepe card, a rotating live memecoin, then Pepe again), now on
+            the phone. The row brings its own header and carousel; it just needs
+            the phone's horizontal gutter, which the desktop shelf gives it too. */}
+        <div className="px-4">
+          <Next100xRow memecoins={memeSpots} />
+        </div>
         {/* "Own the Market" — the arena doorway, part of the phone home as
             new-approach draws it (its DashboardMobileHome renders it here). */}
         <EnterTheArenaBanner />

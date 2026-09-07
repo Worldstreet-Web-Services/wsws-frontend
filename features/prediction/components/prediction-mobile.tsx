@@ -78,7 +78,11 @@ function PredictionMobileCard({ prediction: p }: { prediction: Prediction }) {
       type="image/svg+xml"
       aria-label={p.q}
       onLoad={patch}
-      className="pointer-events-auto block aspect-[330/213] w-full overflow-hidden rounded-[15px]"
+      // pointer-events-none: the SVG carries its own <a href="/prediction">
+      // ("Predict"), and because <object> is a nested browsing context, a click
+      // inside it would load the whole app INTO the card. Killing pointer events
+      // lets the wrapping Link take the tap and navigate the main window instead.
+      className="pointer-events-none block aspect-[330/213] w-full overflow-hidden rounded-[15px]"
     />
   );
 }
@@ -126,9 +130,13 @@ export function PredictionMobile() {
           peeks, signalling there is more to swipe to. Native scroll-snap, so
           each heavy card renders once (no carousel clones). */}
       <div className="mt-3 flex snap-x snap-mandatory [scrollbar-width:none] gap-2.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-        <div className="w-[88%] shrink-0 snap-start">
+        <Link
+          href="/prediction"
+          aria-label={current.q}
+          className="ws-pressable block w-[88%] shrink-0 snap-start"
+        >
           <PredictionMobileCard prediction={current} />
-        </div>
+        </Link>
         {/* The boxing card is a wider export than the "Starts Here" card, so it
             sits in the same aspect box and fills it: the slides stay one height
             and the carousel does not jump as it swipes. */}

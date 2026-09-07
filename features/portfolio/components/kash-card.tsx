@@ -63,8 +63,14 @@ export function KashCard({
   // True only while an action's effects are still landing — not on the
   // background poll, which would leave the card permanently pulsing.
   const syncing = useKashSyncing();
-  const { data: account } = useKashAccount();
+  const { data: account, isError, walletMissing } = useKashAccount();
   const { data: subscription } = useKashSubscription();
+
+  // An unknown balance must never render as zero: someone who holds KASH would
+  // read that as their money gone, and once the "0" fallback is applied the two
+  // states are indistinguishable. Say which one this is instead.
+  const unavailable = !account && (isError || walletMissing);
+  const loading = !account && !unavailable;
 
   const balance = account?.balance ?? "0";
 
@@ -202,33 +208,51 @@ export function KashCard({
       <div className="mt-[22.5px] flex grow flex-col items-center justify-center">
         {/* Side padding and a wrap, so the ticker drops below a very long
             holding instead of the pair running into the card's edges. */}
-        <div
-          className={`tnum flex max-w-full flex-wrap items-baseline justify-center gap-x-2 gap-y-1 px-2 py-[16.63px] font-serif leading-[1.1] font-bold tracking-[-0.05em] ${balanceTextSize}`}
-        >
-          <SyncingValue syncing={syncing}>{balanceDisplay}</SyncingValue>
-          <span className="whitespace-nowrap">KASH +</span>
-        </div>
-        <div className="flex max-w-full flex-wrap items-center justify-center gap-[6.05px] px-2 font-serif text-[16px] leading-[21.93px] font-medium tracking-[-0.08px] text-black/80">
-          {/* The unit price, so the holding above is checkable rather than a
-              number the user has to trust. */}
-          {engineStatus ? (
-            <>
-              <span className="tnum">1 KASH</span>
-              <span className="block size-[24.19px] shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/market/kash-icon-approx-equals.svg" alt="≈" className="size-full" />
-              </span>
-              <span className="tnum">${engineStatus.price.kashPriceUsd}</span>
-            </>
-          ) : null}
-        </div>
-        {/* What the holding itself is worth. Dropped at zero, where the design
-            shows nothing and the figure would only repeat the balance. */}
-        {Number(balance) > 0 ? (
-          <div className="tnum mt-1 max-w-full px-2 text-center text-[13px] leading-[1.4] font-medium text-black/55">
-            ${balanceUsd}
-          </div>
-        ) : null}
+        {loading ? (
+          // Reading in flight: hold the figure's space with a skeleton rather
+          // than printing a zero the read has not confirmed.
+          <>
+            <div className="h-[42px] w-44 animate-pulse rounded-xl bg-black/8" />
+            <div className="mt-2 h-[16px] w-24 animate-pulse rounded bg-black/6" />
+          </>
+        ) : unavailable ? (
+          // No wallet yet, or the read failed: name the state instead of a "0"
+          // that reads as "your Kash is gone".
+          <p className="max-w-full px-4 text-center font-serif text-[15px] leading-[1.5] font-medium text-black/55">
+            {walletMissing ? t("balanceNoWallet") : t("balanceUnavailable")}
+          </p>
+        ) : (
+          <>
+            <div
+              className={`tnum flex max-w-full flex-wrap items-baseline justify-center gap-x-2 gap-y-1 px-2 py-[16.63px] font-serif leading-[1.1] font-bold tracking-[-0.05em] ${balanceTextSize}`}
+            >
+              <SyncingValue syncing={syncing}>{balanceDisplay}</SyncingValue>
+              <span className="whitespace-nowrap">KASH +</span>
+            </div>
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-[6.05px] px-2 font-serif text-[16px] leading-[21.93px] font-medium tracking-[-0.08px] text-black/80">
+              {/* The unit price, so the holding above is checkable rather than a
+                  number the user has to trust. */}
+              {engineStatus ? (
+                <>
+                  <span className="tnum">1 KASH</span>
+                  <span className="block size-[24.19px] shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/market/kash-icon-approx-equals.svg" alt="≈" className="size-full" />
+                  </span>
+                  <span className="tnum">${engineStatus.price.kashPriceUsd}</span>
+                </>
+              ) : null}
+            </div>
+            {/* What the holding itself is worth. Dropped at zero, where the
+                design shows nothing and the figure would only repeat the
+                balance. */}
+            {Number(balance) > 0 ? (
+              <div className="tnum mt-1 max-w-full px-2 text-center text-[13px] leading-[1.4] font-medium text-black/55">
+                ${balanceUsd}
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
 
       {/* The design runs the three actions the full width of the card, so they

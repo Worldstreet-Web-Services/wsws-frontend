@@ -61,9 +61,10 @@ const PREVIEW_ROWS = 4;
 const BRIEFED_SECTIONS = ["spot", "perps", "meme", "rwa"] as const;
 type BriefedSectionId = (typeof BRIEFED_SECTIONS)[number];
 
-// Briefs hidden from the dashboard at request. Spot and Real Assets stay full
-// routes; they just do not get a brief here. Empty this to show all four.
-const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa"];
+// Briefs hidden from the dashboard at request. Spot, Real Assets and Memecoins
+// stay full routes; they just do not get a brief here. Empty this to show all
+// four.
+const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme"];
 
 function isBriefed(id: SectionId): id is BriefedSectionId {
   return (BRIEFED_SECTIONS as readonly SectionId[]).includes(id);

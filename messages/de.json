@@ -2307,7 +2307,9 @@
     "comingSoonToast": "Kash kommt bald. Kaufen, Verdienen und Umwandeln öffnen in Kürze.",
     "redeemReserve": "Einlösereserve",
     "reserveCannotCover": "Die Einlösereserve kann diesen Betrag gerade nicht decken. Versuchen Sie einen kleineren Betrag oder schauen Sie bald wieder vorbei.",
-    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei."
+    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei.",
+    "railTitle": "Hol dir Kash+",
+    "railSubtitle": "Und verdiene extra Geld mit allem, was du tust!"
   },
   "referral": {
     "title": "Freunde einladen",
@@ -2594,12 +2596,22 @@
     "followersCount": "{count, plural, one {# Follower} other {# Follower}}",
     "viewProfile": "Profil ansehen",
     "showMore": "Mehr anzeigen",
-    "showLess": "Weniger anzeigen"
+    "showLess": "Weniger anzeigen",
+    "joinConversation": "Join the Conversation"
   },
   "connection": {
     "offline": "Server nicht erreichbar.",
     "retryIn": "Neuer Versuch in {seconds} s",
     "retryNow": "Jetzt versuchen",
     "reconnecting": "Verbinde neu…"
+  },
+  "carousel": {
+    "previous": "Vorheriger Slide",
+    "next": "Nächster Slide"
+  },
+  "discovery": {
+    "promoRailCarousel": "Angebote",
+    "stakeTitle": "Setz deinen Einsatz",
+    "stakeSubtitle": "Alle spielen, um zu gewinnen"
   }
 }

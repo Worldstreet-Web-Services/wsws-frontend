@@ -2307,7 +2307,9 @@
     "comingSoonToast": "Kash is almost here. Buying, earning and converting open soon.",
     "redeemReserve": "Redemption reserve",
     "reserveCannotCover": "The redemption reserve can't cover this amount right now. Try a smaller amount or check back soon.",
-    "buyingPaused": "Buying is paused right now. Check back soon."
+    "buyingPaused": "Buying is paused right now. Check back soon.",
+    "railTitle": "Get Kash+",
+    "railSubtitle": "And Start Earning Extra Cash With What You Do!"
   },
   "referral": {
     "title": "Invite Friends",
@@ -2594,12 +2596,22 @@
     "followersCount": "{count, plural, one {# follower} other {# followers}}",
     "viewProfile": "View profile",
     "showMore": "Show more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "joinConversation": "Join the Conversation"
   },
   "connection": {
     "offline": "Can't reach the server.",
     "retryIn": "Retrying in {seconds}s",
     "retryNow": "Try now",
     "reconnecting": "Reconnecting…"
+  },
+  "carousel": {
+    "previous": "Previous slide",
+    "next": "Next slide"
+  },
+  "discovery": {
+    "promoRailCarousel": "Promotions",
+    "stakeTitle": "Set the stake",
+    "stakeSubtitle": "Everyone plays to win"
   }
 }

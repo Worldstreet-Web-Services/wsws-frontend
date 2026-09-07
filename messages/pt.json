@@ -2307,7 +2307,9 @@
     "comingSoonToast": "Kash chega em breve. Comprar, ganhar e converter abrem em breve.",
     "redeemReserve": "Reserva de resgate",
     "reserveCannotCover": "A reserva de resgate não pode cobrir este valor no momento. Tente um valor menor ou volte em breve.",
-    "buyingPaused": "A compra está pausada no momento. Volte em breve."
+    "buyingPaused": "A compra está pausada no momento. Volte em breve.",
+    "railTitle": "Pegue Kash+",
+    "railSubtitle": "E comece a ganhar dinheiro extra com o que você faz!"
   },
   "referral": {
     "title": "Convidar amigos",
@@ -2594,12 +2596,22 @@
     "followersCount": "{count, plural, one {# seguidor} other {# seguidores}}",
     "viewProfile": "Ver perfil",
     "showMore": "Ver mais",
-    "showLess": "Ver menos"
+    "showLess": "Ver menos",
+    "joinConversation": "Join the Conversation"
   },
   "connection": {
     "offline": "Não foi possível contactar o servidor.",
     "retryIn": "A tentar novamente em {seconds} s",
     "retryNow": "Tentar agora",
     "reconnecting": "A reconectar…"
+  },
+  "carousel": {
+    "previous": "Slide anterior",
+    "next": "Próximo slide"
+  },
+  "discovery": {
+    "promoRailCarousel": "Promoções",
+    "stakeTitle": "Faça a sua aposta",
+    "stakeSubtitle": "Todos jogam para ganhar"
   }
 }

@@ -16,6 +16,13 @@ import {
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
 import { KashCard } from "@/features/portfolio/components/kash-card";
+// The phone's portfolio head: a swipe carousel of the balance and Kash+ cards,
+// then a promo strip. Desktop keeps the side-by-side grid below.
+import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile";
+import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
+import { PromoCarousel } from "@/components/ui/promo-deck";
+import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
+import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
 import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
 import { KashHistoryModal } from "@/features/portfolio/components/kash-history-modal";
@@ -246,7 +253,9 @@ export function PortfolioView({
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="mb-4">
+      {/* The design's top Kash banner is desktop-only; the phone carries its own
+          promo strip in the mobile head below. */}
+      <div className="mb-4 hidden md:block">
         <KashBanner onBuy={() => setKashModal("buy")} />
       </div>
       <KashBuyModal
@@ -259,7 +268,28 @@ export function PortfolioView({
       <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
       <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      {/* Phone head: swipe carousel of the two starfield cards, then the promo
+          strip. The carousel gives the h-full cards their height. */}
+      <div className="md:hidden">
+        <BalanceCarousel>
+          <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+          <KashCardMobile
+            onBuy={() => setKashModal("buy")}
+            onSend={() => setKashModal("send")}
+            onConvert={() => setKashModal("convert")}
+            onHistory={() => setKashModal("history")}
+          />
+        </BalanceCarousel>
+        <div className="mt-3">
+          <PromoCarousel>
+            <SetTheStakeBanner />
+            <GetKashBanner onBuy={() => setKashModal("buy")} />
+          </PromoCarousel>
+        </div>
+      </div>
+
+      {/* Desktop: the side-by-side grid. */}
+      <div className="hidden gap-3 md:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
         <KashCard
           onBuy={() => setKashModal("buy")}

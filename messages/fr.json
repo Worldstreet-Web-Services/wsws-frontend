@@ -636,7 +636,8 @@
     "buyMore": "Acheter plus de {name}",
     "managePrediction": "Gérer dans Prédictions",
     "sell": "Vendre {name}",
-    "assetDetails": "Détails de l'actif"
+    "assetDetails": "Détails de l'actif",
+    "goToCard": "Aller à la carte {number}"
   },
   "markets": {
     "title": "Marchés",

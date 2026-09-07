@@ -636,7 +636,8 @@
     "buyMore": "Buy more {name}",
     "managePrediction": "Manage in Prediction",
     "sell": "Sell {name}",
-    "assetDetails": "Asset details"
+    "assetDetails": "Asset details",
+    "goToCard": "Go to card {number}"
   },
   "markets": {
     "title": "Markets",

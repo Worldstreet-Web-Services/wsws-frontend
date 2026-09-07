@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { SOLANA_CHAIN_ID, chainSlug, networkOf } from "@/lib/meme/chain";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -13,11 +14,24 @@ import {
   type TradePhase,
 } from "@/features/trade/hooks/use-meme-trade";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useReroutedWithdraw } from "@/hooks/use-withdraw";
+import { usePrivy } from "@privy-io/react-auth";
 import { displaySymbol } from "@/lib/buy";
+import { settlementFor } from "@/lib/deposit";
 import { friendlyError } from "@/lib/errors";
 import { TradeApiError, isValidTradeAmount, visibleWarnings, type MemeToken } from "@/lib/meme/api";
+import { buyFunding, estimateReceive } from "@/lib/meme/funding";
+import { exceedsHeld, maxSellAmount } from "@/lib/meme/sell-amount";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
+import { formatUsd, toBaseUnits } from "@/lib/trade/math";
+import { belowMinimumBuy, minimumBuyUsd } from "@/lib/trade/minimums";
+import {
+  clearPendingRwaSettlement,
+  savePendingRwaSettlement,
+} from "@/lib/trade/pending-settlement";
+import { fetchConfirmedSolanaBalance } from "@/lib/trade/solana-balance";
+import { getWalletAddress } from "@/lib/user";
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
 const PREVIEW_DEBOUNCE_MS = 600;
@@ -57,7 +71,7 @@ export function MemeTradeSheet({
 }: MemeTradeSheetProps) {
   const t = useTranslations("meme");
   // Fresh risk/tradability for the trade surface; the list row may be stale.
-  const { token: fresh } = useMemeToken(listed.address);
+  const { token: fresh } = useMemeToken(listed);
   const token = fresh ?? listed;
 
   // Known-safe wrapped spot assets (cbBTC, cbDOGE) show as the coin they
@@ -71,9 +85,16 @@ export function MemeTradeSheet({
   const [side, setSide] = useState<"BUY" | "SELL">(defaultSide);
   const [amount, setAmount] = useState("");
   const [debouncedAmount, setDebouncedAmount] = useState("");
-  const { wallet, phase, error, received, trade, reset, linkForPreview } = useMemeTrade();
+  const { walletFor, phase, error, received, trade, reset, linkForPreview } = useMemeTrade();
+  // The token's chain picks the wallet that pays and holds, and the network
+  // the portfolio files its balances under.
+  const wallet = walletFor(token.chainId);
+  const network = networkOf(token.chainId);
   const portfolio = usePortfolio();
   const linkTriedRef = useRef(false);
+  const { user } = usePrivy();
+  const { withdraw: routeUsdc } = useReroutedWithdraw("trade");
+  const [fundingInFlight, setFundingInFlight] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedAmount(amount), PREVIEW_DEBOUNCE_MS);
@@ -86,37 +107,69 @@ export function MemeTradeSheet({
   const maxDecimals = buying ? 6 : (token.decimals ?? 18);
   const amountValid = isValidTradeAmount(debouncedAmount, maxDecimals);
 
-  const usdcBalance =
-    portfolio.tokens.find((p) => p.network === "base-mainnet" && p.symbol.toUpperCase() === "USDC")
-      ?.balance ?? 0;
-  const heldBalance =
-    portfolio.tokens.find(
-      (p) =>
-        p.network === "base-mainnet" && p.address?.toLowerCase() === token.address.toLowerCase()
-    )?.balance ?? 0;
-  const balance = buying ? usdcBalance : heldBalance;
-  const overBalance = amountValid && Number(debouncedAmount) > balance + 1e-9;
+  // The user has one USD balance: their Base USDC. A coin on Solana is paid
+  // for by moving that USDC to the Solana wallet first, so on Solana both
+  // sides of the move count as spendable. Which chain any of this is on is
+  // never shown.
+  const usdcOn = (net: string) =>
+    portfolio.tokens.find((p) => p.network === net && p.symbol.toUpperCase() === "USDC")?.balance ??
+    0;
+  const baseUsdc = usdcOn("base-mainnet");
+  const solanaUsdc = usdcOn("solana-mainnet");
+  const onSolana = token.chainId === SOLANA_CHAIN_ID;
+  const payValue = amountValid ? Number(debouncedAmount) : 0;
+  const {
+    spendableUsd,
+    needsFunding: shortOnSolana,
+    fundingUsd,
+    canFund,
+  } = buyFunding({ chainId: token.chainId, payUsd: payValue, baseUsdc, solanaUsdc });
+  const minBuyUsd = minimumBuyUsd(onSolana);
+  const belowMin = buying && belowMinimumBuy(payValue, onSolana);
+  // EVM addresses compare case-insensitively; a Solana mint is case-sensitive.
+  const sameAddress = (a: string | null | undefined) =>
+    onSolana ? a === token.address : a?.toLowerCase() === token.address.toLowerCase();
+  const held = portfolio.tokens.find((p) => p.network === network && sameAddress(p.address));
+  const heldBalance = held?.balance ?? 0;
+  // The exact holding, in base units, sizes a sale; the float is for display.
+  const heldRaw = held?.rawBalance ?? "0";
+  const heldDecimals = held?.decimals ?? token.decimals ?? 18;
+  const balance = buying ? spendableUsd : heldBalance;
+  const overBalance =
+    amountValid &&
+    (buying
+      ? Number(debouncedAmount) > balance + 1e-9
+      : exceedsHeld(debouncedAmount, heldRaw, heldDecimals));
+  // A Solana buy that needs the move cannot be previewed by the trade service
+  // yet (it checks the Solana wallet's balance), so the sheet shows an
+  // estimate from the listed price until the USDC has landed.
+  const needsFunding = buying && shortOnSolana;
+  const fundingBlocked = needsFunding && !canFund;
 
   // One-tap full balance: buys floor to cents so 100% never rounds above the
-  // USDC balance; sells render at the token's own precision (String() would
-  // emit scientific notation for dust).
+  // USDC balance; sells are the exact base-unit holding, because a float
+  // rendered at the token's decimals invents digits the wallet never held
+  // and the trade service refuses an amount one base unit over.
   const fillMax = () => {
     if (balance <= 0) return;
     if (buying) {
       setAmount((Math.floor(balance * 100) / 100).toFixed(2));
       return;
     }
-    const fixed = balance.toFixed(token.decimals ?? 18);
-    setAmount(fixed.includes(".") ? fixed.replace(/\.?0+$/, "") || "0" : fixed);
+    setAmount(maxSellAmount(heldRaw, heldDecimals));
   };
 
-  const previewInput = useMemo(
-    () =>
-      amountValid && sideEnabled && !overBalance && wallet
-        ? { side, tokenAddress: token.address, amount: debouncedAmount, walletAddress: wallet }
-        : null,
-    [amountValid, sideEnabled, overBalance, wallet, side, token.address, debouncedAmount]
-  );
+  // The compiler memoizes this; a manual useMemo here fought its inference.
+  const previewInput =
+    amountValid && sideEnabled && !overBalance && !belowMin && !needsFunding && wallet
+      ? {
+          side,
+          tokenAddress: token.address,
+          amount: debouncedAmount,
+          walletAddress: wallet,
+          chainId: token.chainId,
+        }
+      : null;
   const preview = useMemePreview(previewInput);
 
   // A first-ever preview 403s until the wallet is linked; link once (headless
@@ -130,26 +183,40 @@ export function MemeTradeSheet({
       !linkTriedRef.current
     ) {
       linkTriedRef.current = true;
-      void linkForPreview()
+      void linkForPreview(token.chainId)
         .then(() => previewRefetch())
         .catch(() => {});
     }
-  }, [previewError, linkForPreview, previewRefetch]);
+  }, [previewError, linkForPreview, previewRefetch, token.chainId]);
 
-  const busy = phase !== "idle" && phase !== "failed" && phase !== "confirmed";
+  const busy = (phase !== "idle" && phase !== "failed" && phase !== "confirmed") || fundingInFlight;
   // The balanceOf delta (received) is on-chain proof of delivery, landing
   // before the backend's own slower confirmation — treat it as done rather
   // than making the tracking screen sit on "confirming" for a trade that has
   // already, verifiably, settled.
   const settled = phase === "confirmed" || received != null;
+  const estimate = needsFunding ? estimateReceive(payValue, token.priceUsd) : null;
   const submitDisabled =
-    busy || !amountValid || !sideEnabled || overBalance || !preview.data || !wallet;
+    busy ||
+    !amountValid ||
+    !sideEnabled ||
+    overBalance ||
+    belowMin ||
+    fundingBlocked ||
+    !wallet ||
+    (needsFunding ? fundingUsd <= 0 : !preview.data);
   // A quote that fails for any reason other than the auto-retried wallet-link
   // mismatch above leaves preview.data null with no other visible signal —
   // the CTA just sits disabled, indistinguishable from "no amount entered
   // yet". Surface it explicitly once there is a real amount to quote.
   const previewFailed =
-    amountValid && sideEnabled && !overBalance && !preview.isFetching && !preview.data
+    amountValid &&
+    sideEnabled &&
+    !overBalance &&
+    !belowMin &&
+    !needsFunding &&
+    !preview.isFetching &&
+    !preview.data
       ? (previewError ?? null)
       : null;
 
@@ -172,7 +239,69 @@ export function MemeTradeSheet({
     []
   );
 
-  const onTrade = async () => {
+  // Solana buy that needs the move: send Base USDC to the user's Solana
+  // wallet through the strict Dextopus route and hand the order to the
+  // dashboard-level tracker, which buys the coin once the USDC lands. The
+  // sheet's part is over at that point, so it closes.
+  async function fundAndQueue() {
+    if (submitDisabled) return;
+    const baseWallet = getWalletAddress(user, "ethereum");
+    const solanaWallet = getWalletAddress(user, "solana");
+    if (!baseWallet || !solanaWallet) {
+      toast.error(t("connectWallet"));
+      return;
+    }
+    setFundingInFlight(true);
+    toastRef.current = toast.loading(t("fundWorking"));
+    try {
+      const base = settlementFor("ethereum");
+      const solana = settlementFor("solana");
+      const startingUsdcRaw = await fetchConfirmedSolanaBalance(solanaWallet, solana.asset);
+      const result = await routeUsdc({
+        originNetwork: "base-mainnet",
+        originChainId: base.chainId,
+        originTokenAddress: base.asset,
+        originDecimals: base.decimals,
+        destinationChainId: solana.chainId,
+        destinationAsset: solana.asset,
+        to: solanaWallet,
+        amount: toBaseUnits(fundingUsd.toFixed(6), base.decimals),
+        refundTo: baseWallet,
+      });
+      savePendingRwaSettlement({
+        requestId: result.depositRequestId,
+        product: "meme",
+        direction: "base-to-solana",
+        assetSymbol: displaySym || token.address,
+        createdAt: Date.now(),
+        purchase: {
+          assetAddress: token.address,
+          assetSymbol: displaySym || token.address,
+          amountInRaw: toBaseUnits(debouncedAmount, solana.decimals).toString(),
+          startingUsdcRaw: startingUsdcRaw.toString(),
+          minimumDeliveryRaw: result.minAmountOut,
+          slippageBps: 100,
+        },
+      });
+      track("trade_previewed", {
+        vertical: "memecoin",
+        asset: token.symbol ?? token.address,
+        side: "buy",
+        amount_usd: payValue,
+      });
+      toast.success(t("purchaseQueued", { symbol: displaySym }), { id: toastRef.current });
+      toastRef.current = undefined;
+      void portfolio.refetchUntilChanged();
+      onClose();
+    } catch (e) {
+      toast.error(friendlyError(e, t("fundFailed")), { id: toastRef.current });
+      toastRef.current = undefined;
+    } finally {
+      setFundingInFlight(false);
+    }
+  }
+
+  async function onTrade() {
     if (submitDisabled) return;
     track("trade_previewed", {
       vertical: "memecoin",
@@ -183,24 +312,64 @@ export function MemeTradeSheet({
     toastRef.current = toast.loading(
       buying ? t("buyingToast", { symbol: displaySym }) : t("sellingToast", { symbol: displaySym })
     );
+    // A Solana sale pays out in Solana USDC. Record what it should deliver
+    // before signing, so the tracker can route exactly those proceeds back to
+    // the user's USD balance, and nothing else in that wallet.
+    let saleHandoffId: string | null = null;
     try {
-      await trade({ side, tokenAddress: token.address, amount: debouncedAmount });
-      // Memecoins always settle on Base, and carry the risk label the screen
-      // showed the user before they confirmed.
+      if (!buying && onSolana && wallet && preview.data) {
+        const startingUsdcRaw = await fetchConfirmedSolanaBalance(
+          wallet,
+          settlementFor("solana").asset
+        );
+        const minimum = BigInt(preview.data.minimumBuyAmountAtomic);
+        const expected = BigInt(preview.data.expectedBuyAmountAtomic);
+        saleHandoffId = `meme-sale:${crypto.randomUUID()}`;
+        savePendingRwaSettlement({
+          requestId: saleHandoffId,
+          product: "meme",
+          direction: "solana-to-base",
+          assetSymbol: displaySym || token.address,
+          createdAt: Date.now(),
+          sale: {
+            startingUsdcRaw: startingUsdcRaw.toString(),
+            minimumProceedsRaw: minimum.toString(),
+            expectedProceedsRaw: (expected < minimum ? minimum : expected).toString(),
+            slippageBps: preview.data.slippageBps,
+          },
+        });
+      }
+      await trade({
+        side,
+        tokenAddress: token.address,
+        amount: debouncedAmount,
+        chainId: token.chainId,
+      });
+      // Settles on the token's own chain, and carries the risk label the
+      // screen showed the user before they confirmed.
       track("trade_completed", {
         vertical: "memecoin",
         token: token.symbol ?? token.address,
         side: buying ? "buy" : "sell",
         amount_usd: Number(debouncedAmount),
-        network: "base",
+        network: chainSlug(token.chainId) ?? "base",
       });
       toast.success(
-        buying ? t("toastBought", { symbol: displaySym }) : t("toastSold", { symbol: displaySym }),
+        buying
+          ? t("toastBought", { symbol: displaySym })
+          : saleHandoffId
+            ? t("proceedsWorking")
+            : t("toastSold", { symbol: displaySym }),
         { id: toastRef.current }
       );
       toastRef.current = undefined;
       void portfolio.refetchUntilChanged();
     } catch (e) {
+      if (saleHandoffId) clearPendingRwaSettlement(saleHandoffId);
+      // A failure after signing may still have moved the balance. Read it
+      // fresh so the form does not argue with an amount the wallet no longer
+      // holds, or refuse one it now does.
+      void portfolio.refetchFresh();
       track("trade_failed", {
         vertical: "memecoin",
         asset: token.symbol ?? token.address,
@@ -209,7 +378,7 @@ export function MemeTradeSheet({
       toast.error(friendlyError(e, t("orderFailed")), { id: toastRef.current });
       toastRef.current = undefined;
     }
-  };
+  }
 
   // Signing must not be interrupted, but backend verification can run without
   // the sheet — the poll continues and the toast above delivers the outcome.
@@ -391,9 +560,11 @@ export function MemeTradeSheet({
                 <span className="tnum text-white">
                   {preview.data
                     ? `${preview.data.expectedBuyAmountFormatted} ${displaySymbol(preview.data.buyToken.symbol ?? "")}`
-                    : preview.isFetching
-                      ? "…"
-                      : "—"}
+                    : estimate != null
+                      ? `≈ ${estimate.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${displaySym}`
+                      : preview.isFetching
+                        ? "…"
+                        : "—"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -425,6 +596,14 @@ export function MemeTradeSheet({
                 {friendlyError(previewFailed, t("previewFailed"))}
               </div>
             ) : null}
+            {needsFunding && !fundingBlocked ? (
+              <p className="mt-2 text-[11.5px] font-normal text-white/45">{t("estimateNote")}</p>
+            ) : null}
+            {fundingBlocked ? (
+              <div className="text-down mt-2 text-[12.5px] font-normal">
+                {t("fundShort", { amount: formatUsd(fundingUsd) })}
+              </div>
+            ) : null}
 
             {showRisk && visibleWarnings(token.warnings).length > 0 ? (
               <div className="mt-3 flex flex-col gap-1">
@@ -450,7 +629,7 @@ export function MemeTradeSheet({
             ) : null}
 
             <button
-              onClick={() => void onTrade()}
+              onClick={() => void (needsFunding ? fundAndQueue() : onTrade())}
               disabled={submitDisabled}
               className={`mt-3 w-full rounded-[14px] p-[15px] font-sans text-[15px] font-semibold ${
                 buying ? "bg-up text-up-ink" : "bg-down text-down-ink"
@@ -458,11 +637,13 @@ export function MemeTradeSheet({
             >
               {!sideEnabled
                 ? t("sideDisabled")
-                : overBalance
+                : overBalance || fundingBlocked
                   ? t("notEnough")
-                  : buying
-                    ? t("ctaBuy", { symbol: displaySym })
-                    : t("ctaSell", { symbol: displaySym })}
+                  : belowMin
+                    ? t("minimumUsd", { amount: minBuyUsd })
+                    : buying
+                      ? t("ctaBuy", { symbol: displaySym })
+                      : t("ctaSell", { symbol: displaySym })}
             </button>
           </>
         )}

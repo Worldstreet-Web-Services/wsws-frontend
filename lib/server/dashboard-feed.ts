@@ -21,7 +21,7 @@ import {
   type RwaBriefRow,
   type SpotBriefRow,
 } from "@/lib/dashboard-feed";
-import { withoutQuoteCurrency, type Paged } from "@/lib/meme/catalog";
+import { tradableHere, type Paged } from "@/lib/meme/catalog";
 import type { MemeToken } from "@/lib/meme/types";
 import { composePerpBrief, perpBriefFallbackSymbols, type PerpBriefRow } from "@/lib/perp/brief";
 import type { PerpPair, PerpPrice } from "@/lib/perp/types";
@@ -142,7 +142,19 @@ async function memesSection(): Promise<MemeBriefRow[]> {
     envelopeData<Paged<MemeToken>>(
       await getJson(`${TRADE_BASE}/tokens?page=1&limit=${TRENDING_FALLBACK_LIMIT}&chain=base`, 15)
     );
-  const page = withoutQuoteCurrency(await trending().catch(catalog));
+  // Trending is mostly Solana and ignores ?chain, so after the boundary it
+  // can be thin or empty without ever erroring. The brief then fills from the
+  // Base catalogue, as the page's own shortlist does; "nothing to show"
+  // beside a page full of coins is the one thing it must not say.
+  let page = tradableHere(await trending().catch(catalog));
+  if (page.items.length < DASHBOARD_FEED_ROWS) {
+    // The catalogue failing must not throw away a thin trending list; the
+    // fuller of the two wins.
+    const fallback = await catalog()
+      .then(tradableHere)
+      .catch(() => null);
+    if (fallback && fallback.items.length > page.items.length) page = fallback;
+  }
   return page.items.slice(0, DASHBOARD_FEED_ROWS).map((t) => {
     const change = t.priceChange24hPercent == null ? NaN : Number(t.priceChange24hPercent);
     return {

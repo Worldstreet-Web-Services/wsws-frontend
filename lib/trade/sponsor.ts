@@ -2,6 +2,7 @@
 
 import { http, type EIP1193Provider, type SignedAuthorization } from "viem";
 import { createBundlerClient, createPaymasterClient } from "viem/account-abstraction";
+import { paymasterFeesPerGas } from "@/lib/trade/sponsor-fees";
 import { to7702SimpleSmartAccount } from "permissionless/accounts";
 import { getSponsoredEvmChainById } from "@/lib/trade/sponsored-evm";
 import { isReceiptChain, publicClientForChain } from "@/lib/trade/receipt";
@@ -116,7 +117,8 @@ async function isAlreadyDelegated(request: ReadRequest, address: `0x${string}`):
 
 // Sends from the user's embedded EOA through EIP-7702. ZeroDev handles all
 // state reads; Alchemy is used only for the bundler/paymaster operations whose
-// policy is tied to the primary ALCHEMY_API_KEY account.
+// policy is tied to the Alchemy app of the key it is paired with, and the
+// proxy walks the configured pairs in order (ADR-2026-09-07-alchemy-key-pool).
 export async function sendSponsoredEvmCalls({
   chainId,
   address,
@@ -173,14 +175,40 @@ export async function sendSponsoredEvmCalls({
     accountLogicAddress: SIMPLE_7702_IMPL,
   });
 
+  // The paymaster path also estimates its own fees: the chain's priority-fee
+  // estimate is 0 on Arbitrum, which the bundler rejects at precheck, so the
+  // bundler's published floor is read first. See lib/trade/sponsor-fees.
+  const paymaster =
+    target.sponsorshipMode === "paymaster"
+      ? createPaymasterClient({ transport: bundlerTransport })
+      : undefined;
   const bundlerClient = createBundlerClient({
     account,
     client,
     chain: target.chain,
     transport: bundlerTransport,
-    ...(target.sponsorshipMode === "paymaster"
-      ? { paymaster: createPaymasterClient({ transport: bundlerTransport }) }
-      : {}),
+    paymaster,
+    userOperation: paymaster
+      ? {
+          estimateFeesPerGas: async ({ bundlerClient: bundler }) => {
+            const [block, chainTip] = await Promise.all([
+              client.getBlock({ blockTag: "latest" }),
+              client.estimateMaxPriorityFeePerGas().catch(() => 0n),
+            ]);
+            return paymasterFeesPerGas({
+              bundlerRequest: (args) =>
+                (
+                  bundler.request as (input: {
+                    method: string;
+                    params?: unknown;
+                  }) => Promise<unknown>
+                )(args),
+              baseFeePerGas: block.baseFeePerGas ?? 0n,
+              chainPriorityFeePerGas: chainTip,
+            });
+          },
+        }
+      : undefined,
   });
 
   const hash = await bundlerClient.sendUserOperation(

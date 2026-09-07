@@ -30,6 +30,7 @@ const BASE = 8453;
 const ARBITRUM = 42161;
 const POLYGON = 137;
 const HYPERLIQUID = 999;
+const ARBITRUM_NOVA = 42170;
 const ZKSYNC = 324;
 
 describe("useEvmSend routing", () => {
@@ -54,11 +55,21 @@ describe("useEvmSend routing", () => {
     expect(hash).toBe("0xsponsoredhash");
   });
 
-  // The reported HYPE failure. These chains are in the sponsorship registry but
-  // no Gas Manager policy exists for them, so a userOp is rejected by the
-  // bundler as invalid fields. The user pays their own gas instead, which is a
-  // send that actually completes.
-  it("routes registry chains with no policy through the normal EOA send", async () => {
+  // The one policy covers every mainnet the key can reach
+  // (ADR-2026-09-07-sponsor-all-evm-mainnets), so Arbitrum, once user-paid,
+  // takes the sponsored path like Base.
+  it("routes Arbitrum through the sponsored path", async () => {
+    const { result } = renderHook(() => useEvmSend());
+    await result.current({ to: "0xdead", data: "0xbeef", chainId: ARBITRUM });
+    expect(sendSponsoredEvmCalls).toHaveBeenCalledOnce();
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  // The reported HYPE failure, twice over. Alchemy's bundler on HyperEVM
+  // rejects the EIP-7702 authorization the sponsored path needs ("Invalid
+  // fields set on User Operation"), so a sponsored HYPE sell can never
+  // complete there; the user pays their own gas instead, which does.
+  it("routes HyperEVM through the normal EOA send, since its bundler has no EIP-7702", async () => {
     const { result } = renderHook(() => useEvmSend());
     const hash = await result.current({ to: "0xdead", data: "0xbeef", chainId: HYPERLIQUID });
     expect(sendTransaction).toHaveBeenCalledOnce();
@@ -66,11 +77,41 @@ describe("useEvmSend routing", () => {
     expect(hash).toBe("0xnormalhash");
   });
 
-  it("does the same for Arbitrum, which has no policy either", async () => {
+  // Alchemy's bundler refuses EIP-7702 on some chains only at send time
+  // ("EIP-7702 is not supported on entry point … or is disabled" on Monad,
+  // 2026-09-07), which no probe short of a real send reveals. A sponsored send
+  // refused for that reason falls back to the ordinary user-paid transaction
+  // once, so the chain degrades to a working send instead of a dead end.
+  it("falls back to the user-paid send when the bundler refuses EIP-7702", async () => {
+    sendSponsoredEvmCalls.mockRejectedValueOnce(
+      new Error(
+        "EIP-7702 is not supported on entry point 0x4337084d9e255ff0702461cf8895ce9e3b5ff108 or is disabled"
+      )
+    );
     const { result } = renderHook(() => useEvmSend());
-    await result.current({ to: "0xdead", data: "0xbeef", chainId: ARBITRUM });
+    const hash = await result.current({ to: "0xdead", data: "0xbeef", chainId: BASE });
+    expect(sendSponsoredEvmCalls).toHaveBeenCalledOnce();
+    expect(sendTransaction).toHaveBeenCalledOnce();
+    expect(hash).toBe("0xnormalhash");
+  });
+
+  it("does not fall back on any other sponsored failure", async () => {
+    sendSponsoredEvmCalls.mockRejectedValueOnce(new Error("AA21 didn't pay prefund"));
+    const { result } = renderHook(() => useEvmSend());
+    await expect(result.current({ to: "0xdead", data: "0xbeef", chainId: BASE })).rejects.toThrow(
+      /AA21/
+    );
+    expect(sendTransaction).not.toHaveBeenCalled();
+  });
+
+  // A registry chain the key cannot reach has no policy in effect: the user
+  // pays their own gas, which is a send that actually completes.
+  it("routes registry chains with no policy through the normal EOA send", async () => {
+    const { result } = renderHook(() => useEvmSend());
+    const hash = await result.current({ to: "0xdead", data: "0xbeef", chainId: ARBITRUM_NOVA });
     expect(sendTransaction).toHaveBeenCalledOnce();
     expect(sendSponsoredEvmCalls).not.toHaveBeenCalled();
+    expect(hash).toBe("0xnormalhash");
   });
 
   it("routes unsupported EVM chains through the normal EOA send", async () => {

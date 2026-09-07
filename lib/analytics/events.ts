@@ -79,6 +79,14 @@ export interface AnalyticsEvents {
   trade_previewed: { vertical: Vertical; asset: string; side: Side; amount_usd: number };
   trade_completed: TradeCompleted;
   trade_failed: { vertical: Vertical; asset: string; reason: string };
+  // The wallet's balance proved the trade, but the trade service recorded it
+  // as something else. An ops signal, never shown to the user as a failure.
+  trade_recording_mismatch: {
+    vertical: Vertical;
+    asset: string;
+    swap_id: string;
+    recorded: string;
+  };
 
   // Perpetuals
   perp_market_viewed: { market: string; market_type?: MarketType };
@@ -339,7 +347,7 @@ export type TradeCompleted =
       slippage_pct?: number;
       price_impact_pct?: number;
       risk_label?: "low" | "medium" | "critical";
-      network: "base";
+      network: "base" | "solana";
     }
   | {
       vertical: "real_asset";

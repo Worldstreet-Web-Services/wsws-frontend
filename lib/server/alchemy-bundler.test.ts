@@ -13,7 +13,6 @@ describe("Alchemy sponsorship proxy", () => {
     verifyRequest.mockReset();
     verifyRequest.mockResolvedValue({ userId: "user" });
     vi.stubEnv("ALCHEMY_API_KEY", "data-api-key");
-    vi.stubEnv("ALCHEMY_POLYGON_RPC_URL", "polygon-policy-api-key");
     vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "different-account-key");
     vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "base-policy");
     vi.stubEnv("ALCHEMY_POLYGON_GAS_POLICY_ID", "polygon-policy");
@@ -99,6 +98,21 @@ describe("Alchemy sponsorship proxy", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  // The paymaster path asks the bundler for its priority-fee floor before
+  // sending; the proxy must let that one bundler method through.
+  it("forwards the bundler's priority-fee floor query without a policy", async () => {
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 1, method: "rundler_maxPriorityFeePerGas", params: [] }),
+      "arb-mainnet"
+    );
+
+    expect(response.status).toBe(200);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("arb-mainnet.g.alchemy.com/v2/data-api-key");
+    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
+  });
+
   it("rejects ordinary node reads so they stay on ZeroDev", async () => {
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     const response = await forwardAlchemyBundlerRequest(
@@ -123,43 +137,9 @@ describe("Alchemy sponsorship proxy", () => {
     );
 
     expect(response.status).toBe(200);
-    const [url, init] = vi.mocked(fetch).mock.calls[0];
-    expect(String(url)).toContain("polygon-mainnet.g.alchemy.com/v2/polygon-policy-api-key");
-    expect(String(url)).not.toContain("data-api-key");
+    const [, init] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(init?.body)).params[3]).toEqual({ policyId: "polygon-policy" });
     expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
-  });
-
-  it("accepts a complete Polygon Alchemy RPC URL", async () => {
-    vi.stubEnv(
-      "ALCHEMY_POLYGON_RPC_URL",
-      "https://polygon-mainnet.g.alchemy.com/v2/dedicated-polygon-key/"
-    );
-    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
-    await forwardAlchemyBundlerRequest(
-      makeReq({
-        method: "pm_getPaymasterStubData",
-        params: [{}, "0xentrypoint", "0x89", {}],
-      }),
-      "polygon-mainnet"
-    );
-
-    expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe(
-      "https://polygon-mainnet.g.alchemy.com/v2/dedicated-polygon-key"
-    );
-  });
-
-  it("fails closed when the dedicated Polygon RPC is missing", async () => {
-    vi.stubEnv("ALCHEMY_POLYGON_RPC_URL", "");
-    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
-    const response = await forwardAlchemyBundlerRequest(
-      makeReq({ method: "pm_getPaymasterData", params: [{}, "0xentrypoint", "0x89", {}] }),
-      "polygon-mainnet"
-    );
-
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "ALCHEMY_POLYGON_RPC_URL is missing" });
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("fails closed when the Base policy is missing", async () => {
@@ -208,42 +188,8 @@ describe("Alchemy sponsorship proxy", () => {
     expect(body.id).toBe(7);
     // -32002 is "resource unavailable", which viem surfaces without retrying.
     expect(body.error.code).toBe(-32002);
-    expect(body.error.message).toMatch(/sponsorship capacity/i);
+    expect(body.error.message).toMatch(/monthly capacity/i);
     expect(logged).toHaveBeenCalledWith(expect.stringMatching(/capacity/i), expect.anything());
-    logged.mockRestore();
-  });
-
-  it("surfaces the final paymaster sponsorship-limit refusal without retrying", async () => {
-    const exhausted = {
-      jsonrpc: "2.0",
-      id: 8,
-      error: {
-        code: -32602,
-        message: "This transaction's USD cost will put your team over your gas sponsorship Limit.",
-      },
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify(exhausted), { status: 200 }))
-    );
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
-
-    const response = await forwardAlchemyBundlerRequest(
-      makeReq({ jsonrpc: "2.0", id: 8, method: "pm_getPaymasterData", params: [] }),
-      "polygon-mainnet"
-    );
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body).toMatchObject({
-      id: 8,
-      error: { code: -32002, message: expect.stringMatching(/gas credits/i) },
-    });
-    expect(logged).toHaveBeenCalledWith(
-      expect.stringMatching(/polygon-mainnet/),
-      expect.anything()
-    );
     logged.mockRestore();
   });
 
@@ -334,5 +280,157 @@ describe("Alchemy sponsorship proxy", () => {
 
     expect(response.status).toBe(401);
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+// ADR-2026-09-07-alchemy-key-pool: several keys, each with its own policy,
+// walked in order. A pair that is over capacity, refused, or whose policy the
+// app does not know hands over to the next pair, which sends ITS OWN policy.
+describe("Alchemy sponsorship across the key pool", () => {
+  const exhausted = (id: number) => ({
+    jsonrpc: "2.0",
+    id,
+    error: { code: 429, message: "Monthly capacity limit exceeded. Visit billing to upgrade." },
+  });
+  const ok = (id: number) => ({ jsonrpc: "2.0", id, result: { paymaster: "0xpm" } });
+
+  beforeEach(async () => {
+    const { resetAlchemyKeyBlocks } = await import("./alchemy-keys");
+    resetAlchemyKeyBlocks();
+    verifyRequest.mockReset();
+    verifyRequest.mockResolvedValue({ userId: "user" });
+    vi.stubEnv("ALCHEMY_API_KEY", "k0,k1,k2");
+    vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "p0,p1,p2");
+    vi.stubEnv("ALCHEMY_POLYGON_GAS_POLICY_ID", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  function policyOf(call: number): { key: string; policyId: unknown } {
+    const [url, init] = vi.mocked(fetch).mock.calls[call];
+    const body = JSON.parse(String(init?.body));
+    return { key: String(url).split("/v2/")[1], policyId: body.params?.[3]?.policyId };
+  }
+
+  it("moves to the next pair, with that pair's policy, when the first is over capacity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify(exhausted(1)), { status: 429 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(ok(1)), { status: 200 }))
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "pm_getPaymasterStubData",
+        params: [{}, "0x", "0x2105", {}],
+      }),
+      "base-mainnet"
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).result.paymaster).toBe("0xpm");
+    expect(policyOf(0)).toEqual({ key: "k0", policyId: "p0" });
+    expect(policyOf(1)).toEqual({ key: "k1", policyId: "p1" });
+  });
+
+  it("moves on when the app does not know the policy or refuses the key", async () => {
+    const notFound = {
+      jsonrpc: "2.0",
+      id: 1,
+      error: { code: -32602, message: "Policy not found" },
+    };
+    const unauth = {
+      jsonrpc: "2.0",
+      id: 1,
+      error: { code: -32600, message: "Must be authenticated!" },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify(unauth), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(notFound), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(ok(1)), { status: 200 }))
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "pm_getPaymasterStubData",
+        params: [{}, "0x", "0x2105", {}],
+      }),
+      "base-mainnet"
+    );
+    expect((await response.json()).result.paymaster).toBe("0xpm");
+    expect(policyOf(2)).toEqual({ key: "k2", policyId: "p2" });
+  });
+
+  it("skips a pair that has no policy at its index", async () => {
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", ",p1");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(ok(1)), { status: 200 }))
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "pm_getPaymasterStubData",
+        params: [{}, "0x", "0x2105", {}],
+      }),
+      "base-mainnet"
+    );
+    expect(policyOf(0)).toEqual({ key: "k1", policyId: "p1" });
+  });
+
+  it("remembers an exhausted pair so the next request starts past it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify(exhausted(1)), { status: 429 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(ok(1)), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(ok(2)), { status: 200 }))
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const call = (id: number) =>
+      forwardAlchemyBundlerRequest(
+        makeReq({
+          jsonrpc: "2.0",
+          id,
+          method: "pm_getPaymasterStubData",
+          params: [{}, "0x", "0x2105", {}],
+        }),
+        "base-mainnet"
+      );
+    await call(1);
+    await call(2);
+    expect(policyOf(2)).toEqual({ key: "k1", policyId: "p1" });
+  });
+
+  it("reports exhaustion only when every pair is exhausted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(exhausted(1)), { status: 429 }))
+    );
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 1, method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
+    expect((await response.json()).error.code).toBe(-32002);
+    expect(logged).toHaveBeenCalledWith(expect.stringMatching(/capacity/i), expect.anything());
+    logged.mockRestore();
   });
 });

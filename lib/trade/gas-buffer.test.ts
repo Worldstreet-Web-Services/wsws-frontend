@@ -6,24 +6,32 @@ describe("gasBufferFor", () => {
     expect(gasBufferFor("solana-mainnet", null)).toBe(0);
   });
 
-  it("reserves nothing on the chains that hold a gas policy", () => {
+  // One paymaster policy is enabled on every mainnet the app can reach
+  // (ADR-2026-09-07-sponsor-all-evm-mainnets), so a full-balance sell of the
+  // native token on any of them can pay for itself.
+  it("reserves nothing on the sponsored mainnets", () => {
     expect(gasBufferFor("base-mainnet", null)).toBe(0);
     expect(gasBufferFor("polygon-mainnet", null)).toBe(0);
+    expect(gasBufferFor("eth-mainnet", null, 1)).toBe(0);
+    expect(gasBufferFor("arb-mainnet", null, 1)).toBe(0);
   });
 
-  // Being in the sponsorship registry is not the same as having a policy: with
-  // no policy the bundler rejects the userOp, the send falls back to the user
-  // paying, and the fee has to come out of the same native balance.
-  it("reserves gas on registry chains that hold no policy", () => {
-    expect(gasBufferFor("eth-mainnet", null, 1)).toBe(0.0003);
-    expect(gasBufferFor("arb-mainnet", null, 1)).toBe(0.0003);
-  });
-
-  // HYPE trades around $80, so the percentage backstop would reserve several
-  // dollars of a five-token balance to cover a fee worth a fraction of a cent.
-  it("uses a measured buffer on HyperEVM rather than a share of the balance", () => {
+  // HyperEVM is covered by the policy but Alchemy's bundler there rejects the
+  // EIP-7702 authorization the sponsored path needs, so sends are user-paid
+  // and the measured reserve is back. HYPE trades around $80, so the
+  // percentage backstop would hold back several dollars of a five-token
+  // balance to cover a fee worth a fraction of a cent.
+  it("uses the measured buffer on HyperEVM, which sends user-paid", () => {
     expect(gasBufferFor("hyperliquid-mainnet", null, 5)).toBe(0.001);
     expect(gasBufferFor("hyperliquid-mainnet", null, 0.747158265771075558)).toBe(0.001);
+  });
+
+  // Being in the sponsorship registry is not the same as having a policy: a
+  // testnet, or a mainnet the API key cannot reach, sends user-paid, and the
+  // fee has to come out of the same native balance.
+  it("reserves gas on registry chains that hold no policy", () => {
+    expect(gasBufferFor("arbnova-mainnet", null, 1)).toBeCloseTo(0.01, 8);
+    expect(gasBufferFor("eth-sepolia", null, 1)).toBeCloseTo(0.01, 8);
   });
 
   it("still holds back a share on a chain nobody has sized", () => {
@@ -50,9 +58,11 @@ describe("maxSellable", () => {
     expect(maxSellable("polygon-mainnet", null, 1)).toBe(1);
   });
 
-  // The reported HYPE sell: a max fill on a chain with no policy has to leave
-  // the fee behind, or the send is rejected for want of gas.
-  it("leaves gas behind on a max native sell without a policy", () => {
+  // A max fill on a user-paid chain has to leave the fee behind, or the send
+  // is rejected for want of gas. HyperEVM, where this was first reported, is
+  // user-paid again (no EIP-7702 at its bundler); an unreachable mainnet keeps
+  // the sized share.
+  it("leaves gas behind on a max native sell without sponsorship", () => {
     expect(maxSellable("hyperliquid-mainnet", null, 0.747158265771075558)).toBeLessThan(
       0.747158265771075558
     );
@@ -60,6 +70,8 @@ describe("maxSellable", () => {
       0.746158265771,
       9
     );
+    expect(maxSellable("arbnova-mainnet", null, 1)).toBeLessThan(1);
+    expect(maxSellable("arbnova-mainnet", null, 1)).toBeCloseTo(0.99, 9);
   });
 
   it("keeps the full balance for contract tokens", () => {

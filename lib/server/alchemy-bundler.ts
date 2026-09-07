@@ -1,4 +1,12 @@
 import "server-only";
+import {
+  alchemyPairs,
+  isAlchemyKeyBlocked,
+  markAlchemyKeyBlocked,
+  MONTHLY_CAPACITY_COOLDOWN_MS,
+  RATE_LIMIT_COOLDOWN_MS,
+  type AlchemyPair,
+} from "@/lib/server/alchemy-keys";
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
 import {
@@ -14,15 +22,18 @@ const USER_OPERATION_METHODS = new Set([
   "eth_supportedEntryPoints",
   "pm_getPaymasterStubData",
   "pm_getPaymasterData",
+  // The bundler's priority-fee floor, which the paymaster path reads before
+  // sending; the chain's own estimate is 0 on Arbitrum and gets rejected.
+  "rundler_maxPriorityFeePerGas",
 ]);
 const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
 const PAYMASTER_METHODS = new Set(["pm_getPaymasterStubData", "pm_getPaymasterData"]);
 const MAX_BATCH_CALLS = 100;
 
-// Alchemy reports exhausted sponsorship capacity either as a 429 account cap
-// or as a 200 JSON-RPC paymaster refusal. Neither condition clears on retry.
-const SPONSORSHIP_CAPACITY_EXHAUSTED =
-  /monthly capacity limit exceeded|over your gas sponsorship limit/i;
+// What Alchemy answers, with a 429, once the account owning the key has used
+// its monthly capacity. Unlike a throughput limit this does not clear on a
+// retry; it clears on the next billing cycle or a plan change.
+const MONTHLY_CAPACITY_EXHAUSTED = /monthly capacity limit exceeded/i;
 
 // JSON-RPC "resource unavailable". viem retries 429s, LimitExceeded (-32005)
 // and Internal (-32603); it surfaces this one at once, which is what an
@@ -30,7 +41,7 @@ const SPONSORSHIP_CAPACITY_EXHAUSTED =
 const RESOURCE_UNAVAILABLE = -32002;
 
 const SPONSORSHIP_EXHAUSTED_MESSAGE =
-  "Gas sponsorship capacity is exhausted on the sponsoring account; sponsored transactions are paused until the policy limit or gas credits are restored.";
+  "Gas sponsorship is out of monthly capacity on the sponsoring account; sponsored transactions are paused until it is restored.";
 
 // One JSON-RPC error per call the client sent, under the ids it sent, so a
 // batch gets a batch back.
@@ -78,50 +89,42 @@ interface RpcCall {
   params?: unknown[];
 }
 
-// The Gas Manager policy is scoped to the Alchemy account owning the RPC app.
-// Polygon has a dedicated app because its prediction-market traffic and policy
-// must not share capacity with Base. The Polygon setting accepts either the
-// complete RPC URL or just its Alchemy API key for compatibility with existing
-// deployment configuration.
+// A Gas Manager policy belongs to the Alchemy app that created it, so a key
+// is only ever sent with the policy at its own index (ADR-2026-09-07-alchemy-
+// key-pool). The pairs that can sponsor this network, in configured order,
+// the ones on cooldown last: Polygon keeps its own policy list, every other
+// paymaster network uses the shared one.
 //
-// There used to be an ALCHEMY_GAS_MANAGER_API_KEY read ahead of this one, for
-// a policy-owning key on a separate account from the portfolio reads. It was
-// preferred silently, so when the account behind it ran out of monthly
-// capacity, rotating ALCHEMY_API_KEY fixed nothing and every sponsored call
-// kept 429ing. Restore that indirection only alongside a way to tell which key
-// is in play, and never leave it set to a key that is not the policy's.
-function firstConfiguredValue(raw: string | undefined): string | null {
-  return (
-    raw
-      ?.split(",")
-      .map((value) => value.trim())
-      .find(Boolean) || null
-  );
+// There used to be an ALCHEMY_GAS_MANAGER_API_KEY read ahead of the key, for
+// a policy-owning key on a separate account. It was preferred silently, so
+// when that account ran out of monthly capacity, rotating the key fixed
+// nothing. The pairing by index is what makes the indirection safe now.
+function sponsorPairsFor(
+  target: SponsoredEvmChainConfig
+): Array<AlchemyPair & { policyId: string }> {
+  const pairs = alchemyPairs()
+    .map((pair) => ({
+      ...pair,
+      policyId: target.network === "polygon-mainnet" ? pair.polygonPolicyId : pair.policyId,
+    }))
+    .filter((pair): pair is AlchemyPair & { policyId: string } => Boolean(pair.policyId));
+  return [
+    ...pairs.filter((pair) => !isAlchemyKeyBlocked(pair.key)),
+    ...pairs.filter((pair) => isAlchemyKeyBlocked(pair.key)),
+  ];
 }
 
-function alchemyBundlerUrlFor(target: SponsoredEvmChainConfig): string | null {
-  const configured = firstConfiguredValue(
-    target.network === "polygon-mainnet"
-      ? process.env.ALCHEMY_POLYGON_RPC_URL
-      : process.env.ALCHEMY_API_KEY
-  );
-  if (!configured) return null;
+// Answers that mean "this pair cannot sponsor right now, the next may": the
+// app is over capacity or rate limited, the key is refused, or the app does
+// not own the policy. Anything else is the request's own outcome.
+const PAIR_REJECTED =
+  /policy not found|must be authenticated|not authorized|unauthorized|invalid api key/i;
 
-  if (/^https:\/\//i.test(configured)) return configured.replace(/\/$/, "");
-  return `https://${target.alchemyHost}/v2/${configured}`;
-}
-
-// The policy a paymaster-mode network sponsors under. Polygon keeps the
-// variable it launched with; every other paymaster network, Base since
-// ADR-2026-09-06-base-sponsorship-via-paymaster, uses the shared one. Base
-// moved here because the team's policy is a paymaster-type policy, which the
-// bundler header path answers with "does not support bundler sponsorship".
-function paymasterPolicyIdFor(target: SponsoredEvmChainConfig): string | undefined {
-  const raw =
-    target.network === "polygon-mainnet"
-      ? process.env.ALCHEMY_POLYGON_GAS_POLICY_ID
-      : process.env.ALCHEMY_GAS_POLICY_ID;
-  return firstConfiguredValue(raw) || undefined;
+function pairCannotServe(status: number, text: string): "capacity" | "rejected" | null {
+  if (status === 429 && MONTHLY_CAPACITY_EXHAUSTED.test(text)) return "capacity";
+  if (status === 429 || status === 401 || status === 403) return "rejected";
+  if (status === 200 && PAIR_REJECTED.test(text)) return "rejected";
+  return null;
 }
 
 function withPaymasterPolicy(call: RpcCall, policyId: string): RpcCall {
@@ -149,11 +152,10 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Unsupported sponsored network" }, { status: 404 });
   }
 
-  const bundlerUrl = alchemyBundlerUrlFor(target);
-  if (!bundlerUrl) {
-    const variable =
-      target.network === "polygon-mainnet" ? "ALCHEMY_POLYGON_RPC_URL" : "ALCHEMY_API_KEY";
-    return NextResponse.json({ error: `${variable} is missing` }, { status: 503 });
+  // The list itself, not the deprecated fallback: a fallback-only setup has
+  // no policy and could never sponsor.
+  if (!process.env.ALCHEMY_API_KEY?.trim()) {
+    return NextResponse.json({ error: "Alchemy API key is missing" }, { status: 503 });
   }
 
   const body = await req.json().catch(() => null);
@@ -168,71 +170,98 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Method not allowed" }, { status: 403 });
   }
 
-  const bsoPolicyId = firstConfiguredValue(process.env.ALCHEMY_GAS_POLICY_ID);
-  const paymasterPolicyId = paymasterPolicyIdFor(target);
-  const needsPaymasterPolicy =
-    target.sponsorshipMode === "paymaster" &&
-    calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)));
-  const needsBsoPolicy =
-    target.sponsorshipMode === "bso" &&
-    calls.some((call) => call?.method === SPONSORED_SEND_METHOD);
+  const needsPolicy =
+    (target.sponsorshipMode === "paymaster" &&
+      calls.some((call) => Boolean(call && PAYMASTER_METHODS.has(call.method)))) ||
+    (target.sponsorshipMode === "bso" &&
+      calls.some((call) => call?.method === SPONSORED_SEND_METHOD));
 
-  if (needsPaymasterPolicy && !paymasterPolicyId) {
+  // A call that carries no policy (a plain estimate or a receipt lookup) can
+  // go to any key; one that sponsors must go to a key with a policy.
+  const pairs = needsPolicy
+    ? sponsorPairsFor(target)
+    : alchemyPairs().map((pair) => ({ ...pair, policyId: pair.policyId ?? "" }));
+  if (pairs.length === 0) {
     return NextResponse.json(
       { error: `Gas sponsorship policy for ${network} is missing` },
-      { status: 424 }
+      { status: needsPolicy ? 424 : 503 }
     );
   }
-  if (needsBsoPolicy && !bsoPolicyId) {
-    return NextResponse.json({ error: "Alchemy gas policy is missing" }, { status: 503 });
-  }
 
-  const attachPaymasterPolicy = (call: RpcCall | null): RpcCall | null =>
-    call && needsPaymasterPolicy && paymasterPolicyId
-      ? withPaymasterPolicy(call, paymasterPolicyId)
-      : call;
-  const upstreamBody = Array.isArray(body)
-    ? calls.map(attachPaymasterPolicy)
-    : attachPaymasterPolicy(calls[0]);
+  const bodyFor = (policyId: string): unknown => {
+    const attach = (call: RpcCall | null): RpcCall | null =>
+      call && target.sponsorshipMode === "paymaster" && policyId
+        ? withPaymasterPolicy(call, policyId)
+        : call;
+    return Array.isArray(body) ? calls.map(attach) : attach(calls[0]);
+  };
 
   try {
-    // A Gas Manager policy is scoped to the Alchemy account owning this key.
-    // Never rotate this request through ALCHEMY_API_KEY_FALLBACK.
-    const response = await fetch(bundlerUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(needsBsoPolicy && bsoPolicyId ? { "x-alchemy-policy-id": bsoPolicyId } : {}),
-      },
-      body: JSON.stringify(upstreamBody),
-      signal: AbortSignal.timeout(30_000),
-      cache: "no-store",
-    });
-    const text = await response.text();
-    if (SPONSORSHIP_CAPACITY_EXHAUSTED.test(text)) {
+    let last: { response: Response; text: string } | null = null;
+    let allExhausted = true;
+    for (const pair of pairs) {
+      const response = await fetch(`https://${target.alchemyHost}/v2/${pair.key}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(target.sponsorshipMode === "bso" && needsPolicy
+            ? { "x-alchemy-policy-id": pair.policyId }
+            : {}),
+        },
+        body: JSON.stringify(bodyFor(pair.policyId)),
+        signal: AbortSignal.timeout(30_000),
+        cache: "no-store",
+      });
+      const text = await response.text();
+      const verdict = pairCannotServe(response.status, text);
+      if (verdict === null) {
+        logRpcErrors(network, calls, text);
+        return new NextResponse(text, {
+          status: response.status,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            ...(response.headers.get("retry-after")
+              ? { "Retry-After": response.headers.get("retry-after") as string }
+              : {}),
+          },
+        });
+      }
+      // This pair is out; remember it so the next request starts past it,
+      // and let the next pair try with its own policy.
+      markAlchemyKeyBlocked(
+        pair.key,
+        verdict === "capacity" ? MONTHLY_CAPACITY_COOLDOWN_MS : RATE_LIMIT_COOLDOWN_MS
+      );
+      if (verdict !== "capacity") allExhausted = false;
+      console.warn(
+        `Alchemy sponsorship for ${network}: pair ${pair.index} ${verdict}, trying the next`,
+        text.slice(0, 200)
+      );
+      last = { response, text };
+    }
+
+    if (!last) throw new Error("No Alchemy pair could be tried");
+    if (allExhausted) {
       // The one condition here that is an operations alarm, not weather: no
-      // sponsored transaction will succeed until the Alchemy account behind
-      // this network's key-policy pair has capacity again. Logged so it is
-      // seen, and answered in a form the client shows instead of retrying.
+      // sponsored transaction will succeed until an Alchemy app behind the
+      // pool has capacity again. Logged so it is seen, and answered in a form
+      // the client shows honestly instead of retrying.
       console.error(
-        `Alchemy sponsorship for ${network}: monthly capacity exhausted on the policy's account`,
-        text.slice(0, 300)
+        `Alchemy sponsorship for ${network}: monthly capacity exhausted on every configured account`,
+        last.text.slice(0, 300)
       );
       return NextResponse.json(exhaustedBody(calls, Array.isArray(body)), {
         status: 200,
         headers: { "Cache-Control": "no-store" },
       });
     }
-    logRpcErrors(network, calls, text);
-    return new NextResponse(text, {
-      status: response.status,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-        ...(response.headers.get("retry-after")
-          ? { "Retry-After": response.headers.get("retry-after") as string }
-          : {}),
-      },
+    // Every pair refused for a reason other than capacity: pass the last
+    // answer through so the client sees the real error.
+    logRpcErrors(network, calls, last.text);
+    return new NextResponse(last.text, {
+      status: last.response.status,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   } catch (error) {
     console.error(`Alchemy bundler proxy failed for ${network}:`, error);

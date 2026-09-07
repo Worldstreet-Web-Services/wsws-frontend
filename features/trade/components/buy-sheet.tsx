@@ -1,5 +1,6 @@
 "use client";
 
+import { BASE_CHAIN_ID } from "@/lib/meme/chain";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
@@ -82,7 +83,11 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
   // static route lookup. Checked live here so a token that's currently
   // blocked shows "trading is paused" up front, instead of only failing at
   // submit with the backend's raw policy message.
-  const swapToken = useMemeToken(isSwapMarket ? swapRoute.tokenAddress : null);
+  // Identity is chainId + address since main's chain-aware memecoin work; a
+  // swap route carries its own chain.
+  const swapToken = useMemeToken(
+    isSwapMarket ? { address: swapRoute.tokenAddress, chainId: swapRoute.chainId } : null
+  );
   const swapTradabilityKnown = !isSwapMarket || swapToken.token != null;
   const swapTradable = !isSwapMarket || swapToken.token?.buyEnabled === true;
 
@@ -271,6 +276,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     if (swapRoute) {
       try {
         await memeTrade.trade({
+          chainId: BASE_CHAIN_ID,
           side: "BUY",
           tokenAddress: swapRoute.tokenAddress,
           amount,

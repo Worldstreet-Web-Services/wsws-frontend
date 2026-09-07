@@ -3,7 +3,9 @@
     "network": "eth-mainnet",
     "policyNetwork": "ETH_MAINNET",
     "alchemyHost": "eth-mainnet.g.alchemy.com",
-    "chainKey": "mainnet"
+    "chainKey": "mainnet",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "eth-sepolia",
@@ -29,7 +31,9 @@
     "network": "arb-mainnet",
     "policyNetwork": "ARB_MAINNET",
     "alchemyHost": "arb-mainnet.g.alchemy.com",
-    "chainKey": "arbitrum"
+    "chainKey": "arbitrum",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "arb-sepolia",
@@ -65,13 +69,17 @@
     "network": "berachain-mainnet",
     "policyNetwork": "BERACHAIN_MAINNET",
     "alchemyHost": "berachain-mainnet.g.alchemy.com",
-    "chainKey": "berachain"
+    "chainKey": "berachain",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "bnb-mainnet",
     "policyNetwork": "BNB_MAINNET",
     "alchemyHost": "bnb-mainnet.g.alchemy.com",
-    "chainKey": "bsc"
+    "chainKey": "bsc",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "bnb-testnet",
@@ -83,7 +91,9 @@
     "network": "celo-mainnet",
     "policyNetwork": "CELO_MAINNET",
     "alchemyHost": "celo-mainnet.g.alchemy.com",
-    "chainKey": "celo"
+    "chainKey": "celo",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "celo-sepolia",
@@ -95,7 +105,9 @@
     "network": "cronos-mainnet",
     "policyNetwork": "CRONOS_MAINNET",
     "alchemyHost": "cronos-mainnet.g.alchemy.com",
-    "chainKey": "cronos"
+    "chainKey": "cronos",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "cronos-testnet",
@@ -139,7 +151,9 @@
     "network": "gensyn-mainnet",
     "policyNetwork": "GENSYN_MAINNET",
     "alchemyHost": "gensyn-mainnet.g.alchemy.com",
-    "chainKey": "gensyn"
+    "chainKey": "gensyn",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "gensyn-testnet",
@@ -170,7 +184,9 @@
     "network": "ink-mainnet",
     "policyNetwork": "INK_MAINNET",
     "alchemyHost": "ink-mainnet.g.alchemy.com",
-    "chainKey": "ink"
+    "chainKey": "ink",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "ink-sepolia",
@@ -206,7 +222,9 @@
     "network": "opt-mainnet",
     "policyNetwork": "OPT_MAINNET",
     "alchemyHost": "opt-mainnet.g.alchemy.com",
-    "chainKey": "optimism"
+    "chainKey": "optimism",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "opt-sepolia",
@@ -218,7 +236,9 @@
     "network": "plasma-mainnet",
     "policyNetwork": "PLASMA_MAINNET",
     "alchemyHost": "plasma-mainnet.g.alchemy.com",
-    "chainKey": "plasma"
+    "chainKey": "plasma",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "plasma-testnet",
@@ -262,7 +282,9 @@
     "network": "robinhood-mainnet",
     "policyNetwork": "ROBINHOOD_MAINNET",
     "alchemyHost": "robinhood-mainnet.g.alchemy.com",
-    "chainKey": "robinhood"
+    "chainKey": "robinhood",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "robinhood-testnet",
@@ -274,7 +296,9 @@
     "network": "shape-mainnet",
     "policyNetwork": "SHAPE_MAINNET",
     "alchemyHost": "shape-mainnet.g.alchemy.com",
-    "chainKey": "shape"
+    "chainKey": "shape",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "shape-sepolia",
@@ -286,7 +310,9 @@
     "network": "soneium-mainnet",
     "policyNetwork": "SONEIUM_MAINNET",
     "alchemyHost": "soneium-mainnet.g.alchemy.com",
-    "chainKey": "soneium"
+    "chainKey": "soneium",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "soneium-minato",
@@ -298,7 +324,9 @@
     "network": "stable-mainnet",
     "policyNetwork": "STABLE_MAINNET",
     "alchemyHost": "stable-mainnet.g.alchemy.com",
-    "chainKey": "stable"
+    "chainKey": "stable",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "stable-testnet",
@@ -310,7 +338,9 @@
     "network": "unichain-mainnet",
     "policyNetwork": "UNICHAIN_MAINNET",
     "alchemyHost": "unichain-mainnet.g.alchemy.com",
-    "chainKey": "unichain"
+    "chainKey": "unichain",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "unichain-sepolia",
@@ -322,7 +352,9 @@
     "network": "worldchain-mainnet",
     "policyNetwork": "WORLDCHAIN_MAINNET",
     "alchemyHost": "worldchain-mainnet.g.alchemy.com",
-    "chainKey": "worldchain"
+    "chainKey": "worldchain",
+    "sponsorshipMode": "paymaster",
+    "gasPolicy": true
   },
   {
     "network": "worldchain-sepolia",

@@ -65,39 +65,88 @@ interface RawDestination {
 
 const TRADE_BASE = process.env.NEXT_PUBLIC_TRADE_API_URL ?? wsapiService("trade");
 
+// The trade service numbers chains its own way: Base as 8453, Solana as 101.
+const TRADE_CHAIN_TO_NETWORK: Record<number, string> = {
+  8453: "base-mainnet",
+  101: "solana-mainnet",
+};
+
+// The catalog is paged. It held 692 rows over seven pages on 2026-09-07;
+// reading page one alone made every memecoin holding past it fail the
+// allowlist and vanish from the table while the money stayed in the wallet
+// ("I had three assets, two disappeared"). Every page is read, up to a cap
+// that is generous against today's size and still bounds a runaway upstream.
+const CATALOG_PAGE_LIMIT = 100;
+export const CATALOG_MAX_PAGES = 10;
+
+interface CatalogRow {
+  chainId?: number;
+  address?: string;
+  logoUrl?: string | null;
+  priceUsd?: string | null;
+}
+
+async function catalogPage(page: number): Promise<{ items: CatalogRow[]; total: number } | null> {
+  const res = await fetch(`${TRADE_BASE}/tokens?page=${page}&limit=${CATALOG_PAGE_LIMIT}`, {
+    next: { revalidate: 600 },
+    // Bounded: an upstream that has not answered in 8s is not going to, and
+    // an unbounded read holds the function open for as long as the upstream
+    // feels like — which is how an outage becomes a bill.
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!res.ok) {
+    console.warn(`buyable-registry: trade catalog page ${page} answered ${res.status}`);
+    return null;
+  }
+  const data = await res.json();
+  const items: CatalogRow[] = Array.isArray(data?.data?.items) ? data.data.items : [];
+  const total = Number(data?.data?.meta?.total);
+  return { items, total: Number.isFinite(total) ? total : items.length };
+}
+
+function addCatalogRows(out: BuyableRegistry, meta: MemeRegistry, items: CatalogRow[]): void {
+  for (const t of items) {
+    const network = t.chainId != null ? TRADE_CHAIN_TO_NETWORK[t.chainId] : undefined;
+    if (!network || typeof t.address !== "string") continue;
+    // Every registry key is lowercased, Solana's case-sensitive addresses
+    // included, because the allowlist lookup lowercases before it asks.
+    const address = t.address.toLowerCase();
+    (out[network] ??= new Set()).add(address);
+    const priceUsd = t.priceUsd ? Number(t.priceUsd) : 0;
+    (meta[network] ??= new Map()).set(address, {
+      logo: t.logoUrl ?? null,
+      priceUsd: Number.isFinite(priceUsd) ? priceUsd : 0,
+    });
+  }
+}
+
 // Memecoins from the trade service's catalog: a bought token is a legitimate
 // holding the Dextopus catalog doesn't know about. Catalog entries persist
-// from searches and trades, so anything a user traded is here.
+// from searches and trades, so anything a user traded is here. A failure
+// keeps whatever pages answered and is logged; it must never break the
+// portfolio.
 async function addTradeCatalog(out: BuyableRegistry, meta: MemeRegistry): Promise<void> {
   if (!TRADE_BASE) return;
   try {
-    const res = await fetch(`${TRADE_BASE}/tokens?page=1&limit=100`, {
-      next: { revalidate: 600 },
-      // Bounded: an upstream that has not answered in 8s is not going to, and
-      // an unbounded read holds the function open for as long as the upstream
-      // feels like — which is how an outage becomes a bill.
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const items: Array<{
-      chainId?: number;
-      address?: string;
-      logoUrl?: string | null;
-      priceUsd?: string | null;
-    }> = Array.isArray(data?.data?.items) ? data.data.items : [];
-    for (const t of items) {
-      if (t.chainId !== 8453 || typeof t.address !== "string") continue;
-      const address = t.address.toLowerCase();
-      (out["base-mainnet"] ??= new Set()).add(address);
-      const priceUsd = t.priceUsd ? Number(t.priceUsd) : 0;
-      (meta["base-mainnet"] ??= new Map()).set(address, {
-        logo: t.logoUrl ?? null,
-        priceUsd: Number.isFinite(priceUsd) ? priceUsd : 0,
-      });
-    }
-  } catch {
-    // A registry failure must never break the portfolio.
+    const first = await catalogPage(1);
+    if (!first) return;
+    addCatalogRows(out, meta, first.items);
+    const pages = Math.min(CATALOG_MAX_PAGES, Math.ceil(first.total / CATALOG_PAGE_LIMIT));
+    if (pages <= 1 || first.items.length === 0) return;
+    const rest = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        catalogPage(i + 2).catch((error) => {
+          console.warn(`buyable-registry: trade catalog page ${i + 2} failed`, error);
+          return null;
+        })
+      )
+    );
+    for (const pageResult of rest) if (pageResult) addCatalogRows(out, meta, pageResult.items);
+  } catch (error) {
+    console.warn(
+      "buyable-registry: trade catalog unavailable; holdings limited to Dextopus routes",
+      error
+    );
   }
 }
 
@@ -127,9 +176,11 @@ export async function fetchBuyableRegistry(): Promise<{
         (out[network] ??= new Set()).add(address);
       }
     }
-  } catch {
+  } catch (error) {
     // A registry failure must never break the portfolio; fall back to the static
-    // allowlist plus whatever was collected.
+    // allowlist plus whatever was collected. Said aloud, so a quiet outage
+    // that hides holdings is diagnosable.
+    console.warn("buyable-registry: Dextopus destinations unavailable", error);
   }
   await addTradeCatalog(out, meme);
   return { buyable: out, meme };

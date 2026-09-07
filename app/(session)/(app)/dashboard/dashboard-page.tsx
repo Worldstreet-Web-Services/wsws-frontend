@@ -12,6 +12,7 @@ import { PerpsOverview } from "@/features/trade/components/perps-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { EnterTheArenaBanner } from "@/features/trade/components/enter-the-arena-banner";
+import { TokenMovesSection } from "@/features/trade/components/token-moves-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
@@ -279,6 +280,12 @@ export function DashboardPage() {
       <div className="md:hidden">
         <SquareLivePromo />
         <PredictionMobile />
+        {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
+            the phone's stand-in for the desktop token-moves shelf. */}
+        <TokenMovesSection onOpenBuy={modals.openBuy} />
+        {/* "Own the Market" — the arena doorway, part of the phone home as
+            new-approach draws it (its DashboardMobileHome renders it here). */}
+        <EnterTheArenaBanner />
       </div>
 
       {/* Desktop: the discovery shelves, as the phone design's desktop sibling
@@ -340,10 +347,6 @@ export function DashboardPage() {
           </Fragment>
         );
       })}
-
-      {/* "Own the Market" — the phone's closing doorway into trading, below the
-          briefs and above the square floor. Self-gates to the phone (sm:hidden). */}
-      <EnterTheArenaBanner />
 
       {/* The social floor of the dashboard. It sits AFTER the markets on
             purpose: someone opening Ark came for their money, and the square

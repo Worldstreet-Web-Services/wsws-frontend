@@ -1,12 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+
 // Route-level error boundary. Without one, any render crash anywhere in a page
 // fell through to Next's built-in "This page couldn't load" screen — which is
 // what a single memecoin row with no riskLevel did to the whole dashboard.
 //
-// Deliberately dependency-free: no translations, no data hooks, no context. An
-// error boundary that can itself throw is worse than none, and this renders
-// while the app around it is already known to be broken.
+// Deliberately dependency-free apart from the report below: no translations, no
+// data hooks, no context. An error boundary that can itself throw is worse than
+// none, and this renders while the app around it is already known to be broken.
 export default function Error({
   error,
   reset,
@@ -14,6 +17,14 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // This boundary catches the error before app/global-error.tsx ever sees it,
+  // so without this report the majority of render crashes would be invisible.
+  // Sentry.captureException is a no-op when no DSN is configured, so it stays
+  // safe in development and in tests.
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div className="grid min-h-[60vh] place-items-center px-6">
       <div className="max-w-[46ch] text-center">

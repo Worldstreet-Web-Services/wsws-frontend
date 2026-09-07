@@ -1,6 +1,7 @@
 import packageJson from "./package.json";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Links the next-intl request config (i18n/request.ts) into the build. The app
 // localizes via a cookie, not locale URLs, so routing is untouched.
@@ -75,4 +76,35 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+/**
+ * Sentry wraps the finished config, outermost, so it sees the bundle next-intl
+ * has already shaped.
+ *
+ * Source maps are uploaded at build time and then hidden from the client, so a
+ * stack trace is readable in Sentry without shipping our source to the browser.
+ * The upload needs SENTRY_AUTH_TOKEN, which is a server-only secret set in
+ * Vercel; without it the build still succeeds and simply skips the upload,
+ * which is what keeps a fork or a local build working.
+ */
+export default withSentryConfig(withNextIntl(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  /**
+   * Sentry's own domain is on every ad blocker's list, and a blocked request is
+   * an error we never hear about. This proxies events through our own origin
+   * instead. It is a route this app serves, so it must not collide with a real
+   * one; nothing under /monitoring exists.
+   */
+  tunnelRoute: "/monitoring",
+
+  // Quiet during local builds, verbose in CI where the log is the only record.
+  silent: !process.env.CI,
+
+  sourcemaps: {
+    // The maps reach Sentry, then are deleted from the deployed output so they
+    // are never downloadable from the site itself.
+    deleteSourcemapsAfterUpload: true,
+  },
+});

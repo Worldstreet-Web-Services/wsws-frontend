@@ -23,6 +23,9 @@ export default defineConfig({
       // The Next.js boundary guard throws on import outside a server
       // component; tests exercise server modules directly, so it is stubbed.
       "server-only": resolve(__dirname, "vitest.server-only-stub.ts"),
+      // The Sentry SDK throws while being imported under Vitest, and a unit
+      // test has no business booting an APM agent anyway. See the stub.
+      "@sentry/nextjs": resolve(__dirname, "vitest.sentry-stub.ts"),
     },
   },
 });

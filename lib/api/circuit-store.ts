@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { reportCircuitOpen } from "@/lib/monitoring/report";
 import {
   CLOSED,
   type CircuitSnapshot,
@@ -82,6 +83,25 @@ function summarise(): CircuitSnapshot {
 }
 
 function publish(service: string, next: CircuitSnapshot) {
+  /**
+   * The moment a service goes from usable to not. Reported once per outage,
+   * before the state is stored, because the transition is only visible while
+   * the previous snapshot is still here.
+   *
+   * This is the signal alerting is built on. It cannot be produced by one
+   * dropped packet (the breaker needs consecutive qualifying failures), and it
+   * says something the thousands of refused polls after it do not: users have
+   * lost this part of the app.
+   *
+   * Quiet services are excluded for the same reason they are kept out of the
+   * banner: each degrades on its own terms, so an outage there is not an
+   * incident anyone should be woken for.
+   */
+  const previous = circuitFor(service);
+  if (previous.state !== "open" && next.state === "open" && !QUIET_SERVICES.has(service)) {
+    reportCircuitOpen(service, next.failures);
+  }
+
   circuits.set(service, next);
   const before = summary;
   summary = summarise();

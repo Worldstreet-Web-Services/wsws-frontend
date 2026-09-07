@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useIdleLogout } from "@/hooks/use-idle-logout";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { toast } from "@/lib/toast";
+import { identifySentryUser } from "@/lib/monitoring/report";
 
 // Sign the user out after this long with no interaction, so a funded session
 // left open on an unattended device doesn't stay open.
@@ -26,7 +27,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, serverVerified = false }: AuthGuardProps) {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
   const t = useTranslations("auth");
 
@@ -35,6 +36,16 @@ export function AuthGuard({ children, serverVerified = false }: AuthGuardProps) 
       router.replace("/auth");
     }
   }, [ready, authenticated, router]);
+
+  // Ties a reported error to the session that hit it, so "a user says the
+  // dashboard is broken" can be matched to the actual event.
+  //
+  // The Privy DID and nothing else: PII collection is off in baseSentryOptions,
+  // so no email and no wallet address reaches Sentry. Cleared on sign-out, or
+  // the next person to use a shared device inherits the last one's identity.
+  useEffect(() => {
+    identifySentryUser(authenticated ? user?.id : undefined);
+  }, [authenticated, user?.id]);
 
   // The message derives its figure from the same constant as the timer. The
   // two had drifted: the timer said two hours while the toast said fifteen

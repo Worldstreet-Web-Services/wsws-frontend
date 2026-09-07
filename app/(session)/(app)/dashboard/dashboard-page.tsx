@@ -11,6 +11,7 @@ import { SpotOverview } from "@/features/trade/components/spot-overview";
 import { PerpsOverview } from "@/features/trade/components/perps-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
+import { EnterTheArenaBanner } from "@/features/trade/components/enter-the-arena-banner";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
@@ -31,6 +32,7 @@ import { ConversationRow } from "@/features/discovery/components/conversation-ro
 import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { Next100xRow } from "@/features/discovery/components/next-100x-row";
 import { PredictionStartsRow } from "@/features/discovery/components/prediction-starts-row";
+import { useMemeSpots } from "@/app/(session)/(app)/dashboard/discovery/memecoins";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -143,6 +145,10 @@ export function DashboardPage() {
   const { markets: spotMarkets } = useSpotMarkets({
     enabled: !MARKET_SQUARE_HIDDEN || buyParam !== null,
   });
+  // The live trending memecoins the "Find the next 100X" row cycles through.
+  // Sourced at the route so discovery stays clear of the trade slice; the row
+  // falls back to its editorial cards when this is empty.
+  const memeSpots = useMemeSpots();
   // The square's feed tab lives here because two siblings drive it: the
   // section's own strip, and the plus sheet's discussions.
   const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
@@ -266,8 +272,13 @@ export function DashboardPage() {
           Market Square doorway: rendered here directly (not only in the gated
           interleave below) so it shows even where the square URL is unset — the
           card hides just its Join Space link then. */}
+      {/* The phone home uses purpose-built mobile sections, not the desktop
+          discovery shelves below (those are fixed desktop-pixel cards that do
+          not reflow). "Join the Conversation" doorway, then the Prediction
+          card; the trade sections follow as they are ported. */}
       <div className="md:hidden">
         <SquareLivePromo />
+        <PredictionMobile />
       </div>
 
       {/* Desktop: the discovery shelves, as the phone design's desktop sibling
@@ -276,7 +287,7 @@ export function DashboardPage() {
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
         <TokenMovesRow />
         <ConversationRow />
-        <Next100xRow />
+        <Next100xRow memecoins={memeSpots} />
         <PredictionStartsRow />
       </div>
 
@@ -307,18 +318,13 @@ export function DashboardPage() {
               </SectionOverview>
             </SectionVisibility>
             {/* One doorway between the briefs, so Prediction and Arkade are
-                  met while reading rather than only at the very bottom. On the
-                  phone the prediction doorway becomes the Market design's rich
-                  "Starts Here" card; the desktop keeps the banner. */}
+                  met while reading rather than only at the very bottom. The
+                  phone shows the rich prediction card at the top of the home
+                  instead, so here the prediction doorway is desktop-only. */}
             {INTERLEAVED_BANNERS[index] === "prediction" ? (
-              <>
-                <div className="md:hidden">
-                  <PredictionMobile />
-                </div>
-                <div className="hidden md:block">
-                  <ExploreBanners only="prediction" />
-                </div>
-              </>
+              <div className="hidden md:block">
+                <ExploreBanners only="prediction" />
+              </div>
             ) : INTERLEAVED_BANNERS[index] ? (
               <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
             ) : null}
@@ -334,6 +340,10 @@ export function DashboardPage() {
           </Fragment>
         );
       })}
+
+      {/* "Own the Market" — the phone's closing doorway into trading, below the
+          briefs and above the square floor. Self-gates to the phone (sm:hidden). */}
+      <EnterTheArenaBanner />
 
       {/* The social floor of the dashboard. It sits AFTER the markets on
             purpose: someone opening Ark came for their money, and the square

@@ -1080,7 +1080,11 @@
     "lpReturned": "A sua liquidez já está de volta na sua carteira.",
     "lpReturnFailed": "Não foi possível devolver a sua liquidez. Tentaremos de novo da próxima vez que abrir as previsões.",
     "lpAutoReturnNote": "A sua liquidez volta para si automaticamente assim que este mercado for resolvido.",
-    "toastRedeemSuccess": "Ganhos resgatados. Estão no seu saldo por reclamar."
+    "toastRedeemSuccess": "Ganhos resgatados. Estão no seu saldo por reclamar.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpétuos",

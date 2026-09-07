@@ -1080,7 +1080,11 @@
     "lpReturned": "Tu liquidez ya está de vuelta en tu monedero.",
     "lpReturnFailed": "No pudimos devolver tu liquidez. Lo intentaremos de nuevo la próxima vez que abras predicciones.",
     "lpAutoReturnNote": "Tu liquidez vuelve a ti automáticamente cuando este mercado se resuelve.",
-    "toastRedeemSuccess": "Ganancias canjeadas. Están en tu saldo por reclamar."
+    "toastRedeemSuccess": "Ganancias canjeadas. Están en tu saldo por reclamar.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpetuos",

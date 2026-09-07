@@ -35,6 +35,9 @@
   --color-down-ink: #2a0e0e;
   /* Dark text on light (silver/white) buttons. Neutral near-black now. */
   --color-ink: #0a0a0a;
+  /* Kash yellow. Rings the round carousel controls on focus and edges the
+     Kash card's actions, as the Market design draws them. */
+  --color-kash: #ffd62f;
   /* Small directional glyphs. Neutral grey, was green. */
   --color-arrow: #8a8a8f;
   --color-panel: #0a0a0a;
@@ -197,6 +200,12 @@ body {
 @utility ws-poster {
   font-family: var(--font-poster), var(--font-serif), sans-serif;
   font-weight: 400;
+}
+
+/* The heading above a discovery shelf. Quicksand bold, per the design. */
+@utility ws-discovery-title {
+  font-family: var(--font-discovery), var(--font-sans), sans-serif;
+  font-weight: 700;
 }
 
 /* The balance figure's fill: white at the cap height falling to grey at the

@@ -1080,7 +1080,11 @@
     "lpReturned": "Your liquidity is back in your wallet.",
     "lpReturnFailed": "Couldn't return your liquidity. We'll try again next time you open predictions.",
     "lpAutoReturnNote": "Your liquidity returns to you automatically once this market resolves.",
-    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance."
+    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpetuals",

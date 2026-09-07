@@ -1080,7 +1080,11 @@
     "lpReturned": "Ihre Liquidität ist zurück in Ihrer Wallet.",
     "lpReturnFailed": "Ihre Liquidität konnte nicht zurückgeführt werden. Wir versuchen es beim nächsten Öffnen erneut.",
     "lpAutoReturnNote": "Ihre Liquidität fließt automatisch an Sie zurück, sobald dieser Markt aufgelöst ist.",
-    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben."
+    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpetuals",

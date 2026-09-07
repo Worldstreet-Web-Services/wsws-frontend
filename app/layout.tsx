@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Chewy, Geist, Noto_Sans, Roboto } from "next/font/google";
+import { Chewy, Geist, Noto_Sans, Quicksand, Roboto } from "next/font/google";
 import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -21,6 +21,13 @@ const chewy = Chewy({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-poster",
+});
+
+// The heading above each discovery shelf. Quicksand bold, exposed as
+// --font-discovery for the ws-discovery-title utility.
+const quicksand = Quicksand({
+  subsets: ["latin"],
+  variable: "--font-discovery",
 });
 
 // Headers. Mona Sans, used at bold by the ws-display utility.
@@ -73,7 +80,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geist.variable} ${monaSans.variable} ${chewy.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
+      className={`${geist.variable} ${monaSans.variable} ${chewy.variable} ${quicksand.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>

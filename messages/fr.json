@@ -1080,7 +1080,11 @@
     "lpReturned": "Votre liquidité est de retour dans votre portefeuille.",
     "lpReturnFailed": "Impossible de restituer votre liquidité. Nous réessaierons à votre prochaine visite.",
     "lpAutoReturnNote": "Votre liquidité vous est restituée automatiquement dès que ce marché est résolu.",
-    "toastRedeemSuccess": "Gains récupérés. Ils sont dans votre solde à réclamer."
+    "toastRedeemSuccess": "Gains récupérés. Ils sont dans votre solde à réclamer.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpétuels",

@@ -131,7 +131,7 @@ export function SportsRail({
           type="button"
           onClick={() => scroll("left")}
           aria-label="Scroll left"
-          className={`absolute left-0 z-10 hidden h-full w-14 shrink-0 cursor-pointer items-center justify-start p-0.5 text-[#7e7e7e] opacity-0 transition-opacity duration-300 group-hover:opacity-100 hover:text-white md:flex ${canScrollLeft ? "visible" : "invisible"}`}
+          className={`absolute left-0 z-10 flex h-full w-11 shrink-0 cursor-pointer items-center justify-start bg-gradient-to-r from-[#222] via-[#222]/95 to-transparent p-0.5 text-[#aaa] transition-colors hover:text-white md:w-14 ${canScrollLeft ? "visible" : "invisible"}`}
         >
           <span className="rounded-md bg-[#2e2e2e] p-1.5 shadow-lg transition-all duration-300 hover:scale-110 hover:bg-[#2e2e2e]">
             <Chevron direction="left" />
@@ -140,7 +140,7 @@ export function SportsRail({
 
         <div
           ref={scroller}
-          className="flex [scrollbar-width:none] items-center gap-1 overflow-x-auto overscroll-x-contain scroll-smooth px-0 xl:overflow-x-hidden"
+          className="flex touch-pan-x [scrollbar-width:none] items-center gap-1 overflow-x-auto overscroll-x-contain scroll-smooth px-0 [&::-webkit-scrollbar]:hidden"
         >
           {regular.map(tile)}
           {regular.length && esports.length ? (
@@ -155,7 +155,7 @@ export function SportsRail({
           type="button"
           onClick={() => scroll("right")}
           aria-label="Scroll right"
-          className={`absolute right-0 z-10 hidden h-full w-14 shrink-0 cursor-pointer items-center justify-end p-0.5 text-[#7e7e7e] opacity-0 transition-opacity duration-300 group-hover:opacity-100 hover:text-white md:flex ${canScrollRight ? "visible" : "invisible"}`}
+          className={`absolute right-0 z-10 flex h-full w-11 shrink-0 cursor-pointer items-center justify-end bg-gradient-to-l from-[#222] via-[#222]/95 to-transparent p-0.5 text-[#aaa] transition-colors hover:text-white md:w-14 ${canScrollRight ? "visible" : "invisible"}`}
         >
           <span className="rounded-md bg-[#2e2e2e] p-1.5 shadow-lg transition-all duration-300 hover:scale-110 hover:bg-[#2e2e2e]">
             <Chevron direction="right" />

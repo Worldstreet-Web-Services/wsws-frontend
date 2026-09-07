@@ -19,10 +19,10 @@ const SPONSORED_SEND_METHOD = "eth_sendUserOperation";
 const PAYMASTER_METHODS = new Set(["pm_getPaymasterStubData", "pm_getPaymasterData"]);
 const MAX_BATCH_CALLS = 100;
 
-// What Alchemy answers, with a 429, once the account owning the key has used
-// its monthly capacity. Unlike a throughput limit this does not clear on a
-// retry; it clears on the next billing cycle or a plan change.
-const MONTHLY_CAPACITY_EXHAUSTED = /monthly capacity limit exceeded/i;
+// Alchemy reports exhausted sponsorship capacity either as a 429 account cap
+// or as a 200 JSON-RPC paymaster refusal. Neither condition clears on retry.
+const SPONSORSHIP_CAPACITY_EXHAUSTED =
+  /monthly capacity limit exceeded|over your gas sponsorship limit/i;
 
 // JSON-RPC "resource unavailable". viem retries 429s, LimitExceeded (-32005)
 // and Internal (-32603); it surfaces this one at once, which is what an
@@ -30,7 +30,7 @@ const MONTHLY_CAPACITY_EXHAUSTED = /monthly capacity limit exceeded/i;
 const RESOURCE_UNAVAILABLE = -32002;
 
 const SPONSORSHIP_EXHAUSTED_MESSAGE =
-  "Gas sponsorship is out of monthly capacity on the sponsoring account; sponsored transactions are paused until it is restored.";
+  "Gas sponsorship capacity is exhausted on the sponsoring account; sponsored transactions are paused until the policy limit or gas credits are restored.";
 
 // One JSON-RPC error per call the client sent, under the ids it sent, so a
 // batch gets a batch back.
@@ -78,8 +78,11 @@ interface RpcCall {
   params?: unknown[];
 }
 
-// The Gas Manager policy is scoped to the Alchemy account owning this key, so
-// sponsorship reads ALCHEMY_API_KEY and nothing else.
+// The Gas Manager policy is scoped to the Alchemy account owning the RPC app.
+// Polygon has a dedicated app because its prediction-market traffic and policy
+// must not share capacity with Base. The Polygon setting accepts either the
+// complete RPC URL or just its Alchemy API key for compatibility with existing
+// deployment configuration.
 //
 // There used to be an ALCHEMY_GAS_MANAGER_API_KEY read ahead of this one, for
 // a policy-owning key on a separate account from the portfolio reads. It was
@@ -87,8 +90,25 @@ interface RpcCall {
 // capacity, rotating ALCHEMY_API_KEY fixed nothing and every sponsored call
 // kept 429ing. Restore that indirection only alongside a way to tell which key
 // is in play, and never leave it set to a key that is not the policy's.
-function primaryAlchemyKey(): string | null {
-  return process.env.ALCHEMY_API_KEY?.trim() || null;
+function firstConfiguredValue(raw: string | undefined): string | null {
+  return (
+    raw
+      ?.split(",")
+      .map((value) => value.trim())
+      .find(Boolean) || null
+  );
+}
+
+function alchemyBundlerUrlFor(target: SponsoredEvmChainConfig): string | null {
+  const configured = firstConfiguredValue(
+    target.network === "polygon-mainnet"
+      ? process.env.ALCHEMY_POLYGON_RPC_URL
+      : process.env.ALCHEMY_API_KEY
+  );
+  if (!configured) return null;
+
+  if (/^https:\/\//i.test(configured)) return configured.replace(/\/$/, "");
+  return `https://${target.alchemyHost}/v2/${configured}`;
 }
 
 // The policy a paymaster-mode network sponsors under. Polygon keeps the
@@ -101,7 +121,7 @@ function paymasterPolicyIdFor(target: SponsoredEvmChainConfig): string | undefin
     target.network === "polygon-mainnet"
       ? process.env.ALCHEMY_POLYGON_GAS_POLICY_ID
       : process.env.ALCHEMY_GAS_POLICY_ID;
-  return raw?.trim() || undefined;
+  return firstConfiguredValue(raw) || undefined;
 }
 
 function withPaymasterPolicy(call: RpcCall, policyId: string): RpcCall {
@@ -129,9 +149,11 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Unsupported sponsored network" }, { status: 404 });
   }
 
-  const apiKey = primaryAlchemyKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "Alchemy API key is missing" }, { status: 503 });
+  const bundlerUrl = alchemyBundlerUrlFor(target);
+  if (!bundlerUrl) {
+    const variable =
+      target.network === "polygon-mainnet" ? "ALCHEMY_POLYGON_RPC_URL" : "ALCHEMY_API_KEY";
+    return NextResponse.json({ error: `${variable} is missing` }, { status: 503 });
   }
 
   const body = await req.json().catch(() => null);
@@ -146,7 +168,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
     return NextResponse.json({ error: "Method not allowed" }, { status: 403 });
   }
 
-  const bsoPolicyId = process.env.ALCHEMY_GAS_POLICY_ID?.trim();
+  const bsoPolicyId = firstConfiguredValue(process.env.ALCHEMY_GAS_POLICY_ID);
   const paymasterPolicyId = paymasterPolicyIdFor(target);
   const needsPaymasterPolicy =
     target.sponsorshipMode === "paymaster" &&
@@ -176,7 +198,7 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
   try {
     // A Gas Manager policy is scoped to the Alchemy account owning this key.
     // Never rotate this request through ALCHEMY_API_KEY_FALLBACK.
-    const response = await fetch(`https://${target.alchemyHost}/v2/${apiKey}`, {
+    const response = await fetch(bundlerUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -187,11 +209,11 @@ export async function forwardAlchemyBundlerRequest(req: NextRequest, network: st
       cache: "no-store",
     });
     const text = await response.text();
-    if (response.status === 429 && MONTHLY_CAPACITY_EXHAUSTED.test(text)) {
+    if (SPONSORSHIP_CAPACITY_EXHAUSTED.test(text)) {
       // The one condition here that is an operations alarm, not weather: no
       // sponsored transaction will succeed until the Alchemy account behind
-      // ALCHEMY_API_KEY has capacity again. Logged so it is seen, and answered
-      // in a form the client shows honestly instead of retrying.
+      // this network's key-policy pair has capacity again. Logged so it is
+      // seen, and answered in a form the client shows instead of retrying.
       console.error(
         `Alchemy sponsorship for ${network}: monthly capacity exhausted on the policy's account`,
         text.slice(0, 300)

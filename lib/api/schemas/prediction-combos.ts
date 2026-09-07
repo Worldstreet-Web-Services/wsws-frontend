@@ -174,6 +174,45 @@ export const singlesTicketSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+const houseLegSchema = z.object({
+  eventId: z.string(),
+  eventTitle: z.string(),
+  marketId: z.string(),
+  conditionId: z.string(),
+  marketLabel: z.string(),
+  outcome: z.enum(["yes", "no"]),
+  probabilityE6: z.string().regex(/^\d+$/u),
+  decimalOddsE6: z.string().regex(/^\d+$/u),
+  status: z.enum(["open", "won", "lost", "void"]),
+});
+
+export const houseTicketSchema = z.object({
+  id: z.string().uuid(),
+  bookingCode: z.string().regex(/^[A-Z0-9]{6}$/u),
+  status: z.enum(["prepared", "accepted", "lost", "void", "payout_pending", "paid"]),
+  stakeE6: z.string().regex(/^\d+$/u),
+  combinedOddsE6: z.string().regex(/^\d+$/u),
+  potentialPayoutE6: z.string().regex(/^\d+$/u),
+  treasuryAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/u),
+  fundingTxHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/u)
+    .nullable(),
+  legs: z.array(houseLegSchema).min(3).max(20),
+  expiresAt: z.string().datetime(),
+  acceptedAt: z.string().datetime().nullable(),
+  resolvedAt: z.string().datetime().nullable(),
+  paidAt: z.string().datetime().nullable(),
+  payoutTxHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/u)
+    .nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const houseTicketsPageSchema = z.object({ tickets: z.array(houseTicketSchema) });
+
 const discoveryOutcomeSchema = z.object({
   name: z.string(),
   tokenId: z.string().nullable(),
@@ -265,6 +304,8 @@ const SCHEMAS: Record<string, z.ZodType> = {
   "markets/events": discoveryEventsSchema,
   "combos/quotes": comboQuoteSchema,
   "singles/tickets": singlesTicketSchema,
+  "house/tickets": houseTicketsPageSchema,
+  "house/tickets/prepare": houseTicketSchema,
 };
 
 export function predictionComboSchemaFor(path: string): z.ZodType | null {
@@ -272,5 +313,6 @@ export function predictionComboSchemaFor(path: string): z.ZodType | null {
   if (/^sports\/events\/\d+$/.test(path)) return comboEventSchema;
   if (/^markets\/events\/\d+$/.test(path)) return discoveryEventSchema;
   if (/^singles\/tickets\/[A-Z0-9]{6}$/iu.test(path)) return singlesTicketSchema;
+  if (/^house\/tickets\/[0-9a-f-]{36}\/confirm$/iu.test(path)) return houseTicketSchema;
   return SCHEMAS[path] ?? null;
 }

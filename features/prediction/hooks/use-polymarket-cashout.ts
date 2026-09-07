@@ -10,7 +10,7 @@ import { sellFloorPrice } from "@/features/prediction/lib/positions";
 import { BUILDER_CODE, CONTRACTS } from "@/lib/polymarket/config";
 import type { SecureClient } from "@/features/prediction/lib/polymarket/secure-client";
 
-export type CashoutPhase = "idle" | "selling" | "approving" | "settling";
+export type CashoutPhase = "idle" | "quoting" | "selling" | "approving" | "settling";
 
 // A user-facing error whose message is already friendly. Every failure leaves
 // this hook as one of these, so a caller can read the reason off the error it
@@ -59,6 +59,15 @@ export interface CashOutInput {
   tokenId: string;
   // Shares to sell — the whole position for a full cash-out.
   shares: number;
+  // The executable average price the user approved in the confirmation UI.
+  // If the live bid moves materially below it, reject instead of silently
+  // locking in a worse loss.
+  confirmedPrice?: number;
+}
+
+export interface CashOutQuote {
+  averagePrice: number;
+  proceedsUsd: number;
 }
 
 export interface CashOutResult {
@@ -77,7 +86,7 @@ export function usePolymarketCashout() {
   const [phase, setPhase] = useState<CashoutPhase>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const placeSell = useCallback(async (client: SecureClient, input: CashOutInput) => {
+  const readQuote = useCallback(async (client: SecureClient, input: CashOutInput) => {
     const shares = String(input.shares);
     const [book, estimate] = await Promise.all([
       client.fetchOrderBook({ tokenId: input.tokenId }),
@@ -93,17 +102,59 @@ export function usePolymarketCashout() {
       throw new CashoutError(NO_LIQUIDITY_MESSAGE);
     }
 
-    const res = await client.placeMarketOrder({
-      tokenId: input.tokenId,
-      side: OrderSide.SELL,
-      shares,
-      minPrice: sellFloorPrice(estimate, book.tickSize),
-      orderType: OrderType.FOK,
-      ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
-    });
-    if (!res.ok) throw new Error(res.message || "The sell was not accepted.");
-    return res;
+    return {
+      averagePrice: estimate,
+      proceedsUsd: estimate * input.shares,
+      tickSize: book.tickSize,
+    };
   }, []);
+
+  const placeSell = useCallback(
+    async (client: SecureClient, input: CashOutInput) => {
+      const shares = String(input.shares);
+      const quote = await readQuote(client, input);
+      const liveFloor = sellFloorPrice(quote.averagePrice, quote.tickSize);
+      const confirmedFloor = input.confirmedPrice
+        ? sellFloorPrice(input.confirmedPrice, quote.tickSize)
+        : 0;
+
+      const res = await client.placeMarketOrder({
+        tokenId: input.tokenId,
+        side: OrderSide.SELL,
+        shares,
+        minPrice: Math.max(liveFloor, confirmedFloor),
+        orderType: OrderType.FOK,
+        ...(BUILDER_CODE ? { builderCode: BUILDER_CODE as `0x${string}` } : {}),
+      });
+      if (!res.ok) throw new Error(res.message || "The sell was not accepted.");
+      return res;
+    },
+    [readQuote]
+  );
+
+  const quoteCashOut = useCallback(
+    async (input: CashOutInput): Promise<CashOutQuote> => {
+      setError(null);
+      setPhase("quoting");
+      try {
+        const client = await ensureReady();
+        const quote = await readQuote(client, input);
+        return { averagePrice: quote.averagePrice, proceedsUsd: quote.proceedsUsd };
+      } catch (e) {
+        const message =
+          e instanceof CashoutError
+            ? e.message
+            : isNoLiquidity(e)
+              ? NO_LIQUIDITY_MESSAGE
+              : friendlyError(e, "Couldn't quote this cashout. Try again.");
+        setError(message);
+        throw e instanceof CashoutError ? e : new CashoutError(message, { cause: e });
+      } finally {
+        setPhase("idle");
+      }
+    },
+    [ensureReady, readQuote]
+  );
 
   const cashOut = useCallback(
     async (input: CashOutInput): Promise<CashOutResult> => {
@@ -169,5 +220,5 @@ export function usePolymarketCashout() {
     [ensureReady, placeSell]
   );
 
-  return { cashOut, phase, error };
+  return { quoteCashOut, cashOut, phase, error };
 }

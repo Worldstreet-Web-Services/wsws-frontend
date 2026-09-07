@@ -11,6 +11,8 @@ interface SportsbookHeaderProps {
   state: SportsbookGameState;
   eventKind: SportsbookEventKind;
   onLeagueSearch: (value: string) => void;
+  categoriesOpen: boolean;
+  onOpenCategories: () => void;
 }
 
 function hrefFor(
@@ -35,12 +37,14 @@ export function SportsbookHeader({
   state,
   eventKind,
   onLeagueSearch,
+  categoriesOpen,
+  onOpenCategories,
 }: SportsbookHeaderProps) {
   const active = sports.find(({ sport }) => sport.slug === activeSport);
 
   return (
     <>
-      <SportsbookTopNav />
+      <SportsbookTopNav categoriesOpen={categoriesOpen} onOpenCategories={onOpenCategories} />
 
       <SportsRail sports={sports} activeSport={activeSport} state={state} eventKind={eventKind} />
       <div className="mx-auto max-w-[1440px]">

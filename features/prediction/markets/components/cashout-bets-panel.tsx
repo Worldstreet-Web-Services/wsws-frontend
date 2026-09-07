@@ -9,6 +9,7 @@ import {
 } from "@/features/prediction/hooks/use-polymarket-positions";
 import {
   CashoutError,
+  type CashOutQuote,
   usePolymarketCashout,
 } from "@/features/prediction/hooks/use-polymarket-cashout";
 import { SettleError, useSettleToBase } from "@/features/prediction/hooks/use-settle";
@@ -21,6 +22,19 @@ interface CashoutBetsPanelProps {
   onReconciled?: () => void;
 }
 
+function numeric(value: string | number | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function closedAt(value: number | null | undefined): string | null {
+  if (!value) return null;
+  const milliseconds = value < 1_000_000_000_000 ? value * 1_000 : value;
+  const date = new Date(milliseconds);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function CashoutBetsPanel({
   reconciliationRequired = false,
   onReconciled,
@@ -29,8 +43,12 @@ export function CashoutBetsPanel({
   const cashout = usePolymarketCashout();
   const settle = useSettleToBase();
   const money = useMoney();
-  const [confirming, setConfirming] = useState<PolymarketPosition | null>(null);
+  const [confirming, setConfirming] = useState<{
+    position: PolymarketPosition;
+    quote: CashOutQuote;
+  } | null>(null);
   const active = activeCashoutPositions(positions.positions);
+  const recent = positions.closedPositions;
   const refreshPositions = positions.refresh;
 
   const reviewNotice = reconciliationRequired ? (
@@ -55,7 +73,25 @@ export function CashoutBetsPanel({
     void refreshPositions();
   }, [refreshPositions]);
 
-  async function sell(position: PolymarketPosition) {
+  async function prepareCashout(position: PolymarketPosition) {
+    const slip = betSlip(position);
+    if (!isCashoutable(slip.redeemable, slip.shares, slip.tokenId)) return;
+    const toastId = toast.loading("Checking the live cashout price...");
+    try {
+      const quote = await cashout.quoteCashOut({
+        tokenId: slip.tokenId as string,
+        shares: slip.shares,
+      });
+      setConfirming({ position, quote });
+      toast.dismiss(toastId);
+    } catch (error) {
+      toast.error(error instanceof CashoutError ? error.message : "Couldn't quote this cashout.", {
+        id: toastId,
+      });
+    }
+  }
+
+  async function sell(position: PolymarketPosition, quote: CashOutQuote) {
     const slip = betSlip(position);
     if (!isCashoutable(slip.redeemable, slip.shares, slip.tokenId)) return;
     const toastId = toast.loading("Cashing out position...");
@@ -63,6 +99,7 @@ export function CashoutBetsPanel({
       const result = await cashout.cashOut({
         tokenId: slip.tokenId as string,
         shares: slip.shares,
+        confirmedPrice: quote.averagePrice,
       });
       await positions.refresh();
       if (result.settlementPending) {
@@ -163,7 +200,7 @@ export function CashoutBetsPanel({
     );
   }
 
-  if (positions.loaded && active.length === 0) {
+  if (positions.loaded && active.length === 0 && recent.length === 0) {
     return (
       <>
         {reviewNotice}
@@ -174,6 +211,14 @@ export function CashoutBetsPanel({
           <p className="mx-auto mt-1.5 max-w-[220px] text-[10px] leading-4 text-white/30">
             Open positions that can be sold before settlement will appear here.
           </p>
+          <button
+            type="button"
+            onClick={() => void positions.refresh()}
+            disabled={positions.loading}
+            className="mt-4 h-8 cursor-pointer rounded-[6px] border border-white/10 px-3 text-[10px] font-bold text-white/65 hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {positions.loading ? "Refreshing..." : "Refresh positions"}
+          </button>
         </div>
       </>
     );
@@ -184,6 +229,11 @@ export function CashoutBetsPanel({
       {reviewNotice}
       {balancePanel}
       <div className="max-h-[430px] [scrollbar-width:thin] overflow-y-auto">
+        {active.length > 0 ? (
+          <div className="border-b border-white/7 px-4 py-2 text-[9px] font-black tracking-[0.1em] text-white/32 uppercase">
+            Open positions
+          </div>
+        ) : null}
         {active.map((position, index) => {
           const slip = betSlip(position);
           const cashoutable = isCashoutable(slip.redeemable, slip.shares, slip.tokenId);
@@ -211,7 +261,7 @@ export function CashoutBetsPanel({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setConfirming(position)}
+                  onClick={() => void prepareCashout(position)}
                   disabled={!cashoutable || cashout.phase !== "idle" || settle.phase !== "idle"}
                   className="h-8 cursor-pointer rounded-[6px] bg-white px-3 text-[10px] font-black text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -223,24 +273,82 @@ export function CashoutBetsPanel({
             </article>
           );
         })}
+        {recent.length > 0 ? (
+          <div className="border-y border-white/7 bg-white/[0.018] px-4 py-2 text-[9px] font-black tracking-[0.1em] text-white/32 uppercase">
+            Recent bets
+          </div>
+        ) : null}
+        {recent.map((position, index) => {
+          const averagePrice = numeric(position.avgPrice);
+          const shares = numeric(position.totalBought);
+          const staked = averagePrice * shares;
+          const realizedPnl = numeric(position.realizedPnl);
+          const date = closedAt(position.timestamp == null ? null : Number(position.timestamp));
+          return (
+            <article
+              key={`closed:${position.conditionId ?? position.title ?? index}:${position.tokenId ?? index}`}
+              className="border-b border-white/7 px-4 py-3.5 last:border-b-0"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-[11px] leading-4 font-bold text-white/72">
+                    {position.title?.trim() || "Market"}
+                  </p>
+                  <p className="mt-1 text-[10px] font-semibold text-white/38">
+                    {position.outcome?.trim() || "Outcome"} · Closed{date ? ` ${date}` : ""}
+                  </p>
+                </div>
+                <strong
+                  className={`shrink-0 text-[12px] font-black tabular-nums ${
+                    realizedPnl >= 0 ? "text-emerald-300" : "text-red-300"
+                  }`}
+                >
+                  {realizedPnl >= 0 ? "+" : ""}
+                  {money.formatExact(realizedPnl)}
+                </strong>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/6 pt-3 text-[9px] font-semibold text-white/28">
+                <span>{shares.toFixed(2)} shares</span>
+                <span>Staked {money.formatExact(staked)}</span>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {confirming ? (
         <ConfirmDialog
           title="Confirm cashout"
           rows={[
-            { label: "Market", value: betSlip(confirming).market },
-            { label: "Outcome", value: betSlip(confirming).outcome },
-            { label: "Current value", value: money.formatExact(betSlip(confirming).currentValue) },
+            { label: "Market", value: betSlip(confirming.position).market },
+            { label: "Outcome", value: betSlip(confirming.position).outcome },
+            {
+              label: "Executable cashout",
+              value: money.formatExact(confirming.quote.proceedsUsd),
+            },
+            {
+              label: "Change vs stake",
+              value: money.formatExact(
+                confirming.quote.proceedsUsd - betSlip(confirming.position).staked
+              ),
+              tone:
+                confirming.quote.proceedsUsd >= betSlip(confirming.position).staked ? "up" : "down",
+            },
           ]}
-          warning="This sells the full position at the live market price. The final proceeds can change before the order fills."
+          warning={
+            confirming.quote.proceedsUsd < betSlip(confirming.position).staked * 0.95
+              ? `Warning: this locks in a loss of ${money.formatExact(
+                  betSlip(confirming.position).staked - confirming.quote.proceedsUsd
+                )}. The order will be rejected if the live bid moves materially lower.`
+              : "This sells the full position at the quoted live bid. The order is rejected if the price moves materially lower."
+          }
           cancelLabel="Keep position"
           continueLabel="Cash out"
           onCancel={() => setConfirming(null)}
           onContinue={() => {
-            const position = confirming;
+            const { position, quote } = confirming;
             setConfirming(null);
-            void sell(position);
+            void sell(position, quote);
           }}
         />
       ) : null}

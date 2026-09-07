@@ -15,7 +15,7 @@ import {
 import { signerFrom } from "@polymarket/client/viem";
 import { createWalletClient, custom, type EIP1193Provider } from "viem";
 import { polygon } from "viem/chains";
-import { BUILDER_SIGN_PATH, POLYGON_RPC_PATH } from "@/lib/polymarket/config";
+import { BUILDER_SIGN_PATH, POLYGON_RPC_PATH, RELAYER_PROXY_PATH } from "@/lib/polymarket/config";
 
 export type SecureClient = Awaited<ReturnType<typeof createSecureClient>>;
 
@@ -82,6 +82,7 @@ function appEnvironment() {
   return forkEnvironmentConfig({
     name: "wsws",
     rpc: `${window.location.origin}${POLYGON_RPC_PATH}`,
+    relayer: { rest: `${window.location.origin}${RELAYER_PROXY_PATH}` },
   });
 }
 

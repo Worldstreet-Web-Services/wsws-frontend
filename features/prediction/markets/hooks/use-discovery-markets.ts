@@ -18,6 +18,7 @@ const EMPTY_EVENTS: DiscoveryMarketEvent[] = [];
 interface DiscoveryEventsOptions {
   enabled?: boolean;
   limit?: number;
+  marketLimit?: number;
 }
 
 export function useDiscoveryEvents(
@@ -25,9 +26,20 @@ export function useDiscoveryEvents(
   sort: DiscoveryMarketSort,
   options: DiscoveryEventsOptions = {}
 ) {
-  const params: DiscoveryEventsParams = { category, sort, limit: options.limit ?? 12 };
+  const params: DiscoveryEventsParams = {
+    category,
+    sort,
+    limit: options.limit ?? 12,
+    marketLimit: options.marketLimit,
+  };
   const query = useInfiniteQuery({
-    queryKey: ["prediction-discovery-events", params.category, sort, params.limit],
+    queryKey: [
+      "prediction-discovery-events",
+      params.category,
+      sort,
+      params.limit,
+      params.marketLimit,
+    ],
     queryFn: ({ pageParam }) => fetchDiscoveryEvents({ ...params, cursor: pageParam ?? undefined }),
     enabled: options.enabled ?? true,
     initialPageParam: null as string | null,

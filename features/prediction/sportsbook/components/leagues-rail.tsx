@@ -189,7 +189,7 @@ export function LeaguesRail({
               type="button"
               onClick={() => scroll("left")}
               aria-label="Scroll leagues left"
-              className="absolute top-1/2 left-0 z-10 hidden h-10 w-[70px] -translate-y-1/2 cursor-pointer items-center justify-start bg-[linear-gradient(90deg,rgba(35,45,62,1)_0%,rgba(35,45,62,1)_50%,rgba(45,55,72,0)_100%)] pl-1.5 text-[#a0aec0] transition-colors duration-200 hover:text-white md:flex"
+              className="absolute top-1/2 left-0 z-10 flex h-10 w-11 -translate-y-1/2 cursor-pointer items-center justify-start bg-[linear-gradient(90deg,rgba(34,34,34,1)_0%,rgba(34,34,34,.96)_48%,rgba(34,34,34,0)_100%)] pl-1 text-[#a0aec0] transition-colors duration-200 hover:text-white md:w-[70px] md:pl-1.5"
             >
               <Chevron direction="left" />
             </button>
@@ -205,7 +205,7 @@ export function LeaguesRail({
                   node.scrollLeft < node.scrollWidth - node.clientWidth
               );
             }}
-            className="relative flex-1 [scrollbar-width:none] overflow-x-auto [&::-webkit-scrollbar]:hidden"
+            className="relative flex-1 touch-pan-x [scrollbar-width:none] overflow-x-auto overscroll-x-contain scroll-smooth [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex items-center gap-2 pl-2 whitespace-nowrap md:pl-0">
               <button
@@ -255,7 +255,7 @@ export function LeaguesRail({
               type="button"
               onClick={() => scroll("right")}
               aria-label="Scroll leagues right"
-              className="absolute top-1/2 right-0 z-10 hidden h-10 w-[70px] -translate-y-1/2 cursor-pointer items-center justify-end bg-[linear-gradient(270deg,rgba(35,45,62,1)_0%,rgba(35,45,62,1)_50%,rgba(45,55,72,0)_100%)] pr-1.5 text-[#a0aec0] transition-colors duration-200 hover:text-white md:flex"
+              className="absolute top-1/2 right-0 z-10 flex h-10 w-11 -translate-y-1/2 cursor-pointer items-center justify-end bg-[linear-gradient(270deg,rgba(34,34,34,1)_0%,rgba(34,34,34,.96)_48%,rgba(34,34,34,0)_100%)] pr-1 text-[#a0aec0] transition-colors duration-200 hover:text-white md:w-[70px] md:pr-1.5"
             >
               <Chevron direction="right" />
             </button>

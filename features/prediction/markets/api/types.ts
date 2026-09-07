@@ -253,6 +253,7 @@ export interface DiscoveryEventsParams {
   sort?: DiscoveryMarketSort;
   cursor?: string;
   limit?: number;
+  marketLimit?: number;
 }
 
 export type SinglesOrderStatus = "filled" | "pending" | "failed";
@@ -287,4 +288,47 @@ export interface SinglesTicket {
   placedAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type HouseOutcome = "yes" | "no";
+export type HouseLegStatus = "open" | "won" | "lost" | "void";
+export type HouseTicketStatus =
+  "prepared" | "accepted" | "lost" | "void" | "payout_pending" | "paid";
+
+export interface PrepareHouseLeg {
+  eventId: string;
+  marketId: string;
+  conditionId: string;
+  outcome: HouseOutcome;
+}
+
+export interface LockedHouseLeg extends PrepareHouseLeg {
+  eventTitle: string;
+  marketLabel: string;
+  probabilityE6: string;
+  decimalOddsE6: string;
+  status: HouseLegStatus;
+}
+
+export interface HouseTicket {
+  id: string;
+  bookingCode: string;
+  status: HouseTicketStatus;
+  stakeE6: string;
+  combinedOddsE6: string;
+  potentialPayoutE6: string;
+  treasuryAddress: string;
+  fundingTxHash: string | null;
+  legs: LockedHouseLeg[];
+  expiresAt: string;
+  acceptedAt: string | null;
+  resolvedAt: string | null;
+  paidAt: string | null;
+  payoutTxHash: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HouseTicketsPage {
+  tickets: HouseTicket[];
 }

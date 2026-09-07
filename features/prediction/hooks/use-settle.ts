@@ -54,6 +54,33 @@ export interface SettleToBaseResult {
 // A user-facing settle error whose message is shown verbatim.
 export class SettleError extends Error {}
 
+const RELAYER_COOLDOWN_MS = 60_000;
+let relayerCooldownUntil = 0;
+let activeSettlement: Promise<SettleToBaseResult> | null = null;
+
+function isRelayerRateLimit(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    if (current instanceof Error) {
+      if (
+        current.name === "RateLimitError" ||
+        /relayer.*rate limit|rate limit.*relayer|too many requests/iu.test(current.message)
+      ) {
+        return true;
+      }
+      current = current.cause;
+      continue;
+    }
+    break;
+  }
+  return false;
+}
+
+function rateLimitMessage(): string {
+  const seconds = Math.max(1, Math.ceil((relayerCooldownUntil - Date.now()) / 1_000));
+  return `Polymarket's cashout service is rate limited. Your pUSD is safe. Try again in ${seconds} seconds.`;
+}
+
 function readErc20(client: ChainReadClient, token: string, owner: string): Promise<bigint> {
   return client.readContract({
     address: token as `0x${string}`,
@@ -92,7 +119,7 @@ export function useSettleToBase() {
   const [phase, setPhase] = useState<SettlePhase>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const settleToBase = useCallback(async (): Promise<SettleToBaseResult> => {
+  const runSettlement = useCallback(async (): Promise<SettleToBaseResult> => {
     setError(null);
     setPhase("transferring");
     let failedPhase: Exclude<SettlePhase, "idle"> = "transferring";
@@ -229,8 +256,13 @@ export function useSettleToBase() {
       };
     } catch (e) {
       console.error("Prediction cashout settlement failed", { phase: failedPhase, error: e });
-      const normalized =
-        e instanceof SettleError ? e.message : friendlyError(e, "Couldn't cash out. Try again.");
+      const rateLimited = isRelayerRateLimit(e);
+      if (rateLimited) relayerCooldownUntil = Date.now() + RELAYER_COOLDOWN_MS;
+      const normalized = rateLimited
+        ? rateLimitMessage()
+        : e instanceof SettleError
+          ? e.message
+          : friendlyError(e, "Couldn't cash out. Try again.");
       const phaseMessage: Record<Exclude<SettlePhase, "idle">, string> = {
         transferring:
           "Your market sale is safe, but pUSD could not be returned to the Polymarket wallet. Use Move to Base to retry.",
@@ -250,6 +282,24 @@ export function useSettleToBase() {
       setPhase("idle");
     }
   }, [user, ensureReady, sendEvm, sendToken, refetchFresh]);
+
+  const settleToBase = useCallback((): Promise<SettleToBaseResult> => {
+    // State updates do not disable a button until React renders again. Keep a
+    // module-level lock so rapid clicks and multiple mounted cashout panels can
+    // never submit the same balance-driven settlement more than once.
+    if (activeSettlement) return activeSettlement;
+    if (Date.now() < relayerCooldownUntil) {
+      const cooldownError = new SettleError(rateLimitMessage());
+      setError(cooldownError.message);
+      return Promise.reject(cooldownError);
+    }
+
+    const request = runSettlement().finally(() => {
+      if (activeSettlement === request) activeSettlement = null;
+    });
+    activeSettlement = request;
+    return request;
+  }, [runSettlement]);
 
   return { settleToBase, phase, error };
 }

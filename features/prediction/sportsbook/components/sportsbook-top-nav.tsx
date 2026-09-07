@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { MarketLogo } from "@/components/ui/market-logo";
+import { PredictionCategoryButton } from "@/features/prediction/components/prediction-category-drawer";
 import { useSportsbookSearch } from "../hooks/use-sportsbook";
 import { SportIcon } from "./sport-icon";
 
@@ -28,7 +29,13 @@ function SearchIcon() {
   );
 }
 
-export function SportsbookTopNav() {
+export function SportsbookTopNav({
+  categoriesOpen,
+  onOpenCategories,
+}: {
+  categoriesOpen: boolean;
+  onOpenCategories: () => void;
+}) {
   const { authenticated, login } = usePrivy();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -47,6 +54,8 @@ export function SportsbookTopNav() {
             <MarketLogo className="h-full w-auto" />
           </Link>
         </div>
+
+        <PredictionCategoryButton expanded={categoriesOpen} onClick={onOpenCategories} />
 
         <div className="relative hidden max-w-xl min-w-[120px] flex-1 md:block">
           <div className="relative flex h-9 w-full items-center rounded-lg border border-[#2a2a2a] bg-white/[0.03] px-3 text-[#7e7e7e] transition-colors focus-within:border-[#3a3a3a] focus-within:bg-white/[0.06] hover:border-[#3a3a3a] hover:bg-white/[0.06]">

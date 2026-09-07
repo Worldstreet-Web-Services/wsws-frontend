@@ -860,6 +860,7 @@
     "youAreBuying": "You're buying",
     "notTradable": "This market isn't tradable yet. Live Polymarket markets can be traded here soon.",
     "payoutIfRight": "Payout if right",
+    "minimumBet": "Minimum bet is {amount}.",
     "usdcBalance": "Cash: {amount}.",
     "betFundingNote": "Placing a bet moves what it needs from your cash balance. Free to trade.",
     "betSlip": "Bet slip",

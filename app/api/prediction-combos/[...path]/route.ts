@@ -21,7 +21,7 @@ const ALLOWED_PATHS = new Set([
   "sports/teams",
   "markets/events",
 ]);
-const WRITE_PATHS = new Set(["combos/quotes", "singles/tickets"]);
+const WRITE_PATHS = new Set(["combos/quotes", "singles/tickets", "house/tickets/prepare"]);
 const ACCOUNT_HEADERS = [
   "x-polymarket-account-address",
   "x-polymarket-account-api-key",
@@ -55,6 +55,10 @@ function isAllowedPath(path: string): boolean {
   );
 }
 
+function isWritePath(path: string): boolean {
+  return WRITE_PATHS.has(path) || /^house\/tickets\/[0-9a-f-]{36}\/confirm$/iu.test(path);
+}
+
 function authenticatedHeaders(req: NextRequest): Headers {
   const headers = new Headers({ accept: "application/json" });
   const authorization = req.headers.get("authorization");
@@ -67,6 +71,50 @@ function authenticatedHeaders(req: NextRequest): Headers {
 export async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const joined = path.join("/");
+  if (joined === "house/tickets") {
+    if (!(await verifyRequest(req))) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "Sign in to view your bets." } },
+        { status: 401 }
+      );
+    }
+    try {
+      const response = await fetch(`${BASE}/${joined}`, {
+        cache: "no-store",
+        headers: authenticatedHeaders(req),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const text = await response.text();
+      const payload: unknown = text ? JSON.parse(text) : null;
+      const contract = checkUpstream(predictionComboSchemaFor(joined), payload, {
+        service: "prediction-combos",
+        path: joined,
+      });
+      if (!contract.ok) {
+        console.error(contract.problem);
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "UPSTREAM_CONTRACT", message: "Ark returned invalid bets." },
+          },
+          { status: 502 }
+        );
+      }
+      return new NextResponse(text, {
+        status: response.status,
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    } catch (error) {
+      console.error("House prediction tickets proxy failed:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "SERVICE_UNAVAILABLE", message: "Your bets are unavailable right now." },
+        },
+        { status: 502 }
+      );
+    }
+  }
   const ticketMatch = /^singles\/tickets\/([A-Z0-9]{6})$/iu.exec(joined);
   if (ticketMatch) {
     if (!(await verifyRequest(req))) {
@@ -194,7 +242,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
 export async function POST(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const joined = path.join("/");
-  if (!WRITE_PATHS.has(joined)) {
+  if (!isWritePath(joined)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   if (!(await verifyRequest(req))) {

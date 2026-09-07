@@ -64,6 +64,7 @@ export function fetchDiscoveryEvents(params: DiscoveryEventsParams): Promise<Dis
     sort: params.sort,
     cursor: params.cursor,
     limit: params.limit,
+    marketLimit: params.marketLimit,
   });
 }
 

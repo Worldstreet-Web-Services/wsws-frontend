@@ -860,6 +860,7 @@
     "youAreBuying": "Vous achetez",
     "notTradable": "Ce marché n'est pas encore tradable. Les marchés Polymarket en direct arrivent bientôt ici.",
     "payoutIfRight": "Gain si vous avez raison",
+    "minimumBet": "La mise minimum est de {amount}.",
     "usdcBalance": "Solde : {amount}.",
     "betFundingNote": "Placer un pari prélève ce qu'il faut sur votre solde. Trader est gratuit.",
     "betSlip": "Ticket de pari",

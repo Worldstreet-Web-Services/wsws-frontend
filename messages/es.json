@@ -860,6 +860,7 @@
     "youAreBuying": "Estás comprando",
     "notTradable": "Este mercado aún no es operable. Los mercados en vivo de Polymarket llegarán aquí pronto.",
     "payoutIfRight": "Pago si aciertas",
+    "minimumBet": "La apuesta mínima es {amount}.",
     "usdcBalance": "Efectivo: {amount}.",
     "betFundingNote": "Al apostar se toma lo necesario de tu saldo. Operar es gratis.",
     "betSlip": "Boleto de apuesta",

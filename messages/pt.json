@@ -860,6 +860,7 @@
     "youAreBuying": "Está a comprar",
     "notTradable": "Este mercado ainda não é negociável. Os mercados ao vivo da Polymarket chegam aqui em breve.",
     "payoutIfRight": "Pagamento se acertar",
+    "minimumBet": "A aposta mínima é de {amount}.",
     "usdcBalance": "Saldo: {amount}.",
     "betFundingNote": "Fazer uma aposta usa o necessário do seu saldo. Negociar é grátis.",
     "betSlip": "Talão de aposta",

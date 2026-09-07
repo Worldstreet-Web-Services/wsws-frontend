@@ -860,6 +860,7 @@
     "youAreBuying": "Sie kaufen",
     "notTradable": "Dieser Markt ist noch nicht handelbar. Live-Polymarket-Märkte können hier bald gehandelt werden.",
     "payoutIfRight": "Auszahlung bei Erfolg",
+    "minimumBet": "Der Mindesteinsatz beträgt {amount}.",
     "usdcBalance": "Guthaben: {amount}.",
     "betFundingNote": "Eine Wette holt sich, was sie braucht, aus deinem Guthaben. Handeln ist kostenlos.",
     "betSlip": "Wettschein",

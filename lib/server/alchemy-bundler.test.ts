@@ -13,6 +13,7 @@ describe("Alchemy sponsorship proxy", () => {
     verifyRequest.mockReset();
     verifyRequest.mockResolvedValue({ userId: "user" });
     vi.stubEnv("ALCHEMY_API_KEY", "data-api-key");
+    vi.stubEnv("ALCHEMY_POLYGON_RPC_URL", "polygon-policy-api-key");
     vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "different-account-key");
     vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "base-policy");
     vi.stubEnv("ALCHEMY_POLYGON_GAS_POLICY_ID", "polygon-policy");
@@ -122,9 +123,43 @@ describe("Alchemy sponsorship proxy", () => {
     );
 
     expect(response.status).toBe(200);
-    const [, init] = vi.mocked(fetch).mock.calls[0];
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("polygon-mainnet.g.alchemy.com/v2/polygon-policy-api-key");
+    expect(String(url)).not.toContain("data-api-key");
     expect(JSON.parse(String(init?.body)).params[3]).toEqual({ policyId: "polygon-policy" });
     expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
+  });
+
+  it("accepts a complete Polygon Alchemy RPC URL", async () => {
+    vi.stubEnv(
+      "ALCHEMY_POLYGON_RPC_URL",
+      "https://polygon-mainnet.g.alchemy.com/v2/dedicated-polygon-key/"
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    await forwardAlchemyBundlerRequest(
+      makeReq({
+        method: "pm_getPaymasterStubData",
+        params: [{}, "0xentrypoint", "0x89", {}],
+      }),
+      "polygon-mainnet"
+    );
+
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe(
+      "https://polygon-mainnet.g.alchemy.com/v2/dedicated-polygon-key"
+    );
+  });
+
+  it("fails closed when the dedicated Polygon RPC is missing", async () => {
+    vi.stubEnv("ALCHEMY_POLYGON_RPC_URL", "");
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ method: "pm_getPaymasterData", params: [{}, "0xentrypoint", "0x89", {}] }),
+      "polygon-mainnet"
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "ALCHEMY_POLYGON_RPC_URL is missing" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("fails closed when the Base policy is missing", async () => {
@@ -173,8 +208,42 @@ describe("Alchemy sponsorship proxy", () => {
     expect(body.id).toBe(7);
     // -32002 is "resource unavailable", which viem surfaces without retrying.
     expect(body.error.code).toBe(-32002);
-    expect(body.error.message).toMatch(/monthly capacity/i);
+    expect(body.error.message).toMatch(/sponsorship capacity/i);
     expect(logged).toHaveBeenCalledWith(expect.stringMatching(/capacity/i), expect.anything());
+    logged.mockRestore();
+  });
+
+  it("surfaces the final paymaster sponsorship-limit refusal without retrying", async () => {
+    const exhausted = {
+      jsonrpc: "2.0",
+      id: 8,
+      error: {
+        code: -32602,
+        message: "This transaction's USD cost will put your team over your gas sponsorship Limit.",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(exhausted), { status: 200 }))
+    );
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 8, method: "pm_getPaymasterData", params: [] }),
+      "polygon-mainnet"
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      id: 8,
+      error: { code: -32002, message: expect.stringMatching(/gas credits/i) },
+    });
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringMatching(/polygon-mainnet/),
+      expect.anything()
+    );
     logged.mockRestore();
   });
 

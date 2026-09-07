@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { MarketLogo } from "@/components/ui/market-logo";
+import { PredictionCategoryDrawer } from "@/features/prediction/components/prediction-category-drawer";
 import type { SportsbookEventKind, SportsbookGameState, SportsbookOrder } from "../api";
 import { useSportsbookCapabilities, useSportsbookNavigation } from "../hooks/use-sportsbook";
 import { updateSportsbookSlip, useSportsbookSlip } from "../slip-store";
@@ -62,6 +63,7 @@ export function SportsbookShell({
   const [ticketId, setTicketId] = useState<string | null>(null);
   const [focusSlipKey, setFocusSlipKey] = useState(0);
   const [leagueSearch, setLeagueSearch] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const sports = navigation.data?.sports ?? [];
   const activeSport =
     sports.find(({ sport }) => sport.slug === requestedSport)?.sport.slug ??
@@ -104,6 +106,8 @@ export function SportsbookShell({
           state={state}
           eventKind={eventKind}
           onLeagueSearch={setLeagueSearch}
+          categoriesOpen={categoriesOpen}
+          onOpenCategories={() => setCategoriesOpen(true)}
         />
 
         <div className="mx-auto w-full max-w-[1440px] px-0 pb-16 md:px-2">
@@ -235,6 +239,11 @@ export function SportsbookShell({
       {ticketId ? (
         <TicketModal ticketId={ticketId} onClose={() => setTicketId(null)} onRebet={rebet} />
       ) : null}
+      <PredictionCategoryDrawer
+        open={categoriesOpen}
+        onClose={() => setCategoriesOpen(false)}
+        activeCategory="sports"
+      />
     </main>
   );
 }

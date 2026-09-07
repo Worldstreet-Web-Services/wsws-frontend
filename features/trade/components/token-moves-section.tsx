@@ -46,5 +46,12 @@ export function TokenMovesSection({ onOpenBuy }: { onOpenBuy?: (buy: BuyPayload)
     [markets, onOpenBuy]
   );
 
-  return <TokenMoves tokens={insightTokens} onBuyToken={buyToken} />;
+  // TokenMoves carries no padding of its own (on new-approach it inherited it
+  // from the perps section's p-4), so give the phone home's gutter here. The
+  // cards are 88% wide, so the right edge still shows the next card's peek.
+  return (
+    <div className="px-4 pt-2">
+      <TokenMoves tokens={insightTokens} onBuyToken={buyToken} />
+    </div>
+  );
 }

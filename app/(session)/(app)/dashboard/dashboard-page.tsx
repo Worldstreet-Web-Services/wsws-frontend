@@ -12,6 +12,7 @@ import { PerpsOverview } from "@/features/trade/components/perps-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { ExploreBanners } from "@/components/layout/explore-banners";
+import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
 // also exports the full ActivityView and the remit barrel the CrossBorderModal;
 // neither renders here, and through the barrels both shipped in the dashboard's
@@ -28,6 +29,8 @@ import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features
 // when the route has nothing live to feed it.
 import { ConversationRow } from "@/features/discovery/components/conversation-row";
 import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
+import { Next100xRow } from "@/features/discovery/components/next-100x-row";
+import { PredictionStartsRow } from "@/features/discovery/components/prediction-starts-row";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -268,11 +271,13 @@ export function DashboardPage() {
       </div>
 
       {/* Desktop: the discovery shelves, as the phone design's desktop sibling
-          draws them under the balance cards — Token Moves, then Join the
-          Conversation. */}
+          draws them under the balance cards — Token Moves, Join the
+          Conversation, Find the next 100X, then Prediction starts. */}
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
         <TokenMovesRow />
         <ConversationRow />
+        <Next100xRow />
+        <PredictionStartsRow />
       </div>
 
       {briefs.map((id, index) => {
@@ -302,8 +307,19 @@ export function DashboardPage() {
               </SectionOverview>
             </SectionVisibility>
             {/* One doorway between the briefs, so Prediction and Arkade are
-                  met while reading rather than only at the very bottom. */}
-            {INTERLEAVED_BANNERS[index] ? (
+                  met while reading rather than only at the very bottom. On the
+                  phone the prediction doorway becomes the Market design's rich
+                  "Starts Here" card; the desktop keeps the banner. */}
+            {INTERLEAVED_BANNERS[index] === "prediction" ? (
+              <>
+                <div className="md:hidden">
+                  <PredictionMobile />
+                </div>
+                <div className="hidden md:block">
+                  <ExploreBanners only="prediction" />
+                </div>
+              </>
+            ) : INTERLEAVED_BANNERS[index] ? (
               <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
             ) : null}
             {/* Closed by the launch switch, the gaps close up and the doorway

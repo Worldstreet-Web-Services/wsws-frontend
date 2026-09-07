@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { MarketLogo } from "@/components/ui/market-logo";
@@ -7,11 +8,29 @@ import type { SportsbookEventKind, SportsbookGameState, SportsbookOrder } from "
 import { useSportsbookCapabilities, useSportsbookNavigation } from "../hooks/use-sportsbook";
 import { updateSportsbookSlip, useSportsbookSlip } from "../slip-store";
 import { selectionsFromOrder } from "../ticket-rebet";
-import { BetSlipPanel } from "./bet-slip-panel";
-import { EventMarkets } from "./event-markets";
-import { MarketBrowser } from "./market-browser";
 import { SportsbookHeader } from "./sportsbook-header";
-import { TicketModal } from "./ticket-modal";
+
+const MarketBrowser = dynamic(
+  () => import("./market-browser").then((module) => module.MarketBrowser),
+  { loading: () => <SportsbookLoading />, ssr: false }
+);
+const EventMarkets = dynamic(
+  () => import("./event-markets").then((module) => module.EventMarkets),
+  { loading: () => <SportsbookLoading />, ssr: false }
+);
+const BetSlipPanel = dynamic(
+  () => import("./bet-slip-panel").then((module) => module.BetSlipPanel),
+  { ssr: false }
+);
+const TicketModal = dynamic(() => import("./ticket-modal").then((module) => module.TicketModal), {
+  ssr: false,
+});
+
+function SportsbookLoading() {
+  return (
+    <div className="h-[620px] animate-pulse rounded-lg border border-white/5 bg-white/[0.025]" />
+  );
+}
 
 interface SportsbookShellProps {
   requestedSport: string;
@@ -89,7 +108,7 @@ export function SportsbookShell({
 
         <div className="mx-auto w-full max-w-[1440px] px-0 pb-16 md:px-2">
           {navigation.isLoading || !activeSport ? (
-            <div className="h-[620px] animate-pulse rounded-lg border border-white/5 bg-white/[0.025]" />
+            <SportsbookLoading />
           ) : eventId ? (
             <EventMarkets
               eventId={eventId}
@@ -155,15 +174,17 @@ export function SportsbookShell({
               desktopOpen ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
-            <BetSlipPanel
-              key={`desktop-${focusSlipKey}`}
-              capabilities={capabilities.data}
-              initialTab={
-                focusSlipKey > 0 ? "slip" : initialView === "tickets" ? "tickets" : "slip"
-              }
-              onTicket={setTicketId}
-              embedded
-            />
+            {desktopOpen ? (
+              <BetSlipPanel
+                key={`desktop-${focusSlipKey}`}
+                capabilities={capabilities.data}
+                initialTab={
+                  focusSlipKey > 0 ? "slip" : initialView === "tickets" ? "tickets" : "slip"
+                }
+                onTicket={setTicketId}
+                embedded
+              />
+            ) : null}
           </div>
         </div>
       </aside>
@@ -211,7 +232,9 @@ export function SportsbookShell({
           </div>
         </div>
       ) : null}
-      <TicketModal ticketId={ticketId} onClose={() => setTicketId(null)} onRebet={rebet} />
+      {ticketId ? (
+        <TicketModal ticketId={ticketId} onClose={() => setTicketId(null)} onRebet={rebet} />
+      ) : null}
     </main>
   );
 }

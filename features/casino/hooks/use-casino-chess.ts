@@ -135,7 +135,7 @@ function incrementSeconds(timeControl: string): number {
   }
 }
 
-function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
+export function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
   if (base.state !== "in_progress") return null;
   const nextPosition = applyUciToFen(base.fen, uci);
   if (!nextPosition) {
@@ -161,6 +161,7 @@ function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | n
       clocks: nextClocks,
       clockUpdatedAt: new Date(now).toISOString(),
       drawOffered: null,
+      moves: [...base.moves, nextPosition.san],
     },
   };
 }
@@ -741,6 +742,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
 
   return {
     match,
+    confirmedPly: baseMatch?.moves.length ?? null,
     clocks,
     you,
     isLoading: query.isLoading,

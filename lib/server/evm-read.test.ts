@@ -155,4 +155,20 @@ describe("readEvm provider order", () => {
     await readEvm("base-mainnet", 8453, CALLS);
     expect(urlOf(vi.mocked(fetch).mock.calls[2])).toContain("rpc.zerodev.app");
   });
+
+  // Seen live on Mythos: ZeroDev answers 400 "Could not find chain" rather
+  // than "No API provider". Same meaning, same treatment, or every refresh
+  // asks ZeroDev again before going to Alchemy.
+  it("remembers ZeroDev's 'could not find chain' answer like 'no provider'", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(400, { error: "Could not find chain with id 42018" }))
+      .mockResolvedValueOnce(json(200, [{ jsonrpc: "2.0", id: 1, result: "0x80" }]))
+      .mockResolvedValueOnce(json(200, [{ jsonrpc: "2.0", id: 1, result: "0x81" }]));
+    const { readEvm } = await import("./evm-read");
+
+    await readEvm("mythos-mainnet", 42018, CALLS);
+    await readEvm("mythos-mainnet", 42018, CALLS);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(urlOf(vi.mocked(fetch).mock.calls[2])).toContain("mythos-mainnet.g.alchemy.com");
+  });
 });

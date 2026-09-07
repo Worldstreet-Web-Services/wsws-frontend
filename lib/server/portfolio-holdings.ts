@@ -75,7 +75,7 @@ export const COLD_TTL_MS = 10 * 60_000;
 const WARM_FOR_MS = 60 * 60_000;
 // A refresh has to end: what has not answered by then is logged and skipped
 // for this refresh, and its snapshot stays whatever it was.
-export const REFRESH_DEADLINE_MS = 15_000;
+export const REFRESH_DEADLINE_MS = 10_000;
 // The shared response cache caps at 500 entries and evicts the oldest; with
 // 28 snapshots per wallet that cap is passed by 18 wallets, which would
 // evict cold snapshots inside their TTL and quietly turn the ten-minute

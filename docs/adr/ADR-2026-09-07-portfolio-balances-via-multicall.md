@@ -55,7 +55,7 @@ Read what the allowlist names, directly, with standard JSON-RPC only:
    straight to Alchemy; a ZeroDev 429 backs the whole provider off for a
    minute; a 5xx parks only that chain for two seconds; any other failure
    falls through to the Alchemy key pool for that call. Nothing is retried
-   against the same provider. A refresh has a 15-second deadline: a network
+   against the same provider. A refresh has a 10-second deadline: a network
    that has not answered is logged and skipped for that refresh.
 3. **Hot and cold networks** (`lib/server/portfolio-holdings.ts`), in a
    bounded store of their own rather than the shared 500-entry response

@@ -153,6 +153,17 @@ describe("readHoldings", () => {
   });
 });
 
+describe("refresh deadline", () => {
+  // A cold load measured 18.6 s on the dev server because one slow network
+  // was allowed the full 15 s; the deadline is per network, so it bounds the
+  // whole refresh. Ten seconds still clears the slowest healthy answer seen
+  // (3.2 s) three times over.
+  it("is ten seconds", async () => {
+    const { REFRESH_DEADLINE_MS } = await import("./portfolio-holdings");
+    expect(REFRESH_DEADLINE_MS).toBe(10_000);
+  });
+});
+
 describe("network chain ids", () => {
   it("covers every network the portfolio reads", async () => {
     const { NETWORK_CHAIN_ID } = await import("./portfolio-holdings");

@@ -41,7 +41,9 @@ const zeroDevSkipUntil = new Map<number, number>();
 let zeroDevBackoffUntil = 0;
 
 const NOT_SERVED = /method not found|does not exist|not whitelisted|not supported/i;
-const NO_PROVIDER = /no api provider/i;
+// ZeroDev's own answers for a chain it does not serve, as seen live:
+// "No API provider supports the requested chainId" and "Could not find chain".
+const NO_PROVIDER = /no api provider|could not find chain/i;
 
 function toBatch(calls: RpcCall[]) {
   return calls.map((call, index) => ({

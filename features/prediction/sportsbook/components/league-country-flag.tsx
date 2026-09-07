@@ -1,5 +1,3 @@
-import Flag from "react-world-flags";
-
 const COUNTRY_CODES: Record<string, string> = {
   "european union": "EU",
   afghanistan: "AF",
@@ -310,6 +308,15 @@ function countryCode(countrySlug: string, countryName: string, leagueSlug: strin
   return null;
 }
 
+function flagEmoji(code: string): string | null {
+  const normalized = code.startsWith("GB_") ? "GB" : code.toUpperCase();
+  if (!/^[A-Z]{2}$/u.test(normalized)) return null;
+
+  return Array.from(normalized, (letter) =>
+    String.fromCodePoint(0x1f1e6 + letter.charCodeAt(0) - 65)
+  ).join("");
+}
+
 interface LeagueCountryFlagProps {
   countrySlug: string;
   countryName: string;
@@ -326,6 +333,7 @@ export function LeagueCountryFlag({
   compact = false,
 }: LeagueCountryFlagProps) {
   const code = countryCode(countrySlug, countryName, leagueSlug);
+  const emoji = code ? flagEmoji(code) : null;
   const mask = selected
     ? "[mask-image:linear-gradient(90deg,rgba(0,0,0,.5),transparent)]"
     : "[mask-image:linear-gradient(90deg,rgba(0,0,0,.4),transparent)]";
@@ -339,12 +347,8 @@ export function LeagueCountryFlag({
           : `absolute bottom-0 left-0 h-full w-8 overflow-hidden rounded-l-lg ${mask} group-hover/league:[mask-image:linear-gradient(90deg,rgba(0,0,0,.5),transparent)]`
       }
     >
-      {code ? (
-        <Flag
-          code={code}
-          fallback={<NoFlag />}
-          className="block size-full object-cover object-center"
-        />
+      {emoji ? (
+        <span className="grid size-full place-items-center text-[22px] leading-none">{emoji}</span>
       ) : (
         <NoFlag />
       )}

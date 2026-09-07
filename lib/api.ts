@@ -70,7 +70,7 @@ export async function apiFetch(
   } catch (error) {
     // No status at all: DNS, TCP, CORS, offline. The clearest signal there is.
     recordCircuitFailure(path, undefined);
-    reportRequestFailure({ path, service: circuitServiceOf(path), cause: error });
+    reportRequestFailure({ path, method, service: circuitServiceOf(path), cause: error });
     throw error;
   }
   if (response.ok) {
@@ -79,7 +79,12 @@ export async function apiFetch(
     recordCircuitFailure(path, response.status);
     // Reported here rather than left to the caller: a handled 500 throws
     // nothing, so this is the only place the failure is still visible.
-    reportRequestFailure({ path, service: circuitServiceOf(path), status: response.status });
+    reportRequestFailure({
+      path,
+      method,
+      service: circuitServiceOf(path),
+      status: response.status,
+    });
   }
   return response;
 }

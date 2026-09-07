@@ -32,6 +32,8 @@ interface RequestFailure {
   path: string;
   /** The breaker's service for that path: the segment after /api. */
   service: string;
+  /** GET, POST, PUT, DELETE. Reads and writes fail very differently. */
+  method: string;
   /** Absent for a transport failure — DNS, TCP, CORS, offline. */
   status?: number;
   /** The thrown error, when the request never got a response at all. */
@@ -47,8 +49,18 @@ interface RequestFailure {
  * is down. The full path travels in the event's context, where it is readable
  * without fragmenting the issue.
  */
-export function reportRequestFailure({ path, service, status, cause }: RequestFailure): void {
+export function reportRequestFailure({
+  path,
+  service,
+  method,
+  status,
+  cause,
+}: RequestFailure): void {
   const label = status === undefined ? "network" : String(status);
+  // A write is the user doing something deliberate: a trade, a withdrawal, a
+  // KYC submission. When one fails the action did not happen, which is a
+  // different kind of problem from a poll that will retry a second later.
+  const isWrite = method !== "GET" && method !== "HEAD";
 
   if (!isCircuitFailure(status)) {
     // The server answered, and its answer was "no". Worth the trail, not an issue.
@@ -56,20 +68,26 @@ export function reportRequestFailure({ path, service, status, cause }: RequestFa
       category: "fetch",
       type: "http",
       level: "warning",
-      message: `${service} responded ${label}`,
-      data: { path, status },
+      message: `${method} ${service} responded ${label}`,
+      data: { path, method, status },
     });
     return;
   }
 
   Sentry.withScope((scope) => {
     scope.setLevel("error");
-    scope.setFingerprint(["api-failure", service, label]);
+    // Method is part of the fingerprint on purpose: a failing GET poll and a
+    // failing POST to the same service are different faults with different
+    // urgency, and merging them into one issue hides the one that matters.
+    scope.setFingerprint(["api-failure", service, method, label]);
     scope.setTag("api.service", service);
     scope.setTag("api.status", label);
-    scope.setContext("request", { path, status: status ?? null });
+    scope.setTag("api.method", method);
+    // A tag an alert rule can filter on, to page harder for failed writes.
+    scope.setTag("api.write", isWrite ? "true" : "false");
+    scope.setContext("request", { path, method, status: status ?? null });
     Sentry.captureException(
-      cause instanceof Error ? cause : new Error(`Request to ${service} failed (${label})`)
+      cause instanceof Error ? cause : new Error(`${method} ${service} failed (${label})`)
     );
   });
 }

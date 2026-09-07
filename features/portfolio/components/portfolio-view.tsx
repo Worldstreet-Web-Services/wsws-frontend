@@ -21,6 +21,7 @@ import { KashCard } from "@/features/portfolio/components/kash-card";
 import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile";
 import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
 import { PromoCarousel } from "@/components/ui/promo-deck";
+import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
 import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
 import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
@@ -109,6 +110,7 @@ export function PortfolioView({
   const money = useMoney();
   const router = useRouter();
   const t = useTranslations("portfolio");
+  const tDiscovery = useTranslations("discovery");
   const { wallet: kashWallet } = useKashAccount();
   const claimPoints = useKashClaim();
   const [kashModal, setKashModal] = useState<
@@ -254,13 +256,43 @@ export function PortfolioView({
     });
   };
 
+  // The stake banner the rail shows twice: Market Square has no banner here
+  // while the square is switched off, so the stake banner repeats as a third
+  // stop to give the carousel something to move to.
+  const stakeBanner = (
+    <PromoBanner
+      href="/casino"
+      title={tDiscovery("stakeTitle")}
+      subtitle={tDiscovery("stakeSubtitle")}
+      background="#ed2b07"
+      glyph="/market/promo-stake-flame.svg"
+      scallop="/market/promo-stake-scallop.svg"
+      art={[
+        {
+          src: "/market/promo-stake-glow-left.svg",
+          top: -17.38,
+          left: -19.85,
+          width: 253.22,
+          height: 253.22,
+        },
+        {
+          src: "/market/promo-stake-glow-right.svg",
+          top: -71.99,
+          left: 188.68,
+          width: 439.41,
+          height: 439.41,
+        },
+      ]}
+    />
+  );
+
+  // "Your Holdings" is hidden at request. The list/table, its error and empty
+  // states, and all the machinery feeding them stay in place behind this flag,
+  // so flipping it to false brings the section straight back.
+  const HOLDINGS_HIDDEN = true;
+
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      {/* The design's top Kash banner is desktop-only; the phone carries its own
-          promo strip in the mobile head below. */}
-      <div className="mb-4 hidden md:block">
-        <KashBanner onBuy={() => setKashModal("buy")} />
-      </div>
       <KashBuyModal
         open={kashModal === "buy"}
         wallet={kashWallet}
@@ -326,11 +358,23 @@ export function PortfolioView({
         />
       </div>
 
+      {/* The promo rail, as the Market design draws the desktop head: below the
+          two cards, a carousel of banners. Desktop-only — the phone carries its
+          own promo strip in the mobile head above. */}
+      <div className="mt-3 hidden md:block">
+        <PromoRail label={tDiscovery("promoRailCarousel")}>
+          {stakeBanner}
+          <KashBanner onBuy={() => setKashModal("buy")} />
+          {stakeBanner}
+        </PromoRail>
+      </div>
+
       {/* Commented out for now, at explicit request — cross-border is still
           just a "coming soon" announcement banner, not a live flow. */}
       {/* <div className="mt-3">{crossBorderSlot}</div> */}
 
-      {errored ? (
+      {/* "Your Holdings" — hidden at request (see HOLDINGS_HIDDEN above). */}
+      {HOLDINGS_HIDDEN ? null : errored ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/6">
             <WalletIcon size={22} />

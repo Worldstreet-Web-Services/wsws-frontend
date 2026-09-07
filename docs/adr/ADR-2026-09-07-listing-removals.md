@@ -54,6 +54,16 @@ convert people's money in the stuff we are removing back to usdc").
   actual "convert their money back to USDC" work and it is a trade-service
   policy.
 
+## Correction, 17:20: the equity rule was too broad
+
+The `0xb2000000…` address prefix is not an issuer mark. A live scan of the
+catalog found 41 Base tokens carrying it, most of them ordinary memecoins;
+Basecat, MOONBASE and BASEJUICE were ACTIVE and LOW risk and had been hidden
+from the board by the prefix rule since #403 merged. The rule now names the
+three tokenized shares by address (GOOGLc, TSLAc, $BSLN) and keeps the
+corporate-name suffix; the prefix test is gone. The trade service has since
+removed the Base GOOGLc row and blocked TSLAc and $BSLN.
+
 ## Consequences
 
 - Spot loses three rows; the memecoin board thins to rated, non-high-risk

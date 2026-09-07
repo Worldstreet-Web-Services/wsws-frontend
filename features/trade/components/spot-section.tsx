@@ -14,12 +14,6 @@ const MarketsView = dynamic(
   { ssr: false }
 );
 import { SpotSimpleView } from "@/features/trade/components/spot-simple-view";
-import type { BuyPayload, DetailPayload } from "@/lib/modal-types";
-
-interface SpotSectionProps {
-  onOpenDetail: (detail: DetailPayload) => void;
-  onOpenBuy: (buy: BuyPayload) => void;
-}
 
 // Spot as its own sidebar section, with two interfaces behind the header
 // switch. Simple is the tabular market list for people who just want to look
@@ -30,7 +24,7 @@ interface SpotSectionProps {
 // shows its market list here and moves the chart and the ticket into a
 // full-screen sheet, so choosing pro does not bury the rest of the dashboard
 // under one very long section.
-export function SpotSection({ onOpenDetail, onOpenBuy }: SpotSectionProps) {
+export function SpotSection() {
   const tSections = useTranslations("sections");
   const { mode } = useSpotMode();
 
@@ -40,13 +34,7 @@ export function SpotSection({ onOpenDetail, onOpenBuy }: SpotSectionProps) {
         <Eyebrow>{tSections("spot")}</Eyebrow>
         <SpotModeSwitch />
       </div>
-      <div className="mt-4">
-        {mode === "pro" ? (
-          <MarketsView />
-        ) : (
-          <SpotSimpleView onOpenDetail={onOpenDetail} onOpenBuy={onOpenBuy} />
-        )}
-      </div>
+      <div className="mt-4">{mode === "pro" ? <MarketsView /> : <SpotSimpleView />}</div>
     </div>
   );
 }

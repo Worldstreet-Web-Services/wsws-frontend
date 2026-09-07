@@ -84,21 +84,28 @@ function summarise(): CircuitSnapshot {
 
 function publish(service: string, next: CircuitSnapshot) {
   /**
-   * The moment a service goes from usable to not. Reported once per outage,
-   * before the state is stored, because the transition is only visible while
-   * the previous snapshot is still here.
+   * The moment a service goes from usable to not. Reported before the state is
+   * stored, because the transition is only visible while the previous snapshot
+   * is still here.
    *
    * This is the signal alerting is built on. It cannot be produced by one
    * dropped packet (the breaker needs consecutive qualifying failures), and it
    * says something the thousands of refused polls after it do not: users have
    * lost this part of the app.
    *
+   * CLOSED to open only, never half-open to open. A sustained outage cycles
+   * open → half-open → open every cooldown as each probe fails, and every one
+   * of those is the same outage still being down — not news. Reporting them
+   * would put a message in the alert channel every 15 to 120 seconds until the
+   * service came back. Recovery resets the circuit to closed, so a genuinely
+   * new outage later still reports.
+   *
    * Quiet services are excluded for the same reason they are kept out of the
    * banner: each degrades on its own terms, so an outage there is not an
    * incident anyone should be woken for.
    */
   const previous = circuitFor(service);
-  if (previous.state !== "open" && next.state === "open" && !QUIET_SERVICES.has(service)) {
+  if (previous.state === "closed" && next.state === "open" && !QUIET_SERVICES.has(service)) {
     reportCircuitOpen(service, next.failures);
   }
 

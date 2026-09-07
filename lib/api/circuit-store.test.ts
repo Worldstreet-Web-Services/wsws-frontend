@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
   circuitAllows,
@@ -10,6 +10,14 @@ import {
   retryCircuitNow,
   useCircuit,
 } from "@/lib/api/circuit-store";
+
+// The reporter is the seam under test here, not the Sentry SDK behind it.
+const reportCircuitOpen = vi.fn();
+vi.mock("@/lib/monitoring/report", () => ({
+  reportCircuitOpen: (...args: unknown[]) => reportCircuitOpen(...args),
+  reportRequestFailure: () => {},
+  identifySentryUser: () => {},
+}));
 
 const NOW = 1_000_000;
 
@@ -97,5 +105,65 @@ describe("circuit store", () => {
     recordCircuitFailure("/api/portfolio", 404, NOW);
     recordCircuitFailure("/api/portfolio", 429, NOW);
     expect(circuitSnapshot().state).toBe("closed");
+  });
+});
+
+/**
+ * What reaches the alert channel. These are the rules that decide whether an
+ * outage sends one Telegram message or one every fifteen seconds until it ends.
+ */
+describe("circuit store alerting", () => {
+  beforeEach(() => {
+    resetCircuitForTest();
+    reportCircuitOpen.mockClear();
+  });
+
+  it("reports once when a service first goes down", () => {
+    fail("/api/portfolio", 3);
+    expect(reportCircuitOpen).toHaveBeenCalledTimes(1);
+    expect(reportCircuitOpen).toHaveBeenCalledWith("portfolio", 3);
+  });
+
+  it("says nothing for the failures that pile up while it is already open", () => {
+    fail("/api/portfolio", 3);
+    fail("/api/portfolio", 10);
+    expect(reportCircuitOpen).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The regression this test exists for. A sustained outage cycles
+   * open -> half-open -> open as each probe fails. Every one of those is the
+   * same outage, and reporting them put a message in the channel on every
+   * cooldown — which is exactly how an alert channel becomes one nobody reads.
+   */
+  it("stays quiet when a probe fails and the breaker re-opens", () => {
+    fail("/api/portfolio", 3);
+    expect(reportCircuitOpen).toHaveBeenCalledTimes(1);
+
+    // Let the cooldown lapse so the next request is allowed through as a probe,
+    // then fail it. The breaker goes half-open, then straight back to open.
+    const afterCooldown = NOW + 60_000;
+    expect(circuitAllows("/api/portfolio", afterCooldown)).toBe(true);
+    recordCircuitFailure("/api/portfolio", 502, afterCooldown);
+
+    expect(reportCircuitOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports again for a genuinely new outage after the service recovered", () => {
+    fail("/api/portfolio", 3);
+    recordCircuitSuccess("/api/portfolio");
+    fail("/api/portfolio", 3);
+    expect(reportCircuitOpen).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Quiet services degrade on their own terms — the marquee drops chips, the
+   * arcade hub hides counts — so their breakers still open and still stop the
+   * polling, but nobody is woken for them.
+   */
+  it("never reports a quiet service", () => {
+    fail("/api/chess", 3);
+    fail("/api/market-square", 3);
+    expect(reportCircuitOpen).not.toHaveBeenCalled();
   });
 });

@@ -54,8 +54,10 @@ explicitly, with `maskAllText` and `blockAllMedia` set.
 1. Sign in at [sentry.io](https://sentry.io), create a project, platform
    **Next.js**.
 2. Copy the **DSN** from Settings → Projects → _your project_ → Client Keys.
-3. Create an auth token at Settings → Developer Settings → Auth Tokens, with the
-   `project:releases` and `org:read` scopes. This uploads source maps.
+3. Create a token at Settings → **Developer Settings → Organization Tokens**.
+   There is no scope picker: Sentry fixes org-token permissions to what CI
+   needs, source map upload included. Use an ORGANIZATION token, not a personal
+   one — a personal token is bound to one human and dies with their account.
 
 Set these in Vercel (Production, Preview and Development):
 
@@ -132,8 +134,11 @@ browser.
 
 ### 4b. Point Sentry at the relay
 
-Sentry → Settings → Developer Settings → **Custom Integrations** → _Create
-Internal Integration_.
+Sentry → Settings → **Integrations → Custom Integrations** → _Create New
+Integration_ → **Internal**.
+
+(It is under Integrations, not Developer Settings — Developer Settings holds
+only tokens and OAuth applications.)
 
 - **Webhook URL**: `https://<your-domain>/api/alerts/sentry`
 - **Alert Rule Action**: enabled — this is what makes the integration selectable

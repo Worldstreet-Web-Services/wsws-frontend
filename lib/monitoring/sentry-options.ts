@@ -33,12 +33,20 @@ export const sentryEnabled = Boolean(dsn);
 const environment = process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV ?? "development";
 
 /**
- * Ties an event to the build it came from, which is what makes an uploaded
- * source map resolve. next.config.ts already stamps the package version into
- * the bundle for analytics, so the same value serves here rather than a second
- * source of truth.
+ * Ties an event to the build it came from.
+ *
+ * The commit SHA, not the package version. Two reasons. It is what sentry-cli
+ * names the uploaded artifact bundle at build time, so both halves agree on
+ * what a release is; and package.json's version changes maybe once a quarter,
+ * which would tag six months of deploys as one release and make "first seen in"
+ * and regression tracking meaningless.
+ *
+ * Vercel exposes the SHA automatically. Locally it is absent, so the package
+ * version stands in and every dev build shares one release, which is correct:
+ * there is nothing to regress against on a laptop.
  */
-const release = process.env.NEXT_PUBLIC_APP_VERSION;
+const release =
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_APP_VERSION;
 
 /**
  * Errors this app throws deliberately, as control flow, and browser noise no

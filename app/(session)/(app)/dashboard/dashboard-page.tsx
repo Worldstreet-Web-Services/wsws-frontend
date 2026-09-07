@@ -24,9 +24,10 @@ import { CrossBorderBanner } from "@/features/remit/components/cross-border-bann
 import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { SquareComposeFab, SquareSection } from "@/features/square";
 import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
-// The desktop "Join the Conversation" shelf (rotating Space / Chess / Arena
-// cards). With no live spaces it falls back to the static chess room.
+// The desktop discovery shelves. Each falls back to a static editorial card
+// when the route has nothing live to feed it.
 import { ConversationRow } from "@/features/discovery/components/conversation-row";
+import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -266,9 +267,11 @@ export function DashboardPage() {
         <SquareLivePromo />
       </div>
 
-      {/* Desktop: the "Join the Conversation" shelf, as the phone design's
-          desktop sibling draws it, under the balance cards. */}
-      <div className="mx-auto hidden w-full max-w-[1520px] px-4 pb-2 sm:px-6 md:block lg:px-8">
+      {/* Desktop: the discovery shelves, as the phone design's desktop sibling
+          draws them under the balance cards — Token Moves, then Join the
+          Conversation. */}
+      <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
+        <TokenMovesRow />
         <ConversationRow />
       </div>
 

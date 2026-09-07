@@ -12,11 +12,11 @@ import { SportsbookHeader } from "./sportsbook-header";
 
 const MarketBrowser = dynamic(
   () => import("./market-browser").then((module) => module.MarketBrowser),
-  { loading: () => <SportsbookLoading /> }
+  { loading: () => <SportsbookLoading />, ssr: false }
 );
 const EventMarkets = dynamic(
   () => import("./event-markets").then((module) => module.EventMarkets),
-  { loading: () => <SportsbookLoading /> }
+  { loading: () => <SportsbookLoading />, ssr: false }
 );
 const BetSlipPanel = dynamic(
   () => import("./bet-slip-panel").then((module) => module.BetSlipPanel),

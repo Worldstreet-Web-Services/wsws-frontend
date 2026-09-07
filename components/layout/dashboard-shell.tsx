@@ -9,7 +9,6 @@ import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { ConnectionBanner } from "@/components/layout/connection-banner";
 import { SupportButton } from "@/components/layout/support-button";
 import { BroadcastDock } from "@/components/broadcast/broadcast-dock";
-import { FeatureMarquee } from "@/components/layout/feature-marquee";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { FundsModal } from "@/features/funds";
 import { InviteFriendsModal, useClaimReferralFromLink } from "@/features/referrals";
@@ -81,12 +80,6 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
       <main className="min-h-screen pb-[calc(92px+var(--ws-live-bar,0px))] md:ml-[248px] md:pb-[var(--ws-live-bar,0px)]">
         <div className="sticky top-0 z-[60]">
           <Topbar onOpenAccount={() => setAccountOpen(true)} />
-          <FeatureMarquee
-            navIds={nav.map((n) => n.id)}
-            onNavigate={navigate}
-            onAddFunds={() => setFundsOpen(true)}
-            onInvite={() => setInviteOpen(true)}
-          />
         </div>
 
         {children}

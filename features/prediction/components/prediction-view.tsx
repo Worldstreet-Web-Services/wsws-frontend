@@ -7,7 +7,6 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
-import { PredictionSlider } from "@/features/prediction/components/prediction-slider";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { BetSlipSheet } from "@/features/prediction/components/bet-slip-sheet";
 import { PositionsPanel } from "@/features/prediction/components/positions-panel";
@@ -173,7 +172,13 @@ export function PredictionView() {
               </div>
             </div>
           ) : (
-            <PredictionSlider predictions={predictions} onBuy={openBet} />
+            // Mobile: the cards stacked in a single vertical column rather than
+            // a horizontal slider, so the whole set reads on one scroll.
+            <div className="flex flex-col gap-3">
+              {predictions.slice(0, 8).map((p) => (
+                <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
+              ))}
+            </div>
           )}
 
           <PositionsPanel

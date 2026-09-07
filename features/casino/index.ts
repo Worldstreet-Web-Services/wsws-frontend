@@ -1,5 +1,6 @@
 export { CasinoPage } from "./components/casino-page";
 export { HubSection } from "./components/hub-section";
+export { ArkadeMobile } from "./components/arkade-mobile";
 export { ArkBallSection } from "./components/arkball/arkball-section";
 export { MiniTimerHost } from "./components/last-standing/mini-timer";
 export { LastStandingSection } from "./components/last-standing/last-standing-section";

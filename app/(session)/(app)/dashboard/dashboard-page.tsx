@@ -255,6 +255,14 @@ export function DashboardPage() {
         />
       </SectionVisibility>
 
+      {/* Phone home, under the balance cards. "Join the Conversation" is the
+          Market Square doorway: rendered here directly (not only in the gated
+          interleave below) so it shows even where the square URL is unset — the
+          card hides just its Join Space link then. */}
+      <div className="md:hidden">
+        <SquareLivePromo />
+      </div>
+
       {briefs.map((id, index) => {
         const Body = BRIEF_BODY[id];
         return (

@@ -92,29 +92,38 @@ async function readyUpstream(candidates: readonly string[], timeoutMs: number): 
     return cached.base;
   }
 
-  const checks = await Promise.all(
-    candidates.map(async (base) => {
-      try {
-        const response = await fetch(upstreamUrl(base, "ready"), {
-          method: "GET",
-          headers: { accept: "application/json" },
-          cache: "no-store",
-          signal: AbortSignal.timeout(timeoutMs),
-        });
-        const isReady = response.ok;
-        await discard(response);
-        return isReady;
-      } catch {
-        return false;
-      }
-    })
-  );
-  const index = checks.findIndex(Boolean);
-  if (index === -1) throw new Error("No configured upstream is ready.");
+  const controllers = candidates.map(() => new AbortController());
+  const checks = candidates.map(async (base, index) => {
+    try {
+      const response = await fetch(upstreamUrl(base, "ready"), {
+        method: "GET",
+        headers: { accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.any([controllers[index].signal, AbortSignal.timeout(timeoutMs)]),
+      });
+      const isReady = response.ok;
+      await discard(response);
+      return isReady;
+    } catch {
+      return false;
+    }
+  });
 
-  const base = candidates[index];
-  readyUpstreams.set(key, { base, expiresAt: Date.now() + READY_TTL_MS });
-  return base;
+  try {
+    // A write only needs one healthy destination. Waiting for every fallback
+    // made a dead backup add the full readiness timeout to an otherwise healthy
+    // primary, which was especially visible on real-time chess moves.
+    for (const [index, check] of checks.entries()) {
+      if (await check) {
+        const base = candidates[index];
+        readyUpstreams.set(key, { base, expiresAt: Date.now() + READY_TTL_MS });
+        return base;
+      }
+    }
+    throw new Error("No configured upstream is ready.");
+  } finally {
+    controllers.forEach((controller) => controller.abort());
+  }
 }
 
 export async function fetchUpstreamWrite(

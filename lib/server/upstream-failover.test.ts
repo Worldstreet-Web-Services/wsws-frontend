@@ -86,6 +86,37 @@ describe("upstream failover", () => {
     );
   });
 
+  it("does not wait for an unresponsive fallback when one upstream is ready", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (url === "https://primary.example/ready") {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      }
+      if (url === "https://backup.example/ready") {
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+            once: true,
+          });
+        });
+      }
+      return Promise.resolve(new Response('{"accepted":true}', { status: 201 }));
+    });
+
+    const response = await fetchUpstreamWrite(
+      ["https://primary.example", "https://backup.example"],
+      "matches/match-1/moves",
+      { method: "POST", body: '{"uci":"e2e4"}' },
+      1_000
+    );
+
+    expect(response.status).toBe(201);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "https://primary.example/matches/match-1/moves",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
   it("does not submit a write when no candidate is ready", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

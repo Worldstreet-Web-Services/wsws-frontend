@@ -144,6 +144,17 @@ const TOKENIZED_EQUITIES: ReadonlySet<string> = new Set([
 ]);
 const CORPORATE_NAME = /\b(inc\.?|corp\.?|corporation|ltd\.?|plc|s\.a\.|ag)$/i;
 
+// Coins hidden from discovery by name, on the maintainers' instruction,
+// regardless of rating (2026-09-07: DEGEN). Keyed by chain id and lowercased
+// address. Holdings are unaffected: the allowlist reads the catalog directly.
+const HIDDEN_MEMECOINS: ReadonlySet<string> = new Set([
+  `${BASE_CHAIN_ID}:0x4ed4e862860bed51a9570b96d89af5e1b0efefed`, // DEGEN
+]);
+
+export function isHiddenMemecoin(token: Pick<MemeToken, "chainId" | "address">): boolean {
+  return HIDDEN_MEMECOINS.has(`${token.chainId}:${token.address.toLowerCase()}`);
+}
+
 export function isTokenizedEquity(token: Pick<MemeToken, "chainId" | "address" | "name">): boolean {
   if (TOKENIZED_EQUITIES.has(`${token.chainId}:${token.address.toLowerCase()}`)) return true;
   return CORPORATE_NAME.test((token.name ?? "").trim());
@@ -157,7 +168,8 @@ export function isMemecoinHere(token: MemeToken): boolean {
     !isQuoteCurrency(token.chainId, token.address) &&
     !isWrappedMajor(token.chainId, token.address) &&
     !impersonatesMajor(token) &&
-    !isTokenizedEquity(token)
+    !isTokenizedEquity(token) &&
+    !isHiddenMemecoin(token)
   );
 }
 

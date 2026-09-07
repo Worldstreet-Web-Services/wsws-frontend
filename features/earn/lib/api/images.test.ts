@@ -112,8 +112,12 @@ describe("uploading the bytes", () => {
     const [called, init] = fetchMock.mock.calls[0];
     expect(called).toBe(`/api/earn-upload?url=${encodeURIComponent(url)}`);
     expect(init.method).toBe("POST");
-    // The signature covers this header, so it has to survive the detour.
-    expect(init.headers["x-upload-content-type"]).toBe("image/png");
+    // The signature covers this header, so it has to survive the detour. Read
+    // through the Headers API: the call goes through apiFetch now, which
+    // normalises whatever it was given into a Headers instance before handing
+    // it to fetch, so indexing the object would say undefined for a header
+    // that is very much being sent.
+    expect(new Headers(init.headers).get("x-upload-content-type")).toBe("image/png");
 
     vi.unstubAllGlobals();
   });

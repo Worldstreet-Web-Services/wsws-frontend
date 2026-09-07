@@ -28,8 +28,12 @@ export async function apiFetch(
 ): Promise<Response> {
   const headers = new Headers(init.headers);
 
-  // `anonymous` sends no credentials at all, for reads that are the same for
-  // everyone. It exists so a public read can still sit behind the breaker
+  // `anonymous` sends no credentials OF OUR OWN. Two callers want that: reads
+  // that are the same for everyone, and the routes that carry a credential the
+  // caller already holds (the pouch KYC and ramp routes forward the user's own
+  // JWT as an Authorization header). For the second group this is what lets
+  // them join the breaker and the error reporting without apiFetch overwriting
+  // the header they set. It exists so a public read can still sit behind the breaker
   // below without becoming uncacheable: a request carrying an Authorization
   // header is private to one user, so a shared cache must not store it. That
   // is why these reads used to go straight to `fetch` and skip the breaker

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 import {
   normalizeInitiation,
   normalizeKycState,
@@ -26,11 +27,15 @@ async function readError(res: Response, fallback: string): Promise<never> {
 export function useKycInitiate() {
   return useMutation<KycInitiation, Error, { email: string; countryCode: string }>({
     mutationFn: async ({ email, countryCode }) => {
-      const res = await fetch("/api/pouch/kyc/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, countryCode }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/kyc/initiate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, countryCode }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "Could not start verification");
       return normalizeInitiation(await res.json());
     },
@@ -45,11 +50,15 @@ export interface KycVerifyResult {
 export function useKycVerify() {
   return useMutation<KycVerifyResult, Error, { email: string; otp: string }>({
     mutationFn: async ({ email, otp }) => {
-      const res = await fetch("/api/pouch/kyc/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/kyc/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "That code did not match");
       const data = await res.json();
       if (typeof data?.token !== "string") throw new Error("Verification did not return a token");
@@ -73,11 +82,15 @@ export function useKycSubmit() {
     { token: string; countryCode: string; documents: Record<string, string> }
   >({
     mutationFn: async ({ token, countryCode, documents }) => {
-      const res = await fetch("/api/pouch/kyc/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ countryCode, documents }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/kyc/submit",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ countryCode, documents }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "Could not submit your details");
       const data = await res.json();
       return {
@@ -103,11 +116,17 @@ export function useKycStatus(
     enabled: options.enabled && Boolean(token) && Boolean(countryCode),
     refetchInterval: options.pollMs > 0 ? options.pollMs : false,
     queryFn: async () => {
-      const res = await fetch(
+      // Through the transport, so a pouch outage stops this poll instead of
+      // paying for an invocation a second while the service is down. GETs are
+      // the only calls the breaker refuses, which is why this one changes
+      // behaviour and the ramp writes above do not. `anonymous` keeps the
+      // caller's own token on the request; apiFetch adds none of its own.
+      const res = await apiFetch(
         `/api/pouch/kyc/status?countryCode=${encodeURIComponent(countryCode)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
+        { anonymous: true }
       );
       if (!res.ok) await readError(res, "Could not check your status");
       const data = await res.json();

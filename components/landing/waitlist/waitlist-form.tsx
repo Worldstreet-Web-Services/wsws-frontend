@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowUpRightIcon, CheckIcon } from "@/components/ui/icons";
 import { isValidEmail } from "@/lib/waitlist";
+import { apiFetch } from "@/lib/api";
 
 type Phase = "idle" | "sending" | "done";
 
@@ -30,11 +31,15 @@ export function WaitlistForm() {
     setPhase("sending");
     setError(null);
     try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const res = await apiFetch(
+        "/api/waitlist",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+        { anonymous: true }
+      );
       // The route answers with a plain sentence on failure; fall back to our
       // own only when it could not say anything useful.
       const body = (await res.json().catch(() => null)) as {

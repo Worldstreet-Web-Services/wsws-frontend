@@ -57,11 +57,15 @@ export interface CreateOnrampInput {
 export function useCreateOnramp() {
   return useMutation<OnrampCreation, Error, CreateOnrampInput>({
     mutationFn: async ({ token, amountUsd, walletAddress }) => {
-      const res = await fetch("/api/pouch/onramp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amountUsd, walletAddress }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/onramp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ amountUsd, walletAddress }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "We couldn't set up the transfer");
       return res.json();
     },
@@ -123,8 +127,15 @@ export function useOnrampStatus(
       return options.pollMs > 0 ? options.pollMs : false;
     },
     queryFn: async () => {
-      const res = await fetch(
-        `/api/pouch/onramp/status?sessionId=${encodeURIComponent(sessionId!)}`
+      // Through the transport, so a pouch outage stops this poll instead of
+      // paying for an invocation a second while the service is down. GETs are
+      // the only calls the breaker refuses, which is why this one changes
+      // behaviour and the ramp writes above do not. `anonymous` because this
+      // route takes no credential; apiFetch must not add one.
+      const res = await apiFetch(
+        `/api/pouch/onramp/status?sessionId=${encodeURIComponent(sessionId!)}`,
+        {},
+        { anonymous: true }
       );
       if (!res.ok) await readError(res, "Could not check the transfer");
       return res.json();

@@ -37,11 +37,15 @@ export function useOfframpRate() {
 export function useVerifyBank() {
   return useMutation<VerifiedBank, Error, { accountNumber: string; networkId: string }>({
     mutationFn: async ({ accountNumber, networkId }) => {
-      const res = await fetch("/api/pouch/verify-bank", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountNumber, networkId }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/verify-bank",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accountNumber, networkId }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "We couldn't verify that account");
       return res.json();
     },
@@ -57,11 +61,15 @@ export interface CreateOfframpInput {
 export function useCreateOfframp() {
   return useMutation<OfframpCreation, Error, CreateOfframpInput>({
     mutationFn: async ({ token, cryptoAmount, bankAccount }) => {
-      const res = await fetch("/api/pouch/offramp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cryptoAmount, bankAccount }),
-      });
+      const res = await apiFetch(
+        "/api/pouch/offramp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ cryptoAmount, bankAccount }),
+        },
+        { anonymous: true }
+      );
       if (!res.ok) await readError(res, "We couldn't set up the withdrawal");
       return res.json();
     },

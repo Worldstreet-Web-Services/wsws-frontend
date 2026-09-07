@@ -16,6 +16,7 @@
 // CORS allows PUT from our origin.
 
 import { earnPost } from "@/features/earn/lib/api/client";
+import { apiFetch } from "@/lib/api";
 
 // Which bucket prefix the object belongs under. The service rejects anything
 // outside this set, and rejects a `complete` whose publicId does not match the
@@ -93,11 +94,15 @@ export async function putSignedUpload(
   // to carry the same value or the signature will not match.
   const contentType = headers["Content-Type"] ?? headers["content-type"] ?? file.type;
 
-  const res = await fetch(`/api/earn-upload?url=${encodeURIComponent(uploadUrl)}`, {
-    method: "POST",
-    headers: { "x-upload-content-type": contentType },
-    body: file,
-  });
+  const res = await apiFetch(
+    `/api/earn-upload?url=${encodeURIComponent(uploadUrl)}`,
+    {
+      method: "POST",
+      headers: { "x-upload-content-type": contentType },
+      body: file,
+    },
+    { anonymous: true }
+  );
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);

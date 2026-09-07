@@ -69,4 +69,29 @@ describe("Sidebar", () => {
       "https://square.test"
     );
   });
+
+  // The entry carries the square's own logo mark, not a generic glyph, so the
+  // rail names the destination the way the destination names itself.
+  it("shows the Market Square logo mark on the entry", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/market-square", () => ({
+      MARKET_SQUARE_HIDDEN: false,
+      marketSquareHref: () => "https://square.test",
+    }));
+    const { Sidebar: Shown } = await import("./sidebar");
+    render(
+      <Shown
+        items={[{ id: "portfolio", label: "Portfolio", icon: () => null }]}
+        activeSection="portfolio"
+        onNavigate={() => {}}
+        onOpenAccount={() => {}}
+        open={false}
+        onClose={() => {}}
+      />
+    );
+    const link = screen.getByRole("link", { name: /market square/i });
+    const mark = link.querySelector("img");
+    expect(mark).not.toBeNull();
+    expect(mark?.getAttribute("src")).toContain("market-square-mark.svg");
+  });
 });

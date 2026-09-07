@@ -26,7 +26,15 @@ describe("spotSymbolsFor: delisted markets", () => {
   ];
 
   it("names the delisted symbols", () => {
-    expect([...SPOT_DELISTED].sort()).toEqual(["DOGE", "GUN", "MON", "PLUME", "RON", "XDAI"]);
+    expect([...SPOT_DELISTED].sort()).toEqual([
+      "DEGEN",
+      "DOGE",
+      "GUN",
+      "MON",
+      "PLUME",
+      "RON",
+      "XDAI",
+    ]);
   });
 
   // Second batch, 2026-09-07 16:29: GUN (Avalanche and GUNZ), xDAI (Gnosis

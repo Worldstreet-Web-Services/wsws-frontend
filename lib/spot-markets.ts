@@ -33,6 +33,8 @@ export const SPOT_DELISTED: ReadonlySet<string> = new Set([
   "GUN",
   "XDAI",
   "PLUME",
+  // 2026-09-07 later: DEGEN, on the maintainers' instruction.
+  "DEGEN",
 ]);
 
 // The Dextopus-buyable set, plus the small set of symbols that settle through

@@ -14,6 +14,12 @@ lists only: holdings stay visible and sell as before.
 
 Decision record: addendum in `docs/adr/ADR-2026-09-07-listing-removals.md`.
 
+## Also
+
+DEGEN, requested later the same afternoon: off the spot denylist and off
+memecoin discovery by address on Base (it is LOW risk, so the rating rule
+alone would keep it). Holdings unaffected.
+
 ## What changed
 
 - `lib/spot-markets.ts`: `SPOT_DELISTED` gains GUN, XDAI, PLUME.

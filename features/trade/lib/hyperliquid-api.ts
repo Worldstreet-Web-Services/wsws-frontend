@@ -9,6 +9,7 @@ import type {
   HlBuilderFeeStatus,
   HlClearinghouseState,
   HlClosedPositionView,
+  HlFundingHistoryEntry,
   HlL1Action,
   HlMarketContext,
   HlOrderRow,
@@ -55,10 +56,6 @@ export async function getMarketContexts(): Promise<HlMarketContext[]> {
   return perp.get<HlMarketContext[]>("/ark/market-contexts");
 }
 
-<<<<<<< HEAD
-export async function getAccountState(address: string): Promise<HlClearinghouseState> {
-  return perp.authedGet<HlClearinghouseState>(`/ark/account-state/${address}`);
-=======
 export async function getFundingHistory(
   symbol: string,
   startTime: number,
@@ -100,7 +97,6 @@ export async function submitDexTransfer(
   signature: HlSignature
 ): Promise<void> {
   await perp.post("/ark/dex-transfer/submit", { walletId, action, signature });
->>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
 }
 
 // Reads the destination chain directly rather than the Dextopus-webhook-driven

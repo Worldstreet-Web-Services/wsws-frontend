@@ -29,11 +29,13 @@ export function useHyperliquidTrading() {
     positions,
     loading: positionsLoading,
     refetch: refetchPositions,
+    waitForChange: waitForPositionsChange,
   } = useHyperliquidPositions(walletId, authenticated);
   const {
     orders,
     loading: ordersLoading,
     refetch: refetchOrders,
+    waitForChange: waitForOrdersChange,
   } = useHyperliquidOrders(walletId, authenticated);
   const actions = useHyperliquidActions(walletId ?? undefined, address ?? undefined);
 
@@ -74,5 +76,7 @@ export function useHyperliquidTrading() {
     ordersLoading,
     actions,
     refetchAll,
+    waitForPositionsChange,
+    waitForOrdersChange,
   };
 }

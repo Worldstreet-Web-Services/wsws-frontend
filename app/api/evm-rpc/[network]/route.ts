@@ -1,17 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
 import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
-import { forwardEvmRpcRead } from "@/lib/server/evm-rpc";
 
-<<<<<<< HEAD
-// EVM JSON-RPC reads for the browser, routed through the server-only ZeroDev
-// project so no provider credential is exposed to the client.
-=======
 // EVM JSON-RPC reads for the browser.
->>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
 //
-// Without this, viem's `http()` with no URL falls back to shared public RPCs.
-// This route gives every supported chain one consistent provider for:
+// Without this, viem's `http()` with no URL falls back to the chain's DEFAULT
+// PUBLIC endpoint (mainnet.base.org, polygon-rpc.com, …). Those are free, shared,
+// aggressively rate-limited, and they back every on-chain read the app makes:
 // prediction pool state and market structs, perp allowances, Polymarket
 // collateral, and the eth_getCode/nonce reads in the sponsored 7702 send path.
 //
@@ -26,12 +21,10 @@ import { forwardEvmRpcRead } from "@/lib/server/evm-rpc";
 // Reads only. Signing and broadcast go through Privy and the bundler, never
 // here, so nothing that reaches this endpoint can move funds.
 //
-// Auth-gated like the Solana and Polygon proxies.
+// Auth-gated like the Solana and Polygon proxies, which spend the same key.
 // Privy's same-origin fetch carries the privy-token cookie, so the client needs
 // no header plumbing.
 
-<<<<<<< HEAD
-=======
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
 // Ordered upstreams: ZeroDev first when configured, Alchemy after it — as a
@@ -47,7 +40,6 @@ function upstreamUrls(chain: { alchemyHost: string; chainId: number }): string[]
   return urls;
 }
 
->>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
 // What the read paths actually call: state reads, the receipt poll
 // (waitForTransactionReceipt), and gas estimation. Deliberately no
 // eth_sendRawTransaction — an open write relay is exactly what this must not be.
@@ -97,14 +89,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ network: s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-<<<<<<< HEAD
-=======
   const upstreams = upstreamUrls(chain);
   if (upstreams.length === 0) {
     return NextResponse.json({ error: "EVM RPC is not configured" }, { status: 503 });
   }
 
->>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
   const body = await req.json().catch(() => null);
   if (!body || !methodsAllowed(body)) {
     // A bare 404 so the endpoint does not describe itself to anyone probing it.
@@ -120,20 +109,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ network: s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-<<<<<<< HEAD
-  try {
-    const result = await forwardEvmRpcRead(chain, body);
-    return NextResponse.json(result.payload, {
-      status: result.status,
-      headers: {
-        "Cache-Control": "no-store",
-        ...(result.retryAfter ? { "Retry-After": result.retryAfter } : {}),
-      },
-    });
-  } catch (error) {
-    console.error("EVM RPC proxy failed:", network, error);
-    return NextResponse.json({ error: "ZeroDev EVM RPC unreachable" }, { status: 502 });
-=======
   const payload = JSON.stringify(body);
   let lastError: unknown = null;
   for (const [index, upstream] of upstreams.entries()) {
@@ -162,7 +137,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ network: s
         console.warn("EVM RPC upstream failed, failing over:", network, error);
       }
     }
->>>>>>> 9768daf (fix(trade): HIP-3 margin auto-transfer, resilient reads, crypto-only rollout gate)
   }
   console.error("EVM RPC proxy failed on every upstream:", network, lastError);
   return NextResponse.json({ error: "EVM RPC unreachable" }, { status: 502 });

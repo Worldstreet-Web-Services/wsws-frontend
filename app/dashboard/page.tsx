@@ -51,10 +51,9 @@ const SECTION_CLASS = "scroll-mt-[124px] md:scroll-mt-[76px]";
 // leads the page, so nothing is pitched under it; the three doorways then
 // follow the sections after it. An index with no entry gets no banner, so a
 // shorter or reordered section list still works.
-const INTERLEAVED_BANNERS: readonly ("prediction" | "earn" | "casino" | undefined)[] = [
+const INTERLEAVED_BANNERS: readonly ("prediction" | "casino" | undefined)[] = [
   undefined,
   "prediction",
-  "earn",
   "casino",
 ];
 

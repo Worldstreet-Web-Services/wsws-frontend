@@ -3,31 +3,21 @@
 import { useEffect, useState } from "react";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
 import { ExpandIcon, CollapseIcon } from "@/components/ui/icons";
+import { HyperliquidFundingChart } from "@/features/trade/components/hyperliquid-funding-chart";
 import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
 
 interface HyperliquidChartPanelProps {
   /** Raw asset symbol, e.g. "BTC" or the HIP-3 wire form "xyz:AAPL" — empty until a market is selected. */
   assetSymbol: string;
-<<<<<<< HEAD
-=======
   /** The asset's coarse class ("crypto", "equities", ...) — picks the TradingView venue mapping. */
   assetCategory?: string | null;
   /** Real measured height of the order ticket (see HyperliquidProPerps'
    *  ResizeObserver) — falls back to CHART_PANEL_HEIGHT until measured. */
   height?: number;
->>>>>>> e0b8267 (fix(perp): apply the user's order settings and stop mis-rendering non-crypto charts)
 }
 
-const CHART_HEIGHT = 520;
+type PanelTab = "chart" | "funding";
 
-<<<<<<< HEAD
-// The chart card, plus its own fullscreen toggle (top-right, same corner as
-// Hyperliquid's own chart toolbar) — Escape exits, same as any native
-// fullscreen surface. This is local UI state, not the browser Fullscreen
-// API: it expands OUR card to cover the viewport, it can't reach into the
-// TradingView iframe's own internal chrome.
-export function HyperliquidChartPanel({ assetSymbol }: HyperliquidChartPanelProps) {
-=======
 // A real, fixed pixel height — not a percentage chained through grid
 // stretch/flex-1. That chain looked right until real content (order-book
 // rows, whose count varies with live depth) sat inside it: CSS Grid can't
@@ -57,8 +47,8 @@ export function HyperliquidChartPanel({
   assetCategory,
   height = CHART_PANEL_HEIGHT,
 }: HyperliquidChartPanelProps) {
->>>>>>> e0b8267 (fix(perp): apply the user's order settings and stop mis-rendering non-crypto charts)
   const [fullscreen, setFullscreen] = useState(false);
+  const [tab, setTab] = useState<PanelTab>("chart");
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -74,23 +64,10 @@ export function HyperliquidChartPanel({
       className={
         fullscreen
           ? "fixed inset-0 z-50 flex flex-col bg-black p-4"
-          : "ws-card relative p-4 sm:p-5"
+          : "ws-card flex flex-col overflow-hidden p-4 sm:p-5"
       }
+      style={fullscreen ? undefined : { height }}
     >
-<<<<<<< HEAD
-      <button
-        onClick={() => setFullscreen((value) => !value)}
-        aria-label={fullscreen ? "Exit fullscreen" : "Expand chart"}
-        className="absolute top-3 right-3 z-10 cursor-pointer rounded-lg border border-white/10 bg-black/40 p-1.5 text-white/55 transition-colors hover:border-white/25 hover:text-white"
-      >
-        {fullscreen ? <CollapseIcon size={14} /> : <ExpandIcon size={14} />}
-      </button>
-      <div className={fullscreen ? "min-h-0 flex-1" : undefined}>
-        {assetSymbol ? (
-          <TradingViewChart
-            symbol={tradingViewSymbolForAsset(assetSymbol)}
-            height={fullscreen ? "100%" : CHART_HEIGHT}
-=======
       <div className="mb-3 flex flex-none flex-wrap items-center justify-between gap-2">
         <div className="flex gap-4 border-b border-white/10">
           {(["chart", "funding"] as PanelTab[]).map((value) => (
@@ -126,11 +103,10 @@ export function HyperliquidChartPanel({
           <TradingViewChart
             symbol={tradingViewSymbolForAsset(assetSymbol, assetCategory)}
             height="100%"
->>>>>>> e0b8267 (fix(perp): apply the user's order settings and stop mis-rendering non-crypto charts)
           />
         ) : (
           <div
-            style={{ height: fullscreen ? "100%" : CHART_HEIGHT }}
+            style={{ height: "100%" }}
             className="grid place-items-center text-[13.5px] font-normal text-white/45"
           >
             No market selected

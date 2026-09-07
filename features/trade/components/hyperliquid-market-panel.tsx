@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { CHART_PANEL_HEIGHT } from "@/features/trade/components/hyperliquid-chart-panel";
 import { HyperliquidOrderBook } from "@/features/trade/components/hyperliquid-order-book";
 import { HyperliquidTradeTape } from "@/features/trade/components/hyperliquid-trade-tape";
 
 interface HyperliquidMarketPanelProps {
   symbol: string;
+  /** Real measured row height (see HyperliquidProPerps) — falls back to
+   *  CHART_PANEL_HEIGHT until measured or on the stacked/mobile layout. */
+  height?: number;
 }
 
 type Tab = "book" | "trades";
@@ -19,11 +23,14 @@ const TABS: [Tab, string][] = [
 // own pro layout. Fed entirely by the direct browser-to-Hyperliquid
 // WebSocket subscriptions in hyperliquid-ws-client.ts; this backend has no
 // role in market data (see apps/perp/src/streaming/README.md).
-export function HyperliquidMarketPanel({ symbol }: HyperliquidMarketPanelProps) {
+export function HyperliquidMarketPanel({
+  symbol,
+  height = CHART_PANEL_HEIGHT,
+}: HyperliquidMarketPanelProps) {
   const [tab, setTab] = useState<Tab>("book");
 
   return (
-    <div className="ws-card flex flex-col p-2">
+    <div className="ws-card flex flex-col p-2" style={{ height }}>
       <div className="flex gap-1 p-1.5">
         {TABS.map(([value, label]) => (
           <button
@@ -37,11 +44,13 @@ export function HyperliquidMarketPanel({ symbol }: HyperliquidMarketPanelProps) 
           </button>
         ))}
       </div>
-      {tab === "book" ? (
-        <HyperliquidOrderBook symbol={symbol} />
-      ) : (
-        <HyperliquidTradeTape symbol={symbol} />
-      )}
+      <div className="min-h-0 flex-1">
+        {tab === "book" ? (
+          <HyperliquidOrderBook symbol={symbol} />
+        ) : (
+          <HyperliquidTradeTape symbol={symbol} />
+        )}
+      </div>
     </div>
   );
 }

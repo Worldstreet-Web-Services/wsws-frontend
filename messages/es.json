@@ -190,7 +190,9 @@
     "slice_cash": "Efectivo",
     "slice_coins": "Monedas",
     "slice_realAssets": "Activos reales",
-    "slice_tokens": "Tokens"
+    "slice_tokens": "Tokens",
+    "takeTour": "Hacer el recorrido",
+    "portfolioAllocation": "Distribución de la cartera"
   },
   "remitBanner": {
     "title": "Envía dinero al extranjero",

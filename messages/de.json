@@ -190,7 +190,9 @@
     "slice_cash": "Bargeld",
     "slice_coins": "Coins",
     "slice_realAssets": "Reale Werte",
-    "slice_tokens": "Token"
+    "slice_tokens": "Token",
+    "takeTour": "Tour starten",
+    "portfolioAllocation": "Portfolio-Aufteilung"
   },
   "remitBanner": {
     "title": "Geld über Grenzen senden",

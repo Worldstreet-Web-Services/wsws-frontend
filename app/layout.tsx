@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Noto_Sans, Roboto } from "next/font/google";
+import { Chewy, Geist, Noto_Sans, Roboto } from "next/font/google";
 import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -11,6 +11,16 @@ import "./globals.css";
 const geist = Geist({
   variable: "--font-body",
   subsets: ["latin"],
+});
+
+// The balance figure and the headline on every illustrated card. Chewy ships a
+// single weight; exposed as --font-poster for the ws-poster / ws-chewy
+// utilities, so only the balance and card headlines opt into it.
+const chewy = Chewy({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-poster",
 });
 
 // Headers. Mona Sans, used at bold by the ws-display utility.
@@ -63,7 +73,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geist.variable} ${monaSans.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
+      className={`${geist.variable} ${monaSans.variable} ${chewy.variable} ${chessSans.variable} ${chessClock.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>

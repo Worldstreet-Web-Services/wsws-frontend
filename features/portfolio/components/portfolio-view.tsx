@@ -52,6 +52,8 @@ import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  /** Replays the walkthrough; owned by the route, wired into the balance card. */
+  onTakeTour: () => void;
   crossBorderSlot: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
@@ -95,6 +97,7 @@ const HOLDINGS_COLUMNS = [
 export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
+  onTakeTour,
   // crossBorderSlot is unused while the section below is commented out.
   onOpenDetail,
   onOpenBuy,
@@ -272,7 +275,11 @@ export function PortfolioView({
           strip. The carousel gives the h-full cards their height. */}
       <div className="md:hidden">
         <BalanceCarousel>
-          <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+          <BalanceCard
+            onOpenFunds={onOpenFunds}
+            onOpenWithdraw={onOpenWithdraw}
+            onTakeTour={onTakeTour}
+          />
           <KashCardMobile
             onBuy={() => setKashModal("buy")}
             onSend={() => setKashModal("send")}
@@ -290,7 +297,11 @@ export function PortfolioView({
 
       {/* Desktop: the side-by-side grid. */}
       <div className="hidden gap-3 md:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+        <BalanceCard
+          onOpenFunds={onOpenFunds}
+          onOpenWithdraw={onOpenWithdraw}
+          onTakeTour={onTakeTour}
+        />
         <KashCard
           onBuy={() => setKashModal("buy")}
           onClaim={

@@ -190,7 +190,9 @@
     "slice_cash": "Cash",
     "slice_coins": "Coins",
     "slice_realAssets": "Real assets",
-    "slice_tokens": "Tokens"
+    "slice_tokens": "Tokens",
+    "takeTour": "Take a tour",
+    "portfolioAllocation": "Portfolio Allocation"
   },
   "remitBanner": {
     "title": "Send money across borders",

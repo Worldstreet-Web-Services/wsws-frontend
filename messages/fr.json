@@ -190,7 +190,9 @@
     "slice_cash": "Liquidités",
     "slice_coins": "Cryptos",
     "slice_realAssets": "Actifs réels",
-    "slice_tokens": "Jetons"
+    "slice_tokens": "Jetons",
+    "takeTour": "Faire la visite",
+    "portfolioAllocation": "Répartition du portefeuille"
   },
   "remitBanner": {
     "title": "Envoyez de l'argent à l'étranger",

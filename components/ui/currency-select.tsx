@@ -120,9 +120,12 @@ export function useMoney() {
 interface CurrencySelectProps {
   value: Currency;
   onSelect: (code: string) => void;
+  /** "lg" is the mobile design's oversized pill on the starfield balance card. */
+  size?: "sm" | "lg";
 }
 
-export function CurrencySelect({ value, onSelect }: CurrencySelectProps) {
+export function CurrencySelect({ value, onSelect, size = "sm" }: CurrencySelectProps) {
+  const large = size === "lg";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [desktop, setDesktop] = useState(false);
@@ -195,9 +198,13 @@ export function CurrencySelect({ value, onSelect }: CurrencySelectProps) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Display currency"
-        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/5 py-1 pr-2 pl-1.5 font-sans text-[12px] font-semibold tracking-[0.02em] text-white transition-colors hover:bg-white/10"
+        className={`ws-pressable flex cursor-pointer items-center rounded-full border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10 ${
+          large
+            ? "h-[46px] gap-[9px] py-[6px] pr-3 pl-[9px] font-serif text-[18px] font-semibold tracking-[-0.09px]"
+            : "gap-1.5 py-1 pr-2 pl-1.5 font-sans text-[12px] font-semibold tracking-[0.02em]"
+        }`}
       >
-        <FlagIcon code={value.code} symbol={value.symbol} size={20} />
+        <FlagIcon code={value.code} symbol={value.symbol} size={large ? 31 : 20} />
         <span className="tnum">{value.code}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path

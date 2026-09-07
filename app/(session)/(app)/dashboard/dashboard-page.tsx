@@ -27,7 +27,7 @@ import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
-import { useDashboardTour } from "@/features/tour";
+import { startDashboardTour, useDashboardTour } from "@/features/tour";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { DashboardModal } from "@/lib/modal-types";
@@ -151,6 +151,12 @@ export function DashboardPage() {
   }, []);
   useDashboardTour();
 
+  // The balance card carries the walkthrough's replay button in the phone
+  // design. The steps live on this page, so starting it here is a direct call;
+  // the portfolio slice never imports the tour itself.
+  const tTour = useTranslations("tour");
+  const takeTour = useCallback(() => startDashboardTour(tTour), [tTour]);
+
   const modals = useAppModals();
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
@@ -239,6 +245,7 @@ export function DashboardPage() {
         <Portfolio
           onOpenFunds={modals.openFunds}
           onOpenWithdraw={modals.openWithdraw}
+          onTakeTour={takeTour}
           crossBorderSlot={<CrossBorderBanner onClick={openCrossBorder} />}
           onOpenDetail={modals.openDetail}
           onOpenBuy={modals.openBuy}

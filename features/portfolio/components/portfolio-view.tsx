@@ -351,7 +351,6 @@ export function PortfolioView({
               : undefined
           }
           claiming={claimPoints.isPending}
-          onSend={() => setKashModal("send")}
           onConvert={() => setKashModal("convert")}
           onHistory={() => setKashModal("history")}
           onUpgrade={() => setKashModal("upgrade")}

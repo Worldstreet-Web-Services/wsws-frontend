@@ -37,7 +37,6 @@ interface KashCardProps {
   /** Settle accrued points into KSH now. Absent while there is nothing to claim. */
   onClaim?: () => void;
   claiming?: boolean;
-  onSend: () => void;
   onConvert: () => void;
   onHistory: () => void;
   onUpgrade: () => void;
@@ -53,7 +52,6 @@ export function KashCard({
   onBuy,
   onClaim,
   claiming,
-  onSend,
   onConvert,
   onHistory,
   onUpgrade,
@@ -255,24 +253,19 @@ export function KashCard({
         )}
       </div>
 
-      {/* The design runs the three actions the full width of the card, so they
-          share the row in its proportions instead of sitting as a cluster in
-          the middle of a card that is wider than the artboard.
+      {/* The design runs the card's actions the full width, so they share the
+          row in its proportions instead of sitting as a cluster in the middle
+          of a card that is wider than the artboard.
 
           Each pill carries 22px of side padding and holds its label on one
           line. Because a flex item never shrinks below its own content, that
           padding is a floor rather than slack: "Umwandeln" keeps the same room
-          around it that "Convert" gets, and when three padded pills no longer
-          fit the row wraps instead of squeezing them. min-h rather than h so a
+          around it that "Convert" gets, and when the padded pills no longer fit
+          the row wraps instead of squeezing them. min-h rather than h so a
           wrapped row still cannot clip a label. */}
       <div className="mt-[24px] flex flex-wrap gap-[10.23px] sm:ml-[2.18px]">
-        <button
-          onClick={onSend}
-          className="ws-pressable flex min-h-[52.41px] flex-1 basis-[114.12px] cursor-pointer items-center justify-center gap-[6px] rounded-full border-[1.28px] border-[#FFD52D] bg-white px-[22px] py-[13px] font-serif text-[16px] leading-[24.92px] font-medium whitespace-nowrap text-black"
-        >
-          <ButtonIcon src="/market/kash-icon-arrow-send.svg" flip="vertical" />
-          {t("send")}
-        </button>
+        {/* Send is off the card for now. The modal and its wiring stay; only
+            the door is gone, so restoring it is this one pill. */}
         <button
           onClick={onBuy}
           className="ws-pressable flex min-h-[52.41px] flex-1 basis-[121.73px] cursor-pointer items-center justify-center gap-[6px] rounded-full border-[1.92px] border-[#FFD52D] bg-white px-[22px] py-[13px] font-serif text-[16px] leading-[24.92px] font-medium whitespace-nowrap text-black"

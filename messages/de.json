@@ -8,7 +8,8 @@
     "prediction": "Prognosen",
     "earn": "Verdienen",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Prognosemärkte",
@@ -111,7 +112,18 @@
     "proceedsFailed": "Ihr Verkauf war erfolgreich. Die Übertragung des Erlöses in Ihr USD-Guthaben wurde nicht abgeschlossen; das Geld bleibt sicher und wird erneut versucht.",
     "proceedsWorking": "Verkauft. Erlös wird in Ihr USD-Guthaben verschoben…",
     "estimateNote": "Geschätzt aus dem aktuellen Preis. Der genaue Betrag wird angegeben, sobald Ihr Geld verschoben wurde.",
-    "minimumUsd": "Mindestens ${amount}"
+    "minimumUsd": "Mindestens ${amount}",
+    "chainAll": "Alle Netzwerke",
+    "chainBase": "Base",
+    "chainSolana": "Solana",
+    "checkChart": "Check Chart",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -200,7 +212,9 @@
     "slice_cash": "Bargeld",
     "slice_coins": "Coins",
     "slice_realAssets": "Reale Werte",
-    "slice_tokens": "Token"
+    "slice_tokens": "Token",
+    "takeTour": "Tour starten",
+    "portfolioAllocation": "Portfolio-Aufteilung"
   },
   "remitBanner": {
     "title": "Geld über Grenzen senden",
@@ -635,7 +649,8 @@
     "buyMore": "Mehr {name} kaufen",
     "managePrediction": "In Prognosen verwalten",
     "sell": "{name} verkaufen",
-    "assetDetails": "Asset-Details"
+    "assetDetails": "Asset-Details",
+    "goToCard": "Zu Karte {number}"
   },
   "markets": {
     "title": "Märkte",
@@ -1091,7 +1106,11 @@
     "lpReturned": "Ihre Liquidität ist zurück in Ihrer Wallet.",
     "lpReturnFailed": "Ihre Liquidität konnte nicht zurückgeführt werden. Wir versuchen es beim nächsten Öffnen erneut.",
     "lpAutoReturnNote": "Ihre Liquidität fließt automatisch an Sie zurück, sobald dieser Markt aufgelöst ist.",
-    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben."
+    "toastRedeemSuccess": "Gewinne eingelöst. Sie liegen in Ihrem abrufbaren Guthaben.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -2330,7 +2349,10 @@
     "comingSoon": "Bald verfügbar",
     "comingSoonToast": "Kash kommt bald. Kaufen, Verdienen und Umwandeln öffnen in Kürze.",
     "reserveCannotCover": "Kann diesen Betrag gerade nicht einlösen. Versuche weniger oder schau später vorbei.",
-    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei."
+    "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei.",
+    "redeemReserve": "Einlösereserve",
+    "railTitle": "Hol dir Kash+",
+    "railSubtitle": "Und verdiene extra Geld mit allem, was du tust!"
   },
   "referral": {
     "title": "Freunde einladen",
@@ -2617,12 +2639,62 @@
     "followersCount": "{count, plural, one {# Follower} other {# Follower}}",
     "viewProfile": "Profil ansehen",
     "showMore": "Mehr anzeigen",
-    "showLess": "Weniger anzeigen"
+    "showLess": "Weniger anzeigen",
+    "joinConversation": "Join the Conversation"
   },
   "connection": {
     "offline": "Server nicht erreichbar.",
     "retryIn": "Neuer Versuch in {seconds} s",
     "retryNow": "Jetzt versuchen",
     "reconnecting": "Verbinde neu…"
+  },
+  "carousel": {
+    "previous": "Vorheriger Slide",
+    "next": "Nächster Slide"
+  },
+  "discovery": {
+    "promoRailCarousel": "Angebote",
+    "stakeTitle": "Setz deinen Einsatz",
+    "stakeSubtitle": "Alle spielen, um zu gewinnen",
+    "tokenMovesTitle": "Token-Bewegungen immer im Blick",
+    "ethAfricaTitle": "Eth Africa",
+    "ethAfricaBody": "ETH Africa erreicht eine <strong>Trefferquote von 70 %</strong> bei ETH-Prognosen.",
+    "ethAfricaBuy": "Eth kaufen",
+    "ethAfricaJoin": "Eth Africa beitreten",
+    "conversationTitle": "Mach mit beim Gespräch",
+    "conversationRoom": "Mitolyx Playroom",
+    "conversationHeadline": "Denken wie ein Schachgroßmeister",
+    "conversationJoin": "Space beitreten",
+    "conversationPlay": "Schach spielen",
+    "ownMarketTitle": "Beherrsche den Markt.",
+    "arenaTitle": "Betritt die Arena",
+    "arenaBody": "Mach deinen Zug. Steuere dein Risiko. Beherrsche den Markt.",
+    "arenaCta": "Jetzt traden",
+    "next100xTitle": "Finde den nächsten <hot>100X</hot>",
+    "pepeTitle": "Pepe boomt",
+    "pepeCta": "Pepe kaufen",
+    "shibaTitle": "Shiba hört was!",
+    "shibaCta": "Chart ansehen",
+    "predictionTitle": "Deine nächste <accent>Prognose</accent> beginnt hier",
+    "predictionCountdown": "01:46:55:22",
+    "predictionOneTitle": "Wird Pastor Benny Hinn beim Healing Stream sein?",
+    "predictionOneBody": "<strong>ETH ist in den letzten 6 Stunden um 3,5 % gestiegen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "predictionTwoTitle": "Wer holt sich den Gürtel? <strong>Jetzt tippen!</strong>",
+    "predictNow": "Jetzt tippen",
+    "predictionOther": "Weitere Prognosen",
+    "tokenMovesCarousel": "Token-Bewegungen",
+    "conversationCarousel": "Gespräch und Märkte",
+    "next100xCarousel": "Nächster 100X",
+    "predictionCarousel": "Prognosemärkte",
+    "tokenTicker": "{price}  <change>{delta}</change>",
+    "tokenTipUp": "<strong>{symbol} ist in den letzten 6 Stunden um {move} gestiegen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "tokenTipDown": "<strong>{symbol} ist in den letzten 6 Stunden um {move} gefallen.</strong> Ich empfehle, deine Position um 10 % aufzustocken",
+    "tokenCta": "{symbol} kaufen",
+    "tokenFallbackPrice": "1.876.617 $",
+    "tokenFallbackChange": "+12,8 %",
+    "tokenFallbackMove": "12,8 %",
+    "memeUpTitle": "{name} steigt",
+    "memeDownTitle": "{name} fällt",
+    "predictionNoDeadline": "Ohne Frist"
   }
 }

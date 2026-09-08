@@ -30,10 +30,10 @@ export default function Error({
             Try again
           </button>
           <a
-            href="/dashboard"
+            href="/portfolio"
             className="cursor-pointer rounded-full border border-white/15 px-4 py-2 font-sans text-[12.5px] font-semibold text-white transition-colors hover:border-white/35"
           >
-            Go to dashboard
+            Go to portfolio
           </a>
         </div>
         {error.digest ? (

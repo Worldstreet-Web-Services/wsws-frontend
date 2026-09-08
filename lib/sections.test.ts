@@ -20,6 +20,7 @@ describe("sectionForPathname", () => {
   });
 
   it("falls back to the account home", () => {
+    expect(sectionForPathname("/portfolio")).toBe("portfolio");
     expect(sectionForPathname("/dashboard")).toBe("portfolio");
     expect(sectionForPathname("/")).toBe("portfolio");
     expect(sectionForPathname(null)).toBe("portfolio");

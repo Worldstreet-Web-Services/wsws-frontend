@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -11,6 +11,7 @@ import type { DashboardSection } from "@/lib/modal-types";
 import { deriveProfile } from "@/lib/user";
 import { GoLiveControl } from "@/components/broadcast/go-live-control";
 import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
+import { AccountPopover } from "@/components/layout/account-popover";
 
 /** Four seats around an open square — people gathered, not a shop front. */
 function SquareIcon({ size = 20 }: { size?: number }) {
@@ -48,20 +49,16 @@ interface SidebarProps {
 // slides in over a dimmed page with the logo at its top, and closes on a
 // choice, on the backdrop, on Escape, or on its own close button. One
 // component for both, so the nav can never differ between the two.
-export function Sidebar({
-  items,
-  activeSection,
-  onNavigate,
-  onOpenAccount,
-  open,
-  onClose,
-}: SidebarProps) {
+export function Sidebar({ items, activeSection, onNavigate, open, onClose }: SidebarProps) {
   const { user } = usePrivy();
   const profile = deriveProfile(user);
   const t = useTranslations("topbar");
   // Null while the square is hidden, which is the same state a deployment
   // without the URL is in, so the entry below needs no second condition.
   const squareHref = MARKET_SQUARE_HIDDEN ? null : marketSquareHref();
+
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
 
   // While the drawer is open the page behind it does not scroll, and Escape
   // closes it. Both undone on close and on unmount.
@@ -105,7 +102,7 @@ export function Sidebar({
           {/* The dashboard alone wears the mARKet lockup: the two-tone only
               reads on this dark chrome, so auth and the landing keep the Ark
               wordmark. */}
-          <Link href="/dashboard" onClick={onClose} className="flex items-center">
+          <Link href="/portfolio" onClick={onClose} className="flex items-center">
             <MarketLogo className="h-[21px] w-auto" />
           </Link>
           <button
@@ -188,33 +185,44 @@ export function Sidebar({
           })}
         </nav>
 
-        <button
-          data-tour="profile"
-          onClick={() => {
-            onOpenAccount();
-            onClose();
-          }}
-          className="mt-auto flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-white/8 px-2 py-2.5 text-left hover:bg-white/4"
-        >
-          <Avatar seed={profile.avatarSeed} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-sans text-[13px] font-medium text-white">
-              {profile.name}
+        <div className="relative mt-auto">
+          <button
+            ref={profileButtonRef}
+            type="button"
+            data-tour="profile"
+            aria-haspopup="menu"
+            aria-expanded={accountPopoverOpen}
+            onClick={() => setAccountPopoverOpen((v) => !v)}
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-white/8 px-2 py-2.5 text-left transition-colors hover:bg-white/4"
+          >
+            <Avatar seed={profile.avatarSeed} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-sans text-[13px] font-medium text-white">
+                {profile.name}
+              </span>
+              <span className="block truncate text-xs font-normal text-white/50">
+                {profile.email}
+              </span>
             </span>
-            <span className="block truncate text-xs font-normal text-white/50">
-              {profile.email}
-            </span>
-          </span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M8 9l4-4 4 4M8 15l4 4 4-4"
-              stroke="rgba(255,255,255,0.4)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 9l4-4 4 4M8 15l4 4 4-4"
+                stroke="rgba(255,255,255,0.4)"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          {accountPopoverOpen ? (
+            <AccountPopover
+              open={accountPopoverOpen}
+              onClose={() => setAccountPopoverOpen(false)}
+              triggerRef={profileButtonRef}
             />
-          </svg>
-        </button>
+          ) : null}
+        </div>
       </aside>
     </>
   );

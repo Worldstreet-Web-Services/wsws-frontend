@@ -8,7 +8,8 @@
     "prediction": "Prediction",
     "earn": "Earn",
     "casino": "Arkade",
-    "activity": "Arkivity"
+    "activity": "Arkivity",
+    "tokenMoves": "Stay Ahead of Token Moves"
   },
   "explore": {
     "predictionTitle": "Prediction markets",
@@ -111,7 +112,18 @@
     "proceedsFailed": "Your sale succeeded. Moving the proceeds to your USD balance did not complete; the money remains safe and will be retried.",
     "proceedsWorking": "Sold. Moving the proceeds to your USD balance…",
     "estimateNote": "Estimated from the current price. The exact amount is quoted once your money has moved.",
-    "minimumUsd": "Minimum ${amount}"
+    "minimumUsd": "Minimum ${amount}",
+    "chainAll": "All chains",
+    "chainBase": "Base",
+    "chainSolana": "Solana",
+    "checkChart": "Check Chart",
+    "mobileViewChart": "View Chart",
+    "mobileCloseChart": "Close Chart",
+    "mobileLiveChart": "Live Price Action",
+    "mobileMetrics": "Market Metrics",
+    "mobileFdv": "FDV",
+    "mobileBuy": "Buy",
+    "mobileSell": "Sell"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -200,7 +212,9 @@
     "slice_cash": "Cash",
     "slice_coins": "Coins",
     "slice_realAssets": "Real assets",
-    "slice_tokens": "Tokens"
+    "slice_tokens": "Tokens",
+    "takeTour": "Take a tour",
+    "portfolioAllocation": "Portfolio Allocation"
   },
   "remitBanner": {
     "title": "Send money across borders",
@@ -635,7 +649,8 @@
     "buyMore": "Buy more {name}",
     "managePrediction": "Manage in Prediction",
     "sell": "Sell {name}",
-    "assetDetails": "Asset details"
+    "assetDetails": "Asset details",
+    "goToCard": "Go to card {number}"
   },
   "markets": {
     "title": "Markets",
@@ -1091,7 +1106,11 @@
     "lpReturned": "Your liquidity is back in your wallet.",
     "lpReturnFailed": "Couldn't return your liquidity. We'll try again next time you open predictions.",
     "lpAutoReturnNote": "Your liquidity returns to you automatically once this market resolves.",
-    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance."
+    "toastRedeemSuccess": "Winnings redeemed. They're in your claimable balance.",
+    "mobileHeading": "Your Next",
+    "mobileHeadingAccent": "Prediction",
+    "mobileHeadingSuffix": "Starts Here",
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -2330,7 +2349,10 @@
     "comingSoon": "Coming soon",
     "comingSoonToast": "Kash is almost here. Buying, earning and converting open soon.",
     "reserveCannotCover": "Can't redeem that amount right now. Try less or check back soon.",
-    "buyingPaused": "Buying is paused right now. Check back soon."
+    "buyingPaused": "Buying is paused right now. Check back soon.",
+    "redeemReserve": "Redemption reserve",
+    "railTitle": "Get Kash+",
+    "railSubtitle": "And Start Earning Extra Cash With What You Do!"
   },
   "referral": {
     "title": "Invite Friends",
@@ -2617,12 +2639,62 @@
     "followersCount": "{count, plural, one {# follower} other {# followers}}",
     "viewProfile": "View profile",
     "showMore": "Show more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "joinConversation": "Join the Conversation"
   },
   "connection": {
     "offline": "Can't reach the server.",
     "retryIn": "Retrying in {seconds}s",
     "retryNow": "Try now",
     "reconnecting": "Reconnecting…"
+  },
+  "carousel": {
+    "previous": "Previous slide",
+    "next": "Next slide"
+  },
+  "discovery": {
+    "promoRailCarousel": "Promotions",
+    "stakeTitle": "Set the stake",
+    "stakeSubtitle": "Everyone plays to win",
+    "tokenMovesTitle": "Stay Ahead of Token Moves",
+    "ethAfricaTitle": "Eth Africa",
+    "ethAfricaBody": "ETH Africa is hitting a <strong>70% win rate</strong> on ETH predictions.",
+    "ethAfricaBuy": "Buy Eth",
+    "ethAfricaJoin": "Join Eth Africa",
+    "conversationTitle": "Join the Conversation",
+    "conversationRoom": "Mitolyx Playroom",
+    "conversationHeadline": "How to think like a chess grandmaster",
+    "conversationJoin": "Join Space",
+    "conversationPlay": "Play Chess",
+    "ownMarketTitle": "Own The Market.",
+    "arenaTitle": "Enter The Arena",
+    "arenaBody": "Make your move. Manage your risk. Own the market.",
+    "arenaCta": "Trade Now",
+    "next100xTitle": "Find the next <hot>100X</hot>",
+    "pepeTitle": "Pepe is Booming",
+    "pepeCta": "Buy Pepe",
+    "shibaTitle": "Shiba Is Hearing Things !",
+    "shibaCta": "Check Chart",
+    "predictionTitle": "Your Next <accent>Prediction</accent> Starts Here",
+    "predictionCountdown": "01:46:55:22",
+    "predictionOneTitle": "Will Pastor Benny Hinn Be At Healing Stream",
+    "predictionOneBody": "<strong>ETH is up 3.5%</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "predictionTwoTitle": "Who's Gonna take the Belt Home, <strong>Predict Now!</strong>",
+    "predictNow": "Predict Now",
+    "predictionOther": "See Other Prediction",
+    "tokenMovesCarousel": "Token moves",
+    "conversationCarousel": "Conversation and markets",
+    "next100xCarousel": "Next 100X",
+    "predictionCarousel": "Prediction markets",
+    "tokenTicker": "{price}  <change>{delta}</change>",
+    "tokenTipUp": "<strong>{symbol} is up {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "tokenTipDown": "<strong>{symbol} is down {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "tokenCta": "Buy {symbol}",
+    "tokenFallbackPrice": "$1,876,617",
+    "tokenFallbackChange": "+12.8%",
+    "tokenFallbackMove": "12.8%",
+    "memeUpTitle": "{name} is up",
+    "memeDownTitle": "{name} is down",
+    "predictionNoDeadline": "No deadline"
   }
 }

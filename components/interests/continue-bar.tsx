@@ -21,7 +21,7 @@ export function ContinueBar({ selectedTitle, onContinue, onSkip }: ContinueBarPr
         </span>
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard"
+            href="/portfolio"
             onClick={onSkip}
             className="rounded-full px-4 py-3 font-sans text-sm font-medium text-white/70 hover:text-white"
           >

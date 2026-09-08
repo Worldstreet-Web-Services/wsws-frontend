@@ -16,7 +16,16 @@ import {
 // the extension directly and needs no Privy session, so this only depends on
 // the token existing on-chain: hidden in mock mode, where there is no real
 // contract to add.
-export function AddToMetaMaskButton() {
+//
+// The desktop card keeps the design's bordered chip; the mobile Kash+ card sits
+// the mark bare on the yellow gradient (bare), scaled to iconSize.
+export function AddToMetaMaskButton({
+  bare = false,
+  iconSize = 22,
+}: {
+  bare?: boolean;
+  iconSize?: number;
+} = {}) {
   const t = useTranslations("kash");
   const { data: status } = useKashStatus();
   const [busy, setBusy] = useState(false);
@@ -49,9 +58,13 @@ export function AddToMetaMaskButton() {
       disabled={busy}
       aria-label={t("addToMetaMask")}
       title={t("addToMetaMask")}
-      className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/12 bg-white/6 transition-colors hover:border-white/22 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      className={
+        bare
+          ? "ws-pressable grid shrink-0 cursor-pointer place-items-center transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+          : "grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/12 bg-white/6 transition-colors hover:border-white/22 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      }
     >
-      <MetaMaskIcon size={16} />
+      <MetaMaskIcon size={bare ? iconSize : 16} />
     </button>
   );
 }

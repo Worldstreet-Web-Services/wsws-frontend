@@ -180,7 +180,10 @@ export function SquareLivePromo() {
   return (
     <>
       {/* ── Mobile: "Join the Conversation" card ── */}
-      <section className="mx-auto w-full px-4 sm:hidden">
+      {/* Split at md, not sm: the phone dashboard mounts this promo inside a
+          md:hidden column, so the crossover has to match or the desktop rail
+          leaks into the 640-767 band while the card disappears. */}
+      <section className="mx-auto w-full px-4 md:hidden">
         <span className="mb-2 inline-flex items-center gap-1 text-white">
           <span className="ws-display text-[15px]">{t("joinConversation")}</span>
           <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
@@ -232,7 +235,7 @@ export function SquareLivePromo() {
 
       {/* ── Desktop: horizontal rail inside PromoShell (only with live data) ── */}
       {streams.length > 0 ? (
-        <div className="hidden sm:block">
+        <div className="hidden md:block">
           <PromoShell title={t("promoLiveTitle")} action={t("openSquare")}>
             {streams.map((stream) => (
               <PromoCard key={stream.id} href={squareLinks.live(stream.id)} width="w-[320px]">

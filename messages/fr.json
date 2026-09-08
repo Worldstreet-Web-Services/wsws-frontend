@@ -662,6 +662,8 @@
     "marketCap": "Capitalisation",
     "loadingMarkets": "Chargement des marchés…",
     "marketsUnavailable": "Les prix en direct sont indisponibles pour le moment. Réessayez sous peu.",
+    "tokenNotFound": "Ce jeton est introuvable.",
+    "backToMarkets": "Retour aux marchés",
     "noResults": "Aucun jeton ne correspond à votre recherche.",
     "pageOf": "Page {page} sur {pages}",
     "prev": "Préc.",

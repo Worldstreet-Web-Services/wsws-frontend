@@ -29,13 +29,24 @@ export function SpotTokenDetail({ id }: { id: string }) {
   const t = useTranslations("markets");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { markets, loading } = useSpotMarkets();
+  const { markets, loading, error } = useSpotMarkets();
   const [buyOpen, setBuyOpen] = useState(false);
 
   const token = useMemo(
     () => markets.find((m) => m.symbol.toLowerCase() === id.toLowerCase()) ?? null,
     [markets, id]
   );
+  // The list loaded fine but this symbol is not in it: a stale link or a
+  // delisted token. That is "not found", not "prices are down" — the two must
+  // read differently or the user retries a page that will never resolve.
+  const notFound = !loading && !error && !token;
+
+  // On a deep link / fresh tab there is no in-app history, so a bare back()
+  // strands the user (or leaves the site). Fall back to the spot list.
+  const goBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push("/spot");
+  };
 
   const detail: DetailPayload | null = token
     ? {
@@ -64,7 +75,7 @@ export function SpotTokenDetail({ id }: { id: string }) {
     <div className="mx-auto w-full max-w-[560px] p-4 sm:p-6">
       <button
         type="button"
-        onClick={() => router.back()}
+        onClick={goBack}
         className="ws-pressable mb-4 flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-white/60 hover:text-white"
       >
         <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" aria-hidden>
@@ -81,6 +92,17 @@ export function SpotTokenDetail({ id }: { id: string }) {
 
       {detail ? (
         <DetailModal detail={detail} />
+      ) : notFound ? (
+        <div className="ws-card flex flex-col items-center gap-3 px-6 py-16 text-center">
+          <p className="text-[13.5px] font-normal text-white/55">{t("tokenNotFound")}</p>
+          <button
+            type="button"
+            onClick={() => router.push("/spot")}
+            className="text-ink cursor-pointer rounded-xl bg-white px-5 py-2.5 font-sans text-[13px] font-semibold hover:opacity-90"
+          >
+            {t("backToMarkets")}
+          </button>
+        </div>
       ) : (
         <div className="ws-card px-6 py-16 text-center text-[13.5px] font-normal text-white/45">
           {loading ? t("loadingMarkets") : t("marketsUnavailable")}

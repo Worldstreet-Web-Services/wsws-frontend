@@ -54,7 +54,7 @@ export function MobileMarketView({
   predictionSlot,
 }: MobileMarketViewProps) {
   const router = useRouter();
-  const { markets, loading } = useSpotMarkets();
+  const { markets, loading, error } = useSpotMarkets();
   const [query, setQuery] = useState("");
   // Which inline category is showing: 0 Spot, 1 Perps. Memecoins/Prediction
   // navigate away instead.
@@ -108,7 +108,7 @@ export function MobileMarketView({
       <div className="relative flex h-[100px] shrink-0 items-end justify-center overflow-hidden bg-[#232323] bg-[url('/market/topbar-rays.svg')] bg-size-[100%_100%] bg-no-repeat pb-[22px]">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => (window.history.length > 1 ? router.back() : router.push("/portfolio"))}
           aria-label="Back"
           className="absolute bottom-[18px] left-5 flex size-8 cursor-pointer items-center justify-center rounded-full text-white/80 hover:text-white"
         >
@@ -126,31 +126,34 @@ export function MobileMarketView({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-6">
-        {/* Search */}
-        <div className="flex h-[51px] shrink-0 items-center gap-1 rounded-[50px] border-2 border-white/2 bg-white/5 px-6">
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-            className="shrink-0"
-          >
-            <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.45)" strokeWidth="1.8" />
-            <path
-              d="m20 20-3.5-3.5"
-              stroke="rgba(255,255,255,0.45)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
+        {/* Search — only Spot and Memecoins list a searchable set; the perps
+            desk and prediction own their selection, so hide it on those tabs. */}
+        {activeTab === 0 || activeTab === 2 ? (
+          <div className="flex h-[51px] shrink-0 items-center gap-1 rounded-[50px] border-2 border-white/2 bg-white/5 px-6">
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+              className="shrink-0"
+            >
+              <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.45)" strokeWidth="1.8" />
+              <path
+                d="m20 20-3.5-3.5"
+                stroke="rgba(255,255,255,0.45)"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              className="min-w-0 flex-1 bg-transparent font-serif text-[13px] font-semibold tracking-[-0.39px] text-white outline-none placeholder:text-white/45"
             />
-          </svg>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-            className="min-w-0 flex-1 bg-transparent font-serif text-[13px] font-semibold tracking-[-0.39px] text-white outline-none placeholder:text-white/45"
-          />
-        </div>
+          </div>
+        ) : null}
 
         {/* Category tabs */}
         <div className="mt-4 flex shrink-0 [scrollbar-width:none] gap-3 overflow-x-auto border-b border-white/8 [&::-webkit-scrollbar]:hidden">
@@ -158,7 +161,16 @@ export function MobileMarketView({
             <button
               key={tab.label}
               type="button"
-              onClick={() => (tab.href ? router.push(tab.href) : setActiveTab(i))}
+              onClick={() => {
+                if (tab.href) {
+                  router.push(tab.href);
+                } else {
+                  // Reset the search so a query typed on Spot does not silently
+                  // filter (and blank) the Memecoins list, and vice versa.
+                  setActiveTab(i);
+                  setQuery("");
+                }
+              }}
               className="relative flex shrink-0 items-center justify-center px-2.5 py-2.5"
             >
               <span
@@ -277,7 +289,7 @@ export function MobileMarketView({
                 })}
             {!loading && rows.length === 0 ? (
               <p className="mt-8 text-center text-[13px] font-normal text-white/45">
-                No tokens found.
+                {error ? "Markets are unavailable right now." : "No tokens found."}
               </p>
             ) : null}
           </div>

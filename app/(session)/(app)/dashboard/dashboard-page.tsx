@@ -39,7 +39,7 @@ import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { startDashboardTour, useDashboardTour } from "@/features/tour";
-import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
+import { MARKET_SQUARE_HIDDEN, MARKET_SQUARE_TAKEN_DOWN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { DashboardModal } from "@/lib/modal-types";
 import type { DepositPrefill } from "@/lib/voice/intent";
@@ -61,10 +61,10 @@ const PREVIEW_ROWS = 4;
 const BRIEFED_SECTIONS = ["spot", "perps", "meme", "rwa"] as const;
 type BriefedSectionId = (typeof BRIEFED_SECTIONS)[number];
 
-// Briefs hidden from the dashboard at request. Spot, Real Assets and Memecoins
-// stay full routes; they just do not get a brief here. Empty this to show all
-// four.
-const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme"];
+// Briefs hidden from the dashboard at request. All four stay full routes of
+// their own; they just do not get a brief here, so the dashboard shows no
+// service brief at all. Remove an id to bring its brief back.
+const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme", "perps"];
 
 function isBriefed(id: SectionId): id is BriefedSectionId {
   return (BRIEFED_SECTIONS as readonly SectionId[]).includes(id);
@@ -143,8 +143,8 @@ export function DashboardPage() {
   useReportActiveSection(activeSection);
   // The services briefed on this page, in the nav's own order.
   const briefs = useMemo(
-    // Spot and Real Assets briefs are hidden at request; only Perps and Meme
-    // brief on the dashboard now. Remove an id here to bring its brief back.
+    // Every service brief is hidden at request (see HIDDEN_BRIEFS), so this
+    // resolves to an empty list and no brief renders on the dashboard.
     () =>
       nav
         .map((n) => n.id)
@@ -294,7 +294,9 @@ export function DashboardPage() {
           not reflow). "Join the Conversation" doorway, then the Prediction
           card; the trade sections follow as they are ported. */}
       <div className="flex flex-col gap-6 md:hidden">
-        <SquareLivePromo />
+        {/* Rendered without the URL gate so it still shows in dev, but a real
+            operator takedown (LIVE=false) must remove it and its live link. */}
+        {MARKET_SQUARE_TAKEN_DOWN ? null : <SquareLivePromo />}
         <PredictionMobile />
         {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
             the phone's stand-in for the desktop token-moves shelf. */}

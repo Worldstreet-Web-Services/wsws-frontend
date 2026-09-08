@@ -42,7 +42,10 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
   const reduce = useReducedMotion();
   const router = useRouter();
   const squareHref = marketSquareHref() ?? "#";
-  const active = TABS.find((t) => t.id === activeSection) ?? TABS[0];
+  // Only three icons carry an active state (portfolio, spot, casino). On any
+  // other section (rwa, meme, prediction, activity, earn) none of them owns the
+  // page, so the marker is hidden rather than snapping onto Portfolio.
+  const active = TABS.find((t) => t.id === activeSection) ?? null;
 
   // The block scrolls across to the active icon instead of jumping.
   const slide = reduce ? { duration: 0 } : { type: "spring" as const, stiffness: 380, damping: 32 };
@@ -68,12 +71,15 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
           className="absolute inset-0 h-full w-full select-none"
         />
 
-        {/* The active marker: a circle around the icon that slides to it. */}
-        <motion.div
-          animate={{ left: `${active.x}%`, top: `${active.y}%` }}
-          transition={slide}
-          className="pointer-events-none absolute aspect-square h-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-[#D8BCFF]/70"
-        />
+        {/* The active marker: a circle around the icon that slides to it. Only
+            shown when the current section maps to one of the marked icons. */}
+        {active ? (
+          <motion.div
+            animate={{ left: `${active.x}%`, top: `${active.y}%` }}
+            transition={slide}
+            className="pointer-events-none absolute aspect-square h-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-[#D8BCFF]/70"
+          />
+        ) : null}
 
         <nav className="pointer-events-auto absolute inset-0" aria-label="Primary">
           {ZONES.map((z, i) => (

@@ -662,6 +662,8 @@
     "marketCap": "Market cap",
     "loadingMarkets": "Loading markets…",
     "marketsUnavailable": "Live market prices are unavailable right now. Please try again shortly.",
+    "tokenNotFound": "We couldn't find that token.",
+    "backToMarkets": "Back to markets",
     "noResults": "No tokens match your search.",
     "pageOf": "Page {page} of {pages}",
     "prev": "Prev",

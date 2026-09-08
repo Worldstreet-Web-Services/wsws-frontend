@@ -22,6 +22,7 @@ export function BalanceCardMobile({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
+  onTakeTour,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
   const money = useMoney();
@@ -55,6 +56,7 @@ export function BalanceCardMobile({
             {/* Take-a-tour affordance from the comp. */}
             <button
               type="button"
+              onClick={onTakeTour}
               aria-label={t("takeTour")}
               className="grid size-[30px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/70 transition-colors active:bg-white/12"
             >
@@ -104,6 +106,7 @@ export function BalanceCardMobile({
         <div className="flex w-full flex-col items-center gap-3">
           <div className="flex w-full items-center gap-2">
             <button
+              data-tour="add-funds"
               onClick={onOpenFunds}
               // bg-white is the base the ws-chrome gradient layers over; it also
               // keeps the button visible from md up, where ws-chrome (mobile

@@ -662,6 +662,8 @@
     "marketCap": "Capitalização",
     "loadingMarkets": "A carregar mercados…",
     "marketsUnavailable": "Os preços ao vivo estão indisponíveis. Tente novamente em breve.",
+    "tokenNotFound": "Não encontrámos esse token.",
+    "backToMarkets": "Voltar aos mercados",
     "noResults": "Nenhum token corresponde à sua pesquisa.",
     "pageOf": "Página {page} de {pages}",
     "prev": "Ant.",

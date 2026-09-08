@@ -662,6 +662,8 @@
     "marketCap": "Marktkapitalisierung",
     "loadingMarkets": "Märkte werden geladen…",
     "marketsUnavailable": "Live-Kurse sind gerade nicht verfügbar. Bitte versuchen Sie es gleich erneut.",
+    "tokenNotFound": "Dieses Token wurde nicht gefunden.",
+    "backToMarkets": "Zurück zu den Märkten",
     "noResults": "Keine Token passen zu Ihrer Suche.",
     "pageOf": "Seite {page} von {pages}",
     "prev": "Zurück",

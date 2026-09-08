@@ -53,14 +53,21 @@ interface KashCardMobileProps {
 // price under it, and Send / Buy / Convert along the bottom.
 export function KashCardMobile({ onBuy, onSend, onConvert, onHistory }: KashCardMobileProps) {
   const t = useTranslations("kash");
-  const { data: account } = useKashAccount();
+  const { data: account, isError, walletMissing } = useKashAccount();
   const { data: status } = useKashStatus();
+
+  // An unknown balance must never render as zero: someone who holds KASH would
+  // read "0 KASH+" as their money gone, and loading/no-wallet/error all leave
+  // account undefined. Distinguish those states instead, like the desktop card.
+  const unavailable = !account && (isError || walletMissing);
+  const loading = !account && !unavailable;
 
   const balanceDisplay = formatKashAmount(account?.balance ?? "0");
   const unitPrice = status?.price.kashPriceUsd;
 
   return (
     <div
+      data-tour="kash"
       data-sensitive="balance"
       // Fills the carousel slide so it stands exactly as tall as the balance
       // card beside it; min-height keeps the comp's 431:243 ratio when it has
@@ -100,15 +107,27 @@ export function KashCardMobile({ onBuy, onSend, onConvert, onHistory }: KashCard
 
         {/* Balance, centered in the space between the header and the actions */}
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <div className="tnum ws-display text-[9.3cqw] leading-none font-bold tracking-[-0.02em] whitespace-nowrap">
-            {balanceDisplay} KASH+
-          </div>
-          {unitPrice && (
-            <div className="mt-[3.5cqw] flex items-center justify-center gap-[1cqw] text-[2.7cqw] font-medium text-black/55">
-              <span>1 KASH</span>
-              <ApproxEqualsGlyph className="h-[3.2cqw] w-[3.2cqw]" />
-              <span className="tnum">${unitPrice}</span>
-            </div>
+          {loading ? (
+            // Hold the figure's space with a skeleton rather than a "0" the read
+            // has not confirmed.
+            <div className="h-[9.3cqw] w-[38cqw] animate-pulse rounded-[2cqw] bg-black/10" />
+          ) : unavailable ? (
+            <p className="max-w-[82%] text-[3.25cqw] leading-[1.4] font-medium text-black/60">
+              {walletMissing ? t("balanceNoWallet") : t("balanceUnavailable")}
+            </p>
+          ) : (
+            <>
+              <div className="tnum ws-display text-[9.3cqw] leading-none font-bold tracking-[-0.02em] whitespace-nowrap">
+                {balanceDisplay} KASH+
+              </div>
+              {unitPrice && (
+                <div className="mt-[3.5cqw] flex items-center justify-center gap-[1cqw] text-[2.7cqw] font-medium text-black/55">
+                  <span>1 KASH</span>
+                  <ApproxEqualsGlyph className="h-[3.2cqw] w-[3.2cqw]" />
+                  <span className="tnum">${unitPrice}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 

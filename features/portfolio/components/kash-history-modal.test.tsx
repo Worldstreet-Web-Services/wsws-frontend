@@ -134,16 +134,33 @@ describe("KashHistoryModal — transactions vs activity points split", () => {
     expect(screen.queryByText("Arkivity (below gate)")).not.toBeInTheDocument();
   });
 
-  it("switches to the Activity Points tab and shows only points/locked-activity rows", () => {
+  it("says Activity Points is coming rather than listing rows that do not earn yet", () => {
+    // The tab is switched off until Kash+ activity earnings go live. It must
+    // not draw the points rows the ledger happens to carry, and it must not
+    // fall through to the transactions either.
     kashHooks.useKashLedger.mockReturnValue({ data: mixed, isPending: false, isError: false });
     render(<KashHistoryModal open onClose={() => {}} />, { wrapper });
 
     fireEvent.click(screen.getByRole("tab", { name: "Activity Points" }));
 
-    expect(screen.getByText("Points earned")).toBeInTheDocument();
-    expect(screen.getByText("Arkivity (below gate)")).toBeInTheDocument();
+    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+    expect(screen.queryByText("Points earned")).not.toBeInTheDocument();
+    expect(screen.queryByText("Arkivity (below gate)")).not.toBeInTheDocument();
     expect(screen.queryByText("Purchase")).not.toBeInTheDocument();
     expect(screen.queryByText("Received")).not.toBeInTheDocument();
+  });
+
+  it("keeps the transactions tab listing transactions", () => {
+    // The guard is on one tab only. Switching away and back must still show
+    // the real ledger, which is what proves nothing else was gated with it.
+    kashHooks.useKashLedger.mockReturnValue({ data: mixed, isPending: false, isError: false });
+    render(<KashHistoryModal open onClose={() => {}} />, { wrapper });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Activity Points" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Transactions" }));
+
+    expect(screen.getByText("Purchase")).toBeInTheDocument();
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
 
   it("shows the transactions-specific empty state when there are only points rows", () => {
@@ -159,7 +176,9 @@ describe("KashHistoryModal — transactions vs activity points split", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the points-specific empty state when there are only transaction rows", () => {
+  it("shows the coming-soon panel instead of the points empty state", () => {
+    // "No points yet" reads as a balance of zero, which is a claim about the
+    // user. The tab is not earning at all yet, so it says that instead.
     kashHooks.useKashLedger.mockReturnValue({
       data: [entry({ kind: "purchase", deltaKash: "500" })],
       isPending: false,
@@ -169,6 +188,7 @@ describe("KashHistoryModal — transactions vs activity points split", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Activity Points" }));
 
-    expect(screen.getByText("No points yet.")).toBeInTheDocument();
+    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+    expect(screen.queryByText("No points yet.")).not.toBeInTheDocument();
   });
 });

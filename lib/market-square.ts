@@ -16,9 +16,14 @@ export const MARKET_SQUARE_URL = process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? ""
  * Whether the product offers a way in to the square. It does, wherever the
  * square's URL is configured.
  *
- * This is a visibility switch, not a removal. Two surfaces read it: the
- * sidebar entry and the square blocks on the dashboard. While it is true they
- * render nothing, and everything behind them stays wired, so the square's own
+ * This is the WAY IN, not the square's content: the sidebar entry, which is a
+ * link out to the square's own deployment. What the app renders of the square
+ * itself is a separate question, answered by SQUARE_SECTIONS_HIDDEN below.
+ * The two were one switch until the rail and the dashboard needed opposite
+ * answers, and folding them back together brings that back.
+ *
+ * A visibility switch, not a removal. While it is true the entry renders
+ * nothing, and everything behind it stays wired, so the square's own
  * deployment is still reachable at its URL and the proxy in
  * `app/api/market-square` still serves the broadcast flows that need it.
  *
@@ -38,6 +43,38 @@ export const MARKET_SQUARE_HIDDEN: boolean =
   process.env.NEXT_PUBLIC_MARKET_SQUARE_LIVE === "false" || MARKET_SQUARE_URL === "";
 
 /**
+ * Whether the app renders the square's own content in its pages: the feed
+ * section at the foot of the portfolio, the promos interleaved between the
+ * service briefs, and the compose button that posts into the square.
+ *
+ * Kept off for now at the maintainer's request. The portfolio is where someone
+ * comes to read their money, and a social feed under it is not what it is for.
+ * The way in stays: the rail links out to the square's own deployment, which
+ * is where its feed belongs.
+ *
+ * A code constant, not an environment variable, and deliberately so. These
+ * sections are a product decision rather than a per-deployment one, so turning
+ * them on is a reviewed change, the way HIDDEN_NAV_SECTIONS in lib/sections.ts
+ * and HOLDINGS_HIDDEN in the portfolio view are. It also keeps them out of
+ * NEXT_PUBLIC_MARKET_SQUARE_LIVE's way: that switch is the operator's, and
+ * making it carry this too is what left one flag unable to answer for both the
+ * rail and the dashboard at once.
+ *
+ * A visibility switch, not a removal. Everything behind it stays wired: the
+ * square slice under features/square, its hooks, the proxy in
+ * app/api/market-square, and the render sites themselves. Flipping
+ * IN_APP_SQUARE_SHOWN to true is the whole of bringing them back.
+ *
+ * The environment still has the last word when they are on, because a section
+ * of a square that is unreachable or taken down has nothing to show: hence the
+ * MARKET_SQUARE_HIDDEN term, which carries both the URL precondition and the
+ * operator takedown.
+ */
+const IN_APP_SQUARE_SHOWN: boolean = false;
+
+export const SQUARE_SECTIONS_HIDDEN: boolean = !IN_APP_SQUARE_SHOWN || MARKET_SQUARE_HIDDEN;
+
+/**
  * The operator TAKEDOWN alone: NEXT_PUBLIC_MARKET_SQUARE_LIVE set to exactly
  * "false", independent of whether a URL is configured.
  *
@@ -46,6 +83,10 @@ export const MARKET_SQUARE_HIDDEN: boolean =
  * gates on THIS, not MARKET_SQUARE_HIDDEN. The mobile "Join the Conversation"
  * doorway is the one such surface: it renders as a static promo without a URL,
  * but a real takedown has to remove it and its live "Join Space" link.
+ *
+ * It is a doorway, not a section, so it does not read SQUARE_SECTIONS_HIDDEN
+ * either: it shows no square content, it offers a way to the square, and that
+ * is the half of the split the phone home keeps.
  */
 export const MARKET_SQUARE_TAKEN_DOWN: boolean =
   process.env.NEXT_PUBLIC_MARKET_SQUARE_LIVE === "false";

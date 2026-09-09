@@ -73,13 +73,11 @@ function renderSlider(predictions: Prediction[]) {
 }
 
 describe("prediction slider", () => {
-  it("gives each card the market's own detail route", () => {
+  it("draws every card unlinked, since no market has a page of its own here", () => {
     renderSlider([mapped]);
 
-    expect(screen.getByRole("link", { name: mapped.q })).toHaveAttribute(
-      "href",
-      "/prediction/markets/481717?category=politics&source=markets"
-    );
+    expect(screen.queryByRole("link", { name: mapped.q })).toBeNull();
+    expect(screen.getByText(mapped.q)).toBeInTheDocument();
   });
 
   it("leaves a market this app has no category for as an unlinked card", () => {

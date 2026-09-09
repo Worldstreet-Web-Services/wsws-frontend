@@ -197,7 +197,7 @@ export function TokenMoves({
     <div>
       <style>{FADE_CSS}</style>
 
-      <Link href="/market" className="mb-3 inline-flex items-end gap-[3px]">
+      <Link href="/spot" className="mb-3 inline-flex items-end gap-[3px]">
         <span className="ws-display text-[18px] leading-[1.2] tracking-[-0.36px] text-white">
           {t("tokenMovesTitle")}
         </span>

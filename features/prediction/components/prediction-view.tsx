@@ -1,15 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { ArrowRightIcon } from "@/components/ui/icons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
-import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { BetSlipSheet } from "@/features/prediction/components/bet-slip-sheet";
 import { PositionsPanel } from "@/features/prediction/components/positions-panel";
@@ -147,16 +144,6 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
           <Eyebrow>{t("eyebrow")}</Eyebrow>
           <h2 className="ws-display mt-2.5 text-[30px] tracking-[-0.02em]">{t("heading")}</h2>
         </div>
-
-        {!showAll && source === "polymarket" ? (
-          <Link
-            href="/prediction/markets"
-            className="group inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.055))] px-4 text-[13px] font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-[border-color,color,transform] hover:-translate-y-px hover:border-white/20 hover:text-white"
-          >
-            {t("exploreAllMarkets")}
-            <ArrowRightIcon className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        ) : null}
       </div>
 
       {/* Source switch: live Polymarket markets vs our on-chain CPMM markets. */}
@@ -196,12 +183,7 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             <div className="@container">
               <div className="grid grid-cols-2 gap-4 @min-[900px]:grid-cols-3 @min-[900px]:gap-6 @min-[1240px]:grid-cols-4 @min-[1240px]:gap-7">
                 {visiblePredictions.map((p) => (
-                  <PredictionCard
-                    key={p.q}
-                    prediction={p}
-                    onBuy={(yes) => openBet(p, yes)}
-                    href={predictionDetailHref(p)}
-                  />
+                  <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
                 ))}
               </div>
             </div>
@@ -210,12 +192,7 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             // a horizontal slider, so the whole set reads on one scroll.
             <div className="flex flex-col gap-3">
               {visiblePredictions.map((p) => (
-                <PredictionCard
-                  key={p.q}
-                  prediction={p}
-                  onBuy={(yes) => openBet(p, yes)}
-                  href={predictionDetailHref(p)}
-                />
+                <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
               ))}
             </div>
           )}

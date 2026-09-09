@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { marketSquareHref } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { NavItem } from "@/components/layout/nav-items";
@@ -40,7 +39,6 @@ const ZONES = [
 
 export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTabBarProps) {
   const reduce = useReducedMotion();
-  const router = useRouter();
   const squareHref = marketSquareHref() ?? "#";
   // Only three icons carry an active state (portfolio, spot, casino). On any
   // other section (rwa, meme, prediction, activity, earn) none of them owns the
@@ -52,9 +50,8 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
 
   const onZone = (i: number) => {
     if (i === 0) onNavigate("portfolio");
-    // The second icon opens the standalone Market page (its own route, not a
-    // dashboard section), so navigate rather than scroll-spy to a section.
-    else if (i === 1) router.push("/market");
+    // The second icon is the spot desk, the section its marker already claims.
+    else if (i === 1) onNavigate("spot");
     else if (i === 2) {
       if (squareHref !== "#") window.location.assign(squareHref);
     } else if (i === 3) onNavigate("casino");

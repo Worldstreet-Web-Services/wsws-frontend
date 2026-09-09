@@ -3,7 +3,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import type { Prediction } from "@/lib/types";
@@ -123,8 +122,9 @@ function PredictionBanner({
 }: PredictionBannerProps) {
   const t = useTranslations("prediction");
   const [artworkFailed, setArtworkFailed] = useState(false);
-  // Live markets carry a detail route, the rest open the markets index.
-  const href = predictionDetailHref(p) ?? "/prediction";
+  // A Polymarket card has no page of its own on this build; the banner opens
+  // the prediction desk, where the same market can be bet on.
+  const href = "/prediction";
 
   return (
     <BannerFrame>

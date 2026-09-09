@@ -40,7 +40,7 @@ import { startDashboardTour, useDashboardTour } from "@/features/tour";
 // This page reads the square's SECTIONS switch, not the rail's. The rail links
 // out to the square's own deployment and follows MARKET_SQUARE_HIDDEN; what
 // renders here is the square's content, which is off on its own switch.
-import { MARKET_SQUARE_TAKEN_DOWN, SQUARE_SECTIONS_HIDDEN } from "@/lib/market-square";
+import { SQUARE_SECTIONS_HIDDEN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { DashboardModal } from "@/lib/modal-types";
 import type { DepositPrefill } from "@/lib/voice/intent";
@@ -294,20 +294,16 @@ export function DashboardPage() {
         />
       </SectionVisibility>
 
-      {/* Phone home, under the balance cards. "Join the Conversation" is the
-          Market Square doorway: rendered here directly (not only in the gated
-          interleave below) so it shows even where the square URL is unset — the
-          card hides just its Join Space link then. */}
-      {/* The phone home uses purpose-built mobile sections, not the desktop
-          discovery shelves below (those are fixed desktop-pixel cards that do
-          not reflow). "Join the Conversation" doorway, then the Prediction
-          card; the trade sections follow as they are ported. */}
+      {/* Phone home, under the balance cards. The phone uses purpose-built
+          mobile sections where the desktop shelf is a fixed composition, and
+          the desktop shelf itself where it reflows: "Join the Conversation"
+          and "Find the next 100X" are the same rows as on desktop, one card
+          to a frame on a phone. The conversation row handles a hidden square
+          itself: its card goes and its heading falls back to chess. */}
       <div className="flex flex-col gap-6 md:hidden">
-        {/* Rendered without the URL gate so it still shows in dev, but a real
-            operator takedown (LIVE=false) must remove it and its live link.
-            A doorway to the square, not a section of it, so it stays on the
-            takedown switch and does not read SQUARE_SECTIONS_HIDDEN. */}
-        {MARKET_SQUARE_TAKEN_DOWN ? null : <SquareLivePromo />}
+        <div className="px-4">
+          <ConversationRow />
+        </div>
         <PredictionMobile />
         {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
             the phone's stand-in for the desktop token-moves shelf. */}

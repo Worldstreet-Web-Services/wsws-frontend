@@ -174,12 +174,6 @@ function PredictionBanner({
             >
               {t("mobilePredictNow")}
             </Link>
-            <Link
-              href="/prediction"
-              className="ws-pressable rounded-full border border-black/20 px-3 py-[6px] text-[10px] font-semibold text-[#0B0A0A]"
-            >
-              {t("mobileSeeOtherPredictions")}
-            </Link>
           </div>
         </div>
 

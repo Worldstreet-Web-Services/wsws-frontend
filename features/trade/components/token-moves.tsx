@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
@@ -136,32 +135,6 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
   );
 }
 
-// The static "Eth Africa" promo card (Figma node 1:4145), kept as its
-// exported render.
-function EthAfricaCard({ onBuy }: { onBuy?: () => void }) {
-  const tSpot = useTranslations("spot");
-  return (
-    <div className="relative">
-      <Image
-        src="/trade/token-moves/eth-africa-card@3x.png"
-        alt="ETH Africa is hitting a 70% win rate on ETH predictions"
-        width={339}
-        height={167}
-        className="h-auto w-full"
-      />
-      {onBuy ? (
-        <button
-          type="button"
-          onClick={onBuy}
-          aria-label={tSpot("ctaBuy", { symbol: "ETH" })}
-          className="absolute cursor-pointer rounded-full"
-          style={{ left: "64%", top: "9%", width: "29%", height: "22.5%" }}
-        />
-      ) : null}
-    </div>
-  );
-}
-
 // The crossfade between two tokens. Declared here rather than in globals.css so
 // the card carries its own motion, and switched off outright for a reader who
 // asked for less of it.
@@ -173,8 +146,8 @@ const FADE_CSS = `
 
 // The "Stay Ahead of Token Moves" section (Figma node 1:4053): a header over a
 // two-card horizontal scroll. The first card cycles through the five tokens the
-// caller hands us, ten seconds each, forever. The second is the static Eth
-// Africa promo.
+// caller hands us, ten seconds each, forever; the second shows the token after
+// it, so a swipe is a step through the movers rather than the same coin twice.
 export function TokenMoves({
   tokens,
   onBuyToken,
@@ -192,6 +165,7 @@ export function TokenMoves({
   const cycle = useMemo(() => tokens.slice(0, MAX_TOKENS), [tokens]);
   const index = useRotatingIndex(cycle.length, { intervalMs: ROTATE_MS, paused: held });
   const current = cycle.length > 0 ? cycle[index] : null;
+  const next = cycle.length > 1 ? cycle[(index + 1) % cycle.length] : null;
 
   return (
     <div>
@@ -234,9 +208,13 @@ export function TokenMoves({
             </div>
           </section>
         ) : null}
-        <div className="w-[88%] shrink-0 snap-start overflow-hidden rounded-[16px]">
-          <EthAfricaCard onBuy={() => onBuyToken?.("ETH")} />
-        </div>
+        {next ? (
+          <div className="w-[88%] shrink-0 snap-start">
+            <div key={next.symbol} className="ws-token-move-fade">
+              <TokenInsightCard token={next} onBuy={() => onBuyToken?.(next.symbol)} />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

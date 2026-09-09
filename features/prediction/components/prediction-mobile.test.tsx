@@ -20,7 +20,6 @@ const messages = {
   prediction: {
     ...enMessages.prediction,
     mobilePredictNow: "Predict Now",
-    mobileSeeOtherPredictions: "See Other Predictions",
     mobileMarketsError: "Couldn't load prediction markets.",
     mobileNoMarkets: "No prediction markets are open right now.",
     mobilePauseRotation: "Pause prediction rotation",

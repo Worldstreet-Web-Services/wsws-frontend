@@ -67,3 +67,13 @@ on each visible card, including the one beside the last slide. Open the
 square card's links and confirm they land on square.tsionark.com in a new
 tab. Automation for the carousel's last-frame case exists; the shelf-level
 flows still need a browser scenario.
+
+## The phone home
+
+The same three changes, on the phone's own sections:
+
+- "Join the Conversation" is the desktop row, one card to a frame, in
+  place of the static chess image with link zones over it.
+- "Stay Ahead of Token Moves on Spot" shows the featured mover and the
+  mover after it, in place of the Eth Africa promo.
+- The prediction banner carries Predict Now only.

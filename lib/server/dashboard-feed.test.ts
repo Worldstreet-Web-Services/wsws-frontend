@@ -8,7 +8,6 @@ const upstream = vi.hoisted(() => ({
   forwardEvmRpcRead: vi.fn(),
   fetchMarketTokens: vi.fn(),
   fetchRwaMarket: vi.fn(),
-  wsapiPerpRequest: vi.fn(),
   wsapiRwaRequest: vi.fn(),
   readActiveGamesWith: vi.fn(),
   fetch: vi.fn(),
@@ -20,7 +19,6 @@ vi.mock("@/lib/server/evm-rpc", () => ({ forwardEvmRpcRead: upstream.forwardEvmR
 vi.mock("@/lib/server/market-tokens", () => ({ fetchMarketTokens: upstream.fetchMarketTokens }));
 vi.mock("@/lib/server/rwa-prices", () => ({ fetchRwaMarket: upstream.fetchRwaMarket }));
 vi.mock("@/lib/server/wsapi", () => ({
-  wsapiPerpRequest: upstream.wsapiPerpRequest,
   wsapiRwaRequest: upstream.wsapiRwaRequest,
 }));
 vi.mock("@/lib/vault/read", () => ({ readActiveGamesWith: upstream.readActiveGamesWith }));
@@ -72,11 +70,6 @@ function healthyUpstreams() {
       marketCap: 9,
     },
   ]);
-  upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-    path === "pairs"
-      ? ok([{ from: "BTC", to: "USD", maxLeverage: 100 }])
-      : ok([{ pairIndex: 0, pair: "BTC/USD", price: "65000", publishTime: null }])
-  );
   upstream.wsapiRwaRequest.mockResolvedValue(
     ok([
       {
@@ -247,12 +240,6 @@ describe("buildDashboardFeed", () => {
       priceUsd: 3000,
       change24h: 1.5,
     });
-    expect(feed.perps?.[0]).toMatchObject({
-      symbol: "BTC/USD",
-      base: "BTC",
-      priceUsd: 65000,
-      maxLeverage: 100,
-    });
     expect(feed.memes).toEqual([
       {
         address: "0xMeme",
@@ -282,14 +269,10 @@ describe("buildDashboardFeed", () => {
   it("marks a section unavailable when its upstream is down, and keeps the rest", async () => {
     healthyUpstreams();
     upstream.wsapiRwaRequest.mockResolvedValue(down());
-    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-      path === "pairs" ? down() : ok([])
-    );
 
     const feed = await buildDashboardFeed();
 
     expect(feed.rwa).toBeNull();
-    expect(feed.perps).toBeNull();
     expect(feed.spot).not.toBeNull();
     expect(feed.memes).not.toBeNull();
   });
@@ -341,19 +324,6 @@ describe("buildDashboardFeed", () => {
     });
     const feed = await buildDashboardFeed();
     expect(feed.memes?.map((m) => m.symbol)).toEqual(["BASECAT"]);
-  });
-
-  it("prices the perps brief from the fallback when only the marks are down", async () => {
-    healthyUpstreams();
-    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-      path === "pairs" ? ok([{ from: "BTC", to: "USD", maxLeverage: 100 }]) : down()
-    );
-    upstream.fetchPrices.mockImplementation(async (symbols: string[]) =>
-      symbols.map((symbol) => ({ symbol, priceUsd: symbol === "BTC" ? 64000 : 1 }))
-    );
-
-    const feed = await buildDashboardFeed();
-    expect(feed.perps?.[0]).toMatchObject({ symbol: "BTC/USD", priceUsd: 64000 });
   });
 
   it("keeps the live chips from the sources that answered", async () => {

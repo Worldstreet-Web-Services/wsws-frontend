@@ -8,7 +8,6 @@ import type { SectionId } from "@/lib/sections";
 const PAGE_BY_SECTION: Record<SectionId, PageName> = {
   portfolio: "portfolio",
   spot: "spot",
-  perps: "perpetuals",
   meme: "memecoins",
   rwa: "real_assets",
   prediction: "prediction",

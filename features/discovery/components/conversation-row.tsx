@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
-import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
 import type { SpaceSpot } from "@/features/discovery/types";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 
@@ -386,186 +385,6 @@ function ChessRoomCard({ room, onHold }: ChessRoomCardProps) {
   );
 }
 
-// The arena copy sits a third of the way across the card. The offset is a
-// spacer rather than a left edge because it is the part that gives way: the
-// headline is a single 40px line in the design and a longer locale needs more
-// room than the design leaves to the right of x=153, so the spacer shrinks and
-// slides the whole column left before anything has to wrap.
-const ARENA_COPY_INSET = across(153);
-
-// The two orbs sit on the trend curve near the card's edges. Each export is the
-// orb plus its glow, so the figure it centres on is the box centre.
-interface ArenaOrb {
-  src: string;
-  width: number;
-  height: number;
-  /** Centre of the export, in design pixels across the card. */
-  centre: number;
-  top: number;
-}
-
-// Listed in the design's paint order, which draws the right orb first.
-const ARENA_ORBS: ArenaOrb[] = [
-  {
-    src: "/market/convo-arena-orb-right.svg",
-    width: 19,
-    height: 19,
-    centre: 449.669,
-    top: 82.0845,
-  },
-  { src: "/market/convo-arena-orb-left.svg", width: 31, height: 32, centre: 39.1086, top: 87 },
-];
-
-// The leverage desk's doorway, in the layers the design draws it in. The card
-// is drawn at 482px and rendered half again as wide, so every layer has to say
-// what it does with the extra width.
-//
-// Star dust, trend curve and ray burst are backdrop and stretch with the card.
-// The coin stack and the orbs are round and may not: the stack keeps its
-// proportions and grows off the bottom edge, which is already a crop, so it
-// still reaches both sides at any width; the orbs hold the size they were drawn
-// at and ride the curve at a fixed share across, where the stretched curve
-// still passes through them.
-//
-// Two of the layers blend rather than paint over: the dust is plus-lighter and
-// the stack's glow is screen. An img is its own stacking context, so both
-// blends are set on the element, not left inside the export where they would
-// have nothing under them.
-function ArenaCard() {
-  const t = useTranslations("discovery");
-
-  return (
-    <article className="relative h-[204px] overflow-hidden rounded-[18px] bg-[linear-gradient(0deg,#7724bb_0%,#deb5ff_100%)]">
-      <img
-        src="/market/convo-arena-stars.svg"
-        alt=""
-        aria-hidden
-        width={482}
-        height={204}
-        className={`${artLayer} inset-0 h-full w-full mix-blend-plus-lighter`}
-      />
-      <img
-        src="/market/convo-arena-trend.svg"
-        alt=""
-        aria-hidden
-        width={482}
-        height={158}
-        className={`${artLayer} top-[46.055px] left-0 h-[158px] w-full`}
-      />
-      {/* Width and bottom, never a right offset: an img given both offsets and
-          no width falls back to its intrinsic size and ignores the far one. */}
-      <img
-        src="/market/convo-arena-coins.svg"
-        alt=""
-        aria-hidden
-        width={482}
-        height={121}
-        className={`${artLayer} bottom-0 left-0 h-auto w-full`}
-      />
-      <img
-        src="/market/convo-arena-coin-glow.svg"
-        alt=""
-        aria-hidden
-        width={482}
-        height={121}
-        className={`${artLayer} bottom-0 left-0 h-auto w-full mix-blend-screen`}
-      />
-      {ARENA_ORBS.map((orb) => (
-        <img
-          key={orb.src}
-          src={orb.src}
-          alt=""
-          aria-hidden
-          width={orb.width}
-          height={orb.height}
-          style={{
-            left: `calc(${across(orb.centre)} - ${orb.width / 2}px)`,
-            top: orb.top,
-            width: orb.width,
-            height: orb.height,
-          }}
-          className={artLayer}
-        />
-      ))}
-      <img
-        src="/market/convo-arena-rays.svg"
-        alt=""
-        aria-hidden
-        width={482}
-        height={204}
-        className={`${artLayer} inset-0 h-full w-full`}
-      />
-
-      {/* Headline, body and pill are one column in the design, so they travel
-          together and keep the offsets they have from each other. They stack in
-          flow rather than at three absolute tops: the offsets below reproduce
-          the design's 21px, 69px and 105.73px exactly for a one-line headline
-          and a two-line body, and a locale that needs another line of either
-          pushes what follows down instead of landing on top of it.
-          The 18px padding is the gutter the column stops at on the right, and
-          it hangs off the column rather than the row so that the row's width
-          stays the card's and the spacer keeps resolving against it. The design
-          leaves 10px, which is the slack a short English headline happens to
-          end at, not a margin: "Entrez dans l'arène" is long enough to reach
-          the gutter, and 18px is what keeps it off the card's edge.
-          The spacer never closes all the way. It is what gives way as the
-          headline grows, but at zero the headline would start at the card's
-          left edge, so it keeps an 18px gutter of its own and the column is
-          capped to what is left beside it. */}
-      <div className="absolute inset-y-0 left-0 flex w-full items-start">
-        <div className="min-w-[18px] shrink" style={{ width: ARENA_COPY_INSET }} />
-        <div className="max-w-[calc(100%-18px)] shrink-0 pt-[21px] pr-[18px]">
-          {/*
-           * The design's drop shadow, and it has to be a filter. `text-shadow`
-           * paints above the element's own background, and the fill here is a
-           * background clipped to the glyphs, so the purple lands on top of the
-           * letters and turns them the colour of the card. `drop-shadow` takes
-           * the element as already painted and puts the shadow behind it, which
-           * is what Figma draws.
-           *
-           * w-fit keeps the gradient box the width of the glyphs it is clipped
-           * to, whatever the column around it ends up. The card is drawn 204px
-           * tall and stays that, so the two clamps here and on the body are what
-           * keep a long locale off the coin stack: two lines of headline and two
-           * of body is the tallest stack the card has room for.
-           */}
-          <h3
-            className="ws-poster ws-arena-ink ml-[4.563px] line-clamp-2 w-fit text-[40px] leading-[1.2] tracking-[-0.8px] text-balance capitalize"
-            style={{ filter: "drop-shadow(0 3.397px 3.397px #b46cf0)" }}
-          >
-            {t("arenaTitle")}
-          </h3>
-          <p className="ml-[1.563px] line-clamp-2 w-[250px] max-w-full font-serif text-[13px] leading-normal font-semibold tracking-[-0.26px] text-white">
-            {t("arenaBody")}
-          </p>
-          {/* The pill is inline-flex, so it goes in a block of its own: on a
-              line of its own it would pick up leading above and below and lose
-              the 6.73px the design leaves under the body copy. */}
-          <div className="mt-[6.73px] flex">
-            <DiscoveryCta
-              href="/perps"
-              label={t("arenaCta")}
-              tone="light"
-              size={12}
-              icon={
-                <img
-                  src="/market/convo-icon-coins.svg"
-                  alt=""
-                  aria-hidden
-                  width={12}
-                  height={12}
-                  className="size-[12.012px] shrink-0"
-                />
-              }
-              className="border-[0.479px] border-[#9e5ad0] tracking-[-0.12px]"
-            />
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 // The square's chess room, under its own heading. The heading goes straight to
 // the chess service whatever room is on show, so the shelf does not depend on
 // Market Square being switched on and always renders.
@@ -579,42 +398,15 @@ function ChessShelf(props: ChessRoomCardProps) {
   );
 }
 
-// The leverage desk, under its own heading.
-function ArenaShelf() {
-  const t = useTranslations("discovery");
-
-  return (
-    <DiscoveryRow title={t("ownMarketTitle")} href="/perps">
-      <ArenaCard />
-    </DiscoveryRow>
-  );
-}
-
-// The one band on the discovery area that is not a heading over a pair of
-// cards. It is two separate shelves side by side, each with its own heading and
-// its own chevron through to its own service, and the design pairs them at one
-// height rather than stacking them.
-//
-// So the slide here is the whole shelf, heading included, not the card alone.
-// The other three rows put the carousel inside DiscoveryRow because they have
-// one heading to hold still above it. This band has two, and each names the card
-// under it: "Join the Conversation" over the arena card would be wrong within a
-// second of the first advance. Moving the heading with its card is the only
-// arrangement that keeps both headings truthful, and it costs nothing, because
-// the two headings are the same height and travel level with each other.
-//
-// Two shelves cannot cycle, so the chess room is dealt twice. It is the shelf
-// carrying a room that is live right now, which is the one worth coming back
-// around to; the arena is an evergreen doorway to the perps desk and reads the
-// same whenever it lands. The repeat is third rather than second so the first
-// two views, room then desk and desk then room, are both a genuine pair.
+// The square's chess shelf, heading included, so the heading travels with the
+// card it names. The design paired it with a leverage-desk doorway; that desk
+// is not on this build, so the shelf stands alone and the carousel, given one
+// slide, does not loop.
 //
 // The room itself rotates. `spaces` is every room worth featuring, and the card
 // steps through them on a ten second timer, taking each room's name, headline,
 // member faces and two destinations in turn. The rotation is owned here rather
-// than on the card because the carousel draws every slide more than once: two
-// real room slides, plus the clones it flanks the row with to loop. State on a
-// slide would leave those copies showing different rooms side by side.
+// than on the card so every copy the carousel draws shows the same room.
 export function ConversationRow({ spaces = [] }: { spaces?: readonly SpaceSpot[] }) {
   const t = useTranslations("discovery");
 
@@ -642,8 +434,6 @@ export function ConversationRow({ spaces = [] }: { spaces?: readonly SpaceSpot[]
 
   return (
     <Carousel label={t("conversationCarousel")} gapPx={20} trimPx={50}>
-      <ChessShelf room={room} onHold={hold} />
-      <ArenaShelf />
       <ChessShelf room={room} onHold={hold} />
     </Carousel>
   );

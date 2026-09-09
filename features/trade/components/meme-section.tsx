@@ -5,9 +5,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { MemeModeSwitch, useMemeMode } from "@/features/trade/components/meme-mode";
 import { MemeSimpleView } from "@/features/trade/components/meme-simple-view";
 import { MemeProView } from "@/features/trade/components/meme-pro-view";
-import { MemecoinsView } from "@/features/trade/components/memecoins-view";
 import { MemecoinPromos } from "@/features/trade/components/memecoin-promos";
-import { TokenMovesPromos } from "@/features/trade/components/token-moves-promos";
 import { SectionVisibility } from "@/components/ui/section-visibility";
 
 // Memecoin trading on Base: trending cards for the simple interface, the

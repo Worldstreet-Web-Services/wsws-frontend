@@ -4,7 +4,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { AssetIcon } from "@/components/ui/asset-icon";
-import { PerpsSection } from "@/features/trade/components/perps-section";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
@@ -29,11 +28,10 @@ interface MobileMarketViewProps {
 // list — every asset you can buy or sell, like the desktop desk. Tapping a token
 // opens its sheet (chart + buy), the same pop-up the rest of the app uses.
 
-// Spot, Perps (Leverage Trading) and Memecoins render inline on this page
+// Spot and Memecoins render inline on this page
 // (href null); Prediction is still its own route.
 const TABS: { label: string; href: string | null }[] = [
   { label: "Spot", href: null },
-  { label: "Leverage Trading", href: null },
   { label: "Memecoins", href: null },
   { label: "Prediction", href: null },
 ];
@@ -56,8 +54,7 @@ export function MobileMarketView({
   const router = useRouter();
   const { markets, loading, error } = useSpotMarkets();
   const [query, setQuery] = useState("");
-  // Which inline category is showing: 0 Spot, 1 Perps. Memecoins/Prediction
-  // navigate away instead.
+  // Which inline category is showing: 0 Spot, 1 Memecoins, 2 Prediction.
   const [activeTab, setActiveTab] = useState(0);
 
   // A memecoin opens the trade sheet inline, the same overlay the meme board uses.
@@ -126,9 +123,8 @@ export function MobileMarketView({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-6">
-        {/* Search — only Spot and Memecoins list a searchable set; the perps
-            desk and prediction own their selection, so hide it on those tabs. */}
-        {activeTab === 0 || activeTab === 2 ? (
+        {/* Search — only Spot and Memecoins list a searchable set */}
+        {activeTab === 0 || activeTab === 1 ? (
           <div className="flex h-[51px] shrink-0 items-center gap-1 rounded-[50px] border-2 border-white/2 bg-white/5 px-6">
             <svg
               width={14}
@@ -187,12 +183,7 @@ export function MobileMarketView({
           ))}
         </div>
 
-        {/* Perps renders its own trading view inline; Spot shows the token list. */}
         {activeTab === 1 ? (
-          <div className="mt-3 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-            <PerpsSection />
-          </div>
-        ) : activeTab === 2 ? (
           <div className="-mx-1 mt-2 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
             {memeLoading && memeRows.length === 0
               ? [0, 1, 2, 3, 4, 5].map((i) => (
@@ -235,7 +226,7 @@ export function MobileMarketView({
               </p>
             ) : null}
           </div>
-        ) : activeTab === 3 ? (
+        ) : activeTab === 2 ? (
           <div className="mt-3 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
             {predictionSlot}
           </div>

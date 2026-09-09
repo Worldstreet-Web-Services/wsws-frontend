@@ -100,13 +100,13 @@ describe("Market Square card", () => {
     expect(join).toHaveAttribute("href", `${home}/live/r1`);
     expect(join).toHaveAttribute("target", "_blank");
     expect(join).toHaveAttribute("rel", "noopener noreferrer");
-    expect(link(/Open Market Square/)).toHaveAttribute("href", home);
+    expect(link(/Open Square/)).toHaveAttribute("href", home);
   });
 
   it("invites the reader in when no room is live, faces from the design", () => {
     const { container } = renderWithIntl(<SquareCard room={null} avatars={[]} homeHref={home} />);
     expect(screen.getByText("Live rooms on Market Square, all day")).toBeInTheDocument();
-    expect(link(/Open Market Square/)).toHaveAttribute("href", home);
+    expect(link(/Open Square/)).toHaveAttribute("href", home);
     expect(link(/Start a room/)).toHaveAttribute("target", "_blank");
     expect(container.querySelector('img[src="/market/convo-avatar-4.png"]')).not.toBeNull();
   });

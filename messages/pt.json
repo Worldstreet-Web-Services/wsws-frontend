@@ -148,7 +148,13 @@
     "txSecondsAgo": "há {n} s",
     "txMinutesAgo": "há {n} min",
     "txHoursAgo": "há {n} h",
-    "txDaysAgo": "há {n} d"
+    "txDaysAgo": "há {n} d",
+    "marketMetrics": "Métricas do mercado",
+    "closeMetrics": "Fechar métricas",
+    "marketCap": "Cap. de mercado",
+    "volume24h": "Volume (24h)",
+    "liquidity": "Liquidez",
+    "fdv": "FDV"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -724,11 +730,11 @@
     "tokenMoveFlat": "<b>O {symbol} está estável</b> nas últimas 24 horas.",
     "tokenMoveUnknown": "O <b>{symbol}</b> não tem variação de 24 horas para mostrar agora.",
     "tabSpot": "Spot",
-    "tabLeverage": "Trading com alavancagem",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Previsão",
     "tabsAria": "Categorias de mercado",
-    "searchLabel": "Pesquisar"
+    "searchLabel": "Pesquisar",
+    "tabRealAssets": "Ativos reais"
   },
   "buySell": {
     "buy": "Comprar",
@@ -1184,7 +1190,9 @@
     "searchEventMarketsLabel": "Pesquisar mercados do evento",
     "myBets": "Minhas apostas",
     "openEventAria": "Abrir detalhes de {title}",
-    "oddsAria": "{side} {odds}"
+    "oddsAria": "{side} {odds}",
+    "predictYes": "Sim",
+    "predictNo": "Não"
   },
   "perps": {
     "eyebrow": "Perpétuos",

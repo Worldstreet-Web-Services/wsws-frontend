@@ -148,7 +148,13 @@
     "txSecondsAgo": "{n}s ago",
     "txMinutesAgo": "{n}m ago",
     "txHoursAgo": "{n}h ago",
-    "txDaysAgo": "{n}d ago"
+    "txDaysAgo": "{n}d ago",
+    "marketMetrics": "Market Metrics",
+    "closeMetrics": "Close Market Metrics",
+    "marketCap": "Market Cap",
+    "volume24h": "Volume (24h)",
+    "liquidity": "Liquidity",
+    "fdv": "FDV"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -724,11 +730,11 @@
     "tokenMoveFlat": "<b>{symbol} is flat</b> over the last 24 hours.",
     "tokenMoveUnknown": "<b>{symbol}</b> has no 24 hour move to show right now.",
     "tabSpot": "Spot",
-    "tabLeverage": "Leverage Trading",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Prediction",
     "tabsAria": "Market categories",
-    "searchLabel": "Search"
+    "searchLabel": "Search",
+    "tabRealAssets": "Real assets"
   },
   "buySell": {
     "buy": "Buy",
@@ -1184,7 +1190,9 @@
     "searchEventMarketsLabel": "Search event markets",
     "myBets": "My bets",
     "openEventAria": "Open {title} details",
-    "oddsAria": "{side} {odds}"
+    "oddsAria": "{side} {odds}",
+    "predictYes": "Yes",
+    "predictNo": "No"
   },
   "perps": {
     "eyebrow": "Perpetuals",

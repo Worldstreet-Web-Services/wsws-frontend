@@ -8,3 +8,4 @@ export {
   buildLegacyClaimCalls,
   type LegacyClaimState,
 } from "./lib/legacy-claim";
+export { PredictionMarketList } from "./components/prediction-market-list";

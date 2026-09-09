@@ -88,12 +88,7 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
           the note in the component for why it is not one per panel. */}
       <ConnectionBanner />
 
-      <CurvedTabBar
-        items={nav}
-        activeSection={activeSection}
-        onNavigate={navigate}
-        onOpenMore={() => setMenuOpen(true)}
-      />
+      <CurvedTabBar items={nav} activeSection={activeSection} onNavigate={navigate} />
 
       {/* The live indicator and the minimised self-view. Docked, never
           floating over content: the dock reserves its own height so the page

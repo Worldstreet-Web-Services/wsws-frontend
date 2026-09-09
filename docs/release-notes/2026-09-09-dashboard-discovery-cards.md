@@ -104,3 +104,16 @@ client, trade modal, brief, feed section) and `HIDDEN_NAV_SECTIONS` in
 `lib/sections.ts` is emptied, which is the switch that had kept the section
 out of the rail on main. Real assets now shows in the desktop rail, the
 phone drawer, the marquee and the dashboard briefs.
+
+## The phone Market page
+
+The phone now has the 2.0 Market page at `/market`, with Spot, Memecoins,
+Real assets and Prediction tabs. Spot and Memecoins are paged lists that open
+a ticket in place; Real assets hosts the desk's section; Prediction hosts the
+market list with its bet modal. Below `md`, `/spot`, `/meme`, `/rwa` and
+`/prediction` hand off to the matching tab, and the Market page hands back to
+the desktop route at `md` and up. The dock's second icon opens the Market
+page and its last icon opens Activity; the phone has no drawer. The phone
+balance card's coins button opens the holdings modal. The Kash banner's
+headline is fitted by measuring the rendered font. Leverage, the PR's fourth
+tab, is not on this build.

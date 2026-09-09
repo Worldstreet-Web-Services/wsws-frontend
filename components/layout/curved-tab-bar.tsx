@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { marketSquareHref } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { NavItem } from "@/components/layout/nav-items";
@@ -15,8 +16,6 @@ interface CurvedTabBarProps {
   items: NavItem[];
   activeSection: SectionId;
   onNavigate: (id: SectionId) => void;
-  /** Opens the sidebar drawer so every section the bar omits stays reachable. */
-  onOpenMore: () => void;
 }
 
 // The icons that carry an active state, with their centre as a share of the
@@ -28,7 +27,7 @@ const TABS: { id: SectionId; x: number; y: number }[] = [
   { id: "casino", x: 71.6, y: 50 },
 ];
 
-// Tap zones over the art, left→right: portfolio, spot, market square, casino, more.
+// Tap zones over the art, left→right: portfolio, market, market square, casino, activity.
 const ZONES = [
   { left: 0, width: 24 },
   { left: 24, width: 17 },
@@ -37,7 +36,8 @@ const ZONES = [
   { left: 79, width: 21 },
 ];
 
-export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTabBarProps) {
+export function CurvedTabBar({ activeSection, onNavigate }: CurvedTabBarProps) {
+  const router = useRouter();
   const reduce = useReducedMotion();
   const squareHref = marketSquareHref() ?? "#";
   // Only three icons carry an active state (portfolio, spot, casino). On any
@@ -50,13 +50,15 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
 
   const onZone = (i: number) => {
     if (i === 0) onNavigate("portfolio");
-    // The second icon is the spot desk, the section its marker already claims.
-    else if (i === 1) onNavigate("spot");
+    // The second icon opens the phone Market page (its own route, outside the
+    // shell), so navigate rather than scroll-spy to a section.
+    else if (i === 1) router.push("/market");
     else if (i === 2) {
       // A sibling deployment, so it opens beside the app, as the rail does.
       if (squareHref !== "#") window.open(squareHref, "_blank", "noopener,noreferrer");
     } else if (i === 3) onNavigate("casino");
-    else onOpenMore();
+    // The last icon opens the Activity page (its own route), not the drawer.
+    else router.push("/activity");
   };
 
   return (

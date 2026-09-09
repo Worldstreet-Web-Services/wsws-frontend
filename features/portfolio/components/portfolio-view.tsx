@@ -50,7 +50,7 @@ import { isPolymarketCollateral } from "@/lib/polymarket/config";
 import type { MemeToken } from "@/lib/meme/api";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
-import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/lib/modal-types";
+import type { BuyPayload, DetailPayload, SellPayload } from "@/lib/modal-types";
 
 interface PortfolioViewProps {
   onOpenFunds: () => void;
@@ -61,7 +61,6 @@ interface PortfolioViewProps {
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
-  onOpenRwaTrade: (rwaTrade: RwaTradePayload) => void;
   onOpenMemeSell: (token: MemeToken) => void;
 }
 
@@ -105,7 +104,6 @@ export function PortfolioView({
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
-  onOpenRwaTrade,
   onOpenMemeSell,
 }: PortfolioViewProps) {
   const { tokens, loading, error, refetch } = usePortfolio();
@@ -172,9 +170,9 @@ export function PortfolioView({
   };
 
   const openToken = (token: TokenBalance) => {
-    // RWA tokens trade through the RWA service (quote + build), never Dextopus,
-    // which cannot source or deliver them. Route both buy and sell to the RWA
-    // panel. `address` is always set for an RWA (it is never a native balance).
+    // RWA tokens trade only through the RWA service, which is not on this build,
+    // and never through Dextopus, which cannot source or deliver them. The sheet
+    // shows the holding and offers no trade.
     const isRwa = token.kind === "rwa" && token.address !== null;
     // Trade-catalog memecoins sell through the meme trade service; Dextopus
     // cannot quote them, so its sell sheet always fails for these.
@@ -187,13 +185,7 @@ export function PortfolioView({
     const buyAction = isPredictionCollateral
       ? () => router.push("/prediction")
       : isRwa
-        ? () =>
-            onOpenRwaTrade({
-              network: token.network,
-              address: token.address as string,
-              symbol: token.symbol,
-              mode: "buy",
-            })
+        ? undefined
         : () =>
             onOpenBuy({
               symbol: token.symbol,
@@ -203,16 +195,7 @@ export function PortfolioView({
             });
 
     const sellAction = isRwa
-      ? {
-          cta2: t("sell", { name: token.name }),
-          onCta2: () =>
-            onOpenRwaTrade({
-              network: token.network,
-              address: token.address as string,
-              symbol: token.symbol,
-              mode: "sell",
-            }),
-        }
+      ? {}
       : isMeme
         ? {
             cta2: t("sell", { name: token.name }),
@@ -249,7 +232,11 @@ export function PortfolioView({
         { k: t("network"), v: displayNetworkLabel(token) },
         { k: t("positionValue"), v: money.format(token.valueUsd) },
       ],
-      cta: isPredictionCollateral ? t("managePrediction") : t("buyMore", { name: token.name }),
+      cta: isPredictionCollateral
+        ? t("managePrediction")
+        : isRwa
+          ? undefined
+          : t("buyMore", { name: token.name }),
       onCta: buyAction,
       ...sellAction,
       coingeckoId: coingeckoId(token.symbol) ?? undefined,

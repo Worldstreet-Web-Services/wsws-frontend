@@ -7,8 +7,6 @@ const upstream = vi.hoisted(() => ({
   dextopusRequest: vi.fn(),
   forwardEvmRpcRead: vi.fn(),
   fetchMarketTokens: vi.fn(),
-  fetchRwaMarket: vi.fn(),
-  wsapiRwaRequest: vi.fn(),
   readActiveGamesWith: vi.fn(),
   fetch: vi.fn(),
 }));
@@ -17,10 +15,6 @@ vi.mock("@/lib/server/alchemy", () => ({ fetchPrices: upstream.fetchPrices }));
 vi.mock("@/lib/server/dextopus", () => ({ dextopusRequest: upstream.dextopusRequest }));
 vi.mock("@/lib/server/evm-rpc", () => ({ forwardEvmRpcRead: upstream.forwardEvmRpcRead }));
 vi.mock("@/lib/server/market-tokens", () => ({ fetchMarketTokens: upstream.fetchMarketTokens }));
-vi.mock("@/lib/server/rwa-prices", () => ({ fetchRwaMarket: upstream.fetchRwaMarket }));
-vi.mock("@/lib/server/wsapi", () => ({
-  wsapiRwaRequest: upstream.wsapiRwaRequest,
-}));
 vi.mock("@/lib/vault/read", () => ({ readActiveGamesWith: upstream.readActiveGamesWith }));
 vi.mock("@/lib/server/upstreams", () => ({
   TRADE_BASE: "https://trade.test",
@@ -70,22 +64,6 @@ function healthyUpstreams() {
       marketCap: 9,
     },
   ]);
-  upstream.wsapiRwaRequest.mockResolvedValue(
-    ok([
-      {
-        id: "usdy-base",
-        chain: "base",
-        address: "0xUsdy",
-        symbol: "USDY",
-        name: "Ondo",
-        issuer: "Ondo",
-        category: "treasury",
-        priceUsd: "1.14",
-        freelyTradable: true,
-      },
-    ])
-  );
-  upstream.fetchRwaMarket.mockResolvedValue({ "usdy-base": { change24h: -0.01 } });
   upstream.readActiveGamesWith.mockResolvedValue([
     {
       gameId: 7,
@@ -250,12 +228,6 @@ describe("buildDashboardFeed", () => {
         change24h: 12.5,
       },
     ]);
-    expect(feed.rwa?.[0]).toMatchObject({
-      id: "usdy-base",
-      priceUsd: 1.14,
-      change24h: -0.01,
-      logo: "/api/token-logo/base/0xUsdy",
-    });
     // The indexed round leads by pot; the chain-only round is priced from ETH.
     expect(feed.live?.rounds.map((r) => [r.gameId, r.potUsd, r.pot])).toEqual([
       [7, 3000, "$3000.00"],
@@ -264,17 +236,6 @@ describe("buildDashboardFeed", () => {
     expect(feed.live?.chess).toEqual([{ id: "c1" }]);
     expect(feed.live?.checkers).toEqual([{ id: "d1" }]);
     expect(feed.asOf).toBe(NOW * 1000);
-  });
-
-  it("marks a section unavailable when its upstream is down, and keeps the rest", async () => {
-    healthyUpstreams();
-    upstream.wsapiRwaRequest.mockResolvedValue(down());
-
-    const feed = await buildDashboardFeed();
-
-    expect(feed.rwa).toBeNull();
-    expect(feed.spot).not.toBeNull();
-    expect(feed.memes).not.toBeNull();
   });
 
   // Trending is mostly Solana, and discovery is Base-only for now, so after
@@ -378,7 +339,6 @@ describe("buildDashboardFeed", () => {
     await buildDashboardFeed();
 
     expect(a).toBe(b);
-    expect(upstream.wsapiRwaRequest).toHaveBeenCalledTimes(1);
     expect(upstream.dextopusRequest).toHaveBeenCalledTimes(1);
   });
 });

@@ -95,7 +95,6 @@ const handlers = () => ({
   onOpenDetail: vi.fn(),
   onOpenBuy: vi.fn(),
   onOpenSell: vi.fn(),
-  onOpenRwaTrade: vi.fn(),
   onOpenMemeSell: vi.fn(),
   onAddFunds: vi.fn(),
 });
@@ -230,20 +229,20 @@ describe("HoldingsModal", () => {
     );
   });
 
-  it("routes a held RWA to the RWA panel rather than the swap sheets", () => {
+  it("shows a held RWA without a trade action, since its desk is not on this build", () => {
     setPortfolio({
       tokens: [token({ symbol: "TSLAx", name: "Tesla", kind: "rwa", network: "base-mainnet" })],
     });
-    const { onOpenDetail, onOpenRwaTrade, onOpenBuy } = renderModal();
+    const { onOpenDetail, onOpenBuy, onOpenSell } = renderModal();
 
     fireEvent.click(screen.getByText("TSLAx"));
     const detail = onOpenDetail.mock.calls[0][0];
 
-    detail.onCta();
-    detail.onCta2();
+    expect(detail.cta).toBeUndefined();
+    expect(detail.onCta).toBeUndefined();
+    expect(detail.cta2).toBeUndefined();
     expect(onOpenBuy).not.toHaveBeenCalled();
-    expect(onOpenRwaTrade).toHaveBeenCalledWith(expect.objectContaining({ mode: "buy" }));
-    expect(onOpenRwaTrade).toHaveBeenCalledWith(expect.objectContaining({ mode: "sell" }));
+    expect(onOpenSell).not.toHaveBeenCalled();
   });
 
   it("routes a held catalog memecoin to the meme trade sheet", () => {

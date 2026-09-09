@@ -268,7 +268,6 @@ export function BalanceCardDesktop({
               onOpenDetail={modals.openDetail}
               onOpenBuy={modals.openBuy}
               onOpenSell={modals.openSell}
-              onOpenRwaTrade={modals.openRwaTrade}
               onOpenMemeSell={modals.openMemeSell}
               onAddFunds={() => {
                 closeHoldings();

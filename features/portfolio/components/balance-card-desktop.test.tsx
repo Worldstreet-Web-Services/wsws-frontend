@@ -67,7 +67,6 @@ const appModals = vi.hoisted(() => ({
   openDetail: vi.fn(),
   openBuy: vi.fn(),
   openSell: vi.fn(),
-  openRwaTrade: vi.fn(),
   openMemeSell: vi.fn(),
   openFunds: vi.fn(),
   close: vi.fn(),

@@ -295,46 +295,4 @@ describe("Real assets hidden from the rail", () => {
     expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Spot" })).toBeInTheDocument();
   });
-
-  // An onboarding interest that leads with Real assets (stocks, gold, yield,
-  // real estate, treasuries) must not put the row back through the reorder.
-  it("offers no Real assets entry for the interests that point at it", () => {
-    renderRail(buildNav("stocks"));
-    expect(screen.queryByRole("button", { name: "Real assets" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
-  });
-
-  it("puts the entry back when the switch is flipped", async () => {
-    vi.resetModules();
-    vi.doMock("@/lib/sections", async () => {
-      const actual = await vi.importActual<typeof import("@/lib/sections")>("@/lib/sections");
-      return { ...actual, HIDDEN_NAV_SECTIONS: [] };
-    });
-    const { buildNav: buildShown } = await import("./nav-items");
-    const { Sidebar: Shown } = await import("./sidebar");
-    render(
-      <Shown
-        items={buildShown(null)}
-        activeSection="portfolio"
-        onNavigate={() => {}}
-        open={false}
-        onClose={() => {}}
-      />
-    );
-    expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
-  });
-
-  /**
-   * /rwa is still a route, so someone can land on it by URL and the shell
-   * still derives "rwa" as the active section. With no row to light, the rail
-   * must simply light none of them rather than fall back onto Portfolio or
-   * mark the row that happens to sit where Real assets used to.
-   */
-  it("highlights no row when the active section has no entry", () => {
-    const { container } = renderRail(buildNav(null), "rwa");
-    const rail = container.querySelector("nav");
-    if (rail === null) throw new Error("the rail rendered no nav element");
-    const highlighted = [...rail.children].filter((el) => el.className.includes("bg-accent/14"));
-    expect(highlighted).toEqual([]);
-  });
 });

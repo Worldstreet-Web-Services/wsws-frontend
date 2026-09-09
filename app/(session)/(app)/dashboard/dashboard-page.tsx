@@ -9,7 +9,6 @@ import { PortfolioView } from "@/features/portfolio";
 import { SectionOverview } from "@/components/ui/section-overview";
 import { SpotOverview } from "@/features/trade/components/spot-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
-import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { TokenMovesSection } from "@/features/trade/components/token-moves-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
 import { PredictionMobile } from "@/features/prediction";
@@ -22,7 +21,6 @@ import { SectionVisibility } from "@/components/ui/section-visibility";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { BankDepositAnalytics } from "@/features/funds";
 import { CrossBorderBanner } from "@/features/remit/components/cross-border-banner";
-import { RwaSettlementTracker } from "@/features/rwa/components/rwa-settlement-tracker";
 import { MemeSettlementTracker } from "@/features/trade/components/meme-settlement-tracker";
 import { SquareComposeFab, SquareSection } from "@/features/square";
 import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features/square";
@@ -61,13 +59,13 @@ const PREVIEW_ROWS = 4;
  * service is, four live rows, and the way in. The order is not fixed here: the
  * nav decides it, so the section a user chose at onboarding still leads.
  */
-const BRIEFED_SECTIONS = ["spot", "meme", "rwa"] as const;
+const BRIEFED_SECTIONS = ["spot", "meme"] as const;
 type BriefedSectionId = (typeof BRIEFED_SECTIONS)[number];
 
-// Briefs hidden from the dashboard at request. All three stay full routes of
+// Briefs hidden from the dashboard at request. Both stay full routes of
 // their own; they just do not get a brief here, so the dashboard shows no
 // service brief at all. Remove an id to bring its brief back.
-const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme"];
+const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "meme"];
 
 function isBriefed(id: SectionId): id is BriefedSectionId {
   return (BRIEFED_SECTIONS as readonly SectionId[]).includes(id);
@@ -76,7 +74,6 @@ function isBriefed(id: SectionId): id is BriefedSectionId {
 const BRIEF_HREF: Record<BriefedSectionId, string> = {
   spot: "/spot",
   meme: "/meme",
-  rwa: "/rwa",
 };
 
 // Which doorway follows which brief, indexed by the brief's position. Spread
@@ -121,12 +118,10 @@ const SCROLL_SECTIONS: readonly SectionId[] = ["portfolio"];
 const Portfolio = memo(PortfolioView);
 const Spot = memo(SpotOverview);
 const Meme = memo(MemeOverview);
-const Rwa = memo(RwaOverview);
 
 const BRIEF_BODY: Record<BriefedSectionId, (props: { rows: number }) => React.ReactNode> = {
   spot: Spot,
   meme: Meme,
-  rwa: Rwa,
 };
 
 // The dashboard as the browser runs it. page.tsx beside this file is the
@@ -275,7 +270,6 @@ export function DashboardPage() {
 
   return (
     <>
-      <RwaSettlementTracker />
       <MemeSettlementTracker />
       {/* Reports settled deposits. It used to ride on the recent-activity
             list that stood here; it is mounted on its own now that history
@@ -297,7 +291,6 @@ export function DashboardPage() {
           onOpenBuy={modals.openBuy}
           onOpenSell={modals.openSell}
           onOpenMemeSell={modals.openMemeSell}
-          onOpenRwaTrade={modals.openRwaTrade}
         />
       </SectionVisibility>
 
@@ -350,8 +343,8 @@ export function DashboardPage() {
                   that called useSectionActive() in its own body would sit
                   ABOVE its own returned JSX and read the context default, so
                   it would poll regardless — the trap that made the RWA gating
-                  dead code. RwaOverview and MemeOverview both run gated hooks
-                  in their bodies, so a brief off screen must be wrapped from
+                  dead code. MemeOverview runs gated hooks in its body, so a
+                  brief off screen must be wrapped from
                   out here to stay quiet. Renders a div with the same id and
                   classes, so the scroll-spy anchor is unchanged. */}
             <SectionVisibility id={id} className={SECTION_CLASS}>

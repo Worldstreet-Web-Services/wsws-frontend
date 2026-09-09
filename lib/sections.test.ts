@@ -35,14 +35,3 @@ describe("orderedSections", () => {
     expect(new Set(order).size).toBe(order.length);
   });
 });
-
-// Production hides real assets for now; staging shows them, and the
-// interests that point at them lead with them.
-describe("real assets in the navigation on staging", () => {
-  it("is offered, and led with for the interests that point at it", () => {
-    expect(orderedSections(null)).toContain("rwa");
-    for (const interest of ["stocks", "gold", "yield", "realestate", "treasuries"]) {
-      expect(orderedSections(interest)[1]).toBe("rwa");
-    }
-  });
-});

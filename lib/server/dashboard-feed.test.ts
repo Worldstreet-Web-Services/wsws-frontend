@@ -252,6 +252,9 @@ describe("buildDashboardFeed", () => {
     ]);
     expect(feed.rwa?.[0]).toMatchObject({
       id: "usdy-base",
+      issuer: "Ondo",
+      category: "treasury",
+      apyBps: null,
       priceUsd: 1.14,
       change24h: -0.01,
       logo: "/api/token-logo/base/0xUsdy",
@@ -275,6 +278,36 @@ describe("buildDashboardFeed", () => {
     expect(feed.rwa).toBeNull();
     expect(feed.spot).not.toBeNull();
     expect(feed.memes).not.toBeNull();
+  });
+
+  // The "Own the Real World" shelf picks one asset per category out of the
+  // rwa section, so the section carries every listed asset and its yield,
+  // not the eight the brief shows.
+  it("carries every listed real asset with its category and yield", async () => {
+    healthyUpstreams();
+    upstream.wsapiRwaRequest.mockResolvedValue(
+      ok(
+        Array.from({ length: 12 }, (_, i) => ({
+          id: `asset-${i}`,
+          chain: "base",
+          address: `0xAsset${i}`,
+          symbol: `A${i}`,
+          name: `Asset ${i}`,
+          issuer: "Issuer",
+          category: i % 2 ? "equity" : "treasury",
+          yieldApyBps: i % 2 ? undefined : 360,
+          priceUsd: "1",
+          freelyTradable: true,
+        }))
+      )
+    );
+    upstream.fetchRwaMarket.mockResolvedValue({});
+
+    const feed = await buildDashboardFeed();
+
+    expect(feed.rwa).toHaveLength(12);
+    expect(feed.rwa?.[0]).toMatchObject({ category: "treasury", apyBps: 360 });
+    expect(feed.rwa?.[1]).toMatchObject({ category: "equity", apyBps: null });
   });
 
   // Trending is mostly Solana, and discovery is Base-only for now, so after

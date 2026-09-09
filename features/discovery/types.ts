@@ -69,3 +69,23 @@ export interface MemeSpot {
   image: string | null;
   href: string;
 }
+
+/** One tokenised asset the "Own the Real World" cards can feature. */
+export interface RwaSpot {
+  id: string;
+  symbol: string;
+  name: string;
+  /** Who stands behind it, e.g. "Ondo Finance". */
+  issuer: string;
+  /** The registry's category: commodity, treasury, real-estate, equity, ... */
+  category: string;
+  /** Formatted, e.g. "$403.83", or null when the feed has no price. */
+  price: string | null;
+  /** Formatted and signed, e.g. "+0.26%", or null when the feed has no move. */
+  change: string | null;
+  up: boolean;
+  /** Formatted published yield, e.g. "3.76%", or null for an asset that pays none. */
+  apy: string | null;
+  logo: string | null;
+  href: string;
+}

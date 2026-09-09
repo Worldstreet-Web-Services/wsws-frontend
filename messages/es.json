@@ -2849,6 +2849,27 @@
     "squareStart": "Crear una sala",
     "memeBoomTitle": "{symbol} está en auge",
     "memeCoolTitle": "{symbol} se enfría",
-    "memeBuy": "Comprar {symbol}"
+    "memeBuy": "Comprar {symbol}",
+    "realAssetsTitle": "Sé dueño del <accent>mundo real</accent>",
+    "realAssetsCarousel": "Activos reales",
+    "rwaGoldKicker": "Oro y materias primas",
+    "rwaGoldHeadline": "Oro, tokenizado",
+    "rwaGoldIdle": "Oro físico, custodiado en bóvedas y negociado como token.",
+    "rwaTreasuriesKicker": "Bonos del Tesoro de EE. UU.",
+    "rwaTreasuriesHeadline": "Rendimiento de bonos del Tesoro",
+    "rwaTreasuriesIdle": "Deuda pública a corto plazo, con rendimiento on-chain.",
+    "rwaRealEstateKicker": "Inmuebles",
+    "rwaRealEstateHeadline": "Propiedad, en fracciones",
+    "rwaRealEstateIdle": "Una parte de edificios y terrenos, desde pocos dólares.",
+    "rwaStocksKicker": "Acciones y ETF",
+    "rwaStocksHeadline": "Wall Street, on-chain",
+    "rwaStocksIdle": "Apple, Nvidia, el S&P 500, en forma de tokens.",
+    "rwaBy": "de {issuer}",
+    "rwaApyLabel": "APY",
+    "rwaBuy": "Comprar {symbol}",
+    "rwaEarn": "Ganar {apy}",
+    "rwaOwn": "Tener una parte",
+    "rwaTrade": "Operar {symbol}",
+    "rwaExplore": "Explorar activos reales"
   }
 }

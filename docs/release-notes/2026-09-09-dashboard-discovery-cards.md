@@ -135,3 +135,15 @@ on the right, as many rows as the phone holds with the shared foot pager,
 filtered by the page's search box. A tap opens the asset's sheet, which
 carries Buy. The desk's section keeps its sheets and renders the list in
 place of its table when hosted on the phone.
+
+## Own the Real World (2026-09-10)
+
+A fifth shelf, last on both the phone and desktop discovery areas, for the
+reader whose onboarding interest was stocks, gold, yield, real estate or
+treasuries: Gold, Treasuries, Real estate and Stocks cards, each in its own
+hue with a motif drawn in CSS, each featuring live assets from the desk with
+the feed's price, move or yield, each leading to the desk. The stocks card
+rotates through the tokenised stocks. The cards read the dashboard feed the
+page already loads: its real-assets section now carries every listed asset
+with its category, issuer and yield, so no new poll is mounted. ADR:
+`docs/adr/ADR-2026-09-10-real-assets-shelf.md`.

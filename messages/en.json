@@ -2849,6 +2849,27 @@
     "squareStart": "Start a room",
     "memeBoomTitle": "{symbol} is Booming",
     "memeCoolTitle": "{symbol} is Cooling",
-    "memeBuy": "Buy {symbol}"
+    "memeBuy": "Buy {symbol}",
+    "realAssetsTitle": "Own the <accent>Real World</accent>",
+    "realAssetsCarousel": "Real assets",
+    "rwaGoldKicker": "Gold & commodities",
+    "rwaGoldHeadline": "Gold, tokenised",
+    "rwaGoldIdle": "Physical gold, held in vaults and traded as a token.",
+    "rwaTreasuriesKicker": "US Treasuries",
+    "rwaTreasuriesHeadline": "Yield from Treasuries",
+    "rwaTreasuriesIdle": "Short-dated government paper, paying yield on-chain.",
+    "rwaRealEstateKicker": "Real estate",
+    "rwaRealEstateHeadline": "Property, in fractions",
+    "rwaRealEstateIdle": "Own a share of buildings and land, from a few dollars.",
+    "rwaStocksKicker": "Stocks & ETFs",
+    "rwaStocksHeadline": "Wall Street, on-chain",
+    "rwaStocksIdle": "Apple, Nvidia, the S&P 500, held as tokens.",
+    "rwaBy": "by {issuer}",
+    "rwaApyLabel": "APY",
+    "rwaBuy": "Buy {symbol}",
+    "rwaEarn": "Earn {apy}",
+    "rwaOwn": "Own a share",
+    "rwaTrade": "Trade {symbol}",
+    "rwaExplore": "Explore real assets"
   }
 }

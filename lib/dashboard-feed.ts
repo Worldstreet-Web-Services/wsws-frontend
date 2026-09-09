@@ -29,6 +29,11 @@ export interface RwaBriefRow {
   id: string;
   symbol: string;
   name: string;
+  issuer: string;
+  /** The registry's category: treasury, equity, commodity, real-estate, credit, fund, carbon. */
+  category: string | null;
+  /** Published yield in basis points, for the assets that pay one. */
+  apyBps: number | null;
   /** Route-relative logo URL, resolved by the token-logo handler. */
   logo: string;
   priceUsd: number | null;

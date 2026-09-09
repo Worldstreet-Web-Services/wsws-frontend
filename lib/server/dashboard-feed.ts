@@ -150,7 +150,10 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
   const assets = await envelopeData<RwaApiAsset[]>(
     await wsapiRwaRequest("assets", { method: "GET", revalidate: 60 })
   );
-  const listed = listedRwaAssets(assets).slice(0, DASHBOARD_FEED_ROWS);
+  // Every listed asset, not the brief's eight: the "Own the Real World" shelf
+  // picks one per category out of this, and composing it here once for
+  // everyone is what keeps the dashboard from mounting the desk's own poll.
+  const listed = listedRwaAssets(assets);
   // Market stats are an enrichment; the registry's own price still stands
   // when the market read fails.
   const market = await fetchRwaMarket(
@@ -163,6 +166,9 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
       id: a.id,
       symbol: a.symbol,
       name: a.name,
+      issuer: a.issuer,
+      category: a.category ?? null,
+      apyBps: typeof a.yieldApyBps === "number" ? a.yieldApyBps : null,
       logo: rwaLogoPath(a.chain, a.address),
       priceUsd: assetPriceUsd(a) ?? stats?.priceUsd ?? null,
       change24h: stats?.change24h ?? null,

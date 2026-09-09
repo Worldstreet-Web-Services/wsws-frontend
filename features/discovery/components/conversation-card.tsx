@@ -247,10 +247,12 @@ export function RoomPill({
   external,
   tone,
 }: PillLink & { tone: "solid" | "outline" }) {
-  const className = `ws-pressable flex items-center justify-center gap-[5.115px] rounded-full px-[17.224px] text-center font-serif text-[12px] leading-[1.2] font-medium text-white capitalize ${
+  // Below md the pills step down: 11px type in a 30px pill, so the copy beside
+  // them keeps its column on a phone. md and up is the design's 34.4px.
+  const className = `ws-pressable flex items-center justify-center gap-[5.115px] rounded-full px-[12px] text-center font-serif text-[11px] leading-[1.2] font-medium text-white capitalize md:px-[17.224px] md:text-[12px] ${
     tone === "solid"
-      ? "min-h-[34.447px] bg-[#d12727] py-[10px]"
-      : "min-h-[35px] border-[1.435px] border-white py-[8.8px]"
+      ? "min-h-[30px] bg-[#d12727] py-[7px] md:min-h-[34.447px] md:py-[10px]"
+      : "min-h-[30px] border-[1.435px] border-white py-[5.8px] md:min-h-[35px] md:py-[8.8px]"
   }`;
   const body = (
     <>
@@ -368,7 +370,7 @@ export function ConversationCard({
             here rather than the width, so a longer locale widens the column
             instead of being clipped inside it. Past the 66% cap the label
             wraps inside the pill rather than being cut. */}
-        <div className="flex max-w-[66%] min-w-[112px] shrink-0 flex-col items-stretch gap-[9px]">
+        <div className="flex max-w-[52%] min-w-[96px] shrink-0 flex-col items-stretch gap-[7px] md:max-w-[66%] md:min-w-[112px] md:gap-[9px]">
           <RoomPill {...primary} tone="solid" />
           <RoomPill {...secondary} tone="outline" />
         </div>

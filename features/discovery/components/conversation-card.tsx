@@ -347,7 +347,7 @@ export function ConversationCard({
             lines at the widths the card is actually rendered at. The 2.32px is
             the copy sitting that much lower than the pills. */}
         <div className="mt-[2.32px] max-w-[62%] min-w-0 flex-1">
-          <p className="flex items-center gap-[4.878px] font-serif text-[11px] leading-[1.2] font-semibold text-white">
+          <p className="flex items-center gap-[4.878px] font-serif text-[10px] leading-[1.2] font-semibold text-white md:text-[11px]">
             {kicker.icon}
             {/* The kicker wraps to a second line before it gives up any of
                 itself; an ellipsis there would be the name with its second
@@ -355,8 +355,11 @@ export function ConversationCard({
             <span className="line-clamp-2">{kicker.label}</span>
           </p>
           {/* Two lines then an ellipsis, as drawn. The clamp keeps the row's
-              top clear of the art above it, which ends 93px down. */}
-          <h3 className="mt-[9.34px] line-clamp-2 font-serif text-[23px] leading-[1.1] font-bold text-white">
+              top clear of the art above it, which ends 93px down. The design
+              draws the headline at 23px on a 482px card; a phone's card is
+              narrower and the same words at that size ran to the clamp, so
+              below md it steps down to 17px. */}
+          <h3 className="mt-[9.34px] line-clamp-2 font-serif text-[17px] leading-[1.1] font-bold text-white md:text-[23px]">
             {headline}
           </h3>
         </div>

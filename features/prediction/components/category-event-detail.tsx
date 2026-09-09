@@ -61,10 +61,10 @@ export function CategoryEventDetail({ category, eventId }: CategoryEventDetailPr
           category={category}
         />
 
-        <div className="mx-auto w-full max-w-[1440px] px-3 py-5 md:px-5">
+        <div className="mx-auto w-full max-w-[1440px] px-3 py-5 max-xl:pb-28 md:px-5">
           <Link
             href={backHref}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[#999] transition-colors hover:text-white"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-[#999] transition-colors hover:text-white max-md:min-h-11"
           >
             <span aria-hidden="true">←</span>
             Back to {category} markets
@@ -74,7 +74,7 @@ export function CategoryEventDetail({ category, eventId }: CategoryEventDetailPr
             <div className="mt-4 space-y-2" role="status" aria-label="Loading event markets">
               <div className="h-36 animate-pulse rounded-md bg-[#242424]" />
               {Array.from({ length: 6 }, (_, index) => (
-                <div key={index} className="h-[94px] animate-pulse bg-[#242424]" />
+                <div key={index} className="h-[94px] animate-pulse bg-[#242424] max-md:h-[172px]" />
               ))}
             </div>
           ) : query.error || !query.event ? (
@@ -83,7 +83,7 @@ export function CategoryEventDetail({ category, eventId }: CategoryEventDetailPr
               <button
                 type="button"
                 onClick={() => void query.refetch()}
-                className="mt-4 cursor-pointer rounded-lg bg-[#b9fcff] px-5 py-2 text-xs font-semibold text-[#171717]"
+                className="mt-4 cursor-pointer rounded-lg bg-[#b9fcff] px-5 py-2 text-xs font-semibold text-[#171717] max-md:inline-flex max-md:h-11 max-md:items-center max-md:justify-center"
               >
                 Try again
               </button>
@@ -177,14 +177,17 @@ function CategoryEventContent({
       <section className="overflow-hidden rounded-md border border-[#303030] bg-[#171717]">
         <div className="flex flex-col gap-3 border-b border-[#2b2b2b] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold">Markets · {event.marketCount}</h2>
-          <label className="flex h-9 w-full items-center rounded-lg border border-[#3a3a3a] bg-[#242424] px-3 text-[#777] focus-within:border-[#666] sm:max-w-xs">
+          <label className="flex h-9 w-full items-center rounded-lg border border-[#3a3a3a] bg-[#242424] px-3 text-[#777] focus-within:border-[#666] max-md:h-11 sm:max-w-xs">
             <span className="sr-only">Search event markets</span>
             <CategorySearchIcon className="size-4 shrink-0" />
             <input
               value={search}
               onChange={(changeEvent) => onSearch(changeEvent.target.value)}
               placeholder="Search markets..."
-              className="min-w-0 flex-1 bg-transparent px-2 text-xs text-white outline-none placeholder:text-[#777]"
+              // text-base (16px) on phone stops iOS Safari auto-zooming the
+              // page when this field gets focus; text-xs (12px) is under its
+              // 16px zoom threshold. md and up keep the original text-xs.
+              className="min-w-0 flex-1 bg-transparent px-2 text-xs text-white outline-none placeholder:text-[#777] max-md:text-base"
             />
           </label>
         </div>

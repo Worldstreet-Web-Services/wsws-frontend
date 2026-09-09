@@ -3,7 +3,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { MobileMarketView } from "@/features/trade/components/mobile-market-view";
-import { PredictionView } from "@/features/prediction";
+import { PredictionMarketList } from "@/features/prediction";
 
 // The phone Market page (Figma 173:42337): a full-screen Spot trading view with
 // its own MARKET head, standalone from the app shell. It lives in (session) —
@@ -16,7 +16,7 @@ export default function MarketPage() {
       <MobileMarketView
         onOpenDetail={modals.openDetail}
         onOpenBuy={modals.openBuy}
-        predictionSlot={<PredictionView />}
+        predictionSlot={<PredictionMarketList />}
       />
       <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
     </AuthGuard>

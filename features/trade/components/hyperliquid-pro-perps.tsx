@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { TradingViewChart } from "@/components/ui/tradingview-chart";
@@ -11,6 +11,7 @@ import { HyperliquidFundModal } from "@/features/trade/components/hyperliquid-fu
 import { HyperliquidWithdrawModal } from "@/features/trade/components/hyperliquid-withdraw-modal";
 import { HyperliquidPositionsList } from "@/features/trade/components/hyperliquid-positions-list";
 import { HyperliquidOrdersList } from "@/features/trade/components/hyperliquid-orders-list";
+import { PerpLedgerTabs } from "@/features/trade/components/perp-ledger-tabs";
 import {
   PerpOrderTicket,
   type PerpOrderSide,
@@ -51,6 +52,41 @@ const MIN_ORDER_NOTIONAL_USDC = 10;
 const COLLATERAL_SYMBOL = "USDC";
 const COLLATERAL_DECIMALS = 6;
 
+// The width LeverageDesktopLayout puts its two columns side by side at. It is
+// that file's own breakpoint, repeated here rather than exported, because the
+// layout is geometry and this is the only screen that has to branch on it.
+// Below it the desk is one scrolling page, which is the layout the 2.0
+// "Leverage Trading" frame (Figma 1:7580) is drawn for.
+const DESK_WIDTH_QUERY = "(min-width: 1080px)";
+
+function subscribeToDeskWidth(notify: () => void): () => void {
+  const query = window.matchMedia(DESK_WIDTH_QUERY);
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+}
+
+// True once the desk is laid out as two columns.
+//
+// The server has no viewport, so it answers `true`. That is deliberate and not
+// a coin toss: the desk's first paint is what this change must not disturb, and
+// answering desk width keeps the server's HTML, the hydration render and every
+// render after it identical on a desktop. A phone corrects on its first client
+// read, which costs one commit of an empty chart frame, never a TradingView
+// iframe: the chart needs a selected market, and markets have not loaded that
+// early.
+//
+// Used for two things only, both of them layout: whether the chart starts open,
+// and whether the ledger is a tab strip or a grid. Same trade-off
+// hooks/use-is-mobile.ts makes; this one stays local because it is one screen's
+// breakpoint, not a shared rule.
+function useDeskWidth(): boolean {
+  return useSyncExternalStore(
+    subscribeToDeskWidth,
+    () => window.matchMedia(DESK_WIDTH_QUERY).matches,
+    () => true
+  );
+}
+
 interface HyperliquidProPerpsProps {
   /** Deep-links to a specific market on mount, e.g. from /trade/:symbol. */
   initialSymbol?: string;
@@ -80,10 +116,21 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
   const { contexts } = useHyperliquidMarketContexts(trading.authenticated);
   const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol);
   const [busy, setBusy] = useState(false);
+  const deskWidth = useDeskWidth();
   // The chart's open/closed state. ChartPanelShell and its toggle are both
   // controlled, and the layout takes the toggle and the panel as two separate
   // slots, so the state has to live here.
-  const [chartOpen, setChartOpen] = useState(true);
+  //
+  // `null` means the trader has not touched the toggle yet, and the viewport
+  // answers instead: open on the desk, which is what this desk has always done,
+  // and collapsed on a phone, where the comp opens the screen on "View Chart"
+  // (Figma 1:7580) and draws the opened chart as a separate frame (1:7701).
+  // Held as a choice rather than seeded into useState because useState's
+  // initial value is read once, before the client has a viewport to read.
+  // Once the trader has chosen, the choice stands: a resize must not reopen a
+  // chart they closed.
+  const [chartOpenChoice, setChartOpenChoice] = useState<boolean | null>(null);
+  const chartOpen = chartOpenChoice ?? deskWidth;
   // The chart's fullscreen state. ChartPanelShell draws the control but owns no
   // overlay on purpose: it reports the state to move to and leaves the screen to
   // decide what fullscreen means. Here it means the panel lifted out of the left
@@ -532,6 +579,72 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     ? t("exitChartFullscreen")
     : undefined;
 
+  // --- the ledger ---------------------------------------------------------
+  // The two panels, built once and placed by whichever arrangement the viewport
+  // asks for. Neither list is touched: the phone gets exactly the panels the
+  // desk has always shown, with the same callbacks.
+  const positionsPanel = (
+    <HyperliquidPositionsList
+      positions={trading.positions}
+      orders={trading.orders}
+      loading={trading.positionsLoading}
+      busy={busy}
+      walletId={trading.walletId}
+      onClosePosition={handleClosePosition}
+      onEditTrigger={handleEditTrigger}
+    />
+  );
+  const ordersPanel = (
+    <HyperliquidOrdersList
+      orders={trading.orders}
+      loading={trading.ordersLoading}
+      busy={busy}
+      onCancel={handleCancelOrder}
+    />
+  );
+
+  // The desk arrangement, unchanged: both panels side by side from xl up.
+  const ledgerGrid = (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      {positionsPanel}
+      {ordersPanel}
+    </div>
+  );
+
+  // The phone arrangement: one tab strip, from the 2.0 frame (Figma 1:7580,
+  // nodes 1:7722-1:7733). Drawn only below the desk width, so the desk's DOM is
+  // the grid above and nothing else.
+  //
+  // TWO tabs, not the comp's three. The comp's third is History, and this is
+  // why it is not here. There IS a history data source
+  // (useHyperliquidClosedPositions, over /ark/wallets/:id/positions/closed),
+  // and the phone already reaches it: HyperliquidPositionsList draws its own
+  // History affordance and owns HyperliquidHistoryModal, so the route is inside
+  // the Positions tab. A third tab could only be a second copy of that modal's
+  // list, and the list cannot be shared without splitting it out of the modal,
+  // which is not this change. A tab with nothing behind it would be worse: it
+  // would promise a surface that does not exist. When that list is extracted,
+  // this becomes a third entry in the array below and nothing else moves.
+  //
+  // Gated on the catalog the same way the fullscreen control above is: these
+  // three keys are not in messages/*.json yet, and this file must not invent
+  // English. Without them the phone falls back to the grid, which is what it
+  // shows today, rather than rendering raw key paths.
+  const ledgerTabsLabel = t.has("ledgerTabs") ? t("ledgerTabs") : null;
+  const ordersTabLabel = t.has("tabOrders") ? t("tabOrders") : null;
+  const positionsTabLabel = t.has("tabPositions") ? t("tabPositions") : null;
+  const ledgerTabs =
+    !deskWidth && ledgerTabsLabel && ordersTabLabel && positionsTabLabel
+      ? {
+          label: ledgerTabsLabel,
+          // Orders first and selected, the way the comp draws it.
+          tabs: [
+            { id: "orders", label: ordersTabLabel, panel: ordersPanel },
+            { id: "positions", label: positionsTabLabel, panel: positionsPanel },
+          ],
+        }
+      : null;
+
   return (
     // Kept from the previous layout: broadcast mode blurs anything marked
     // sensitive, and this whole desk is position data.
@@ -613,7 +726,7 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
           <ChartPanelToggle
             open={chartOpen}
             onOpenChange={(open) => {
-              setChartOpen(open);
+              setChartOpenChoice(open);
               if (!open) setChartFullscreen(false);
             }}
             label={chartOpen ? t("closeChart") : t("showChart")}
@@ -856,27 +969,7 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         // pair, so it fills orderEntry alone and these two stay empty.
         //
         // Positions and orders, full width below both columns.
-        ledger={
-          signedOut ? null : (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <HyperliquidPositionsList
-                positions={trading.positions}
-                orders={trading.orders}
-                loading={trading.positionsLoading}
-                busy={busy}
-                walletId={trading.walletId}
-                onClosePosition={handleClosePosition}
-                onEditTrigger={handleEditTrigger}
-              />
-              <HyperliquidOrdersList
-                orders={trading.orders}
-                loading={trading.ordersLoading}
-                busy={busy}
-                onCancel={handleCancelOrder}
-              />
-            </div>
-          )
-        }
+        ledger={signedOut ? null : ledgerTabs ? <PerpLedgerTabs {...ledgerTabs} /> : ledgerGrid}
       />
     </div>
   );

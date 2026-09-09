@@ -43,19 +43,44 @@ const MARGIN_MODES: readonly PerpMarginMode[] = ["cross", "isolated"];
 // thumb is inset at each end of the track, the way a native range thumb is.
 const THUMB_PX = 23;
 
-// The comp's chip: a violet fill and edge with the Kash yellow on the label
-// when it is on (173:43181). Neither the fill nor the edge has a token in this
-// app's palette yet, so both are written out; the label takes --color-kash,
-// which is the same #FFD62F the slider's filled track uses. The off state
-// carries a transparent border of the same weight so picking one does not move
-// the row.
+// The comp draws its chip at 50 x 29 (173:43181), and at 13px on a tight
+// leading it comes out 46.3 to 54.4 wide by 27 tall. Both are under the 44px
+// touch target floor, so the comp is under-spec and accessibility wins. Growing
+// the pill itself would be the wrong fix twice over: it would stop looking like
+// the comp, and this card draws the desktop desk as well, where nothing asked
+// for a taller control. So the extra target is a transparent overlay on the
+// chip. It grows what a finger can hit and moves nothing that is painted.
 //
-// The margin chips and the leverage chips share it deliberately: they are one
+// The 9px is the half of the shortfall the pill itself does not cover
+// (27 + 9 + 9 = 45). The two minimums are the floor stated outright, so a
+// smaller label or a tighter padding cannot quietly drop the target back under
+// 44 without anyone measuring again.
+const CHIP_HIT_AREA =
+  "relative before:absolute before:inset-x-0 before:-inset-y-[9px] " +
+  "before:min-h-11 before:min-w-11 before:content-['']";
+
+// The comp's chip: a violet fill and edge with the Kash yellow on the label
+// when it is on (173:43181). The label takes --color-kash, which is the same
+// #FFD62F the slider's filled track uses. The off state carries a transparent
+// border of the same weight so picking one does not move the row.
+//
+// The violet is written out because this app has no token for it. The palette
+// in app/globals.css says so in as many words ("Ark brand is monochrome: no
+// purple"), and the comp's own chip node binds no Figma variable either, so
+// there is nothing to point at in either direction. Inventing a name here would
+// put a private violet in a feature file and leave the palette still claiming
+// to be monochrome. The two values this card wants are written up for the
+// palette's owner under "TOKENS I NEED" in the change that added this note;
+// when they land, the two classes below become those tokens and nothing else
+// here moves.
+//
+// The margin chips and the leverage chips share this deliberately: they are one
 // family of choices on one card, and drawing them apart would read as two
 // unrelated controls.
 function chipClass(on: boolean, padding: string): string {
   return (
     `ws-chewy cursor-pointer rounded-lg border ${padding} text-[13px] leading-none whitespace-nowrap transition-colors ` +
+    `${CHIP_HIT_AREA} ` +
     "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 " +
     "focus-visible:ring-offset-black focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45 " +
     (on

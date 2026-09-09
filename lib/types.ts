@@ -38,6 +38,11 @@ export interface Position {
 export interface Prediction {
   tag: string;
   vol: string;
+  // The same volume as a plain dollar amount, so a surface that shows money in
+  // the reader's own currency can hand it to the money layer instead of parsing
+  // the dollars back out of `vol`. Absent when the feed states no volume: a
+  // market that reports nothing must not read as one that traded nothing.
+  volumeUsd?: number;
   q: string;
   yes: string;
   no: string;

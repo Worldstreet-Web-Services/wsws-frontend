@@ -58,6 +58,25 @@ import { fromBaseUnits } from "@/lib/trade/math";
 //   * Formatting the balance line works on the digits of a string. No
 //     arithmetic, so there is nothing to round.
 //
+// TWO COMPS, ONE FILE. Sizing is written base-first, `md:` restores the desk.
+//
+// This ticket is the whole order-entry column on both surfaces. The desktop
+// desk (Figma 173:42920) draws the three cards at 17/18px padding, a 31px
+// quantity and 15px labels; the phone (Figma 1:7580 "Leverage Trading", a
+// 402px frame with a 362px column) draws the same cards at 15/16px padding, a
+// 28px quantity and 13px labels. Only the desk's figures were ever written
+// here, so a phone was handed the desk at 402px.
+//
+// So every metric the two comps disagree on is a pair: the UNPREFIXED class
+// carries the phone comp's value and an `md:` class restores the desk's. The
+// direction matters. Written the other way round (desk at the base, a `max-`
+// query for the phone) the desk's rendering would depend on a query that has
+// to be right, and hyperliquid-pro-perps renders this at every width. This way
+// nothing at 768px and up resolves any differently than it did before.
+//
+// Anything the two comps agree on stays a single unprefixed class. A pair with
+// the same value on both sides would be noise pretending to be a decision.
+//
 // The quantity gate is spotAmountStatus from the spot ticket rather than a
 // second implementation. It is the same problem (is this decimal string
 // spendable out of this bigint balance at this many decimals) and it carries a
@@ -569,6 +588,8 @@ function ReasonLine({
 // The comp draws it without a border and on a tighter radius than the cards
 // below it, which is what separates a reference figure from something to fill
 // in.
+//
+// Sizing follows the base/md: rule set out in the file header.
 function PriceCard({
   price,
   onPriceChange,
@@ -587,11 +608,13 @@ function PriceCard({
   fieldLabel: string;
 }) {
   return (
-    <div className="bg-surface flex w-full items-center justify-between gap-3 rounded-2xl p-[17px]">
+    <div className="bg-surface flex w-full items-center justify-between gap-3 rounded-[15px] p-[15px] md:rounded-2xl md:p-[17px]">
       <div className="flex min-w-0 flex-1 flex-col gap-2 leading-none">
-        <span className="ws-discovery-title text-[15px] text-[rgba(148,163,184,0.5)]">{label}</span>
+        <span className="ws-discovery-title text-[12px] text-[rgba(148,163,184,0.5)] md:text-[15px]">
+          {label}
+        </span>
         {loading ? (
-          <span className="ws-chewy text-[15px] text-white">
+          <span className="ws-chewy text-[13px] text-white md:text-[15px]">
             <SkeletonLine width="w-[5em]" />
           </span>
         ) : onPriceChange ? (
@@ -610,13 +633,13 @@ function PriceCard({
               if (!acceptsAmountInput(next, PRICE_MAX_DECIMALS)) return;
               onPriceChange(next);
             }}
-            className="ws-chewy w-full min-w-0 bg-transparent text-[15px] text-white outline-none disabled:opacity-60"
+            className="ws-chewy w-full min-w-0 bg-transparent text-[13px] text-white outline-none disabled:opacity-60 md:text-[15px]"
           />
         ) : (
-          <span className="ws-chewy truncate text-[15px] text-white">{price}</span>
+          <span className="ws-chewy truncate text-[13px] text-white md:text-[15px]">{price}</span>
         )}
       </div>
-      <span className="ws-discovery-title shrink-0 text-[15px] whitespace-nowrap text-white">
+      <span className="ws-discovery-title shrink-0 text-[13px] whitespace-nowrap text-white md:text-[15px]">
         {quoteSymbol}
       </span>
     </div>
@@ -652,15 +675,17 @@ function QuantityCard({
 }) {
   return (
     <div
-      className={`rounded-card bg-surface flex w-full flex-col gap-3.5 border-2 p-[18px] ${
+      className={`rounded-card bg-surface flex w-full flex-col gap-3 border-2 p-4 md:gap-3.5 md:p-[18px] ${
         // The same rose the ws-invalid utility paints on field containers
         // elsewhere, so a bad amount reads the same across the app.
         invalid ? "border-down/55" : "border-hairline"
       }`}
     >
       <div className="ws-discovery-title flex items-center justify-between gap-3 whitespace-nowrap">
-        <span className="text-[15px] text-[rgba(148,163,184,0.5)]">{label}</span>
-        <span className="text-[14px] text-[rgba(179,186,196,0.6)]">{balanceLine}</span>
+        <span className="text-[13px] text-[rgba(148,163,184,0.5)] md:text-[15px]">{label}</span>
+        <span className="text-[12px] text-[rgba(179,186,196,0.6)] md:text-[14px]">
+          {balanceLine}
+        </span>
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -680,7 +705,7 @@ function QuantityCard({
             if (!acceptsAmountInput(next, asset.decimals)) return;
             onQuantityChange(next);
           }}
-          className="ws-chewy min-w-0 flex-1 bg-transparent text-[31px] text-[#f8fafc] outline-none disabled:opacity-60"
+          className="ws-chewy min-w-0 flex-1 bg-transparent text-[28px] text-[#f8fafc] outline-none disabled:opacity-60 md:text-[31px]"
         />
         <AssetPill
           symbol={asset.symbol}
@@ -710,23 +735,29 @@ function AssetPill({
   const body = (
     <>
       <AssetIcon sym={symbol} bg={tokenBg(symbol)} size={18} logo={logo} />
-      <span className="ws-discovery-title text-[15px] text-[#f8fafc]">{symbol}</span>
+      <span className="ws-discovery-title text-[13px] text-[#f8fafc] md:text-[15px]">{symbol}</span>
       {onSelect ? (
         <ChevronLeftIcon size={9} className="shrink-0 -rotate-90 text-[#f8fafc]" />
       ) : null}
     </>
   );
-  const shell = "bg-grey-800 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5";
+  const shell = "bg-grey-800 flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 md:px-3";
 
   if (!onSelect) return <span className={shell}>{body}</span>;
 
+  // A picker, so it has to be reachable with a thumb. The comp draws this pill
+  // 28px tall, which is below the 44px touch minimum, so the phone keeps the
+  // comp's padding and colours and floors the HEIGHT instead. It costs almost
+  // nothing in the layout: the row it shares is already about 42px tall from
+  // the 28px quantity beside it. md:min-h-auto is the value the desk computes
+  // today, so the desk is left exactly where it was.
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
       aria-label={label}
-      className={`${shell} hover:bg-grey-700 cursor-pointer transition-colors disabled:opacity-60`}
+      className={`${shell} hover:bg-grey-700 min-h-11 cursor-pointer transition-colors disabled:opacity-60 md:min-h-auto`}
     >
       {body}
     </button>
@@ -760,7 +791,10 @@ function TriggersDisclosure({
         onClick={() => triggers.onOpenChange(!triggers.open)}
         aria-expanded={triggers.open}
         aria-controls={panelId}
-        className="ws-discovery-title flex cursor-pointer items-center justify-between gap-3 rounded-md text-[14px] text-white transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none"
+        // Text alone stands about 21px tall, under the 44px touch minimum, so
+        // the phone floors the height. md:min-h-auto is what the desk computes
+        // today, so nothing moves there.
+        className="ws-discovery-title flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md text-[14px] text-white transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none md:min-h-auto"
       >
         {t("tpSlHeading")}
         <span
@@ -856,11 +890,14 @@ function SummaryCard({ summary }: { summary: PerpOrderSummaryView }) {
 
   return (
     // The leading is set on the card so every row inherits one line box, the
-    // way the spot summary does. 18px is Quicksand's own line box at 15px,
-    // which is what the comp draws; the Tailwind default of 1.5 adds 4.5px per
-    // row and carries 18px of it into the panel below. Nothing caps a height,
-    // so a longer label in another locale still grows the row it sits in.
-    <div className="rounded-card border-hairline-amber bg-panel flex w-full flex-col gap-2.5 border-2 p-[18px] leading-[18px] whitespace-nowrap">
+    // way the spot summary does. 18px is Quicksand's own line box at the desk's
+    // 15px, which is what that comp draws; the Tailwind default of 1.5 adds
+    // 4.5px per row and carries 18px of it into the panel below. It is not
+    // stepped for the phone: a fixed 18px box under 13px rows is looser than
+    // the phone comp by about 2px a row, and a second pair here would be
+    // guessing at a variable font's normal leading to save 8px of card. Nothing
+    // caps a height, so a longer label in another locale still grows its row.
+    <div className="rounded-card border-hairline-amber bg-panel flex w-full flex-col gap-2.5 border-2 p-4 leading-[18px] whitespace-nowrap md:p-[18px]">
       <SummaryRow
         label={t("orderValue")}
         value={summary.orderValue}
@@ -954,7 +991,7 @@ function SummaryRow({
   tone?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 font-[family-name:var(--font-discovery)] text-[15px] font-semibold">
+    <div className="flex items-center justify-between gap-3 font-[family-name:var(--font-discovery)] text-[13px] font-semibold md:text-[15px]">
       <span className="text-[rgba(148,163,184,0.6)]">{label}</span>
       <span className={tone}>{loading ? <SkeletonLine width={skeletonWidth} /> : value}</span>
     </div>

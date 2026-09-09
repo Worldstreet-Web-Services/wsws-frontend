@@ -16,6 +16,15 @@ import { ArrowDownIcon, ChartBarsIcon } from "@/components/ui/icons";
 // null means the service published no figure, and that is rendered as an
 // explicit "Unavailable", never as a zero: a $0 market cap reads as a real,
 // worthless coin.
+//
+// One file, two decks. The phone board (meme-board) and the desktop meme desk
+// (the /meme route) both mount this, so the phone comp's measurements are the
+// base styles and every one of them carries the `md:` class that hands the
+// desk back exactly what it had. The phone numbers come from the 402-wide comp
+// states 122:7205 "Close Market Metrics" and 122:7351 "Sell Metrics", which
+// draw the metrics block identically: metric tile 70px, traders card 110.5px,
+// trigger row 16px. The `md:leading-[1.5]` pairs restore the 1.5 line height
+// this app inherits, which is what made the desk's boxes taller than the comp.
 
 // Inter, loaded in app/layout.tsx as --font-sportsbook. The design sets the
 // whole metrics block in it; the disclosure label above is Mona Sans.
@@ -104,18 +113,22 @@ function StatItem({ label, value, change, unavailableLabel }: StatItemProps) {
     <div
       data-metric={label}
       data-unavailable={missing ? "true" : "false"}
-      className="border-rule bg-grey-800 flex min-h-[73px] flex-1 flex-col justify-center gap-1 rounded-xl border p-[13px]"
+      className="border-rule bg-grey-800 flex min-h-[70px] flex-1 flex-col justify-center gap-1 rounded-xl border p-[12.5px] md:min-h-[73px] md:p-[13px]"
     >
       <span
         data-testid="meme-metric-label"
-        className={`${INTER} text-[12px] font-medium text-white/30`}
+        className={`${INTER} text-[11.5px] leading-[14px] font-medium text-white/30 md:text-[12px] md:leading-[1.5]`}
       >
         {label}
       </span>
       {missing ? (
         <Unavailable label={unavailableLabel} />
       ) : (
-        <span className={`${INTER} tnum text-[15px] font-bold text-white`}>{value}</span>
+        <span
+          className={`${INTER} tnum text-[14.6px] leading-[18px] font-bold text-white md:text-[15px] md:leading-[1.5]`}
+        >
+          {value}
+        </span>
       )}
       {change ? (
         <span
@@ -150,7 +163,7 @@ function TradersCard({
     <div
       data-testid="meme-traders-card"
       data-unavailable={traders ? "false" : "true"}
-      className="border-rule bg-grey-800 rounded-card flex flex-col gap-[11px] border p-[15px]"
+      className="border-rule bg-grey-800 md:rounded-card flex flex-col gap-[11px] rounded-[19px] border p-[15px]"
     >
       <div className="flex items-center justify-between">
         <span
@@ -161,7 +174,7 @@ function TradersCard({
         {/* The design draws a chevron here. No second disclosure is specified
             for this card, so it stays a glyph rather than a dead control. */}
         <span aria-hidden className="flex items-center text-white/40">
-          <ArrowDownIcon size={17} />
+          <ArrowDownIcon size={19} className="md:size-[17px]" />
         </span>
       </div>
 
@@ -169,21 +182,31 @@ function TradersCard({
         <>
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-[2px]">
-              <span className={`${INTER} text-[11px] font-normal text-white/30`}>
+              <span
+                className={`${INTER} text-[10.4px] leading-[13px] font-normal text-white/30 md:text-[11px] md:leading-[1.5]`}
+              >
                 {buyersLabel}
               </span>
-              <span className={`${INTER} tnum text-buy text-[13px] font-bold`}>
+              <span
+                className={`${INTER} tnum text-buy text-[13px] leading-[16px] font-bold md:leading-[1.5]`}
+              >
                 {traders.buyers}
               </span>
             </div>
-            <span className={`${INTER} tnum text-[12px] font-semibold text-white/50`}>
+            <span
+              className={`${INTER} tnum text-[11.4px] leading-[14px] font-semibold text-white/50 md:text-[12px] md:leading-[1.5]`}
+            >
               {`${share.toFixed(1)}% / ${(100 - share).toFixed(1)}%`}
             </span>
             <div className="flex flex-col items-end gap-[2px]">
-              <span className={`${INTER} text-[11px] font-normal text-white/30`}>
+              <span
+                className={`${INTER} text-[10.4px] leading-[13px] font-normal text-white/30 md:text-[11px] md:leading-[1.5]`}
+              >
                 {sellersLabel}
               </span>
-              <span className={`${INTER} tnum text-sell text-[13px] font-bold`}>
+              <span
+                className={`${INTER} tnum text-sell text-[13px] leading-[16px] font-bold md:leading-[1.5]`}
+              >
                 {traders.sellers}
               </span>
             </div>
@@ -227,14 +250,23 @@ export function MemeMarketMetrics({
           onClick={() => onToggle(!expanded)}
           aria-expanded={expanded}
           aria-controls={panelId}
-          className="flex w-fit items-center gap-2 text-white"
+          // The comp's row is 16px tall, so the 44px touch target is an
+          // overlay rather than padding: padding would push the panel down.
+          className="relative flex w-fit items-center gap-2 text-white after:absolute after:top-1/2 after:left-0 after:h-11 after:w-full after:min-w-11 after:-translate-y-1/2 after:content-['']"
         >
-          <span aria-hidden className="size-[3px] shrink-0 rounded-full bg-white" />
-          <ChartBarsIcon size={14} className="shrink-0" />
-          <span className="font-serif text-[12.6px] font-semibold tracking-[-0.02em]">
-            {expanded ? t("metricsHide") : t("metricsShow")}
+          {/* The comp groups the dot, the mark and the label on a 4px rhythm
+              and holds the chevron 8px off the end of that group. */}
+          <span className="flex items-center gap-1 md:gap-2">
+            <span aria-hidden className="size-[3px] shrink-0 rounded-full bg-white" />
+            <ChartBarsIcon size={13} className="shrink-0 md:size-[14px]" />
+            <span className="font-serif text-[12px] leading-[15px] font-semibold tracking-[-0.02em] md:text-[12.6px] md:leading-[1.5]">
+              {expanded ? t("metricsHide") : t("metricsShow")}
+            </span>
           </span>
-          <ArrowDownIcon size={17} className={`shrink-0 ${expanded ? "rotate-180" : ""}`} />
+          <ArrowDownIcon
+            size={16}
+            className={`shrink-0 md:size-[17px] ${expanded ? "rotate-180" : ""}`}
+          />
         </button>
       ) : null}
 
@@ -251,12 +283,12 @@ export function MemeMarketMetrics({
           <div role="status" aria-live="polite" className="flex flex-col gap-3">
             <span className="sr-only">{t("metricsLoading")}</span>
             <div className="flex gap-3">
-              <div className="bg-grey-800 h-[73px] flex-1 animate-pulse rounded-xl" />
-              <div className="bg-grey-800 h-[73px] flex-1 animate-pulse rounded-xl" />
+              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
             </div>
             <div className="flex gap-3">
-              <div className="bg-grey-800 h-[73px] flex-1 animate-pulse rounded-xl" />
-              <div className="bg-grey-800 h-[73px] flex-1 animate-pulse rounded-xl" />
+              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
             </div>
             <div className="bg-grey-800 rounded-card h-[110px] animate-pulse" />
           </div>
@@ -272,7 +304,7 @@ export function MemeMarketMetrics({
               <button
                 type="button"
                 onClick={onRetry}
-                className="border-hairline bg-surface rounded-full border px-3 py-1.5 text-[12px] font-semibold text-white"
+                className="border-hairline bg-surface min-h-11 min-w-11 rounded-full border px-3 py-1.5 text-[12px] font-semibold text-white md:min-h-[auto] md:min-w-[auto]"
               >
                 {t("metricsRetry")}
               </button>

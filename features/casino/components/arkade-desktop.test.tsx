@@ -4,8 +4,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { CasinoGame } from "@/features/casino/lib/games";
+
+vi.mock("@/lib/analytics/mixpanel", () => ({ track: vi.fn() }));
+
+import { track } from "@/lib/analytics/mixpanel";
 import { ArkadeDesktop } from "@/features/casino/components/arkade-desktop";
 import { ArkadeDesktopRow } from "@/features/casino/components/arkade-desktop-row";
+
+const tracked = vi.mocked(track);
 
 // Copy the desktop Arkade needs that the catalogues do not carry yet. The
 // adoption PR adds these six keys to en, de, es, fr and pt; until then the
@@ -168,6 +174,34 @@ describe("ArkadeDesktopRow", () => {
     expect(screen.getByText("Poker")).toBeInTheDocument();
     expect(screen.getByText(enMessages.casino.hub.badgeComingSoon)).toBeInTheDocument();
     expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("leaves game_opened to the route that owns the navigation", () => {
+    // The desktop rail is presentational: it hands the game back and the
+    // casino route fires the event beside its router push. Reporting from the
+    // shared card as well would double-count every desktop open, and the two
+    // surfaces would need two copies of the catalogue's id map.
+    tracked.mockClear();
+    const onSelectGame = vi.fn();
+    renderWithIntl(<ArkadeDesktopRow games={[chess]} label="Row 1" onSelectGame={onSelectGame} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Play Chess" }));
+    expect(onSelectGame).toHaveBeenCalledWith(chess);
+    expect(tracked).not.toHaveBeenCalled();
+  });
+
+  it("draws the rail with the shared card, as buttons", () => {
+    renderWithIntl(<ArkadeDesktopRow games={[chess, arkball]} label="Row 1" />);
+
+    for (const item of screen.getAllByRole("listitem")) {
+      const card = item.firstElementChild as HTMLElement;
+      expect(card.className).toContain("ws-card");
+      expect(card.className).toContain("h-[204px]");
+      expect(card.tagName).toBe("BUTTON");
+    }
+    // Desktop metrics: the badge and the pill are sized by padding here, not
+    // by a fixed height the way the phone's are.
+    expect(screen.getAllByText("Play now")[0].className).toContain("py-2.5");
   });
 
   it("draws cover art with object-fit cover, so nothing figurative is stretched", () => {

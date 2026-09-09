@@ -983,3 +983,109 @@ describe("PerpOrderTicket", () => {
     expect(screen.getByRole("textbox", { name: "Stop loss" })).toBeDisabled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phone metrics
+// ---------------------------------------------------------------------------
+//
+// One file serves two comps. The desktop desk (Figma 173:42920) draws the
+// ticket at 17/18px padding, a 31px quantity and 15px labels; the phone comp
+// (Figma 1:7580 "Leverage Trading", 402px wide) draws the same three cards at
+// 15/16px padding, a 28px quantity and 13px labels. Before this, only the
+// desktop figures existed, so a phone got the desk's metrics at 402px.
+//
+// The fix is a base/md: pair on every metric that differs: the BASE value is
+// the phone comp's and the `md:` step restores the desk's, so nothing at
+// 768px and up moves. These assertions read the class list because that pair
+// IS the behaviour under test, and jsdom resolves no media query: a test that
+// only read the computed style would pass on a file that had dropped the md:
+// half and silently rescaled the desk. Each assertion therefore names both
+// halves, and the desk half failing is as much a failure as the phone half.
+describe("PerpOrderTicket phone metrics", () => {
+  // The card each figure sits in, found through the text or the field rather
+  // than through a class, so the lookup does not depend on the thing asserted.
+  function priceCard(): HTMLElement {
+    const label = screen.getByText("Price");
+    return label.parentElement?.parentElement as HTMLElement;
+  }
+
+  function quantityCard(): HTMLElement {
+    const field = screen.getByRole("textbox", { name: "Order quantity" });
+    return field.parentElement?.parentElement as HTMLElement;
+  }
+
+  function summaryCard(): HTMLElement {
+    const label = screen.getByText("Order Value");
+    return label.parentElement?.parentElement as HTMLElement;
+  }
+
+  it("draws the price card at the phone comp's 15px padding and radius, and keeps the desk's 17px/2xl above md", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    expect(priceCard()).toHaveClass("p-[15px]", "md:p-[17px]");
+    expect(priceCard()).toHaveClass("rounded-[15px]", "md:rounded-2xl");
+  });
+
+  it("scales the price card's own type down on a phone and back up on the desk", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    expect(screen.getByText("Price")).toHaveClass("text-[12px]", "md:text-[15px]");
+    expect(screen.getByText("1.00001")).toHaveClass("text-[13px]", "md:text-[15px]");
+    expect(screen.getByText("USDT")).toHaveClass("text-[13px]", "md:text-[15px]");
+  });
+
+  it("draws the quantity card at the phone comp's 16px padding and 12px gap, and keeps the desk's 18px/14px above md", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    expect(quantityCard()).toHaveClass("p-4", "md:p-[18px]");
+    expect(quantityCard()).toHaveClass("gap-3", "md:gap-3.5");
+  });
+
+  // The figure the audit measured: 28px in the phone comp, 31px on the desk.
+  it("sets the quantity at the phone comp's 28px and restores the desk's 31px above md", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    expect(screen.getByRole("textbox", { name: "Order quantity" })).toHaveClass(
+      "text-[28px]",
+      "md:text-[31px]"
+    );
+  });
+
+  it("scales the quantity card's label, balance line and asset pill for a phone", () => {
+    renderTicket({ initialQuantity: "500", onSelectQuantityAsset: vi.fn() });
+
+    expect(screen.getByText("Quantity")).toHaveClass("text-[13px]", "md:text-[15px]");
+    expect(screen.getByText("Balance: 1,240 USDC")).toHaveClass("text-[12px]", "md:text-[14px]");
+    expect(screen.getByText("USDC")).toHaveClass("text-[13px]", "md:text-[15px]");
+    expect(screen.getByRole("button", { name: "Change token" })).toHaveClass("px-2.5", "md:px-3");
+  });
+
+  it("draws the summary card at the phone comp's 16px padding and 13px rows, and keeps the desk's 18px/15px above md", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    expect(summaryCard()).toHaveClass("p-4", "md:p-[18px]");
+    const row = screen.getByText("Order Value").parentElement as HTMLElement;
+    expect(row).toHaveClass("text-[13px]", "md:text-[15px]");
+  });
+
+  // The phone comp draws both of these below the 44px touch minimum, so the
+  // phone build takes the comp's padding and colours and floors the HEIGHT at
+  // 44px instead. `md:min-h-auto` is the exact value the desk computes today,
+  // so restoring it moves nothing at 768px and up.
+  it("floors the asset pill and the trigger disclosure at a 44px touch target on a phone only", () => {
+    renderTicket({ initialQuantity: "500", onSelectQuantityAsset: vi.fn() });
+
+    expect(screen.getByRole("button", { name: "Change token" })).toHaveClass(
+      "min-h-11",
+      "md:min-h-auto"
+    );
+
+    cleanup();
+    renderTicketWithTriggers();
+
+    expect(screen.getByRole("button", { name: "Take profit / Stop loss" })).toHaveClass(
+      "min-h-11",
+      "md:min-h-auto"
+    );
+  });
+});

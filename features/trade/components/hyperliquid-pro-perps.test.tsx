@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "@/messages/en.json";
 import type { HlAsset, HlMarketContext } from "@/features/trade/lib/hyperliquid-types";
 
@@ -163,12 +163,55 @@ const messagesWithoutFullscreen = (() => {
   return { ...messages, perps } as typeof messages;
 })();
 
+// The phone ledger's tab strip is drawn only when the catalog can label it, the
+// same gate the fullscreen control above uses. perps.ledgerTabs,
+// perps.tabOrders and perps.tabPositions are not in messages/*.json yet, so
+// they are added here to prove the strip, and the shipped catalog proves the
+// degrade back to the two-column grid.
+const messagesWithLedgerTabs = {
+  ...messages,
+  perps: {
+    ...messages.perps,
+    ledgerTabs: "Trade ledger",
+    tabOrders: "Orders",
+    tabPositions: "Positions",
+  },
+} as typeof messages;
+
+// jsdom ships no matchMedia, and the desk now asks the browser whether it is
+// laid out as two columns: that one question decides both the chart's default
+// state and whether the ledger is a tab strip or a grid. Every test written
+// before this one is a desk-width test, so the stub answers desk width and the
+// phone tests opt out of it.
+let deskWidth = true;
+
+beforeAll(() => {
+  window.matchMedia = ((query: string) =>
+    ({
+      matches: deskWidth,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList) as typeof window.matchMedia;
+});
+
 function renderDesk(catalog: typeof messages = messages) {
   return render(
     <NextIntlClientProvider locale="en" messages={catalog}>
       <HyperliquidProPerps />
     </NextIntlClientProvider>
   );
+}
+
+// The same desk at phone width, which is the viewport the 2.0 "Leverage
+// Trading" frame (Figma 1:7580) is drawn for.
+function renderPhone(catalog: typeof messages = messagesWithLedgerTabs) {
+  deskWidth = false;
+  return renderDesk(catalog);
 }
 
 function region(container: HTMLElement, name: string): HTMLElement | null {
@@ -182,6 +225,7 @@ beforeEach(() => {
   trading.walletId = "wallet-1";
   trading.prices = { BTC: "64000", ETH: "3200" };
   marketContexts = [btcContext];
+  deskWidth = true;
   ticketProps.mockClear();
 });
 
@@ -388,7 +432,7 @@ describe("HyperliquidProPerps", () => {
       expect(fullscreenHeader(container)).toHaveTextContent("BTC-USDC");
 
       fireEvent.click(
-        within(fullscreenHeader(container)).getByRole("button", { name: /ETH-USDC/ })
+        within(fullscreenHeader(container)).getByRole("option", { name: /ETH-USDC/ })
       );
 
       expect(fullscreenHeader(container)).toHaveTextContent("ETH-USDC");
@@ -408,7 +452,7 @@ describe("HyperliquidProPerps", () => {
 
       openFullscreenPicker(container);
       fireEvent.click(
-        within(fullscreenHeader(container)).getByRole("button", { name: /ETH-USDC/ })
+        within(fullscreenHeader(container)).getByRole("option", { name: /ETH-USDC/ })
       );
 
       // The order ticket moved with it while still fullscreen.
@@ -570,6 +614,117 @@ describe("HyperliquidProPerps", () => {
     expect(region(container, "order-entry")).toBeNull();
     expect(region(container, "ledger")).toBeNull();
     expect(screen.queryByTestId("order-form")).not.toBeInTheDocument();
+  });
+
+  // The 2.0 phone frame (Figma 1:7580, nodes 1:7722-1:7733) draws the ledger as
+  // one tab strip at the foot of the screen, not as the desk's two panels
+  // stacked. The desk keeps its grid: the strip is the phone layout only, and
+  // the two are chosen by the same 1080px width LeverageDesktopLayout puts its
+  // columns side by side at.
+  describe("the phone ledger", () => {
+    it("puts the two ledgers behind one tab strip", () => {
+      const { container } = renderPhone();
+
+      const ledger = region(container, "ledger") as HTMLElement;
+      const strip = within(ledger).getByRole("tablist", { name: "Trade ledger" });
+      expect(
+        within(strip)
+          .getAllByRole("tab")
+          .map((node) => node.textContent)
+      ).toEqual(["Orders", "Positions"]);
+    });
+
+    // The comp has Orders active. One panel is mounted at a time, so the
+    // positions list is genuinely absent rather than hidden behind the orders
+    // list with its modals still live.
+    it("opens on Orders, with the positions list not mounted", () => {
+      renderPhone();
+
+      expect(screen.getByRole("tab", { name: "Orders" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByTestId("orders-list")).toBeInTheDocument();
+      expect(screen.queryByTestId("positions-list")).not.toBeInTheDocument();
+    });
+
+    it("swaps to the positions list from the strip", () => {
+      renderPhone();
+
+      fireEvent.click(screen.getByRole("tab", { name: "Positions" }));
+
+      expect(screen.getByTestId("positions-list")).toBeInTheDocument();
+      expect(screen.queryByTestId("orders-list")).not.toBeInTheDocument();
+    });
+
+    // The two lists are handed across untouched, so the phone drives the same
+    // close, cancel and trigger callbacks the desk does.
+    it("hands the panels the same wiring the desk grid gets", () => {
+      renderPhone();
+
+      fireEvent.click(screen.getByRole("tab", { name: "Positions" }));
+
+      const props = positionsListProps.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+      expect(props.walletId).toBe("wallet-1");
+      expect(typeof props.onClosePosition).toBe("function");
+      expect(typeof props.onEditTrigger).toBe("function");
+    });
+
+    // Same rule as the fullscreen control: a catalog that cannot name the tabs
+    // must not render a raw key path, and must not leave the phone with no
+    // ledger either. It falls back to the grid the desk has always shown.
+    it("falls back to the grid when the catalog cannot label the tabs", () => {
+      const { container } = renderPhone(messages);
+
+      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+      expect(region(container, "ledger")).toContainElement(screen.getByTestId("positions-list"));
+      expect(region(container, "ledger")).toContainElement(screen.getByTestId("orders-list"));
+      expect(container.textContent).not.toContain("tabOrders");
+    });
+
+    it("keeps the desk on its two-column grid, tabs or no tabs", () => {
+      const { container } = renderDesk(messagesWithLedgerTabs);
+
+      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+      const ledger = region(container, "ledger") as HTMLElement;
+      expect(ledger).toContainElement(screen.getByTestId("positions-list"));
+      expect(ledger).toContainElement(screen.getByTestId("orders-list"));
+      expect(ledger.firstElementChild?.className).toContain("xl:grid-cols-2");
+    });
+  });
+
+  // The comp opens the phone screen on "View Chart", collapsed; the opened
+  // chart is a separate frame (Figma 1:7701). The desk is unchanged: its chart
+  // has always been open on arrival and a 924px column is drawn around it.
+  describe("the chart's default state", () => {
+    it("opens on the desk", () => {
+      const { container } = renderDesk();
+
+      expect(region(container, "chart")).not.toBeNull();
+      expect(screen.getByRole("button", { name: /close chart/i })).toBeInTheDocument();
+    });
+
+    it("stays collapsed on a phone until the trader asks for it", () => {
+      const { container } = renderPhone();
+
+      expect(region(container, "chart")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: /show chart/i }));
+      expect(region(container, "chart")).not.toBeNull();
+    });
+
+    // Once the trader has chosen, the viewport stops deciding. Closing the
+    // chart on the desk must not be undone by a re-render.
+    it("keeps the trader's choice over the viewport's default", () => {
+      const { container } = renderDesk();
+
+      fireEvent.click(screen.getByRole("button", { name: /close chart/i }));
+      expect(region(container, "chart")).toBeNull();
+
+      // A re-render for an unrelated reason: picking a market.
+      fireEvent.click(
+        within(region(container, "market-list") as HTMLElement).getByRole("button", {
+          name: /BTC-USDC/,
+        })
+      );
+      expect(region(container, "chart")).toBeNull();
+    });
   });
 
   it("stands the market column in with a loading message before the assets land", () => {

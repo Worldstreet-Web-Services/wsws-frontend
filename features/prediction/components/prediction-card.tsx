@@ -44,16 +44,32 @@ export function PredictionCard({ prediction: p, onBuy, href }: PredictionCardPro
             market itself. No aria-label, and nothing to translate: naming the
             link "card" or "view details" would tell a screen reader user which
             control this is but not which market it opens. */}
-        <p className="ws-display line-clamp-2 text-[15px] leading-[1.2] font-semibold tracking-[-0.45px] text-[#e8eaed]">
+        <p className="ws-display text-[15px] leading-[1.2] font-semibold tracking-[-0.45px] text-[#e8eaed]">
           {href ? (
+            // Two things here are load-bearing, and between them they are why
+            // this card read as "not clickable" for so long.
+            //
+            // `data-no-ripple`: click-ripple.tsx sets `position: relative` on
+            // any pressed button or anchor that is statically positioned, so it
+            // can host its ripple layer. That turns THIS anchor into the
+            // containing block for its own stretched `::after`, which collapses
+            // from the whole card to the anchor's own text box between
+            // pointerdown and mouseup. The press then lands on nothing and no
+            // navigation happens. The attribute is the ripple's own documented
+            // opt-out.
+            //
+            // The clamp sits on the span inside the link, not on the <p> around
+            // it: `line-clamp` is `overflow: hidden`, and an ancestor with
+            // hidden overflow clips the stretched `::after` back to the text.
             <Link
               href={href}
+              data-no-ripple
               className="rounded-sm outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-[#b9fcff]"
             >
-              {p.q}
+              <span className="line-clamp-2">{p.q}</span>
             </Link>
           ) : (
-            p.q
+            <span className="line-clamp-2">{p.q}</span>
           )}
         </p>
       </div>

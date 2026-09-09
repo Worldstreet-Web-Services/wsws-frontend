@@ -139,7 +139,16 @@
     "metricsLoading": "A carregar métricas do mercado",
     "metricsError": "Não foi possível carregar as métricas do mercado.",
     "metricsRetry": "Tentar novamente",
-    "metricsEmpty": "Ainda não há métricas de mercado para esta moeda."
+    "metricsEmpty": "Ainda não há métricas de mercado para esta moeda.",
+    "quantity": "Quantidade",
+    "txTitle": "Transações ao vivo",
+    "txEmpty": "Ainda não há transações nesta moeda.",
+    "txError": "Não foi possível carregar as transações.",
+    "txJustNow": "agora mesmo",
+    "txSecondsAgo": "há {n} s",
+    "txMinutesAgo": "há {n} min",
+    "txHoursAgo": "há {n} h",
+    "txDaysAgo": "há {n} d"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -206,7 +215,10 @@
     "quickAmountLabel": "Pagar {amount}",
     "amountInvalid": "Introduza um montante válido",
     "amountTooPrecise": "{symbol} permite no máximo {decimals} casas decimais",
-    "ctaNoBalanceOf": "{symbol} insuficiente"
+    "ctaNoBalanceOf": "{symbol} insuficiente",
+    "priceUnavailable": "Preço indisponível",
+    "loadingBalance": "Carregando seu saldo…",
+    "balanceSubject": "seu saldo de USDC"
   },
   "topbar": {
     "support": "suporte",
@@ -646,7 +658,9 @@
     "next": "Próx.",
     "pageOf": "Página {page} de {pages}",
     "switchMarket": "Mudar de mercado",
-    "close": "Fechar"
+    "close": "Fechar",
+    "signIn": "Entrar",
+    "openDashboard": "Abrir painel"
   },
   "portfolio": {
     "eyebrow": "Portfólio",
@@ -708,7 +722,13 @@
     "tokenMoveUp": "<b>O {symbol} subiu {change}</b> nas últimas 24 horas.",
     "tokenMoveDown": "<b>O {symbol} caiu {change}</b> nas últimas 24 horas.",
     "tokenMoveFlat": "<b>O {symbol} está estável</b> nas últimas 24 horas.",
-    "tokenMoveUnknown": "O <b>{symbol}</b> não tem variação de 24 horas para mostrar agora."
+    "tokenMoveUnknown": "O <b>{symbol}</b> não tem variação de 24 horas para mostrar agora.",
+    "tabSpot": "Spot",
+    "tabLeverage": "Trading com alavancagem",
+    "tabMemecoins": "Memecoins",
+    "tabPrediction": "Previsão",
+    "tabsAria": "Categorias de mercado",
+    "searchLabel": "Pesquisar"
   },
   "buySell": {
     "buy": "Comprar",
@@ -1158,7 +1178,14 @@
     "mobileMarketsError": "Não foi possível carregar os mercados de previsão.",
     "mobileNoMarkets": "Nenhum mercado de previsão está aberto no momento.",
     "mobilePauseRotation": "Pausar a rotação das previsões",
-    "mobileResumeRotation": "Retomar a rotação das previsões"
+    "mobileResumeRotation": "Retomar a rotação das previsões",
+    "loadingEventMarkets": "Carregando mercados do evento",
+    "eventLoadFailed": "Não foi possível carregar este evento.",
+    "marketCount": "{count, plural, one {# mercado} other {# mercados}}",
+    "searchEventMarketsLabel": "Pesquisar mercados do evento",
+    "myBets": "Minhas apostas",
+    "openEventAria": "Abrir detalhes de {title}",
+    "oddsAria": "{side} {odds}"
   },
   "perps": {
     "eyebrow": "Perpétuos",
@@ -1321,7 +1348,19 @@
     "topUp": "Carregar",
     "topUpPreparing": "A preparar…",
     "withdraw": "Levantar",
-    "balanceMayBridge": "Superior à sua margem HyperCore. O restante é transferido ao enviar a ordem."
+    "balanceMayBridge": "Superior à sua margem HyperCore. O restante é transferido ao enviar a ordem.",
+    "marketListLabel": "Mercados",
+    "pickerLoadingShort": "Carregando…",
+    "noMarkets": "Sem mercados",
+    "maxLeverageLine": "alavancagem máx. {max}x",
+    "categoryAll": "Todos",
+    "colMarket": "Mercado",
+    "colLastPrice": "Último preço",
+    "colChange24h": "Variação 24h",
+    "colFunding": "Financiamento",
+    "colVolume": "Volume",
+    "colOpenInterest": "Interesse aberto",
+    "tryAgain": "Tentar novamente"
   },
   "fundsFlow": {
     "back": "Voltar",

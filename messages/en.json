@@ -139,7 +139,16 @@
     "metricsLoading": "Loading market metrics",
     "metricsError": "Market metrics couldn't be loaded.",
     "metricsRetry": "Try again",
-    "metricsEmpty": "No market metrics for this coin yet."
+    "metricsEmpty": "No market metrics for this coin yet.",
+    "quantity": "Quantity",
+    "txTitle": "Live transactions",
+    "txEmpty": "No transactions in this coin yet.",
+    "txError": "Transactions couldn't be loaded.",
+    "txJustNow": "just now",
+    "txSecondsAgo": "{n}s ago",
+    "txMinutesAgo": "{n}m ago",
+    "txHoursAgo": "{n}h ago",
+    "txDaysAgo": "{n}d ago"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -206,7 +215,10 @@
     "quickAmountLabel": "Pay {amount}",
     "amountInvalid": "Enter a valid amount",
     "amountTooPrecise": "{symbol} allows at most {decimals} decimal places",
-    "ctaNoBalanceOf": "Not enough {symbol}"
+    "ctaNoBalanceOf": "Not enough {symbol}",
+    "priceUnavailable": "Price unavailable",
+    "loadingBalance": "Loading your balance…",
+    "balanceSubject": "your USDC balance"
   },
   "topbar": {
     "support": "support",
@@ -646,7 +658,9 @@
     "next": "Next",
     "pageOf": "Page {page} of {pages}",
     "switchMarket": "Switch market",
-    "close": "Close"
+    "close": "Close",
+    "signIn": "Sign In",
+    "openDashboard": "Open dashboard"
   },
   "portfolio": {
     "eyebrow": "Portfolio",
@@ -708,7 +722,13 @@
     "tokenMoveUp": "<b>{symbol} is up {change}</b> in the last 24 hours.",
     "tokenMoveDown": "<b>{symbol} is down {change}</b> in the last 24 hours.",
     "tokenMoveFlat": "<b>{symbol} is flat</b> over the last 24 hours.",
-    "tokenMoveUnknown": "<b>{symbol}</b> has no 24 hour move to show right now."
+    "tokenMoveUnknown": "<b>{symbol}</b> has no 24 hour move to show right now.",
+    "tabSpot": "Spot",
+    "tabLeverage": "Leverage Trading",
+    "tabMemecoins": "Memecoins",
+    "tabPrediction": "Prediction",
+    "tabsAria": "Market categories",
+    "searchLabel": "Search"
   },
   "buySell": {
     "buy": "Buy",
@@ -1158,7 +1178,14 @@
     "mobileMarketsError": "Couldn't load prediction markets.",
     "mobileNoMarkets": "No prediction markets are open right now.",
     "mobilePauseRotation": "Pause prediction rotation",
-    "mobileResumeRotation": "Resume prediction rotation"
+    "mobileResumeRotation": "Resume prediction rotation",
+    "loadingEventMarkets": "Loading event markets",
+    "eventLoadFailed": "This event could not be loaded.",
+    "marketCount": "{count, plural, one {# market} other {# markets}}",
+    "searchEventMarketsLabel": "Search event markets",
+    "myBets": "My bets",
+    "openEventAria": "Open {title} details",
+    "oddsAria": "{side} {odds}"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -1321,7 +1348,19 @@
     "topUp": "Top up",
     "topUpPreparing": "Preparing…",
     "withdraw": "Withdraw",
-    "balanceMayBridge": "More than your HyperCore margin. The rest is bridged when you place the order."
+    "balanceMayBridge": "More than your HyperCore margin. The rest is bridged when you place the order.",
+    "marketListLabel": "Markets",
+    "pickerLoadingShort": "Loading…",
+    "noMarkets": "No markets",
+    "maxLeverageLine": "{max}x max leverage",
+    "categoryAll": "All",
+    "colMarket": "Market",
+    "colLastPrice": "Last Price",
+    "colChange24h": "24h Change",
+    "colFunding": "Funding",
+    "colVolume": "Volume",
+    "colOpenInterest": "Open Interest",
+    "tryAgain": "Try again"
   },
   "fundsFlow": {
     "back": "Back",

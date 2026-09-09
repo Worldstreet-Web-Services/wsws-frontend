@@ -29,8 +29,17 @@ export interface PredictionSpot {
   id: string;
   /** The market's question, as the card's headline. */
   question: string;
-  /** Formatted countdown, e.g. "01:46:55:22", or null when it has no deadline. */
-  countdown: string | null;
+  /**
+   * When the market resolves, epoch milliseconds, or null when it has no
+   * deadline.
+   *
+   * The raw instant, not a formatted string. A countdown is the one figure on
+   * these cards that cannot be formatted upstream: it changes every second, so
+   * only the view that ticks it can turn it into text. This field replaced a
+   * pre-formatted `countdown`, which had been filled from a clock face typed
+   * into the message catalogue and so read the same on every card forever.
+   */
+  closesAt: number | null;
   /** The collage takes two; fewer is fine, more is ignored. */
   images: readonly string[];
   href: string;

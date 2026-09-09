@@ -1,24 +1,34 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useBalanceVisibility } from "@/components/ui/balance-visibility";
-import { CardIcon, SearchIcon } from "@/components/ui/icons";
-import { usePortfolio } from "@/hooks/use-portfolio";
+import { SearchIcon } from "@/components/ui/icons";
 import { track } from "@/lib/analytics/mixpanel";
-import type { Game } from "@/lib/analytics/events";
-import { formatQty } from "@/lib/format";
 import {
   CASINO_GAMES,
   GAME_CATEGORIES,
+  TRACKED_GAMES,
   filterGames,
   type CasinoGame,
   type GameCategoryFilter,
 } from "@/features/casino/lib/games";
+import { ARKADE_CARD_FRAME, ArkadeGameCard } from "@/features/casino/components/arkade-game-card";
 
-// Catalogue filter values mapped to their label keys in "casino.hub". Mirrors
-// the desktop hub so a phone and a laptop show the same chip names.
+/**
+ * Arkade on a phone, as the comp draws it (node 12:204, 402x1076): a pill
+ * search field, an underlined category strip that scrolls sideways, and the
+ * catalogue as one full-width card per row.
+ *
+ * From `md` up the desktop grid takes over, so this renders phone-only. The
+ * card itself is ArkadeGameCard, the same one the desktop rail draws; only the
+ * footprint changes, from a third of a row to the whole width. This file owns
+ * the list: the search field, the category strip, and what an empty or loading
+ * list looks like.
+ */
+
+// Catalogue filter values mapped to their label keys in "casino.hub". The phone
+// carries all seven where the desktop comp draws four, so this map is wider
+// than the desktop's rather than the same one.
 const CATEGORY_KEY: Record<GameCategoryFilter, string> = {
   "All games": "categoryAll",
   Skill: "categorySkill",
@@ -29,181 +39,144 @@ const CATEGORY_KEY: Record<GameCategoryFilter, string> = {
   "Coming soon": "categoryComingSoon",
 };
 
-// The three games the catalogue names to the analytics layer; anything else has
-// no agreed id, so opening it reports nothing rather than inventing one. Kept in
-// step with the desktop GameTile.
-const TRACKED_GAMES: Record<string, Game | undefined> = {
-  chess: "chess",
-  checkers: "checkers",
-  "last-standing": "last_man",
-};
+// Tab metrics measured off the comp: a 101px tab every 113px, the same rhythm
+// the desktop bar uses. Seven of them overrun the 402px frame, which is what
+// makes the strip scroll and the fourth tab sit half off the right edge there.
+const TAB_WIDTH = 101;
+const TAB_PITCH = 113;
+const STRIP_WIDTH = GAME_CATEGORIES.length * TAB_PITCH - (TAB_PITCH - TAB_WIDTH);
 
-// One catalogue entry as the mobile comp draws it (node 261:977): a short
-// landscape cover with the badge pinned top-left and the name, one-liner and
-// Explore pill resting along the bottom. Uniform tiles here, rather than the
-// desktop hub's hero/tall/wide footprints, since a two-up grid has no room for
-// them.
-function MobileGameTile({ game }: { game: CasinoGame }) {
-  const t = useTranslations("casino.hub");
-  const badge = game.comingSoon
-    ? t("badgeComingSoon")
-    : game.isNew || game.category === "New"
-      ? t("badgeNew")
-      : null;
-  const playable = !game.comingSoon && game.href;
+// How many placeholder cards a loading list draws. Three is what the comp shows
+// above the fold, so the skeleton fills the same band the real cards will.
+const SKELETON_COUNT = 3;
 
-  const body = (
-    <>
-      {game.image ? (
-        <span aria-hidden className="pointer-events-none absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={game.image}
-            alt=""
-            loading="lazy"
-            className={`h-full w-full object-cover ${
-              game.comingSoon ? "opacity-50 grayscale" : ""
-            }`}
-          />
-        </span>
-      ) : null}
-      {/* Legibility scrim: the name and one-liner sit over the bottom of the art. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.35)_50%,rgba(0,0,0,0.1)_100%)]"
-      />
-
-      {badge ? (
-        <span className="absolute top-2.5 left-2.5 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold tracking-[0.02em] text-white backdrop-blur-md">
-          {badge}
-        </span>
-      ) : null}
-
-      <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3">
-        <span className="min-w-0">
-          <span
-            className={`ws-display block text-[15px] leading-tight ${
-              game.comingSoon ? "text-white/80" : "text-white"
-            }`}
-          >
-            {t(`games.${game.id}.name`)}
-          </span>
-          {game.note ? (
-            <span className="mt-0.5 line-clamp-2 block text-[10.5px] leading-snug font-normal text-white/60">
-              {t(`games.${game.id}.note`)}
-            </span>
-          ) : null}
-        </span>
-        {playable ? (
-          <span className="ws-chrome text-ink inline-flex shrink-0 items-center gap-0.5 px-2.5 py-1 text-[11px] font-semibold">
-            {t("explore")}
-            <span aria-hidden>›</span>
-          </span>
-        ) : null}
-      </span>
-    </>
-  );
-
-  const frame = "relative min-h-[128px] overflow-hidden rounded-[16px]";
-
-  if (!playable) return <div className={frame}>{body}</div>;
-  return (
-    <Link
-      href={game.href!}
-      onClick={() => {
-        const game_id = TRACKED_GAMES[game.id];
-        if (game_id) track("game_opened", { game: game_id });
-      }}
-      className={frame}
-    >
-      {body}
-    </Link>
-  );
+// The phone navigates with a real anchor rather than a router push, so the
+// analytics call rides on the card's own click here. The desktop route fires
+// the same event for its tiles; both read the id out of the one map in the
+// catalogue, so neither can invent one and neither can go missing when the
+// surface around it is replaced.
+function reportGameOpened(game: CasinoGame) {
+  const id = TRACKED_GAMES[game.id];
+  if (id) track("game_opened", { game: id });
 }
 
-/**
- * Arkade on a phone, as the mobile comp draws it (node 261:977): a centred
- * title, a full-width search field with the USDC balance tucked beside it,
- * underlined category tabs, and the catalogue as a uniform two-up grid.
- *
- * From `md` up the desktop `HubSection` takes over, so this renders phone-only.
- * Filtering and the balance figure are the same as the desktop hub — only the
- * layout differs.
- */
-export function ArkadeMobile() {
+export interface ArkadeMobileProps {
+  // The catalogue to lay out. Defaults to the shipped one, so a route can mount
+  // the surface without threading static product structure through itself.
+  games?: CasinoGame[];
+  // Draws placeholder cards. The catalogue is static, but a caller that merges
+  // live data before rendering has something to show meanwhile.
+  loading?: boolean;
+  // Which filter the surface opens on.
+  defaultCategory?: GameCategoryFilter;
+}
+
+export function ArkadeMobile({
+  games = CASINO_GAMES,
+  loading = false,
+  defaultCategory = "All games",
+}: ArkadeMobileProps = {}) {
   const t = useTranslations("casino.hub");
-  const { mask } = useBalanceVisibility();
-  const portfolio = usePortfolio();
-  const usdcBalance =
-    portfolio.tokens.find(
-      (tok) => tok.network === "base-mainnet" && tok.symbol.toUpperCase() === "USDC"
-    )?.balance ?? 0;
-  const [category, setCategory] = useState<GameCategoryFilter>("All games");
+  const [category, setCategory] = useState<GameCategoryFilter>(defaultCategory);
   const [search, setSearch] = useState("");
 
   // Search matches the names the player actually sees, i.e. the localized ones.
-  const games = useMemo(
-    () => filterGames(CASINO_GAMES, category, search, (g) => t(`games.${g.id}.name`)),
-    [category, search, t]
+  const visible = useMemo(
+    () => filterGames(games, category, search, (game) => t(`games.${game.id}.name`)),
+    [games, category, search, t]
   );
 
+  const activeIndex = Math.max(0, GAME_CATEGORIES.indexOf(category));
+
   return (
-    <div className="w-full p-4">
-      <h1 className="ws-display text-center text-[26px] text-white">{t("title")}</h1>
+    // 20px at the edges, which is where the comp puts the search field and the
+    // tab strip. The card list pulls back to 16px below, which is where the
+    // comp puts the cards.
+    <div className="w-full px-5 pt-6 pb-8">
+      {/* The comp carries the ARKADE wordmark in the header band above this
+          surface, not in the content, so the heading is here for the document
+          outline only. */}
+      <h1 className="sr-only">{t("title")}</h1>
 
-      <div className="ws-inset mt-5 flex items-center gap-2.5 px-4 py-3.5">
-        <SearchIcon size={16} />
+      <label className="ws-inset flex h-[52px] items-center gap-2.5 rounded-full px-4">
+        <SearchIcon size={16} className="shrink-0 text-white/40" />
         <input
+          type="search"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label={t("searchPlaceholder")}
           placeholder={t("searchPlaceholder")}
-          className="w-full bg-transparent font-sans text-[14px] text-white outline-none placeholder:text-white/40"
+          autoComplete="off"
+          className="w-full min-w-0 bg-transparent font-sans text-[14px] text-white outline-none placeholder:text-white/40 [&::-webkit-search-cancel-button]:appearance-none"
         />
-      </div>
+      </label>
 
-      {/* The same balance the rest of the platform shows: games spend from it
-          directly, so there is no separate casino float to top up. */}
-      <div className="mt-3 flex justify-end">
-        <div className="ws-inset inline-flex items-center gap-1.5 px-3 py-1.5">
-          <CardIcon size={15} className="text-white/50" />
-          <span className="ws-display tnum text-[13px] text-white" data-sensitive="balance">
-            {mask(`$${formatQty(usdcBalance)}`)}
-          </span>
+      {/* Full bleed so the strip can run past the right edge the way the comp
+          shows it, with the 20px lead-in kept as padding. */}
+      <div className="ws-no-scrollbar -mx-5 mt-2 overflow-x-auto px-5">
+        <div role="group" aria-label={t("categoriesLabel")} style={{ width: STRIP_WIDTH }}>
+          <div className="flex" style={{ gap: TAB_PITCH - TAB_WIDTH }}>
+            {GAME_CATEGORIES.map((value) => {
+              const active = value === category;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setCategory(value)}
+                  // 44px tall for the tap target. The comp's label sits at the
+                  // top of that box, which is why the underline reads tight
+                  // under the text rather than 14px below it.
+                  className={`h-11 shrink-0 cursor-pointer font-sans text-[14px] whitespace-nowrap transition-colors ${
+                    active ? "font-semibold text-white" : "text-white/50 hover:text-white/80"
+                  }`}
+                  style={{ width: TAB_WIDTH }}
+                >
+                  {t(CATEGORY_KEY[value])}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* The comp's underline: a 3px track the width of the whole strip,
+              with a white segment exactly one tab wide under the active one. */}
+          <div aria-hidden className="relative h-[3px] w-full rounded-full bg-white/8">
+            <div
+              data-testid="category-underline"
+              className="absolute inset-y-0 left-0 rounded-full bg-white transition-transform duration-200"
+              style={{
+                width: TAB_WIDTH,
+                transform: `translateX(${activeIndex * TAB_PITCH}px)`,
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Each tab takes a third of the viewport, so three read at a time and the
-          rest scroll into view. */}
-      <div className="ws-no-scrollbar mt-4 flex overflow-x-auto border-b border-white/10">
-        {GAME_CATEGORIES.map((c) => {
-          const active = category === c;
-          return (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`-mb-px shrink-0 grow-0 basis-1/3 border-b-2 pb-2.5 text-center font-sans text-[14px] whitespace-nowrap transition-colors ${
-                active
-                  ? "border-white font-semibold text-white"
-                  : "border-transparent text-white/50"
-              }`}
-            >
-              {t(CATEGORY_KEY[c])}
-            </button>
-          );
-        })}
-      </div>
-
-      {games.length === 0 ? (
-        <div className="py-16 text-center text-[13.5px] font-normal text-white/50">
+      {loading ? (
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label={t("loadingGames")}
+          className="-mx-1 mt-[30px] flex flex-col gap-3"
+        >
+          {Array.from({ length: SKELETON_COUNT }, (_, index) => (
+            <div key={index} className={`${ARKADE_CARD_FRAME} bg-surface animate-pulse`} />
+          ))}
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="py-16 text-center font-sans text-[13.5px] font-normal text-white/50">
           {t("noGamesFound")}
         </div>
       ) : (
-        // One game per row on the phone, full-width, whatever the category.
-        <div className="mt-4 grid grid-cols-1 gap-3">
-          {games.map((g) => (
-            <MobileGameTile key={g.id} game={g} />
+        // One card per row at any phone width, 12px apart, 16px from the edge.
+        <ul className="-mx-1 mt-[30px] flex list-none flex-col gap-3">
+          {visible.map((game) => (
+            <li key={game.id} className="min-w-0">
+              <ArkadeGameCard game={game} surface="phone" onActivate={reportGameOpened} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

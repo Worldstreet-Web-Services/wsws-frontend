@@ -3,7 +3,7 @@
 // import { useState } from "react"; // parked with the Portfolio Allocation toggle below
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { useTranslations } from "next-intl";
-import { ArrowUpRightIcon, CoinIcon, EyeIcon, EyeOffIcon, WalletIcon } from "@/components/ui/icons";
+import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, HelpIcon, WalletIcon } from "@/components/ui/icons";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
 // The mobile balance card, drawn to the wallet comp (node 1:972): a starfield-
@@ -53,14 +53,20 @@ export function BalanceCardMobile({
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-1.5">
             <CurrencySelect value={money.currency} onSelect={money.setCurrency} />
-            {/* Take-a-tour affordance from the comp. */}
+            {/* Take-a-tour affordance from the comp.
+
+                A question mark, not the stacked coins this drew before. A coins
+                glyph beside a balance reads as "my holdings", and on the
+                desktop card the identical pairing sent people looking for a
+                holdings list and finding the walkthrough instead. The label
+                always said takeTour; only the picture disagreed. */}
             <button
               type="button"
               onClick={onTakeTour}
               aria-label={t("takeTour")}
               className="grid size-[30px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/70 transition-colors active:bg-white/12"
             >
-              <CoinIcon size={13} />
+              <HelpIcon size={13} />
             </button>
           </div>
 

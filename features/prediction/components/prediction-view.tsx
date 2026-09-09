@@ -9,6 +9,7 @@ import { ArrowRightIcon } from "@/components/ui/icons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
+import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { BetSlipSheet } from "@/features/prediction/components/bet-slip-sheet";
 import { PositionsPanel } from "@/features/prediction/components/positions-panel";
@@ -195,7 +196,12 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             <div className="@container">
               <div className="grid grid-cols-2 gap-4 @min-[900px]:grid-cols-3 @min-[900px]:gap-6 @min-[1240px]:grid-cols-4 @min-[1240px]:gap-7">
                 {visiblePredictions.map((p) => (
-                  <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
+                  <PredictionCard
+                    key={p.q}
+                    prediction={p}
+                    onBuy={(yes) => openBet(p, yes)}
+                    href={predictionDetailHref(p)}
+                  />
                 ))}
               </div>
             </div>
@@ -204,7 +210,12 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             // a horizontal slider, so the whole set reads on one scroll.
             <div className="flex flex-col gap-3">
               {visiblePredictions.map((p) => (
-                <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
+                <PredictionCard
+                  key={p.q}
+                  prediction={p}
+                  onBuy={(yes) => openBet(p, yes)}
+                  href={predictionDetailHref(p)}
+                />
               ))}
             </div>
           )}

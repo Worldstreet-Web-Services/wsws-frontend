@@ -18,6 +18,36 @@ export function ChartBarsIcon({ size = 20, className }: IconProps) {
   );
 }
 
+// The line-and-axis mark the 2.0 design calls chart-line-data-03. Kept on its
+// native 8.875 viewBox: the vector is Figma's own, uniformly scaled, and
+// refitting it to the 24-unit box the older icons use would only round the
+// curve away from the file.
+export function ChartLineIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 8.875 8.875"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M8.375 2.833C7.97 2.264 7.441 1.813 6.615 1.813C2.892 1.813 4.84 8.156 1.375 8.156"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.375 8.375H3.563C2.119 8.375 1.397 8.375 0.948 7.927C0.5 7.478 0.5 6.756 0.5 5.313V0.5"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function EyeIcon({ size = 18, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -157,6 +187,12 @@ export function SwapIcon({ size = 20, className }: IconProps) {
   );
 }
 
+// The original magnifier. Its stroke is baked rather than inherited, which is
+// out of step with every other icon here. Twenty call sites sit on an ancestor
+// whose colour is the body white, so switching it to currentColor would take
+// them all from 40% white to solid white in one unreviewed step. It is left as
+// it is until those call sites can be given an explicit colour. New work wants
+// SearchBoldIcon below, which is the 2.0 glyph and does inherit.
 export function SearchIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -165,6 +201,29 @@ export function SearchIcon({ size = 16, className }: IconProps) {
         d="m20 20-3.5-3.5"
         stroke="rgba(255,255,255,0.4)"
         strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// The 2.0 magnifier, from the Spot frame's icon-search node (173:42025). Not a
+// recolour of SearchIcon: the lens is a wider circle and the stroke is heavier,
+// so the two are different marks and both are kept.
+export function SearchBoldIcon({ size = 13, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12.9243 12.9243"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M11.3087 11.3089L8.9716 8.97174M10.2316 5.92366C10.2316 8.30297 8.30283 10.2318 5.92352 10.2318C3.54422 10.2318 1.61541 8.30297 1.61541 5.92366C1.61541 3.54436 3.54422 1.61555 5.92352 1.61555C8.30283 1.61555 10.2316 3.54436 10.2316 5.92366Z"
+        stroke={stroke}
+        strokeWidth="1.38475"
         strokeLinecap="round"
       />
     </svg>
@@ -390,6 +449,56 @@ export function ChevronLeftIcon({ size = 13, className }: IconProps) {
         d="M15 6l-6 6 6 6"
         stroke={stroke}
         strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// The 2.0 down chevron: a sharp V, so the apex keeps the default miter join
+// while the arm ends stay round. One glyph covers two exports, the pair
+// selector's (11.2425 box) and the token pill's (8 box), which are the same
+// vector at two scales. Rotate it for the other three directions.
+export function ChevronDownIcon({ size = 11, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 11.2425 11.2425"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M2.81066 4.21568L5.62128 7.02631L8.43191 4.21568"
+        stroke={stroke}
+        strokeWidth="2.2485"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// The disclosure chevron. A separate glyph from ChevronDownIcon, not a size of
+// it: the design turns the apex with a pair of curves and joins it round, and
+// the arms span the full width instead of the middle half. Its box is wider
+// than it is tall, so a square width and height letterboxes the glyph, which
+// centres it and keeps a rotation turning about the middle of the mark.
+export function ChevronDownSoftIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 11.2425 6.59028"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M1.12425 1.12425L5.09128 5.09128C5.34111 5.34111 5.46603 5.46603 5.62125 5.46603C5.77648 5.46603 5.9014 5.34111 6.15123 5.09128L10.1183 1.12425"
+        stroke={stroke}
+        strokeWidth="2.2485"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

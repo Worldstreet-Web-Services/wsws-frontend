@@ -120,10 +120,35 @@
     "mobileViewChart": "View Chart",
     "mobileCloseChart": "Close Chart",
     "mobileLiveChart": "Live Price Action",
-    "mobileMetrics": "Market Metrics",
+    "mobileMetrics": "Métricas del mercado",
     "mobileFdv": "FDV",
-    "mobileBuy": "Buy",
-    "mobileSell": "Sell"
+    "mobileBuy": "Comprar",
+    "mobileSell": "Vender",
+    "metricMarketCap": "Capitalización",
+    "metricVolume24h": "Volumen (24 h)",
+    "metricLiquidity": "Liquidez",
+    "metricAge": "Antigüedad",
+    "metricAgeDays": "{days, plural, one {# día} other {# días}}",
+    "metricActiveTraders": "Traders activos",
+    "metricBuyers": "Compradores",
+    "metricSellers": "Vendedores",
+    "metricUnavailable": "No disponible",
+    "metricsShow": "Ver métricas del mercado",
+    "metricsHide": "Cerrar métricas del mercado",
+    "metricsRegion": "Métricas del mercado",
+    "metricsLoading": "Cargando métricas del mercado",
+    "metricsError": "No se pudieron cargar las métricas del mercado.",
+    "metricsRetry": "Reintentar",
+    "metricsEmpty": "Aún no hay métricas de mercado para esta moneda.",
+    "quantity": "Cantidad",
+    "txTitle": "Transacciones en vivo",
+    "txEmpty": "Aún no hay transacciones con esta moneda.",
+    "txError": "No se pudieron cargar las transacciones.",
+    "txJustNow": "ahora mismo",
+    "txSecondsAgo": "hace {n} s",
+    "txMinutesAgo": "hace {n} min",
+    "txHoursAgo": "hace {n} h",
+    "txDaysAgo": "hace {n} d"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -176,7 +201,24 @@
     "youSell": "Vendes",
     "youSellRow": "Vendes",
     "ctaNotSellable": "{symbol} no se puede vender desde esta billetera",
-    "ctaNeedsGas": "Preparando tu monedero de {chain}. Añade un poco de {symbol} para continuar."
+    "ctaNeedsGas": "Preparando tu monedero de {chain}. Añade un poco de {symbol} para continuar.",
+    "youArePaying": "Estás pagando",
+    "amountLabel": "Importe a pagar",
+    "changeToken": "Cambiar token",
+    "limit": "Límite",
+    "orderType": "Tipo de orden",
+    "fee": "Comisión",
+    "purchaseValue": "Valor de compra",
+    "change24h": "Cambio 24 h",
+    "selectMarket": "Cambiar mercado",
+    "viewChart": "Ver gráfico",
+    "quickAmountLabel": "Pagar {amount}",
+    "amountInvalid": "Introduce un importe válido",
+    "amountTooPrecise": "{symbol} admite como máximo {decimals} decimales",
+    "ctaNoBalanceOf": "{symbol} insuficiente",
+    "priceUnavailable": "Precio no disponible",
+    "loadingBalance": "Cargando tu saldo…",
+    "balanceSubject": "tu saldo de USDC"
   },
   "topbar": {
     "support": "soporte",
@@ -597,6 +639,7 @@
     "treasuriesDesc": "Rendimiento de T-bills, canjeable 1:1."
   },
   "account": {
+    "title": "Menú de cuenta",
     "passkeyAdded": "Passkey añadida. Úsala la próxima vez que entres.",
     "passkeyFailed": "No se pudo añadir la passkey. Inténtalo de nuevo.",
     "addPasskey": "Añade una passkey para entrar más rápido",
@@ -615,7 +658,9 @@
     "next": "Sig.",
     "pageOf": "Página {page} de {pages}",
     "switchMarket": "Cambiar mercado",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "signIn": "Iniciar sesión",
+    "openDashboard": "Abrir panel"
   },
   "portfolio": {
     "eyebrow": "Portafolio",
@@ -650,7 +695,8 @@
     "managePrediction": "Gestionar en Predicciones",
     "sell": "Vender {name}",
     "assetDetails": "Detalles del activo",
-    "goToCard": "Ir a la tarjeta {number}"
+    "goToCard": "Ir a la tarjeta {number}",
+    "searchHoldings": "Buscar en tus posiciones"
   },
   "markets": {
     "title": "Mercados",
@@ -668,7 +714,21 @@
     "pageOf": "Página {page} de {pages}",
     "prev": "Ant.",
     "next": "Sig.",
-    "buyToken": "Comprar {name}"
+    "buyToken": "Comprar {name}",
+    "manageTokens": "Gestionar tokens",
+    "mcap": "Cap. merc.",
+    "tokenMovesTitle": "Anticípate a los movimientos",
+    "tokenMovesRegion": "Movimientos de tokens en tendencia",
+    "tokenMoveUp": "<b>{symbol} ha subido un {change}</b> en las últimas 24 horas.",
+    "tokenMoveDown": "<b>{symbol} ha bajado un {change}</b> en las últimas 24 horas.",
+    "tokenMoveFlat": "<b>{symbol} se mantiene estable</b> en las últimas 24 horas.",
+    "tokenMoveUnknown": "<b>{symbol}</b> no tiene movimiento de 24 horas por ahora.",
+    "tabSpot": "Spot",
+    "tabLeverage": "Trading con apalancamiento",
+    "tabMemecoins": "Memecoins",
+    "tabPrediction": "Predicción",
+    "tabsAria": "Categorías de mercado",
+    "searchLabel": "Buscar"
   },
   "buySell": {
     "buy": "Comprar",
@@ -1112,7 +1172,20 @@
     "mobileHeading": "Your Next",
     "mobileHeadingAccent": "Prediction",
     "mobileHeadingSuffix": "Starts Here",
-    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now",
+    "mobilePredictNow": "Predecir ahora",
+    "mobileSeeOtherPredictions": "Ver otras predicciones",
+    "mobileMarketsError": "No se pudieron cargar los mercados de predicción.",
+    "mobileNoMarkets": "Ahora mismo no hay mercados de predicción abiertos.",
+    "mobilePauseRotation": "Pausar la rotación de predicciones",
+    "mobileResumeRotation": "Reanudar la rotación de predicciones",
+    "loadingEventMarkets": "Cargando mercados del evento",
+    "eventLoadFailed": "No se pudo cargar este evento.",
+    "marketCount": "{count, plural, one {# mercado} other {# mercados}}",
+    "searchEventMarketsLabel": "Buscar mercados del evento",
+    "myBets": "Mis apuestas",
+    "openEventAria": "Abrir detalles de {title}",
+    "oddsAria": "{side} {odds}"
   },
   "perps": {
     "eyebrow": "Perpetuos",
@@ -1239,7 +1312,55 @@
     "confirmContinue": "Continuar",
     "positionsUnavailable": "No pudimos cargar tus posiciones. Están seguras; reintentando…",
     "updateTakingLonger": "El cambio está confirmado y tarda un momento en liquidarse.",
-    "pagerMarkets": "mercados"
+    "pagerMarkets": "mercados",
+    "signInToTrade": "Inicia sesión para operar con perps.",
+    "loadingMarkets": "Cargando mercados…",
+    "closeChart": "Cerrar gráfico",
+    "showChart": "Mostrar gráfico",
+    "chartLoading": "Cargando gráfico…",
+    "chartEmpty": "Ningún mercado seleccionado",
+    "chartError": "No se pudo cargar el gráfico.",
+    "price": "Precio",
+    "quantity": "Cantidad",
+    "quantityLabel": "Cantidad de la orden",
+    "balanceOf": "Saldo: {amount} {symbol}",
+    "changeToken": "Cambiar token",
+    "orderValue": "Valor de la orden",
+    "leverageValue": "{value}x",
+    "buy": "Comprar",
+    "sell": "Vender",
+    "enterQuantity": "Introduce una cantidad",
+    "enterPrice": "Introduce un precio",
+    "notEnoughBalance": "{symbol} insuficiente",
+    "quantityInvalid": "Introduce una cantidad válida",
+    "quantityTooPrecise": "{symbol} admite como máximo {decimals} decimales",
+    "placingOrder": "Enviando la orden…",
+    "expandChart": "Ampliar gráfico",
+    "exitChartFullscreen": "Salir de pantalla completa",
+    "marginMode": "Modo de margen",
+    "marginCross": "Cruzado",
+    "marginIsolated": "Aislado",
+    "belowMinNotional": "El valor mínimo de la orden es {min}",
+    "buyBlocked": "Comprar: {reason}",
+    "sellBlocked": "Vender: {reason}",
+    "liquidationUnavailable": "No disponible",
+    "liquidationUnavailableHint": "No hay estimación de liquidación disponible para esta orden.",
+    "topUp": "Recargar",
+    "topUpPreparing": "Preparando…",
+    "withdraw": "Retirar",
+    "balanceMayBridge": "Supera tu margen en HyperCore. El resto se transfiere al enviar la orden.",
+    "marketListLabel": "Mercados",
+    "pickerLoadingShort": "Cargando…",
+    "noMarkets": "Sin mercados",
+    "maxLeverageLine": "{max}x apalancamiento máx.",
+    "categoryAll": "Todos",
+    "colMarket": "Mercado",
+    "colLastPrice": "Último precio",
+    "colChange24h": "Cambio 24h",
+    "colFunding": "Financiación",
+    "colVolume": "Volumen",
+    "colOpenInterest": "Interés abierto",
+    "tryAgain": "Intentar de nuevo"
   },
   "fundsFlow": {
     "back": "Atrás",
@@ -1355,7 +1476,8 @@
     "withdrawNeedsGas": "Necesitas un poco de {symbol} en {chain} para enviar desde ahí. Retira desde Base o añade fondos.",
     "withdrawalUnconfirmed": "No pudimos confirmar este retiro. Puede que ya se haya realizado, así que revisa Arkivity antes de volver a intentarlo para no enviarlo dos veces.",
     "withdrawalUnconfirmedToast": "Sin confirmar. Revisa Arkivity.",
-    "transactionFee": "Comisión de transacción"
+    "transactionFee": "Comisión de transacción",
+    "noKashToAddress": "No envíes KASH+ a esta dirección."
   },
   "remit": {
     "sendMoney": "Enviar dinero",
@@ -1499,7 +1621,14 @@
         "racing": {
           "name": "Ganador de carreras"
         }
-      }
+      },
+      "playNow": "Jugar ahora",
+      "explore": "Explorar",
+      "openGame": "Jugar a {name}",
+      "categoriesLabel": "Categorías de juegos",
+      "rowLabel": "Juegos de Arkade, fila {index}",
+      "emptyCategory": "Aún no hay juegos en esta categoría.",
+      "loadingGames": "Cargando juegos"
     },
     "arkball": {
       "title": "ArkBall",
@@ -2354,7 +2483,9 @@
     "buyingPaused": "La compra está pausada por ahora. Vuelve pronto.",
     "redeemReserve": "Reserva de canje",
     "railTitle": "Consigue Kash+",
-    "railSubtitle": "Y empieza a ganar dinero extra con lo que haces"
+    "railSubtitle": "Y empieza a ganar dinero extra con lo que haces",
+    "historyPointsSoon": "Muy pronto",
+    "historyPointsSoonHint": "Las ganancias por actividad de Kash+ aún no están activas. Mientras tanto, tus transacciones están en la otra pestaña."
   },
   "referral": {
     "title": "Invitar amigos",
@@ -2506,7 +2637,8 @@
     "onCost": "on {cost}",
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
-    "pnlShareLoss": "Closed {symbol} at a loss"
+    "pnlShareLoss": "Closed {symbol} at a loss",
+    "partialBody": "No se pudo cargar parte de tu historial, así que esta lista puede estar incompleta."
   },
   "launchGate": {
     "title": "Muy pronto",
@@ -2678,9 +2810,7 @@
     "shibaTitle": "¡Shiba está oyendo cosas!",
     "shibaCta": "Ver gráfico",
     "predictionTitle": "Tu próxima <accent>predicción</accent> empieza aquí",
-    "predictionCountdown": "01:46:55:22",
     "predictionOneTitle": "¿Estará el pastor Benny Hinn en Healing Stream?",
-    "predictionOneBody": "<strong>ETH ha subido un 3,5%</strong> en las últimas 6 horas. Te recomiendo aumentar tu posición un 10%",
     "predictionTwoTitle": "¿Quién se llevará el cinturón? <strong>¡Predícelo ahora!</strong>",
     "predictNow": "Predecir ahora",
     "predictionOther": "Ver otras predicciones",
@@ -2689,14 +2819,15 @@
     "next100xCarousel": "Próximo 100X",
     "predictionCarousel": "Mercados de predicción",
     "tokenTicker": "{price}  <change>{delta}</change>",
-    "tokenTipUp": "<strong>{symbol} ha subido un {move}</strong> en las últimas 6 horas. Te recomiendo aumentar tu posición un 10%",
-    "tokenTipDown": "<strong>{symbol} ha bajado un {move}</strong> en las últimas 6 horas. Te recomiendo aumentar tu posición un 10%",
+    "tokenTipUp": "<strong>{symbol} ha subido un {move}</strong> en las últimas 24 horas.",
+    "tokenTipDown": "<strong>{symbol} ha bajado un {move}</strong> en las últimas 24 horas.",
     "tokenCta": "Comprar {symbol}",
-    "tokenFallbackPrice": "$1.876.617",
-    "tokenFallbackChange": "+12,8%",
-    "tokenFallbackMove": "12,8%",
     "memeUpTitle": "{name} sube",
     "memeDownTitle": "{name} baja",
-    "predictionNoDeadline": "Sin fecha límite"
+    "predictionNoDeadline": "Sin fecha límite",
+    "squareTitle": "Crea <strong>tu audiencia</strong> en directo",
+    "squareSubtitle": "Emite ahora y mira cómo tu comunidad <strong>crece al instante.</strong>",
+    "squareExplore": "Explorar",
+    "squareAria": "Market Square: crea tu audiencia en directo"
   }
 }

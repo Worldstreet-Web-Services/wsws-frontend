@@ -33,8 +33,10 @@ export function BalanceCardMobile({
   // button below); its state is parked until it returns.
   // const [allocationOpen, setAllocationOpen] = useState(false);
 
+  // The two money actions. A 40px pill at 13px type: the 46px pills the comp
+  // drew read heavy on a phone next to the figure they sit under.
   const action =
-    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[13px] font-sans text-[14px] font-semibold tracking-[-0.14px] whitespace-nowrap transition-opacity";
+    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[10px] font-sans text-[13px] font-semibold tracking-[-0.13px] whitespace-nowrap transition-opacity";
 
   return (
     <div
@@ -121,7 +123,7 @@ export function BalanceCardMobile({
         </div>
 
         <div className="flex w-full flex-col items-center gap-3">
-          <div className="flex w-full items-center gap-2">
+          <div className="mx-auto flex w-full max-w-[300px] items-center gap-2">
             <button
               data-tour="add-funds"
               onClick={onOpenFunds}
@@ -130,7 +132,7 @@ export function BalanceCardMobile({
               // only) drops out but this card now still renders.
               className={`${action} ws-chrome text-ink bg-white shadow-[0_1.6px_3.3px_rgba(0,0,0,0.5)]`}
             >
-              <WalletIcon size={17} />
+              <WalletIcon size={15} />
               {t("addFunds")}
             </button>
             <button
@@ -138,7 +140,7 @@ export function BalanceCardMobile({
               disabled={withdrawHeld}
               className={`${action} border-2 border-white bg-white/6 text-white active:bg-white/12 disabled:cursor-not-allowed disabled:opacity-40`}
             >
-              <ArrowUpRightIcon size={17} />
+              <ArrowUpRightIcon size={15} />
               {t("withdraw")}
             </button>
           </div>

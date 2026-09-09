@@ -29,8 +29,10 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/casino/powerball", destination: "/casino/arkball", permanent: true },
-      { source: "/dashboard", destination: "/portfolio", permanent: true },
-      { source: "/dashboard/:path*", destination: "/portfolio/:path*", permanent: true },
+      // Temporary for the first 2.0 release: a 308 is cached by browsers and
+      // would fight a rollback. Flip to permanent once 2.0 has held.
+      { source: "/dashboard", destination: "/portfolio", permanent: false },
+      { source: "/dashboard/:path*", destination: "/portfolio/:path*", permanent: false },
     ];
   },
   // Pin the Turbopack root to this project. Otherwise Next walks up the tree,

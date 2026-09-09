@@ -29,6 +29,7 @@ import { useCoingeckoId } from "@/hooks/use-coingecko-id";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { displaySymbol } from "@/lib/buy";
 import { friendlyError } from "@/lib/errors";
 import { compactUsd, isValidTradeAmount, type MemeToken, type SwapPreview } from "@/lib/meme/api";
@@ -490,6 +491,8 @@ function MemeDesk() {
       return;
     }
     const symbol = displaySymbol(selected.symbol ?? "");
+    // USDC leaves Base and the token lands on the trade's own chain.
+    const tradedNetworks = scopeOf("base-mainnet", networkOf(input.chainId));
     const toastId = toast.loading(
       input.side === "BUY" ? t("buyingToast", { symbol }) : t("sellingToast", { symbol })
     );
@@ -500,12 +503,12 @@ function MemeDesk() {
         { id: toastId }
       );
       setAmount("");
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(tradedNetworks);
     } catch (e) {
       // The trade hook keeps the message for the ticket's inline error; the
       // toast is for the case where the user has already looked away.
       toast.error(friendlyError(e, t("orderFailed")), { id: toastId });
-      void portfolio.refetchFresh();
+      void portfolio.refetchFresh(tradedNetworks);
     }
   }
 

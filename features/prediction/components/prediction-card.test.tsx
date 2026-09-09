@@ -79,3 +79,32 @@ describe("prediction card", () => {
     expect(screen.getByText(prediction.q)).toBeInTheDocument();
   });
 });
+
+describe("prediction card, the stretched link", () => {
+  // Both assertions below guard defects that shipped and that the rest of this
+  // suite could not see: jsdom computes no layout, so a link clipped to nothing
+  // still "exists" and still reports the right href. These pin the two causes
+  // by name instead.
+
+  it("opts out of the click ripple, which would collapse its own hit area", () => {
+    // click-ripple.tsx sets `position: relative` on a statically positioned
+    // anchor at pointerdown so it can host the ripple layer. That makes this
+    // anchor the containing block for its own stretched ::after, which shrinks
+    // from the whole card to the text box between pointerdown and mouseup, so
+    // the press lands on nothing. Measured live: 325x210 -> 218x18.
+    renderCard({ href: DETAIL_HREF });
+
+    expect(screen.getByRole("link", { name: prediction.q })).toHaveAttribute("data-no-ripple");
+  });
+
+  it("keeps the line clamp inside the link, never on an ancestor", () => {
+    // `line-clamp` is `overflow: hidden`, and hidden overflow on an ancestor
+    // clips the stretched ::after back to the text. The clamp has to sit on a
+    // span within the anchor for the whole card to stay pressable.
+    renderCard({ href: DETAIL_HREF });
+    const link = screen.getByRole("link", { name: prediction.q });
+
+    expect(link.querySelector(".line-clamp-2")).not.toBeNull();
+    expect(link.closest(".line-clamp-2")).toBeNull();
+  });
+});

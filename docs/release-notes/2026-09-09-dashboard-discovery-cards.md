@@ -77,3 +77,15 @@ The same three changes, on the phone's own sections:
 - "Stay Ahead of Token Moves on Spot" shows the featured mover and the
   mover after it, in place of the Eth Africa promo.
 - The prediction banner carries Predict Now only.
+
+## Picked from PR #428 (consolidating-2.0-ux-with-staging)
+
+Merged the open PR's delta over staging, then dropped again what this
+build does not carry: the perps components, the Explore event detail, the
+phone Market page and the prediction market list only it rendered. Kept:
+the meme desk rebuild (board, chart, live transactions, trade ticket, base
+units, swaps hook, trade sheet states), the spot ticket and spot section,
+the Arkade game card shared by phone and desktop, the prediction card's
+click fix, the phone prediction banner redesign (Predict Now only, opening
+the desk), Polymarket volume, and the new catalog strings. The meme board's
+fresh reads are scoped to the traded network as on main.

@@ -76,3 +76,11 @@ localStorage ws.interest.v1 ──► useInterest ──► interestToSection ==
                                                                                    ├─ RealEstateCard
                                                                                    └─ StocksCard
 ```
+
+## Amendment, 2026-09-10
+
+The shelf shows for everyone. A reader from before onboarding asked for an
+interest has none saved, and would otherwise never meet real assets on the
+home screen. The saved interest now only decides where the shelf sits: first
+in the discovery area for a reader whose interest maps to Real assets, last
+for everyone else.

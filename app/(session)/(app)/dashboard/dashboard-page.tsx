@@ -32,7 +32,7 @@ import { ConversationRow } from "@/features/discovery/components/conversation-ro
 import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { Next100xRow } from "@/features/discovery/components/next-100x-row";
 import { PredictionStartsRow } from "@/features/discovery/components/prediction-starts-row";
-import { RealAssetsRow } from "@/features/discovery/components/real-assets-row";
+import { RealAssetsRow, realAssetsLead } from "@/features/discovery/components/real-assets-row";
 import { useMemeSpots } from "@/app/(session)/(app)/dashboard/discovery/memecoins";
 import { useTokenSpots } from "@/app/(session)/(app)/dashboard/discovery/tokens";
 import { usePredictionSpots } from "@/app/(session)/(app)/dashboard/discovery/predictions";
@@ -184,11 +184,12 @@ export function DashboardPage() {
   // feature slices. Until this was wired the card had no markets prop and
   // showed the design's sample market on every dashboard.
   const predictionSpots = usePredictionSpots();
-  // "Own the Real World" is for the reader whose onboarding interest maps to
-  // Real assets; the row itself decides from the interest and draws nothing
-  // otherwise. Its assets come from the feed already loaded above.
+  // "Own the Real World" shows for everyone; the saved onboarding interest
+  // only decides whether it leads the discovery area or closes it. Its assets
+  // come from the feed already loaded above.
   const rwaSpots = useRwaSpots();
-  const interest = useInterest();
+  const rwaLeads = realAssetsLead(useInterest());
+  const realAssets = <RealAssetsRow spots={rwaSpots} />;
   // The square's feed tab lives here because two siblings drive it: the
   // section's own strip, and the plus sheet's discussions.
   const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
@@ -316,6 +317,7 @@ export function DashboardPage() {
           to a frame on a phone. The conversation row handles a hidden square
           itself: its card goes and its heading falls back to chess. */}
       <div className="flex flex-col gap-6 md:hidden">
+        {rwaLeads ? <div className="px-4">{realAssets}</div> : null}
         <div className="px-4">
           <ConversationRow />
         </div>
@@ -330,20 +332,19 @@ export function DashboardPage() {
         <div className="px-4">
           <Next100xRow memecoins={memeSpots} />
         </div>
-        <div className="px-4">
-          <RealAssetsRow interest={interest} spots={rwaSpots} />
-        </div>
+        {rwaLeads ? null : <div className="px-4">{realAssets}</div>}
       </div>
 
       {/* Desktop: the discovery shelves, as the phone design's desktop sibling
           draws them under the balance cards — Token Moves, Join the
           Conversation, Find the next 100X, then Prediction starts. */}
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
+        {rwaLeads ? realAssets : null}
         <TokenMovesRow tokens={tokenSpots} loading={tokenSpotsLoading} />
         <ConversationRow />
         <Next100xRow memecoins={memeSpots} />
         <PredictionStartsRow markets={predictionSpots} />
-        <RealAssetsRow interest={interest} spots={rwaSpots} />
+        {rwaLeads ? null : realAssets}
       </div>
 
       {briefs.map((id, index) => {

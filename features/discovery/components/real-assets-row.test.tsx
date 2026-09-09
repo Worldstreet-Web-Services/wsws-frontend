@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
-import { RealAssetsRow } from "@/features/discovery/components/real-assets-row";
+import { RealAssetsRow, realAssetsLead } from "@/features/discovery/components/real-assets-row";
 
 beforeAll(() => {
   if (typeof window.matchMedia !== "function") {
@@ -38,34 +38,35 @@ function realSlideHeadlines(): string[] {
 }
 
 describe("Own the Real World", () => {
-  it("shows for a reader whose interest maps to Real assets, in the card order", () => {
-    for (const interest of ["stocks", "gold", "yield", "realestate", "treasuries"]) {
-      const { unmount } = render(<RealAssetsRow interest={interest} spots={empty} />, { wrapper });
-      expect(realSlideHeadlines()).toEqual([
-        enMessages.discovery.rwaGoldHeadline,
-        enMessages.discovery.rwaTreasuriesHeadline,
-        enMessages.discovery.rwaRealEstateHeadline,
-        enMessages.discovery.rwaStocksHeadline,
-      ]);
-      unmount();
-    }
-  });
-
-  it("draws nothing for any other interest, or none", () => {
-    for (const interest of ["crypto", "meme", "prediction", "casino", null]) {
-      const { container, unmount } = render(<RealAssetsRow interest={interest} spots={empty} />, {
-        wrapper,
-      });
-      expect(container.innerHTML).toBe("");
-      unmount();
-    }
+  it("draws the four cards in order, for every reader", () => {
+    render(<RealAssetsRow spots={empty} />, { wrapper });
+    expect(realSlideHeadlines()).toEqual([
+      enMessages.discovery.rwaGoldHeadline,
+      enMessages.discovery.rwaTreasuriesHeadline,
+      enMessages.discovery.rwaRealEstateHeadline,
+      enMessages.discovery.rwaStocksHeadline,
+    ]);
   });
 
   it("heads to the Real assets desk", () => {
-    render(<RealAssetsRow interest="gold" spots={empty} />, { wrapper });
+    render(<RealAssetsRow spots={empty} />, { wrapper });
     expect(screen.getByRole("link", { name: /Own the Real World/ })).toHaveAttribute(
       "href",
       "/rwa"
     );
+  });
+});
+
+describe("realAssetsLead", () => {
+  it("leads for the interests that point at Real assets", () => {
+    for (const interest of ["stocks", "gold", "yield", "realestate", "treasuries"]) {
+      expect(realAssetsLead(interest)).toBe(true);
+    }
+  });
+
+  it("closes the area for every other interest, and for a reader with none saved", () => {
+    for (const interest of ["crypto", "meme", "prediction", "casino", null]) {
+      expect(realAssetsLead(interest)).toBe(false);
+    }
   });
 });

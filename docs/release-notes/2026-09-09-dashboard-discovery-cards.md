@@ -138,9 +138,10 @@ place of its table when hosted on the phone.
 
 ## Own the Real World (2026-09-10)
 
-A fifth shelf, last on both the phone and desktop discovery areas, for the
-reader whose onboarding interest was stocks, gold, yield, real estate or
-treasuries: Gold, Treasuries, Real estate and Stocks cards, each in its own
+A fifth shelf on both the phone and desktop discovery areas, for everyone:
+first for the reader whose onboarding interest was stocks, gold, yield, real
+estate or treasuries, last for everyone else, including readers from before
+onboarding asked. Gold, Treasuries, Real estate and Stocks cards, each in its own
 hue with a motif drawn in CSS, each featuring live assets from the desk with
 the feed's price, move or yield, each leading to the desk. The stocks card
 rotates through the tokenised stocks. The cards read the dashboard feed the

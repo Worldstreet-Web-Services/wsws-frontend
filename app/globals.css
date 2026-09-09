@@ -101,9 +101,21 @@
      the Arkade tiles, and both cards inside the trade panel. Tailwind's radius
      scale jumps straight from 16px to 24px, so it had no name until now. */
   --radius-card: 20px;
+
+  /* The frame. Everything the app draws sits inside a column no wider than
+     this, centred on a wider screen; the canvas outside it is the page's own
+     black. Chrome that is fixed to the viewport (the rail, the support
+     bubble, the connection banner) offsets itself by --ws-frame-inset, the
+     margin the column leaves on each side, so it stays inside the frame too.
+     Overlays that dim the whole screen stay at the viewport's edges. */
+  --ws-frame-max: 2000px;
+  --ws-frame-inset: max(0px, calc((100vw - var(--ws-frame-max)) / 2));
 }
 
 body {
+  width: 100%;
+  max-width: var(--ws-frame-max);
+  margin-inline: auto;
   background: #000;
   color: #fff;
   font-family: var(--font-sans), sans-serif;

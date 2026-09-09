@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
+import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { EyeOffIcon } from "@/components/ui/icons";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { HoldingsModal } from "@/features/portfolio/components/holdings-modal";
+import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
 // The balance card as the Market design draws it: a near-black panel carrying
@@ -27,15 +30,28 @@ export function BalanceCardDesktop({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
-  onTakeTour,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
-  const tTour = useTranslations("tour");
+  const tPortfolio = useTranslations("portfolio");
   const money = useMoney();
   // The breakdown is a disclosure here rather than always-on: the design keeps
   // the card to one screenful and puts the ring behind a tap.
   const [showBreakdown, setShowBreakdown] = useState(false);
   const canBreakdown = !loading && !errored && tokens.length > 0;
+
+  // The holdings list, and the buy/sell stack it hands assets to. Nothing here
+  // mounts until the coins button is pressed for the first time: this card is
+  // on the dashboard's first paint, and neither a second portfolio query nor
+  // the trade sheets belong in that load.
+  const [holdingsOpen, setHoldingsOpen] = useState(false);
+  const [tradeMounted, setTradeMounted] = useState(false);
+  const modals = useAppModals();
+
+  const openHoldings = () => {
+    setTradeMounted(true);
+    setHoldingsOpen(true);
+  };
+  const closeHoldings = () => setHoldingsOpen(false);
 
   return (
     // The design draws this card 551x370. We run it taller: it carries two rows
@@ -71,20 +87,28 @@ export function BalanceCardDesktop({
       <div className="flex grow flex-col items-center justify-center">
         <div className="flex items-center gap-[7.65px]">
           <CurrencySelect value={money.currency} onSelect={money.setCurrency} size="lg" />
-          {/* The design drops the topbar's tour pill and puts the walkthrough
-              here instead. The handler comes from the route: a feature never
-              reaches into another one. */}
+          {/* What the wallet holds, one tap from the total it adds up to. The
+              stacked-coins glyph belongs beside the money, not in the chrome;
+              the walkthrough's help mark took its place in the topbar. */}
           <button
             type="button"
-            onClick={onTakeTour}
-            aria-label={tTour("replayCta")}
-            title={tTour("replayCta")}
-            className="ws-pressable grid size-[45.87px] shrink-0 cursor-pointer place-items-center rounded-full border-[1.21px] border-white/14 bg-white/5"
+            onClick={openHoldings}
+            aria-label={tPortfolio("yourHoldings")}
+            title={tPortfolio("yourHoldings")}
+            aria-haspopup="dialog"
+            aria-expanded={holdingsOpen}
+            className="ws-pressable grid size-[45.87px] shrink-0 cursor-pointer place-items-center rounded-full border-[1.21px] border-white/14 bg-white/5 transition-colors hover:bg-white/10"
           >
-            <span className="block size-[18.35px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/market/balance-icon-coins.svg" alt="" className="size-full" />
-            </span>
+            {/* A fixed-colour export, so it sits in an explicitly sized box
+                rather than inheriting the button's text colour. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/market/balance-icon-coins.svg"
+              alt=""
+              width={21}
+              height={21}
+              className="size-[20.65px] shrink-0"
+            />
           </button>
         </div>
 
@@ -228,6 +252,38 @@ export function BalanceCardDesktop({
           </>
         ) : null}
       </div>
+
+      {tradeMounted ? (
+        <>
+          {/* Wider than the standard 440px sheet: a holdings row carries a
+              symbol, a network line and a value, and at the default width the
+              three were fighting for the same inches. */}
+          <ModalShell
+            open={holdingsOpen}
+            onClose={closeHoldings}
+            panelClassName="md:w-[min(760px,100%)]"
+          >
+            <HoldingsModal
+              onClose={closeHoldings}
+              onOpenDetail={modals.openDetail}
+              onOpenBuy={modals.openBuy}
+              onOpenSell={modals.openSell}
+              onOpenRwaTrade={modals.openRwaTrade}
+              onOpenMemeSell={modals.openMemeSell}
+              onAddFunds={() => {
+                closeHoldings();
+                modals.openFunds();
+              }}
+            />
+          </ModalShell>
+
+          <AppModalHost
+            active={modals.modal}
+            onClose={modals.close}
+            onConfirmed={modals.showDone}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

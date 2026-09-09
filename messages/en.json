@@ -123,7 +123,23 @@
     "mobileMetrics": "Market Metrics",
     "mobileFdv": "FDV",
     "mobileBuy": "Buy",
-    "mobileSell": "Sell"
+    "mobileSell": "Sell",
+    "metricMarketCap": "Market Cap",
+    "metricVolume24h": "Volume (24h)",
+    "metricLiquidity": "Liquidity",
+    "metricAge": "Age",
+    "metricAgeDays": "{days, plural, one {# day} other {# days}}",
+    "metricActiveTraders": "Active Traders",
+    "metricBuyers": "Buyers",
+    "metricSellers": "Sellers",
+    "metricUnavailable": "Unavailable",
+    "metricsShow": "View Market Metrics",
+    "metricsHide": "Close Market Metrics",
+    "metricsRegion": "Market metrics",
+    "metricsLoading": "Loading market metrics",
+    "metricsError": "Market metrics couldn't be loaded.",
+    "metricsRetry": "Try again",
+    "metricsEmpty": "No market metrics for this coin yet."
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -176,7 +192,21 @@
     "youSell": "You're selling",
     "youSellRow": "You sell",
     "ctaNotSellable": "{symbol} can't be sold from this wallet",
-    "ctaNeedsGas": "Getting your {chain} wallet ready. Add a little {symbol} to continue."
+    "ctaNeedsGas": "Getting your {chain} wallet ready. Add a little {symbol} to continue.",
+    "youArePaying": "You are paying",
+    "amountLabel": "Amount to pay",
+    "changeToken": "Change token",
+    "limit": "Limit",
+    "orderType": "Order type",
+    "fee": "Fee",
+    "purchaseValue": "Purchase Value",
+    "change24h": "24h change",
+    "selectMarket": "Change market",
+    "viewChart": "View Chart",
+    "quickAmountLabel": "Pay {amount}",
+    "amountInvalid": "Enter a valid amount",
+    "amountTooPrecise": "{symbol} allows at most {decimals} decimal places",
+    "ctaNoBalanceOf": "Not enough {symbol}"
   },
   "topbar": {
     "support": "support",
@@ -597,6 +627,7 @@
     "treasuriesDesc": "T-bill yield, redeemable 1:1."
   },
   "account": {
+    "title": "Account menu",
     "passkeyAdded": "Passkey added. Use it next time you sign in.",
     "passkeyFailed": "Couldn't add a passkey. Try again.",
     "addPasskey": "Add a passkey for faster sign-in",
@@ -650,7 +681,8 @@
     "managePrediction": "Manage in Prediction",
     "sell": "Sell {name}",
     "assetDetails": "Asset details",
-    "goToCard": "Go to card {number}"
+    "goToCard": "Go to card {number}",
+    "searchHoldings": "Search your holdings"
   },
   "markets": {
     "title": "Markets",
@@ -668,7 +700,15 @@
     "pageOf": "Page {page} of {pages}",
     "prev": "Prev",
     "next": "Next",
-    "buyToken": "Buy {name}"
+    "buyToken": "Buy {name}",
+    "manageTokens": "Manage tokens",
+    "mcap": "Mcap",
+    "tokenMovesTitle": "Stay Ahead of Token Moves",
+    "tokenMovesRegion": "Trending token moves",
+    "tokenMoveUp": "<b>{symbol} is up {change}</b> in the last 24 hours.",
+    "tokenMoveDown": "<b>{symbol} is down {change}</b> in the last 24 hours.",
+    "tokenMoveFlat": "<b>{symbol} is flat</b> over the last 24 hours.",
+    "tokenMoveUnknown": "<b>{symbol}</b> has no 24 hour move to show right now."
   },
   "buySell": {
     "buy": "Buy",
@@ -1112,7 +1152,13 @@
     "mobileHeading": "Your Next",
     "mobileHeadingAccent": "Prediction",
     "mobileHeadingSuffix": "Starts Here",
-    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now"
+    "beltCardAria": "Who's Gonna Take the Belt Home — Predict Now",
+    "mobilePredictNow": "Predict Now",
+    "mobileSeeOtherPredictions": "See Other Predictions",
+    "mobileMarketsError": "Couldn't load prediction markets.",
+    "mobileNoMarkets": "No prediction markets are open right now.",
+    "mobilePauseRotation": "Pause prediction rotation",
+    "mobileResumeRotation": "Resume prediction rotation"
   },
   "perps": {
     "eyebrow": "Perpetuals",
@@ -1239,7 +1285,43 @@
     "confirmContinue": "Continue",
     "positionsUnavailable": "Couldn't load your positions. They are safe; retrying…",
     "updateTakingLonger": "The change is confirmed and is taking a moment to settle.",
-    "pagerMarkets": "markets"
+    "pagerMarkets": "markets",
+    "signInToTrade": "Sign in to trade perps.",
+    "loadingMarkets": "Loading markets…",
+    "closeChart": "Close Chart",
+    "showChart": "Show Chart",
+    "chartLoading": "Loading chart…",
+    "chartEmpty": "No market selected",
+    "chartError": "The chart could not be loaded.",
+    "price": "Price",
+    "quantity": "Quantity",
+    "quantityLabel": "Order quantity",
+    "balanceOf": "Balance: {amount} {symbol}",
+    "changeToken": "Change token",
+    "orderValue": "Order Value",
+    "leverageValue": "{value}x",
+    "buy": "Buy",
+    "sell": "Sell",
+    "enterQuantity": "Enter a quantity",
+    "enterPrice": "Enter a price",
+    "notEnoughBalance": "Not enough {symbol}",
+    "quantityInvalid": "Enter a valid quantity",
+    "quantityTooPrecise": "{symbol} allows at most {decimals} decimal places",
+    "placingOrder": "Placing order…",
+    "expandChart": "Expand chart",
+    "exitChartFullscreen": "Exit fullscreen",
+    "marginMode": "Margin mode",
+    "marginCross": "Cross",
+    "marginIsolated": "Isolated",
+    "belowMinNotional": "Minimum order value is {min}",
+    "buyBlocked": "Buy: {reason}",
+    "sellBlocked": "Sell: {reason}",
+    "liquidationUnavailable": "Unavailable",
+    "liquidationUnavailableHint": "No liquidation estimate is available for this order.",
+    "topUp": "Top up",
+    "topUpPreparing": "Preparing…",
+    "withdraw": "Withdraw",
+    "balanceMayBridge": "More than your HyperCore margin. The rest is bridged when you place the order."
   },
   "fundsFlow": {
     "back": "Back",
@@ -1500,7 +1582,14 @@
         "racing": {
           "name": "Racing outrights"
         }
-      }
+      },
+      "playNow": "Play now",
+      "explore": "Explore",
+      "openGame": "Play {name}",
+      "categoriesLabel": "Game categories",
+      "rowLabel": "Arkade games, row {index}",
+      "emptyCategory": "No games in this category yet.",
+      "loadingGames": "Loading games"
     },
     "arkball": {
       "title": "ArkBall",
@@ -2679,9 +2768,7 @@
     "shibaTitle": "Shiba Is Hearing Things !",
     "shibaCta": "Check Chart",
     "predictionTitle": "Your Next <accent>Prediction</accent> Starts Here",
-    "predictionCountdown": "01:46:55:22",
     "predictionOneTitle": "Will Pastor Benny Hinn Be At Healing Stream",
-    "predictionOneBody": "<strong>ETH is up 3.5%</strong> in the last 6 hours. I recommend increasing your position by 10%",
     "predictionTwoTitle": "Who's Gonna take the Belt Home, <strong>Predict Now!</strong>",
     "predictNow": "Predict Now",
     "predictionOther": "See Other Prediction",
@@ -2690,14 +2777,15 @@
     "next100xCarousel": "Next 100X",
     "predictionCarousel": "Prediction markets",
     "tokenTicker": "{price}  <change>{delta}</change>",
-    "tokenTipUp": "<strong>{symbol} is up {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
-    "tokenTipDown": "<strong>{symbol} is down {move}</strong> in the last 6 hours. I recommend increasing your position by 10%",
+    "tokenTipUp": "<strong>{symbol} is up {move}</strong> in the last 24 hours.",
+    "tokenTipDown": "<strong>{symbol} is down {move}</strong> in the last 24 hours.",
     "tokenCta": "Buy {symbol}",
-    "tokenFallbackPrice": "$1,876,617",
-    "tokenFallbackChange": "+12.8%",
-    "tokenFallbackMove": "12.8%",
     "memeUpTitle": "{name} is up",
     "memeDownTitle": "{name} is down",
-    "predictionNoDeadline": "No deadline"
+    "predictionNoDeadline": "No deadline",
+    "squareTitle": "Build <strong>your audience</strong> live",
+    "squareSubtitle": "Stream now and watch your community <strong>grow instantly.</strong>",
+    "squareExplore": "Explore",
+    "squareAria": "Market Square: build your audience live"
   }
 }

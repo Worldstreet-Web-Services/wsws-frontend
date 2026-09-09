@@ -88,7 +88,7 @@ describe("category event listing", () => {
     expect(screen.getByRole("button", { name: /1\s*all politics/i })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open presidential election details/i })
-    ).toHaveAttribute("href", "/prediction/markets/101?category=politics");
+    ).toHaveAttribute("href", "/prediction/markets/101?category=politics&source=markets");
     expect(screen.getByRole("button", { name: "Yes 20.00" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "No 1.05" })).toBeEnabled();
     expect(screen.queryByRole("link", { name: /view all/i })).not.toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("category event listing", () => {
     ).toBeEnabled();
     expect(screen.getByRole("link", { name: /open will alice win/i })).toHaveAttribute(
       "href",
-      "/prediction/markets/101?category=politics"
+      "/prediction/markets/101?category=politics&source=markets"
     );
   });
 

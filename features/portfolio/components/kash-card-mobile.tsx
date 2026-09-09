@@ -42,7 +42,6 @@ function ApproxEqualsGlyph({ className }: { className?: string }) {
 
 interface KashCardMobileProps {
   onBuy: () => void;
-  onSend: () => void;
   onConvert: () => void;
   onHistory: () => void;
 }
@@ -50,8 +49,8 @@ interface KashCardMobileProps {
 // The mobile Kash+ balance card, the bright treatment from the comp (node
 // 1:1565). The dark KashCard still serves `sm` and up; this stands in on a
 // phone. Same rewards data, same actions: the coin balance up top, the unit
-// price under it, and Send / Buy / Convert along the bottom.
-export function KashCardMobile({ onBuy, onSend, onConvert, onHistory }: KashCardMobileProps) {
+// price under it, and Buy / Convert along the bottom.
+export function KashCardMobile({ onBuy, onConvert, onHistory }: KashCardMobileProps) {
   const t = useTranslations("kash");
   const { data: account, isError, walletMissing } = useKashAccount();
   const { data: status } = useKashStatus();
@@ -132,14 +131,9 @@ export function KashCardMobile({ onBuy, onSend, onConvert, onHistory }: KashCard
         </div>
 
         {/* Actions, above the cloud bank */}
-        <div className="grid grid-cols-3 gap-[1.9cqw]">
-          <button
-            onClick={onSend}
-            className="flex h-[9.6cqw] cursor-pointer items-center justify-center gap-[1.6cqw] rounded-full bg-white text-[3.5cqw] font-semibold text-black shadow-[0_1.6px_3.3px_rgba(90,60,0,0.18)] transition-transform active:scale-[0.98]"
-          >
-            <ArrowDownGlyph className="h-[3.7cqw] w-[3.7cqw] rotate-180" />
-            {t("send")}
-          </button>
+        <div className="grid grid-cols-2 gap-[1.9cqw]">
+          {/* Send is off the card for now. The modal and its wiring stay; only
+              the door is gone, so restoring it is this one pill. */}
           <button
             onClick={onBuy}
             className="flex h-[9.6cqw] cursor-pointer items-center justify-center gap-[1.6cqw] rounded-full bg-white text-[3.5cqw] font-semibold text-black shadow-[0_1.6px_3.3px_rgba(90,60,0,0.18)] transition-transform active:scale-[0.98]"

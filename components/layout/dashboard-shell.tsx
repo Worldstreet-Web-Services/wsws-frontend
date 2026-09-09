@@ -67,7 +67,6 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
         items={nav}
         activeSection={activeSection}
         onNavigate={(id) => navigate(id)}
-        onOpenAccount={() => setAccountOpen(true)}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
       />

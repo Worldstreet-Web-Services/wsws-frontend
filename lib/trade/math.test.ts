@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   closeFee,
   estimatedWithdrawalFee,
+  formatCompactUsd,
   formatUsd,
   fromBaseUnits,
   liquidationPrice,
@@ -153,5 +154,41 @@ describe("formatUsd", () => {
   it("falls back to $0.00 for a non-finite value", () => {
     expect(formatUsd(NaN)).toBe("$0.00");
     expect(formatUsd(Infinity)).toBe("$0.00");
+  });
+});
+
+// The design draws a plain "$" and an uppercase single-letter magnitude:
+// "$1.3T", "$301.9B". These assertions are what pins that down, because the
+// shape used to follow the runtime's locale, and an en-GB browser rendered the
+// same market cap "US$1.58tn".
+describe("formatCompactUsd", () => {
+  it("shortens trillions", () => {
+    expect(formatCompactUsd(1_580_000_000_000)).toBe("$1.6T");
+  });
+
+  it("shortens billions", () => {
+    expect(formatCompactUsd(303_470_000_000)).toBe("$303.5B");
+    expect(formatCompactUsd(99_840_000_000)).toBe("$99.8B");
+  });
+
+  it("shortens millions", () => {
+    expect(formatCompactUsd(1_234_567)).toBe("$1.2M");
+  });
+
+  it("shortens thousands", () => {
+    expect(formatCompactUsd(2_500)).toBe("$2.5K");
+  });
+
+  it("shows zero as a plain figure, not a dash", () => {
+    expect(formatCompactUsd(0)).toBe("$0");
+  });
+
+  it("puts the sign of a negative value outside the symbol", () => {
+    expect(formatCompactUsd(-61_480.14)).toBe("-$61.5K");
+  });
+
+  it("falls back to a dash for a non-finite value", () => {
+    expect(formatCompactUsd(NaN)).toBe("—");
+    expect(formatCompactUsd(Infinity)).toBe("—");
   });
 });

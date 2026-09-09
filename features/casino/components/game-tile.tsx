@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { track } from "@/lib/analytics/mixpanel";
-import type { Game } from "@/lib/analytics/events";
-import type { CasinoGame, TileSize } from "@/features/casino/lib/games";
+import { TRACKED_GAMES, type CasinoGame, type TileSize } from "@/features/casino/lib/games";
 import type { GamePresence } from "@/features/casino/lib/api/types";
 
 // A next-intl t scoped to "casino.hub", passed into the label helpers.
@@ -75,13 +74,6 @@ function badgeFor(t: HubTranslate, game: CasinoGame, presence?: GamePresence) {
     return { text: t("badgeNew"), className: "bg-grey-100 text-ink" };
   return null;
 }
-
-// The tile ids that map onto the catalog's game names.
-const TRACKED_GAMES: Record<string, Game | undefined> = {
-  chess: "chess",
-  checkers: "checkers",
-  "last-standing": "last_man",
-};
 
 export function GameTile({ game, presence, headline }: GameTileProps) {
   const t = useTranslations("casino.hub");

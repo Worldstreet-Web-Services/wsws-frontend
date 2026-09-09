@@ -35,6 +35,8 @@ import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { Next100xRow } from "@/features/discovery/components/next-100x-row";
 import { PredictionStartsRow } from "@/features/discovery/components/prediction-starts-row";
 import { useMemeSpots } from "@/app/(session)/(app)/dashboard/discovery/memecoins";
+import { useTokenSpots } from "@/app/(session)/(app)/dashboard/discovery/tokens";
+import { usePredictionSpots } from "@/app/(session)/(app)/dashboard/discovery/predictions";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
@@ -165,6 +167,16 @@ export function DashboardPage() {
   // Sourced at the route so discovery stays clear of the trade slice; the row
   // falls back to its editorial cards when this is empty.
   const memeSpots = useMemeSpots();
+  // The five biggest movers the "Stay Ahead of Token Moves" card cycles
+  // through. Sourced here for the same reason as the memecoins above:
+  // discovery does not import trade. Until this was wired the card had no
+  // tokens prop at all and fell back to a hardcoded BTC comp.
+  const { tokens: tokenSpots, loading: tokenSpotsLoading } = useTokenSpots();
+  // The markets the "prediction starts" card cycles through. Sourced here for
+  // the same reason as the two rows above: discovery does not import the
+  // feature slices. Until this was wired the card had no markets prop and
+  // showed the design's sample market on every dashboard.
+  const predictionSpots = usePredictionSpots();
   // The square's feed tab lives here because two siblings drive it: the
   // section's own strip, and the plus sheet's discussions.
   const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
@@ -317,10 +329,10 @@ export function DashboardPage() {
           draws them under the balance cards — Token Moves, Join the
           Conversation, Find the next 100X, then Prediction starts. */}
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
-        <TokenMovesRow />
+        <TokenMovesRow tokens={tokenSpots} loading={tokenSpotsLoading} />
         <ConversationRow />
         <Next100xRow memecoins={memeSpots} />
-        <PredictionStartsRow />
+        <PredictionStartsRow markets={predictionSpots} />
       </div>
 
       {briefs.map((id, index) => {

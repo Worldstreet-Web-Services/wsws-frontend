@@ -7,11 +7,11 @@ import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { CardIcon, SearchIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { track } from "@/lib/analytics/mixpanel";
-import type { Game } from "@/lib/analytics/events";
 import { formatQty } from "@/lib/format";
 import {
   CASINO_GAMES,
   GAME_CATEGORIES,
+  TRACKED_GAMES,
   filterGames,
   type CasinoGame,
   type GameCategoryFilter,
@@ -27,15 +27,6 @@ const CATEGORY_KEY: Record<GameCategoryFilter, string> = {
   Racing: "categoryRacing",
   New: "categoryNew",
   "Coming soon": "categoryComingSoon",
-};
-
-// The three games the catalogue names to the analytics layer; anything else has
-// no agreed id, so opening it reports nothing rather than inventing one. Kept in
-// step with the desktop GameTile.
-const TRACKED_GAMES: Record<string, Game | undefined> = {
-  chess: "chess",
-  checkers: "checkers",
-  "last-standing": "last_man",
 };
 
 // One catalogue entry as the mobile comp draws it (node 261:977): a short

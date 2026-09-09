@@ -1,16 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
+import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import { tokenBg } from "@/lib/trade/assets";
 import { formatUsd } from "@/lib/trade/math";
 
-// How long each token holds before cycling to the next.
-const ROTATE_MS = 3000;
+// Ten seconds a token, the cadence the discovery cards rotate at.
+const ROTATE_MS = 10_000;
 
-// A token the insight card can render. Any market can appear.
+// How many tokens the carousel cycles through. The caller may hand us more.
+const MAX_TOKENS = 5;
+
+// The card artwork (/trade/token-moves/card-bg.svg) has the designer's sample
+// figures baked into it as outlined glyph paths: "BTC", "$1,876.67", "+12.8%",
+// the recommendation sentence, and "Buy Eth". They cannot be edited out of the
+// image from here, so every one of them sits underneath an opaque panel that
+// matches the SVG's own rect exactly, and the real figures are DOM text on top.
+// Change a panel's geometry and a fabricated number reappears from under it.
+//
+// Geometry, read straight off the SVG (viewBox 339x168):
+//   chip   rect x=71     y=22.0287  w=168.569 h=44.6213 rx=8.68   rotate(-3.07027 71 22.0287)
+//   bubble rect x=37     y=69.5861  w=222     h=58      rx=10.12  (not rotated)
+//   button rect x=68.678 y=134.264  w=65.088  h=24.408  rx=12.204 (not rotated)
+const CHIP = { left: "20.943%", top: "13.112%", width: "49.725%", height: "26.560%" };
+const BUBBLE = { left: "10.914%", top: "41.420%", width: "65.487%", height: "34.524%" };
+const BUTTON = { left: "20.259%", top: "79.919%", minWidth: "19.199%", height: "14.529%" };
+
+// A token the insight card can render, as composed by useSpotMarkets: the
+// symbol and logo from the buy catalogue, the price from the price feed, the
+// 24h change from the market feed. No field is invented here.
 export interface InsightToken {
   symbol: string;
   name: string;
@@ -19,36 +41,47 @@ export interface InsightToken {
   change24h: number;
 }
 
-function changePct(chg: number): string {
-  const v = Number.isFinite(chg) ? chg : 0;
-  return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+// The 24h move as the chip prints it: "+12.8%", "-4.2%". Display formatting
+// only, so no price arithmetic happens here.
+function signedChange(change: number): string {
+  return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
 }
 
-// The token-insight card (Figma node 1:4060). Card is 339x168.
-// The original SVG from Figma is used as-is for the full design. Dynamic
-// text (symbol, price, change, message, buy label) and the token logo are
-// overlaid at the exact positions the SVG's static content sits at, with
-// opaque white/black backgrounds matching the SVG's chip, bubble, and
-// button fills so the static text underneath is fully hidden.
+// The same figure without its sign, for a sentence that carries the direction
+// in its own words.
+function changeMagnitude(change: number): string {
+  return `${Math.abs(change).toFixed(1)}%`;
+}
+
+// Which sentence the bubble reads. A change we did not receive gets its own
+// wording rather than being rounded down into a confident "is flat".
+function moveKey(
+  change: number
+): "tokenMoveUnknown" | "tokenMoveFlat" | "tokenMoveUp" | "tokenMoveDown" {
+  if (!Number.isFinite(change)) return "tokenMoveUnknown";
+  if (change === 0) return "tokenMoveFlat";
+  return change > 0 ? "tokenMoveUp" : "tokenMoveDown";
+}
+
+// The token-insight card (Figma node 1:4060), 339x168. The artwork supplies the
+// gradient and the decoration; the chip, the sentence and the buy pill are DOM.
 function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () => void }) {
-  const up = token.change24h >= 0;
+  const t = useTranslations("markets");
+  const tSpot = useTranslations("spot");
+
+  const hasChange = Number.isFinite(token.change24h);
+  const hasPrice = Number.isFinite(token.priceUsd) && token.priceUsd > 0;
+  const up = hasChange && token.change24h >= 0;
+
   return (
     <div className="relative aspect-[339/168] w-full overflow-hidden rounded-[16.272px]">
-      {/* Original Figma SVG — full design, untouched */}
+      {/* Figma export, used for the gradient and the decoration only. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/trade/token-moves/card-bg.svg" alt="" className="block h-full w-full" />
 
-      {/* Token chip overlay: covers the full white chip area.
-          SVG rect at (71, 22) 169x45 rx=8.68 → 20.9%/13.1% */}
       <div
         className="absolute flex items-center rounded-[8.68px] bg-white p-[7px] shadow-[0_2px_6px_rgba(120,90,0,0.1)]"
-        style={{
-          left: "20.9%",
-          top: "13.1%",
-          width: "49.7%",
-          height: "26.6%",
-          transform: "rotate(-3deg)",
-        }}
+        style={{ ...CHIP, transform: "rotate(-3.07027deg)", transformOrigin: "0 0" }}
       >
         <span className="size-[30px] shrink-0 overflow-hidden rounded-full">
           <AssetIcon
@@ -59,53 +92,44 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
             size={30}
           />
         </span>
-        <span className="ml-[5px] leading-tight">
-          <span className="block text-[10px] font-semibold text-black">{token.symbol}</span>
+        <span className="ml-[5px] min-w-0 leading-tight">
+          <span className="block truncate text-[10px] font-semibold text-black">
+            {token.symbol}
+          </span>
           <span className="flex items-center gap-[3.7px] text-[10px] font-medium">
-            <span className="text-[#9b9b9b]">
-              {token.priceUsd > 0 ? formatUsd(token.priceUsd) : "—"}
-            </span>
-            <span className={up ? "text-[#5aad00]" : "text-[#f04438]"}>
-              {changePct(token.change24h)}
-            </span>
+            {/* An absent price prints a dash. It never falls back to a number. */}
+            <span className="text-[#9b9b9b]">{hasPrice ? formatUsd(token.priceUsd) : "—"}</span>
+            {hasChange ? (
+              <span className={up ? "text-[#5aad00]" : "text-[#f04438]"}>
+                {signedChange(token.change24h)}
+              </span>
+            ) : null}
           </span>
         </span>
-        <span className="ml-auto text-[13px]">🔥</span>
+        <span className="ml-auto pl-[4px] text-[13px]">🔥</span>
       </div>
 
-      {/* Message bubble overlay: covers the full white bubble area.
-          SVG rect at (37, 69.59) 222x58 rx=10.12 → 10.9%/41.4% */}
       <div
-        className="absolute overflow-hidden rounded-[10.12px] bg-white px-[10px] py-[10px] shadow-[0_2px_8px_rgba(120,90,0,0.08)]"
-        style={{
-          left: "10.9%",
-          top: "41.4%",
-          width: "65.5%",
-          height: "28%",
-          transform: "rotate(-3deg)",
-        }}
+        className="absolute overflow-hidden rounded-[10.12px] bg-white px-[10px] py-[9px] shadow-[0_2px_8px_rgba(120,90,0,0.08)]"
+        style={BUBBLE}
       >
-        <p className="text-[10.5px] leading-[1.3]">
-          <span className="font-semibold text-[#060606]">
-            {token.symbol} is {up ? "up" : "down"} {Math.abs(token.change24h).toFixed(1)}%
-          </span>
-          <span className="font-medium text-[#656464]">
-            {" "}
-            in the last 6 hours. I recommend increasing your position by 10%
-          </span>
+        <p className="text-[10.5px] leading-[1.3] font-medium text-[#656464]">
+          {t.rich(moveKey(token.change24h), {
+            symbol: token.symbol,
+            change: hasChange ? changeMagnitude(token.change24h) : "",
+            b: (chunks) => <span className="font-semibold text-[#060606]">{chunks}</span>,
+          })}
         </p>
       </div>
 
-      {/* Buy button overlay: covers the full black button area.
-          SVG rect at (68.68, 134.26) 65.09x24.41 rx=12.2 → 20.3%/79.9% */}
       <button
         type="button"
         onClick={onBuy}
-        className="absolute z-10 flex cursor-pointer items-center justify-center gap-[2.7px] rounded-[12.2px] border-[1.4px] border-[#ffd52d] bg-black"
-        style={{ left: "20.3%", top: "79.9%", width: "19.2%", height: "14.5%" }}
+        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[12.2px] border-[1.4px] border-[#ffd52d] bg-black px-[6px]"
+        style={BUTTON}
       >
         <span className="text-[8px] font-semibold whitespace-nowrap text-white">
-          Buy {token.symbol}
+          {tSpot("ctaBuy", { symbol: token.symbol })}
         </span>
       </button>
     </div>
@@ -115,6 +139,7 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
 // The static "Eth Africa" promo card (Figma node 1:4145), kept as its
 // exported render.
 function EthAfricaCard({ onBuy }: { onBuy?: () => void }) {
+  const tSpot = useTranslations("spot");
   return (
     <div className="relative">
       <Image
@@ -128,7 +153,7 @@ function EthAfricaCard({ onBuy }: { onBuy?: () => void }) {
         <button
           type="button"
           onClick={onBuy}
-          aria-label="Buy ETH"
+          aria-label={tSpot("ctaBuy", { symbol: "ETH" })}
           className="absolute cursor-pointer rounded-full"
           style={{ left: "64%", top: "9%", width: "29%", height: "22.5%" }}
         />
@@ -137,10 +162,19 @@ function EthAfricaCard({ onBuy }: { onBuy?: () => void }) {
   );
 }
 
-// The "Stay Ahead of Token Moves" section (Figma node 1:4053): a header over
-// a two-card horizontal scroll. The first card is a single rotating insight
-// card that cycles through tokens every 3 seconds. The second is the static
-// Eth Africa promo.
+// The crossfade between two tokens. Declared here rather than in globals.css so
+// the card carries its own motion, and switched off outright for a reader who
+// asked for less of it.
+const FADE_CSS = `
+.ws-token-move-fade { animation: ws-token-move-fade 320ms ease-out; }
+@keyframes ws-token-move-fade { from { opacity: 0 } to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .ws-token-move-fade { animation: none } }
+`;
+
+// The "Stay Ahead of Token Moves" section (Figma node 1:4053): a header over a
+// two-card horizontal scroll. The first card cycles through the five tokens the
+// caller hands us, ten seconds each, forever. The second is the static Eth
+// Africa promo.
 export function TokenMoves({
   tokens,
   onBuyToken,
@@ -148,25 +182,24 @@ export function TokenMoves({
   tokens: InsightToken[];
   onBuyToken?: (symbol: string) => void;
 }) {
-  const [index, setIndex] = useState(0);
+  const t = useTranslations("markets");
 
-  // Cycle through tokens every 3 seconds. Pauses for reduced motion.
-  useEffect(() => {
-    if (tokens.length < 2) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % tokens.length);
-    }, ROTATE_MS);
-    return () => clearInterval(id);
-  }, [tokens.length]);
+  // WCAG 2.2.2 (Pause, Stop, Hide): a pointer resting on the card or a keyboard
+  // landing inside it holds the rotation still, so nobody loses a sentence
+  // half-read. Pointer events rather than mouse events, so a tap holds it too.
+  const [held, setHeld] = useState(false);
 
-  const current = tokens.length > 0 ? tokens[index % tokens.length] : null;
+  const cycle = useMemo(() => tokens.slice(0, MAX_TOKENS), [tokens]);
+  const index = useRotatingIndex(cycle.length, { intervalMs: ROTATE_MS, paused: held });
+  const current = cycle.length > 0 ? cycle[index] : null;
 
   return (
     <div>
+      <style>{FADE_CSS}</style>
+
       <Link href="/market" className="mb-3 inline-flex items-end gap-[3px]">
         <span className="ws-display text-[18px] leading-[1.2] tracking-[-0.36px] text-white">
-          Stay Ahead of Token Moves
+          {t("tokenMovesTitle")}
         </span>
         <svg viewBox="0 0 20 20" aria-hidden className="mb-[1px] h-5 w-5 shrink-0" fill="none">
           <path
@@ -180,10 +213,26 @@ export function TokenMoves({
       </Link>
 
       <div className="ws-no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto">
+        {/* No token, no card. An empty or not-yet-loaded feed shows nothing
+            rather than the last token or a placeholder figure. */}
         {current ? (
-          <div className="w-[88%] shrink-0 snap-start">
-            <TokenInsightCard token={current} onBuy={() => onBuyToken?.(current.symbol)} />
-          </div>
+          <section
+            aria-label={t("tokenMovesRegion")}
+            // Silent while it turns itself, per the APG carousel pattern:
+            // announcing a new token every ten seconds talks over the reader.
+            // Held still, the card is being read, so changes get announced.
+            aria-live={held ? "polite" : "off"}
+            aria-atomic="true"
+            className="w-[88%] shrink-0 snap-start"
+            onPointerEnter={() => setHeld(true)}
+            onPointerLeave={() => setHeld(false)}
+            onFocus={() => setHeld(true)}
+            onBlur={() => setHeld(false)}
+          >
+            <div key={current.symbol} className="ws-token-move-fade">
+              <TokenInsightCard token={current} onBuy={() => onBuyToken?.(current.symbol)} />
+            </div>
+          </section>
         ) : null}
         <div className="w-[88%] shrink-0 snap-start overflow-hidden rounded-[16px]">
           <EthAfricaCard onBuy={() => onBuyToken?.("ETH")} />

@@ -27,7 +27,14 @@ export default async function PredictionMarketEventPage({
   const category = parsePredictionCategory(
     typeof query.category === "string" ? query.category : undefined
   );
-  if (isPredictionMarketCategory(category)) {
+  // This path serves two products off one id, and the id cannot tell them
+  // apart: Polymarket numbers its events and so does the sportsbook. The link
+  // says which. `source=markets` is stamped by categoryEventHref, so every link
+  // built from the Polymarket desk lands on the discovery detail, sports
+  // included. Older links carry only a category, so a non-sports one is still
+  // read as Polymarket's; a bare id, or anything with the sportsbook's own
+  // sport/country/league, falls through to the sportsbook as it always did.
+  if (query.source === "markets" || isPredictionMarketCategory(category)) {
     return <CategoryEventDetail category={category} eventId={eventId} />;
   }
   const sport = typeof query.sport === "string" ? query.sport : "football";

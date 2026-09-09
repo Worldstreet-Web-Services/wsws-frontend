@@ -5,9 +5,11 @@
 // Both cards are static markup, so the cost is that markup, not new behaviour.
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
+import { formatCountdown, useCountdown } from "@/hooks/use-countdown";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
 import type { PredictionSpot } from "@/features/discovery/types";
@@ -51,27 +53,25 @@ const CLOUD_PUFFS = [
 ] as const;
 
 /*
- * The text column. The design draws the headline 197px wide and the body 285px
- * in a card 481px across, and both grow with the card, so a wider card gives a
- * longer locale more room rather than more lines. The shares look wrong against
- * the design measurements because a max-width percentage resolves against the
- * padded content box, which is 52px narrower than the card. The last term keeps
- * the text clear of the photo collage, which starts at 79.5218% of the card less
- * half its own 133px width.
+ * The headline. The design draws it 197px wide in a card 481px across, and it
+ * grows with the card, so a wider card gives a longer locale more room rather
+ * than more lines. The share looks wrong against the design measurement because
+ * a max-width percentage resolves against the padded content box, which is 52px
+ * narrower than the card. The last term keeps the text clear of the photo
+ * collage, which starts at 79.5218% of the card less half its own 133px width.
  *
  * That last term used to leave the design's own 5px, which is the only clearance
  * the text gets on any card narrower than 481px, where it is the term that binds.
- * Measured on the one-up carousel slide a 375px phone gives (a 281px card) the
- * body ran to 6.4px of the photo edge, and on the 1024px breakpoint's 426px
- * slide to 5.2px. Both read as text pushed up against the picture. The clearance
- * is now 14px, which holds at every width below 481px and costs nothing above it,
- * where the body's own 66.4336% share is the smaller term. 51.15 is the fixed
- * part of the collage offset once the 26px left padding is taken out, so the
- * constant is that plus the clearance.
+ * Five pixels read as text pushed up against the picture: measured on the one-up
+ * carousel slide a 375px phone gives (a 281px card), the longest line ran to
+ * 6.4px of the photo edge, and on the 1024px breakpoint's 426px slide to 5.2px.
+ * The clearance is now 14px, which holds at every width below 481px and costs
+ * nothing above it, where the headline's own share is the smaller term. 51.15 is
+ * the fixed part of the collage offset once the 26px left padding is taken out,
+ * so the constant is that plus the clearance.
  */
 const PHOTO_CLEARANCE = "calc(79.5218% - 65.15px)";
 const HEADLINE_WIDTH = `min(max(197px, 45.9207%), ${PHOTO_CLEARANCE})`;
-const BODY_WIDTH = `min(max(285px, 66.4336%), ${PHOTO_CLEARANCE})`;
 
 /*
  * The red card's headline: 200px of the panel's 445px in the design, growing
@@ -156,9 +156,8 @@ interface PredictionMarketCardProps {
 
 // The featured market: a sunlit card carrying the countdown, the question and
 // the two pills the design draws in a white bar along the foot. Only the chip,
-// the headline, the collage and where the first pill leads follow the market.
-// Everything else is fixed artwork. The one thing a live market takes away is
-// the editorial tip under the headline, which is explained where it is drawn.
+// the headline, the collage, and where the card and the first pill lead follow
+// the market. Everything else is fixed artwork.
 function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
   const t = useTranslations("discovery");
 
@@ -166,7 +165,19 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
   // It is content, like a headline in a feed, and there is no message for it.
   // Do not "fix" this by wrapping it in `t`.
   const question = market ? market.question : t("predictionOneTitle");
-  const countdown = market ? market.countdown : t("predictionCountdown");
+  // The chip counts down to the market's real close time, ticking every second.
+  //
+  // It used to print `discovery.predictionCountdown`, a clock face typed into
+  // the message catalogue and translated five ways, so every card on every
+  // dashboard read 01:46:55:22 forever. The instant now comes from Gamma's
+  // endDate through the route, and null still means null: a market with no
+  // published deadline keeps the chip and reads "No deadline" rather than
+  // counting to a time nobody set.
+  //
+  // Formatting happens here rather than in the adapter because this is the one
+  // figure on the card that cannot be prepared upstream. It changes every
+  // second, so only the view that ticks it can render it.
+  const countdown = formatCountdown(useCountdown(market?.closesAt ?? null));
   const tiles = collageTiles(market ? market.images : FALLBACK_IMAGES);
 
   return (
@@ -233,6 +244,29 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
         </span>
       )}
 
+      {/* The whole card opens the market, not just the pill in the white bar.
+          It is a link rather than a button because it goes to a route, so it
+          gets middle-click, open-in-new-tab and copy-link for nothing.
+
+          It cannot wrap the card: the white bar holds two pills that are links
+          themselves, and an anchor inside an anchor is invalid and drops out of
+          the tab order. So the link is an empty box stretched over the card and
+          the layers that carry the pills sit above it, which is the same
+          arrangement the markets discovery card uses. It is laid out here, after
+          the artwork and before the text, so DOM order alone keeps it under
+          them and no layer needs a z-index it did not have before.
+
+          Its accessible name is the market's own question. That is what names
+          this card apart from the one beside it; "Predict Now", which is all a
+          screen reader gets from the pill today, does not. The destination
+          follows the first pill, including its fallback, so the card and the
+          pill can never lead to two different places. */}
+      <Link
+        href={market ? market.href : "/prediction"}
+        aria-label={question}
+        className="absolute inset-0 rounded-[15px] outline-none focus-visible:ring-2 focus-visible:ring-[#0b0a0a]"
+      />
+
       {/* The bottom padding is not slack the design left over, it is the gap
           itself. The column is `flex-1`, so on a card at its 222px floor it has
           room to spare, but every locale except English already fills the
@@ -240,7 +274,11 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
           bottom padding the body's last line finished 3.1px above the white
           bar in French, Spanish, German and Portuguese, and 1px at the narrower
           slide widths. */}
-      <div className="relative flex-1 px-[26px] pt-[18px] pb-[14px]">
+      {/* `pointer-events-none` hands the column's clicks to the stretched link
+          under it. Nothing in here is interactive, and the article still sees
+          the pointer events it needs for the rotation hold: they come off the
+          link instead and bubble the same way. */}
+      <div className="pointer-events-none relative flex-1 px-[26px] pt-[18px] pb-[14px]">
         {/* The chip's gutters are the design's and stay: 10.611px each side of
             8.917px type is 1.19em, wider in proportion than the 8/7em every
             discovery pill gets, and the countdown is a fixed-width digit
@@ -257,8 +295,9 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
             aria-hidden
             className="block size-[12.127px] shrink-0 bg-[url('/market/prediction-stopwatch.svg')] bg-[length:9.8535px_10.8641px] bg-center bg-no-repeat"
           />
-          {/* A market with no deadline keeps the chip and swaps the clock for
-              a word. Dropping the chip would take 38px out of the head of the
+          {/* A market with no deadline, and the sample that stands in before
+              any market arrives, keep the chip and swap the clock for a word.
+              Dropping the chip would take 38px out of the head of the
               card and lift the headline, the body and the collage relationship
               with it, and the design's geometry starts at this chip. The
               stopwatch stays: the pill still says what the clock is doing. */}
@@ -272,40 +311,41 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
         >
           {question}
         </h3>
-        {/* The tip is editorial and stays with the editorial card. It is
-            advice about one named position, so under a live market's question
-            it would be asserting something about a market it was never written
-            for. `PredictionSpot` carries no body, and price data is not a
-            body: this card is not the place to author a recommendation. So the
-            line renders only alongside the sample question it was written for.
+        {/* Nothing under the headline. The design drew a line of body copy
+            there and what it drew was advice: `discovery.predictionOneBody`
+            read "ETH is up 3.5% in the last 6 hours. I recommend increasing
+            your position by 10%". It quoted a move no feed produced, over a
+            window this app does not have (the only change we carry is 24
+            hours), told the reader to add to a position, and did all of it
+            under a headline about whether a preacher will appear at an event.
+            It was translated into all five locales, so it shipped as a
+            recommendation in five languages. This card does not author advice
+            and does not print a figure nothing measured.
 
-            Dropping it leaves the column slack, and the headline keeps the
+            What is left is what the market actually gives us. `PredictionSpot`
+            carries the question, the countdown, the photos and the
+            destination, and the card already draws all four, so there is no
+            sentence left to write from real data. A body needs the market to
+            bring one: add a field to `PredictionSpot`, formatted upstream like
+            every other figure on this shelf, and render it here.
+
+            The column keeps the slack that leaves, and the headline keeps the
             design's measure rather than widening into it: a wider measure
             takes lines off the question, which opens the gap above the white
-            bar instead of closing it. Measured against the fallback's 14px,
-            a question of two lines or more leaves 18px, and a one-line
-            question 39px, which is the card sitting at its 222px floor with
-            less copy on it. Both at 481px and at the 660px the dashboard
-            gives a slide.
-
-            The design sets its lead clause a weight heavier than the advice
-            that follows, the same way the BTC tip is marked up. */}
-        {!market && (
-          <p
-            style={{ maxWidth: BODY_WIDTH }}
-            className="mt-[4px] font-serif text-[12px] font-medium break-words text-black"
-          >
-            {t.rich("predictionOneBody", {
-              strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
-            })}
-          </p>
-        )}
+            bar instead of closing it. Measured with the 14px bottom padding, a
+            question of two lines or more leaves 18px and a one-line question
+            39px, which is the card sitting at its 222px floor with less copy
+            on it. Both at 481px and at the 660px the dashboard gives a
+            slide. */}
       </div>
 
       {/* 82px is the design's bar, and the floor rather than the height: a
           locale whose two labels will not sit side by side wraps the second
           pill under the first and the bar grows to hold it. */}
-      <div className="relative flex min-h-[82px] flex-wrap items-start gap-x-[7.714px] gap-y-[10px] bg-white/60 px-[22px] py-[12px]">
+      {/* The bar itself is transparent to the pointer so the space around the
+          pills belongs to the stretched link, the same as the rest of the card.
+          Each pill takes its own clicks back. */}
+      <div className="pointer-events-none relative flex min-h-[82px] flex-wrap items-start gap-x-[7.714px] gap-y-[10px] bg-white/60 px-[22px] py-[12px]">
         {/* The padding override stays. `DiscoveryCta` now derives its gutters
             from the label size, and at 15px that gives 17.143 by 10.714. The
             design draws this pair larger than its type: 21.214px around the
@@ -322,7 +362,7 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
           tone="light"
           size={15}
           padding="px-[20.571px] py-[12.857px]"
-          className="border-[0.643px] border-[#fee685] tracking-[-0.15px]"
+          className="pointer-events-auto border-[0.643px] border-[#fee685] tracking-[-0.15px]"
           icon={
             <img
               src="/market/prediction-coins-black.svg"
@@ -340,7 +380,7 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
           tone="dark"
           size={15}
           padding="px-[20.571px] py-[12.857px]"
-          className="border-[0.643px] border-[#fffcfc] tracking-[-0.15px]"
+          className="pointer-events-auto border-[0.643px] border-[#fffcfc] tracking-[-0.15px]"
         />
       </div>
     </article>
@@ -432,16 +472,24 @@ function TitleFightCard() {
 //
 // The yellow card is the live one. It cycles through `markets` on a ten second
 // timer, taking the countdown, the question, the collage and the first pill's
-// destination from whichever market is up, and dropping the editorial tip that
-// was written for the sample. Everything else on the card is fixed geometry
-// and artwork. With no markets it renders the design's own sample: the fixed
-// countdown, the Benny Hinn question and the two committed photos, which is
-// what the preview harness and the tests see, and what ships until a markets
-// feed reaches the dashboard.
+// destination from whichever market is up. Everything else on the card is fixed
+// geometry and artwork. With no markets it renders the design's own sample: the
+// Benny Hinn question and the two committed photos, with no clock, because there
+// is no market whose deadline it could be showing. That sample is what the
+// preview harness and the tests see, and what ships until a markets feed reaches
+// the dashboard.
 //
-// Every clickable on the row is a `DiscoveryCta` or the heading link, and both
-// take their hover from `ws-pressable`. Nothing on these cards declares a hover
-// of its own, and nothing carries a shadow at rest or on hover.
+// Nothing rotates until the route hands this row markets. `app/(session)/(app)/
+// dashboard/dashboard-page.tsx` renders it with none, so the dashboard shows the
+// sample and runs no timer. The row cannot fetch them itself: discovery must not
+// reach into the prediction feature, so the route maps its own hook's markets
+// into `PredictionSpot` and passes them in, the way it already does for the
+// token and memecoin shelves.
+//
+// Every clickable on the row is a `DiscoveryCta`, the heading link, or the
+// market card's own stretched link, and the first two take their hover from
+// `ws-pressable`. Nothing on these cards declares a hover of its own, and
+// nothing carries a shadow at rest or on hover.
 //
 // The pair rides a carousel, and two cards cannot cycle, so the market card is
 // dealt twice. It is the only card on the row carrying a clock, so it is the

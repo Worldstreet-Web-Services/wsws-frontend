@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
@@ -41,35 +41,71 @@ const TOKEN_HOLD_MS = 10_000;
 const GAIN_INK = "text-[#5aad00]";
 const LOSS_INK = "text-[#ed2b07]";
 
-interface TokenCallCardProps {
-  token: TokenSpot;
-  /** Called with true while the pointer or focus is on this card. */
-  onHold: (held: boolean) => void;
+// The card's own yellow, named because the loading placeholder is the same
+// card and has to be drawn in it too.
+const TOKEN_CARD_BG = "bg-[linear-gradient(124deg,#ffd52d_37%,#f5c500_88%)]";
+
+// What stands where a price should be when the route did not have one. A dash,
+// never a number: a figure here would be read as the price of the token whose
+// symbol is sitting next to it.
+const MISSING_FIGURE = "\u2014";
+
+/**
+ * Whether the route actually sent this figure.
+ *
+ * The row is handed display-ready strings, so a figure the route did not have
+ * arrives as an empty string rather than as null or NaN. A blank one is never
+ * drawn as though it were a number.
+ */
+function present(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.trim() !== "";
 }
 
-// The call on one token: a rocket over a moon glow and a cloud bank, with the
-// ticker, the tip and the buy pill laid over it. The rocket and its sparkles are
-// drawn against the card's right edge, the copy against its left.
-//
-// Only the words move. The token supplies the logo, the symbol, the price, the
-// move and the destination; the artwork, the geometry and the colours are the
-// same card whichever token is featured.
-function TokenCallCard({ token, onHold }: TokenCallCardProps) {
-  const t = useTranslations("discovery");
+/**
+ * Whether a display-ready percentage is exactly zero.
+ *
+ * The card never sees the raw number, so flat has to be read off the string.
+ * The five locales write the same figure differently ("0.0%", "0,00 %"), but
+ * all of them write a zero move with zeros and nothing else, so the digits are
+ * what is checked. No arithmetic, and no per-locale table to keep in step.
+ */
+function zeroPercent(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits !== "" && !/[1-9]/.test(digits);
+}
 
+/** Which of the four sentences the tip reads. */
+type MoveTone = "up" | "down" | "flat" | "unknown";
+
+/**
+ * The move the tip can honestly claim.
+ *
+ * A zero is not a fact about the market unless the market said so. The spot
+ * composition upstream defaults a missing 24h change to 0, so a token the price
+ * feed has never heard of would otherwise reach this card looking exactly like
+ * a token that genuinely did not move, and be announced as "is up 0.0%". The
+ * route's job is to send a blank `movePercent` for the first case; a blank one
+ * is read here as unknown and gets a sentence that claims nothing, and only a
+ * figure the route really had can produce "flat", "up" or "down".
+ */
+function moveTone(token: TokenSpot): MoveTone {
+  if (!present(token.movePercent)) return "unknown";
+  if (zeroPercent(token.movePercent)) return "flat";
+  return token.up ? "up" : "down";
+}
+
+// The bold clause inside the tip. Both message namespaces mark it, so the same
+// renderer serves the discovery <strong> tag and the markets <b> tag.
+function emphasis(chunks: ReactNode) {
+  return <strong className="font-semibold text-[#060606]">{chunks}</strong>;
+}
+
+// The launch artwork: the spark, the moon glow, the cloud bank, the rocket and
+// the stars. Shared by the live card and the loading placeholder, so the two
+// are the same picture and only the copy on top of it differs.
+function TokenCardArt() {
   return (
-    <article
-      // WCAG 2.2.2: the card updates itself, so a reader needs a way to stop
-      // it. Pointing at the card or tabbing into it holds the token in place
-      // until the pointer or the focus leaves. onFocus and onBlur are React's
-      // focusin and focusout, so they cover anything focused inside the card,
-      // not just the card itself.
-      onMouseEnter={() => onHold(true)}
-      onMouseLeave={() => onHold(false)}
-      onFocus={() => onHold(true)}
-      onBlur={() => onHold(false)}
-      className={`${CARD_BOX} bg-[linear-gradient(124deg,#ffd52d_37%,#f5c500_88%)]`}
-    >
+    <>
       <img
         src="/market/token-launch-spark.svg"
         alt=""
@@ -103,6 +139,46 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
         aria-hidden
         className={`${artLayer} top-[9.09px] right-[23.18px] h-[151.09px] w-[127.82px]`}
       />
+    </>
+  );
+}
+
+interface TokenCallCardProps {
+  token: TokenSpot;
+  /** Called with true while the pointer or focus is on this card. */
+  onHold: (held: boolean) => void;
+}
+
+// The call on one token: a rocket over a moon glow and a cloud bank, with the
+// ticker, the tip and the buy pill laid over it. The rocket and its sparkles are
+// drawn against the card's right edge, the copy against its left.
+//
+// Only the words move. The token supplies the logo, the symbol, the price, the
+// move and the destination; the artwork, the geometry and the colours are the
+// same card whichever token is featured.
+function TokenCallCard({ token, onHold }: TokenCallCardProps) {
+  const t = useTranslations("discovery");
+  // The flat and unknown sentences live under `markets`; see the tip below.
+  const tMarkets = useTranslations("markets");
+
+  const hasPrice = present(token.price);
+  const hasDelta = present(token.change);
+  const tone = moveTone(token);
+
+  return (
+    <article
+      // WCAG 2.2.2: the card updates itself, so a reader needs a way to stop
+      // it. Pointing at the card or tabbing into it holds the token in place
+      // until the pointer or the focus leaves. onFocus and onBlur are React's
+      // focusin and focusout, so they cover anything focused inside the card,
+      // not just the card itself.
+      onMouseEnter={() => onHold(true)}
+      onMouseLeave={() => onHold(false)}
+      onFocus={() => onHold(true)}
+      onBlur={() => onHold(false)}
+      className={`${CARD_BOX} ${TOKEN_CARD_BG}`}
+    >
+      <TokenCardArt />
 
       {/* The ticker chip, tilted as drawn. It sizes to its own text so a
           longer locale, or a longer symbol, extends it rather than clipping
@@ -142,15 +218,28 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
             </p>
             {/* The price is grey and the move is coloured. The colour comes
                 from the <change> tag; without it next-intl returns the line
-                whole and it stays grey. */}
+                whole and it stays grey.
+
+                A price the route did not have is a dash. A move it did not
+                have is nothing at all, not a zero and not a placeholder: this
+                line is one of two things on the card anybody reads as a
+                number, and a percentage printed here is a claim about the
+                market. Without a move the line is the price on its own, which
+                is why it does not go through the two-slot message. */}
             <p className="tnum text-[12px] leading-normal font-semibold text-[#9b9b9b]">
-              {t.rich("tokenTicker", {
-                price: token.price,
-                delta: token.change,
-                change: (chunks) => (
-                  <span className={`font-medium ${token.up ? GAIN_INK : LOSS_INK}`}>{chunks}</span>
-                ),
-              })}
+              {hasDelta ? (
+                t.rich("tokenTicker", {
+                  price: hasPrice ? token.price : MISSING_FIGURE,
+                  delta: token.change,
+                  change: (chunks) => (
+                    <span className={`font-medium ${token.up ? GAIN_INK : LOSS_INK}`}>
+                      {chunks}
+                    </span>
+                  ),
+                })
+              ) : (
+                <span>{hasPrice ? token.price : MISSING_FIGURE}</span>
+              )}
             </p>
           </div>
         </div>
@@ -182,14 +271,28 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
             {/* A gain and a loss are two whole messages rather than one with
                 the direction slotted into it: these languages do not all put
                 the verb in the same place, and a token that is down must
-                never be read out as a token that is up. */}
-            {t.rich(token.up ? "tokenTipUp" : "tokenTipDown", {
-              symbol: token.symbol,
-              move: token.movePercent,
-              strong: (chunks) => (
-                <strong className="font-semibold text-[#060606]">{chunks}</strong>
-              ),
-            })}
+                never be read out as a token that is up. Flat and unknown are
+                two more whole messages for the same reason.
+
+                Those two come from the markets namespace, where the phone's
+                token card already ships them in all five locales, rather than
+                asking translators for a second pair saying the same thing.
+                The namespaces mark the bold clause with different tags,
+                discovery with strong and markets with b, so each is handed
+                the tag its own catalogue uses.
+
+                None of the four recommends anything. The card reports a move
+                and offers a way through to the desk; what to do about it is
+                not ours to say. */}
+            {tone === "unknown"
+              ? tMarkets.rich("tokenMoveUnknown", { symbol: token.symbol, b: emphasis })
+              : tone === "flat"
+                ? tMarkets.rich("tokenMoveFlat", { symbol: token.symbol, b: emphasis })
+                : t.rich(tone === "up" ? "tokenTipUp" : "tokenTipDown", {
+                    symbol: token.symbol,
+                    move: token.movePercent,
+                    strong: emphasis,
+                  })}
           </p>
         </div>
 
@@ -203,6 +306,57 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
           }
           className="mt-[4.9px] ml-[18px] border-[2.47px] border-[#ffd52d]"
         />
+      </div>
+    </article>
+  );
+}
+
+// One bar of the loading card.
+//
+// `components/ui/skeleton-line` is the shared one, but it is drawn in white for
+// a dark surface. The chip and the tip here are white panels sitting on yellow,
+// so their bars have to be dark to be seen at all.
+function LoadingBar({ className }: { className: string }) {
+  return <span aria-hidden className={`block animate-pulse rounded bg-black/10 ${className}`} />;
+}
+
+// The call before the route has a token to make it about.
+//
+// Same artwork, same geometry, same white chip and tip, with bars where the
+// figures go. It stands in for the real card rather than replacing the shelf,
+// so nothing moves when the data lands, and there is no symbol, no price and no
+// percentage on screen in the meantime. There is no CTA either: a Buy pill
+// needs a token to buy.
+function TokenCallCardSkeleton() {
+  return (
+    <article aria-busy="true" className={`${CARD_BOX} ${TOKEN_CARD_BG}`}>
+      <TokenCardArt />
+
+      <div className="absolute top-[55.47px] left-[min(107.14px,22.23%)] flex w-fit max-w-[calc(100%_-_min(107.14px,22.23%)_-_14px)] rotate-[-3.07deg] items-center gap-[8.55px] rounded-[9.98px] bg-white p-[8.55px]">
+        <span
+          aria-hidden
+          className="size-[34.22px] shrink-0 animate-pulse rounded-full bg-black/10"
+        />
+        <div className="flex flex-col gap-[5px]">
+          <LoadingBar className="h-[9px] w-[48px]" />
+          <LoadingBar className="h-[9px] w-[92px]" />
+        </div>
+        <span aria-hidden className="w-[25.67px] shrink-[999]" />
+        <img
+          src="/market/token-ticker-avatar.png"
+          alt=""
+          aria-hidden
+          className="size-[22.81px] shrink-0"
+        />
+      </div>
+
+      <div className="relative flex flex-col items-start pt-[110.09px] pr-6 pb-6 pl-[64px]">
+        <div className="min-h-[76.1px] w-[262.59px] max-w-full">
+          <div className="flex flex-col gap-[7px] rounded-[11.97px] bg-white pt-[8px] pr-[17.6px] pb-[9.6px] pl-[39px]">
+            <LoadingBar className="h-[10px] w-full" />
+            <LoadingBar className="h-[10px] w-[72%]" />
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -322,7 +476,14 @@ function EthAfricaCard() {
 // rather than second so the first two views, the call then Eth Africa and Eth
 // Africa then the call, are both a genuine pair. Both copies feature the same
 // token, off one rotation, because they are one card seen twice.
-export function TokenMovesRow({ tokens = [] }: { tokens?: readonly TokenSpot[] }) {
+export function TokenMovesRow({
+  tokens = [],
+  loading = false,
+}: {
+  tokens?: readonly TokenSpot[];
+  /** True while the route is still fetching the tokens. Draws the card empty. */
+  loading?: boolean;
+}) {
   const t = useTranslations("discovery");
 
   // The holds are counted rather than flagged. The row draws the card twice,
@@ -337,29 +498,40 @@ export function TokenMovesRow({ tokens = [] }: { tokens?: readonly TokenSpot[] }
 
   const featured = useRotatingIndex(tokens.length, { intervalMs: TOKEN_HOLD_MS, paused });
 
-  // What the card shows before the route has live tokens: the design's own BTC
-  // call. Its price and move stay in the message file, so each locale keeps the
-  // number formatting it ships today and this card still formats nothing.
-  const fallback: TokenSpot = {
-    symbol: "BTC",
-    name: "Bitcoin",
-    price: t("tokenFallbackPrice"),
-    change: t("tokenFallbackChange"),
-    up: true,
-    movePercent: t("tokenFallbackMove"),
-    logo: "/market/token-btc-coin.png",
-    href: "/spot",
-  };
+  const token = tokens.length > 0 ? tokens[featured] : null;
 
-  const token = tokens.length > 0 ? tokens[featured] : fallback;
+  // Three states, and none of them invents a token.
+  //
+  // With a token the row is the pair the design draws. Waiting on the route it
+  // is the same pair with the call drawn empty, so the shelf keeps its height
+  // and its place and no figure appears before there is one. With the route
+  // settled and nothing to feature there is no call to make: Eth Africa takes
+  // the row to itself rather than standing next to an empty card that is never
+  // going to fill. The card that used to stand here was the design's BTC comp,
+  // price and percentage included, and it was on screen every time the route
+  // handed the row nothing.
+  const call = token ? (
+    <TokenCallCard token={token} onHold={onHold} />
+  ) : loading ? (
+    <TokenCallCardSkeleton />
+  ) : null;
 
   return (
     <DiscoveryRow title={t("tokenMovesTitle")} href="/spot">
-      <Carousel label={t("tokenMovesCarousel")} trimPx={50}>
-        <TokenCallCard token={token} onHold={onHold} />
-        <EthAfricaCard />
-        <TokenCallCard token={token} onHold={onHold} />
-      </Carousel>
+      {call ? (
+        <Carousel label={t("tokenMovesCarousel")} trimPx={50}>
+          {call}
+          <EthAfricaCard />
+          {call}
+        </Carousel>
+      ) : (
+        // One slide, so it is given the whole frame rather than half of one
+        // with a gutter where the call would have been. No peek either: there
+        // is nothing behind it to show the edge of.
+        <Carousel label={t("tokenMovesCarousel")} perView={1} peek={0}>
+          <EthAfricaCard />
+        </Carousel>
+      )}
     </DiscoveryRow>
   );
 }

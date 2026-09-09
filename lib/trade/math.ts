@@ -109,13 +109,27 @@ export function formatAmount(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: maxDigits });
 }
 
-// Large dollar figures (volume, open interest) as "$1.2M" rather than every digit.
+// The number half of a compact dollar figure: "1.3T", "301.9B", "2.5K".
+// The locale is pinned rather than left to the runtime, because the runtime's
+// own locale decides both the currency prefix and the case of the magnitude
+// suffix. An en-GB browser renders the same figure "US$1.58tn" where the
+// design calls for "$1.58T", and en-US is the only form the design draws.
+//
+// One fraction digit, not two, because that is what the design draws for every
+// compact figure it shows: "$1.3T" and "$301.9B". At this scale the second
+// digit is noise anyway, since a market cap moves by more than the 0.01B it
+// resolves between two renders.
+const COMPACT_USD = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+// Large dollar figures (market cap, volume, open interest) as "$1.2M" rather
+// than every digit. The symbol is prefixed here instead of through the
+// currency style, which is what pulls in the "US$" prefix. The sign goes
+// before the symbol ("-$1.2M"), the same way formatUsd places it.
 export function formatCompactUsd(value: number): string {
   if (!Number.isFinite(value)) return "—";
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(value);
+  const compact = COMPACT_USD.format(Math.abs(value));
+  return value < 0 ? `-$${compact}` : `$${compact}`;
 }

@@ -3,9 +3,18 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
-// The perps section ships two interfaces over the same data layer: "simple"
+// ORPHANED, 2026-09-08. Nothing mounts PerpModeSwitch and nothing calls
+// usePerpMode any more: the perps section settled on a single desk and the
+// switch was removed from its header. Left in place rather than deleted in the
+// same change; see docs/dead-code-audit-2026-09-08.md. Note that the stored
+// preference under STORAGE_KEY below is now never read, so a browser holding
+// "simple" gets the same desk as everyone else. Deleting this file does not
+// free perps.interfaceMode, perps.modeSimple or perps.modePro: spot-mode.tsx
+// and interface-mode.tsx read the same three keys.
+//
+// The perps section shipped two interfaces over the same data layer: "simple"
 // (guided, market orders only) and "pro" (full market list, order types,
-// TP/SL, margin management). The choice is a persisted UI preference, so it
+// TP/SL, margin management). The choice was a persisted UI preference, so it
 // follows the app's store idiom (currency, balance visibility): a module-level
 // store read through useSyncExternalStore, saved under a versioned key, synced
 // across tabs via the storage event. Default is "simple".

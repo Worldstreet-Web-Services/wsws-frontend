@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
-import type { PredictionMarketCategory } from "../categories";
+import type { PredictionCategory } from "../categories";
 import {
   compactVolume,
   marketPrediction,
@@ -22,7 +22,11 @@ import {
 import { PredictionCategoryDrawer } from "./prediction-category-drawer";
 
 interface CategoryEventDetailProps {
-  category: PredictionMarketCategory;
+  // Every category, sports included. The screen reads the discovery endpoint,
+  // which takes the event id alone, so the category only ever decides labels
+  // and the back link. Narrowing it to the six non-sports categories was what
+  // kept Polymarket's sports events off this screen.
+  category: PredictionCategory;
   eventId: string;
 }
 
@@ -35,7 +39,11 @@ export function CategoryEventDetail({ category, eventId }: CategoryEventDetailPr
   const [search, setSearch] = useState("");
   const slip = useHouseSlip();
   const deferredSearch = useDeferredValue(search.trim().toLowerCase());
-  const backHref = `/prediction/markets?category=${category}`;
+  // Sports goes back to the desk, not to `?category=sports`: that listing is
+  // the sportsbook, a different product off different ids, and the card that
+  // opened this screen was on the desk.
+  const backHref =
+    category === "sports" ? "/prediction" : `/prediction/markets?category=${category}`;
   const openBet = (prediction: CategoryPrediction, side: "yes" | "no") => {
     slip.toggle(prediction, side);
     if (window.matchMedia("(min-width: 1280px)").matches) setDesktopBetOpen(true);
@@ -124,7 +132,7 @@ function CategoryEventContent({
   selectedSide,
 }: {
   event: NonNullable<ReturnType<typeof useDiscoveryEvent>["event"]>;
-  category: PredictionMarketCategory;
+  category: PredictionCategory;
   search: string;
   deferredSearch: string;
   accessAllowed: boolean;

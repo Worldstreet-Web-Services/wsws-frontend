@@ -67,6 +67,13 @@ export async function getFundingHistory(
   });
 }
 
+// This is the only call in the app that carries Hyperliquid's own liquidation
+// figure, and it is currently dropped: `assetPositions` is typed `unknown[]`
+// on HlClearinghouseState, and the venue puts `liquidationPx` on each entry's
+// `position` (see @nktkas/hyperliquid's clearinghouseState contract). That
+// figure exists only for a position that is already open. There is no
+// pre-trade equivalent anywhere on the info surface, so the order ticket's
+// estimate is computed: features/trade/lib/liquidation.ts.
 export async function getAccountState(
   address: string,
   dex?: string

@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
+import { MarketSquareBanner } from "@/features/portfolio/components/market-square-banner";
 import { KashCard } from "@/features/portfolio/components/kash-card";
 // The phone's portfolio head: a swipe carousel of the balance and Kash+ cards,
 // then a promo strip. Desktop keeps the side-by-side grid below.
@@ -22,6 +23,7 @@ import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile
 import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
 import { PromoCarousel } from "@/components/ui/promo-deck";
 import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
+import { marketSquareHref } from "@/lib/market-square";
 import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
 import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
@@ -256,9 +258,17 @@ export function PortfolioView({
     });
   };
 
-  // The stake banner the rail shows twice: Market Square has no banner here
-  // while the square is switched off, so the stake banner repeats as a third
-  // stop to give the carousel something to move to.
+  // The Market Square banner, or nothing when the square has no URL configured.
+  // The square is a sibling deployment rather than a route here, so without a
+  // destination there is no banner to draw, which is the rule the sidebar entry
+  // follows too. `squareBanner` is the placeholder the duplicate stake banner
+  // below was standing in for.
+  const squareHref = marketSquareHref();
+  const squareBanner = squareHref ? <MarketSquareBanner href={squareHref} /> : null;
+
+  // The stake banner, and the third rail stop it used to fill on its own. With
+  // the square switched off there is still no Market Square banner, so it
+  // repeats as it always did and the carousel keeps something to move to.
   const stakeBanner = (
     <PromoBanner
       href="/casino"
@@ -314,7 +324,6 @@ export function PortfolioView({
           />
           <KashCardMobile
             onBuy={() => setKashModal("buy")}
-            onSend={() => setKashModal("send")}
             onConvert={() => setKashModal("convert")}
             onHistory={() => setKashModal("history")}
           />
@@ -323,6 +332,7 @@ export function PortfolioView({
           <PromoCarousel>
             <SetTheStakeBanner />
             <GetKashBanner onBuy={() => setKashModal("buy")} />
+            {squareBanner}
           </PromoCarousel>
         </div>
       </div>
@@ -364,7 +374,7 @@ export function PortfolioView({
         <PromoRail label={tDiscovery("promoRailCarousel")}>
           {stakeBanner}
           <KashBanner onBuy={() => setKashModal("buy")} />
-          {stakeBanner}
+          {squareBanner ?? stakeBanner}
         </PromoRail>
       </div>
 

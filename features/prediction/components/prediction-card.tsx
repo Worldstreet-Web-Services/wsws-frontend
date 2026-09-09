@@ -1,9 +1,17 @@
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { Prediction } from "@/lib/types";
 
 interface PredictionCardProps {
   prediction: Prediction;
   onBuy: (yes: boolean) => void;
+  /**
+   * Where the market's detail page lives. The card is presentational and holds
+   * no identifiers of its own, so the route comes from the caller. Omitted, the
+   * question renders as plain text and the card is display-only, which is what
+   * a market with no detail page in this app gets.
+   */
+  href?: string;
 }
 
 // The Market design's desktop prediction card (Figma node 173:43958): a
@@ -12,11 +20,18 @@ interface PredictionCardProps {
 // standing. This deployment's markets are binary (one Yes/No), so the design's
 // per-outcome rows collapse to a single row here; the pills keep the onBuy
 // wiring the grid passes in.
-export function PredictionCard({ prediction: p, onBuy }: PredictionCardProps) {
+//
+// Given an `href`, the question becomes a link and stretches over the card, so
+// the whole panel opens the market. The stretch is a pseudo-element on the link
+// rather than a wrapper, because the Yes/No pills are buttons: an anchor around
+// them would be invalid markup and would take them out of the tab order. They
+// sit above the stretched area instead, so a click on a pill still buys and a
+// click anywhere else on the card navigates.
+export function PredictionCard({ prediction: p, onBuy, href }: PredictionCardProps) {
   const t = useTranslations("prediction");
 
   return (
-    <div className="flex h-full flex-col justify-center gap-6 overflow-hidden rounded-[17px] border-[1.975px] border-[#767474] bg-gradient-to-b from-[#292929] to-[#111] pb-3.5">
+    <div className="relative flex h-full flex-col justify-center gap-6 overflow-hidden rounded-[17px] border-[1.975px] border-[#767474] bg-gradient-to-b from-[#292929] to-[#111] pb-3.5">
       {/* Header: the market artwork and its question. */}
       <div className="flex w-full items-end gap-3.5 rounded-t-[15px] bg-black/40 p-3.5">
         <div className="size-[45px] shrink-0 overflow-hidden rounded-full bg-white/8">
@@ -25,14 +40,28 @@ export function PredictionCard({ prediction: p, onBuy }: PredictionCardProps) {
             <img src={p.image} alt="" loading="lazy" className="size-full object-cover" />
           ) : null}
         </div>
+        {/* The question is the link's text, so its accessible name is the
+            market itself. No aria-label, and nothing to translate: naming the
+            link "card" or "view details" would tell a screen reader user which
+            control this is but not which market it opens. */}
         <p className="ws-display line-clamp-2 text-[15px] leading-[1.2] font-semibold tracking-[-0.45px] text-[#e8eaed]">
-          {p.q}
+          {href ? (
+            <Link
+              href={href}
+              className="rounded-sm outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-[#b9fcff]"
+            >
+              {p.q}
+            </Link>
+          ) : (
+            p.q
+          )}
         </p>
       </div>
 
       {/* Outcome row: the current Yes price on the left, the two buy pills on
-          the right, in the design's green/red. */}
-      <div className="flex w-full items-center justify-between px-3.5">
+          the right, in the design's green/red. Raised out of the stretched
+          link's reach so the pills keep their own clicks. */}
+      <div className="relative z-[1] flex w-full items-center justify-between px-3.5">
         <span className="tnum text-[12px] font-semibold tracking-[-0.36px] text-[#e8eaed]">
           {p.yes} {t("yesLabel")}
         </span>
@@ -53,7 +82,8 @@ export function PredictionCard({ prediction: p, onBuy }: PredictionCardProps) {
       </div>
 
       {/* Footer: the standing and volume on the left, the category on the
-          right (this data has no trade count or close date to show). */}
+          right (this data has no trade count or close date to show). Nothing
+          here is interactive, so it stays under the stretched link. */}
       <div className="flex w-full items-center justify-between px-3.5">
         <div className="flex items-center gap-6">
           <span className="tnum flex items-center gap-1 text-[10px] font-semibold text-white/50">

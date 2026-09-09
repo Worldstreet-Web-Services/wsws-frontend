@@ -2419,7 +2419,7 @@
     "tierLockedRate": "· locked",
     "tierCapExplainer": "Volume is split into $50 bands and each band pays its own rate, like tax brackets. Your tier caps how high those bands can pay: on tier 1, a $150 trade still earns the tier-1 rate on every dollar of it.",
     "tierCapExample": "You are on tier {current}. Volume above your band keeps earning at your tier’s rate until you upgrade.",
-    "historySubtitle": "Buys, sells, sends and claims.",
+    "historySubtitle": "Buys, sells, and sends.",
     "historySubtitlePoints": "Every point earned, week by week.",
     "historyOnVolume": "{type} · ${volume} volume",
     "historyOnChain": "tx",
@@ -2444,7 +2444,9 @@
     "buyingPaused": "Buying is paused right now. Check back soon.",
     "redeemReserve": "Redemption reserve",
     "railTitle": "Get Kash+",
-    "railSubtitle": "And Start Earning Extra Cash With What You Do!"
+    "railSubtitle": "And Start Earning Extra Cash With What You Do!",
+    "historyPointsSoon": "Coming soon",
+    "historyPointsSoonHint": "Kash+ activity earnings aren't live yet. Your transactions are all in the other tab in the meantime."
   },
   "referral": {
     "title": "Invite Friends",
@@ -2596,7 +2598,8 @@
     "onCost": "on {cost}",
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
-    "pnlShareLoss": "Closed {symbol} at a loss"
+    "pnlShareLoss": "Closed {symbol} at a loss",
+    "partialBody": "Some of your history couldn't be loaded, so this list may be incomplete."
   },
   "launchGate": {
     "title": "Coming soon",

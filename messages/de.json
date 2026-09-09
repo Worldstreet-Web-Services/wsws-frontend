@@ -2444,7 +2444,9 @@
     "buyingPaused": "Der Kauf ist derzeit pausiert. Schauen Sie bald wieder vorbei.",
     "redeemReserve": "Einlösereserve",
     "railTitle": "Hol dir Kash+",
-    "railSubtitle": "Und verdiene extra Geld mit allem, was du tust!"
+    "railSubtitle": "Und verdiene extra Geld mit allem, was du tust!",
+    "historyPointsSoon": "Demnächst",
+    "historyPointsSoonHint": "Kash+ Aktivitätsprämien sind noch nicht aktiv. Deine Transaktionen findest du solange im anderen Tab."
   },
   "referral": {
     "title": "Freunde einladen",
@@ -2596,7 +2598,8 @@
     "onCost": "on {cost}",
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
-    "pnlShareLoss": "Closed {symbol} at a loss"
+    "pnlShareLoss": "Closed {symbol} at a loss",
+    "partialBody": "Ein Teil deiner Historie konnte nicht geladen werden, daher ist diese Liste möglicherweise unvollständig."
   },
   "launchGate": {
     "title": "Bald verfügbar",

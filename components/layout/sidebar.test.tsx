@@ -42,8 +42,12 @@ vi.mock("next/link", () => ({
     <a href={href}>{children}</a>
   ),
 }));
+// Both switches are stubbed even though the rail reads only the first: the
+// factory replaces the whole module, so a missing export would read as false
+// and quietly stand in for "shown" if the rail ever reached for it.
 vi.mock("@/lib/market-square", () => ({
   MARKET_SQUARE_HIDDEN: true,
+  SQUARE_SECTIONS_HIDDEN: true,
   marketSquareHref: () => "https://square.test",
 }));
 
@@ -81,10 +85,11 @@ describe("Sidebar", () => {
   });
 
   /**
-   * Market Square is hidden from the product for now. The switch is a
-   * constant rather than an environment variable, so a deployment that has
-   * the square's URL configured, which every real one does, must still show
-   * no way in from the rail.
+   * A deployment with no square to link to, which is what an unset
+   * NEXT_PUBLIC_MARKET_SQUARE_URL and what an operator takedown both produce,
+   * offers no way in from the rail rather than a link that goes nowhere. The
+   * module reads its environment at import, and the test run loads no .env, so
+   * this is also the state the suite sees by default.
    */
   it("offers no Market Square entry while the square is hidden", () => {
     renderSidebar();
@@ -97,6 +102,36 @@ describe("Sidebar", () => {
     vi.resetModules();
     vi.doMock("@/lib/market-square", () => ({
       MARKET_SQUARE_HIDDEN: false,
+      marketSquareHref: () => "https://square.test",
+    }));
+    const { Sidebar: Shown } = await import("./sidebar");
+    render(
+      <Shown
+        items={[{ id: "portfolio", label: "Portfolio", icon: () => null }]}
+        activeSection="portfolio"
+        onNavigate={() => {}}
+        open={false}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByRole("link", { name: /market square/i })).toHaveAttribute(
+      "href",
+      "https://square.test"
+    );
+  });
+
+  /**
+   * The shipped configuration: the square's deployment is configured and open,
+   * so the rail links out to it, while the square's own sections inside the
+   * app are off. The two are separate switches, and this asserts the rail
+   * reads only the first. Gating the rail on the sections switch would take
+   * the entry away with them, which is the state this replaced.
+   */
+  it("keeps the rail entry while the square's in-app sections are hidden", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/market-square", () => ({
+      MARKET_SQUARE_HIDDEN: false,
+      SQUARE_SECTIONS_HIDDEN: true,
       marketSquareHref: () => "https://square.test",
     }));
     const { Sidebar: Shown } = await import("./sidebar");

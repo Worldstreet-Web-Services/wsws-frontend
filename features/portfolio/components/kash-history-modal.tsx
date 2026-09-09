@@ -154,7 +154,21 @@ export function KashHistoryModal({ open, onClose }: KashHistoryModalProps) {
           })}
         </div>
 
-        {ledger.isPending ? (
+        {/* Activity Points is not earning yet, so the tab says so rather than
+            showing an empty list that reads as "you have earned nothing". The
+            ledger still carries points rows, and the filter above still knows
+            about them, so removing this block is all it takes to switch the
+            tab on. */}
+        {view === "points" ? (
+          <div className="mt-5 rounded-[14px] border border-white/8 bg-white/3 px-4 py-6 text-center">
+            <span className="inline-flex items-center rounded-full border border-amber-200/25 bg-amber-200/10 px-2.5 py-1 text-[11.5px] font-semibold text-amber-200/80">
+              {t("historyPointsSoon")}
+            </span>
+            <p className="mt-2.5 text-[13px] leading-[1.5] font-normal text-white/55">
+              {t("historyPointsSoonHint")}
+            </p>
+          </div>
+        ) : ledger.isPending ? (
           <p className="mt-5 text-[13px] font-normal text-white/50">{t("historyLoading")}</p>
         ) : ledger.isError ? (
           <p className="mt-5 text-[13px] font-normal text-white/50">{t("historyFailed")}</p>

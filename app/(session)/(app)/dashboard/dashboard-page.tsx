@@ -41,7 +41,10 @@ import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { startDashboardTour, useDashboardTour } from "@/features/tour";
-import { MARKET_SQUARE_HIDDEN, MARKET_SQUARE_TAKEN_DOWN } from "@/lib/market-square";
+// This page reads the square's SECTIONS switch, not the rail's. The rail links
+// out to the square's own deployment and follows MARKET_SQUARE_HIDDEN; what
+// renders here is the square's content, which is off on its own switch.
+import { MARKET_SQUARE_TAKEN_DOWN, SQUARE_SECTIONS_HIDDEN } from "@/lib/market-square";
 import type { SectionId } from "@/lib/sections";
 import type { DashboardModal } from "@/lib/modal-types";
 import type { DepositPrefill } from "@/lib/voice/intent";
@@ -156,12 +159,18 @@ export function DashboardPage() {
   );
   const buyParam = useSearchParams().get("buy");
   // The tradeable universe, so a $TICKER in a square post can open the real
-  // buy sheet. Only gathered while something can use it: the square, when it
-  // is shown, or a ?buy= deep link. The brief above reads the dashboard feed
-  // now, so without one of those this would have been a price poll under a
-  // page that already had its numbers.
+  // buy sheet. Only gathered while something can use it: the square's sections,
+  // when they are shown, or a ?buy= deep link. The brief above reads the
+  // dashboard feed now, so without one of those this would have been a price
+  // poll under a page that already had its numbers.
+  //
+  // The gate follows SQUARE_SECTIONS_HIDDEN, not MARKET_SQUARE_HIDDEN. The two
+  // readers of `spotMarkets` are the square section and the compose button
+  // below, both of which that switch governs, plus the ?buy= handler. Pointing
+  // it at the rail's switch instead would start this poll for everyone who can
+  // see the rail entry, which is everyone, to feed sections that do not render.
   const { markets: spotMarkets } = useSpotMarkets({
-    enabled: !MARKET_SQUARE_HIDDEN || buyParam !== null,
+    enabled: !SQUARE_SECTIONS_HIDDEN || buyParam !== null,
   });
   // The live trending memecoins the "Find the next 100X" row cycles through.
   // Sourced at the route so discovery stays clear of the trade slice; the row
@@ -307,7 +316,9 @@ export function DashboardPage() {
           card; the trade sections follow as they are ported. */}
       <div className="flex flex-col gap-6 md:hidden">
         {/* Rendered without the URL gate so it still shows in dev, but a real
-            operator takedown (LIVE=false) must remove it and its live link. */}
+            operator takedown (LIVE=false) must remove it and its live link.
+            A doorway to the square, not a section of it, so it stays on the
+            takedown switch and does not read SQUARE_SECTIONS_HIDDEN. */}
         {MARKET_SQUARE_TAKEN_DOWN ? null : <SquareLivePromo />}
         <PredictionMobile />
         {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
@@ -372,9 +383,10 @@ export function DashboardPage() {
             ) : INTERLEAVED_BANNERS[index] ? (
               <ExploreBanners only={INTERLEAVED_BANNERS[index]} />
             ) : null}
-            {/* Closed by the launch switch, the gaps close up and the doorway
-                  track above is unaffected. */}
-            {MARKET_SQUARE_HIDDEN ? null : (
+            {/* Square content between the briefs, so closed by the sections
+                  switch. The gaps close up and the doorway track above is
+                  unaffected. */}
+            {SQUARE_SECTIONS_HIDDEN ? null : (
               <>
                 {INTERLEAVED_SQUARE[index] === "live" ? <SquareLivePromo /> : null}
                 {INTERLEAVED_SQUARE[index] === "posts" ? <SquarePostsPromo /> : null}
@@ -389,8 +401,9 @@ export function DashboardPage() {
             purpose: someone opening Ark came for their money, and the square
             is what they scroll into once they are done reading it — met by
             browsing rather than by deciding to leave for another deployment.
-            MARKET_SQUARE_HIDDEN in lib/market-square.ts is the off switch. */}
-      {MARKET_SQUARE_HIDDEN ? null : (
+            Off for now: SQUARE_SECTIONS_HIDDEN in lib/market-square.ts is the
+            switch, and the rail's link out to the square is unaffected by it. */}
+      {SQUARE_SECTIONS_HIDDEN ? null : (
         <SquareSection
           onOpenBuy={modals.openBuy}
           markets={spotMarkets}
@@ -399,8 +412,9 @@ export function DashboardPage() {
         />
       )}
       {/* Fixed to the viewport, so it sits the same wherever it renders. It
-          reveals itself once the square is in reach. */}
-      {MARKET_SQUARE_HIDDEN ? null : (
+          reveals itself once the square is in reach, so it goes with the
+          section above rather than with the rail's link out. */}
+      {SQUARE_SECTIONS_HIDDEN ? null : (
         <SquareComposeFab
           markets={spotMarkets}
           onPickTopic={openTopic}

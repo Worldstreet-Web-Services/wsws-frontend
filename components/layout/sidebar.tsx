@@ -41,6 +41,12 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
   const tSquare = useTranslations("square");
   // Null while the square is hidden, which is the same state a deployment
   // without the URL is in, so the entry below needs no second condition.
+  //
+  // This reads MARKET_SQUARE_HIDDEN, the way-in switch, and nothing else. The
+  // rail's job is to link out to the square's own deployment, so it follows
+  // whether that deployment is configured and open. What the app renders of
+  // the square inside its own pages is SQUARE_SECTIONS_HIDDEN's question, and
+  // the rail must not read it: the entry stands while those sections are off.
   const squareHref = MARKET_SQUARE_HIDDEN ? null : marketSquareHref();
 
   const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
@@ -154,7 +160,8 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
               Prediction and Arkade instead of a promoted block of its own.
               With the URL unset it renders nothing rather than a dead entry,
               and MARKET_SQUARE_HIDDEN in lib/market-square.ts is the off
-              switch. */}
+              switch. It is not affected by SQUARE_SECTIONS_HIDDEN, which only
+              governs the square's own sections inside the app. */}
           {squareHref !== null ? (
             <a
               href={squareHref}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { useFitText } from "@/hooks/use-fit-text";
 
 // The banner is drawn to a 515.768 x 88 box in the design. Positions below are
 // that box expressed as a share of it, so the whole thing scales as one piece
@@ -85,39 +84,6 @@ function estimatedHeadlineScale(headline: string) {
   return Math.min(1, HEADLINE_SLOT_WIDTH / (headlineEm(headline) * HEADLINE_FONT_SIZE));
 }
 
-// The scale the rendered headline actually needs, measured against the slot it
-// sits in. The element is `flex-1 min-w-0`, so its client width is the slot
-// whatever the text does, and its scroll width is the text at the scale it is
-// currently drawn at. Re-measured when the slot resizes and once the display
-// face has loaded, since a fallback face measures differently.
-function useFittedHeadline(headline: string) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [scale, setScale] = useState(() => estimatedHeadlineScale(headline));
-
-  // Depends on the scale it corrects: after a correction the text is drawn at
-  // the new size, the measurement repeats, and the guard below stops it once
-  // the two agree. That is one extra pass, not a loop.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const fit = () => {
-      const natural = el.scrollWidth / scale;
-      if (natural <= 0) return;
-      const next = Math.min(1, el.clientWidth / natural);
-      if (Math.abs(next - scale) > 0.005) setScale(next);
-    };
-    fit();
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(fit) : null;
-    observer?.observe(el);
-    if (typeof document !== "undefined" && "fonts" in document) {
-      void document.fonts.ready.then(fit);
-    }
-    return () => observer?.disconnect();
-  }, [headline, scale]);
-
-  return { ref, scale };
-}
-
 // The design's fill sits inside the stub edges rather than under them.
 const FILL_AREA = {
   left: `${((21.2416 / DESIGN_WIDTH) * 100).toFixed(4)}%`,
@@ -151,7 +117,11 @@ export function KashBanner({ onBuy }: KashBannerProps) {
   // The design splits the sentence into a headline and a fine subline beneath.
   const headline = t("railTitle");
   const subline = t("railSubtitle");
-  const { ref: headlineRef, scale: headlineScale } = useFittedHeadline(headline);
+  // Measured against the slot it sits in; the estimate is the server's first paint.
+  const { ref: headlineRef, scale: headlineScale } = useFitText<HTMLSpanElement>(
+    headline,
+    estimatedHeadlineScale(headline)
+  );
 
   return (
     <button

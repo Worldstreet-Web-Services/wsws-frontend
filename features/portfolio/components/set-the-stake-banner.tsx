@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFitText } from "@/hooks/use-fit-text";
 import { cn } from "@/lib/utils";
 
 // The exported ticket artwork (node 1:2689). The ticket-edge SVG is horizontally
@@ -16,12 +17,23 @@ const H = 61;
 
 // The "Set the stake" promo, pixel-for-pixel from the comp (node 1:2689): a red
 // #ed2b07 ticket — four-bump scalloped edges, a flame, two faint orange glow
-// rings — with the pitch beside a tagline, both in Mona Sans, split by a hairline.
-// The comp drew the pitch in Chewy; production keeps its own display face.
+// rings — with the pitch beside a tagline, split by a hairline.
+//
+// The comp drew the pitch in Chewy and pinned the hairline and the tagline at
+// fixed offsets to its right. Production sets the pitch in Mona Sans bold,
+// which is wider, so pinned offsets ran the two into each other. The words
+// are a row instead: the pitch takes what the tagline leaves and is scaled to
+// fit that share, so the hairline and the gap around it hold at any face.
 // Presentational; it takes no action of its own.
 export function SetTheStakeBanner({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  // "Set The Stake" in Mona Sans bold at 16px runs about 108px; the share the
+  // tagline leaves it is about 95px, so the first paint starts near 0.88.
+  const { ref: pitchRef, scale: pitchScale } = useFitText<HTMLParagraphElement>(
+    "Set the stake",
+    0.88
+  );
 
   // Scale the fixed artboard to the container width. A ResizeObserver keeps it
   // exact as the carousel slide or viewport changes; aspect-ratio reserves the
@@ -82,27 +94,29 @@ export function SetTheStakeBanner({ className }: { className?: string }) {
             alt=""
             className="pointer-events-none absolute top-[5px] left-[12px] h-[64.896px] w-[39.005px]"
           />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${ART}/divider.svg`}
-            alt=""
-            className="pointer-events-none absolute top-[18.5px] left-[146.5px] h-[15px] w-px"
-          />
-
-          <p
-            className={cn(
-              "font-serif font-bold",
-              "absolute top-[20px] left-[59px] text-[16px] leading-[0.86] whitespace-nowrap text-white capitalize [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
-            )}
-          >
-            Set the stake
-          </p>
-          <p
-            className="absolute top-[17px] left-[153px] text-[12px] leading-[1.52] font-medium tracking-[-0.24px] whitespace-nowrap text-white capitalize"
-            style={{ fontFamily: "var(--font-display)", fontVariationSettings: '"wdth" 100' }}
-          >
-            Everyone plays to win
-          </p>
+          {/* The words, in the band the flame leaves: from x=59 to 8px short
+              of the body's edge, centred on the ticket's height. */}
+          <div className="absolute inset-y-0 right-[8px] left-[59px] flex items-center gap-[6px]">
+            <p
+              ref={pitchRef}
+              className="min-w-0 flex-1 font-serif leading-none font-bold whitespace-nowrap text-white capitalize"
+              style={{ fontSize: `calc(16px * ${pitchScale.toFixed(4)})` }}
+            >
+              Set the stake
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${ART}/divider.svg`}
+              alt=""
+              className="pointer-events-none h-[15px] w-px shrink-0"
+            />
+            <p
+              className="shrink-0 text-[12px] leading-[1.52] font-medium tracking-[-0.24px] whitespace-nowrap text-white capitalize"
+              style={{ fontFamily: "var(--font-display)", fontVariationSettings: '"wdth" 100' }}
+            >
+              Everyone plays to win
+            </p>
+          </div>
         </div>
       </div>
     </div>

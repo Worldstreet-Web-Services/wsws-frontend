@@ -117,3 +117,12 @@ page and its last icon opens Activity; the phone has no drawer. The phone
 balance card's coins button opens the holdings modal. The Kash banner's
 headline is fitted by measuring the rendered font. Leverage, the PR's fourth
 tab, is not on this build.
+
+## Banner headlines at production's font
+
+The comp draws the Set The Stake and Get Kash+ headlines in Chewy and pins
+what sits beside them at fixed offsets. At Mona Sans bold the headlines are
+wider and ran into their taglines. Both are now fitted by measuring the
+rendered text (`hooks/use-fit-text.ts`): the Set The Stake words are a row
+whose pitch takes what the tagline leaves, and the Kash headline scales to
+its slot. Fonts are unchanged.

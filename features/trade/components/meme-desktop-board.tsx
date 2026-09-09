@@ -479,7 +479,7 @@ export function MemeDesktopBoard({
                       type="button"
                       onClick={() => onSideChange(option)}
                       aria-pressed={on}
-                      className={`flex h-[50px] flex-1 cursor-pointer items-center justify-center rounded-full font-[family-name:var(--font-sportsbook)] text-[17px] font-semibold transition-colors ${
+                      className={`flex h-[50px] flex-1 cursor-pointer items-center justify-center rounded-full font-sans text-[17px] font-semibold transition-colors ${
                         on
                           ? `${selectedFill} text-white`
                           : // Neither the fill nor the ink here maps to a token:

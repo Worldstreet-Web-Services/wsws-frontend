@@ -311,7 +311,7 @@ function MemeBuyTicket({
         </div>
         <div className="flex items-center justify-between">
           <span className="text-grey-400">{t("slippage")}</span>
-          <span className="tnum font-[family-name:var(--font-discovery)] font-medium text-white">
+          <span className="tnum font-serif font-medium text-white">
             {preview ? `${(preview.slippageBps / 100).toFixed(2)}%` : "—"}
           </span>
         </div>
@@ -335,7 +335,7 @@ function MemeBuyTicket({
         type="button"
         onClick={() => void submit()}
         disabled={disabled}
-        className={`bg-buy h-12 w-full rounded-3xl font-[family-name:var(--font-sportsbook)] text-base font-semibold text-white ${
+        className={`bg-buy h-12 w-full rounded-3xl font-sans text-base font-semibold text-white ${
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"
         }`}
       >

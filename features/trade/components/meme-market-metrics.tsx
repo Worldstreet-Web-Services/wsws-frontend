@@ -17,9 +17,9 @@ import { ArrowDownIcon, ChartBarsIcon } from "@/components/ui/icons";
 // explicit "Unavailable", never as a zero: a $0 market cap reads as a real,
 // worthless coin.
 
-// Inter, loaded in app/layout.tsx as --font-sportsbook. The design sets the
-// whole metrics block in it; the disclosure label above is Mona Sans.
-const INTER = "font-[family-name:var(--font-sportsbook)]";
+// The design set the whole metrics block in Inter; production keeps its body
+// face, Geist. The disclosure label above is Mona Sans.
+const INTER = "font-sans";
 
 export type MemeMetricDirection = "up" | "down";
 

@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Chewy } from "next/font/google";
 import { cn } from "@/lib/utils";
-
-// "Set the stake" is set in Chewy — the comp's display face. Loaded here so only
-// this banner pulls it; 400 is the only weight Chewy ships.
-const chewy = Chewy({ weight: "400", subsets: ["latin"], display: "swap" });
 
 // The exported ticket artwork (node 1:2689). The ticket-edge SVG is horizontally
 // symmetric, so the same file serves both scalloped edges.
@@ -21,7 +16,8 @@ const H = 61;
 
 // The "Set the stake" promo, pixel-for-pixel from the comp (node 1:2689): a red
 // #ed2b07 ticket — four-bump scalloped edges, a flame, two faint orange glow
-// rings — with the pitch in Chewy beside a Mona Sans tagline, split by a hairline.
+// rings — with the pitch beside a tagline, both in Mona Sans, split by a hairline.
+// The comp drew the pitch in Chewy; production keeps its own display face.
 // Presentational; it takes no action of its own.
 export function SetTheStakeBanner({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -95,7 +91,7 @@ export function SetTheStakeBanner({ className }: { className?: string }) {
 
           <p
             className={cn(
-              chewy.className,
+              "font-serif font-bold",
               "absolute top-[20px] left-[59px] text-[16px] leading-[0.86] whitespace-nowrap text-white capitalize [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
             )}
           >

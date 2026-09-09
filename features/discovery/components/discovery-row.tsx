@@ -10,7 +10,7 @@ interface DiscoveryRowProps {
 
 // One shelf of the dashboard's discovery area: a heading that is itself the way
 // through to the service, and whatever cards the caller lays out beneath it.
-// The heading font is the designer's Quicksand, used nowhere else.
+// The comp drew the heading in Quicksand; production keeps its display face.
 //
 // A long locale wraps the heading rather than pushing the chevron off the row.
 // Two things hold that together. The title takes `min-w-0`, so it can shrink

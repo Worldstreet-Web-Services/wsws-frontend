@@ -107,9 +107,7 @@ function TileBody({ game }: { game: CasinoGame }) {
         style={{ backgroundImage: `${SCRIM_DIAGONAL}, ${SCRIM_VERTICAL}` }}
       />
 
-      {/* Mona Sans bold, per the comp. Two of its six badge nodes are drawn in
-          Quicksand instead; the card's other type is Mona Sans throughout, so
-          the majority wins and the inconsistency is reported, not copied. */}
+      {/* Mona Sans bold, per the comp and per production. */}
       {badge ? (
         <span className="text-grey-700 absolute top-4 left-4 rounded-full border border-white/20 bg-white px-3.5 py-0.5 font-serif text-[12px] font-bold">
           {badge}

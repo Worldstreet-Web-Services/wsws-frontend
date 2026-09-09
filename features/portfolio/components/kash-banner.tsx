@@ -59,6 +59,11 @@ const HEADLINE_FONT_SIZE = 43.238;
 const HEADLINE_TRACKING = -2.2091 / HEADLINE_FONT_SIZE;
 
 // Chewy's advance for every character a headline can carry, in thousandths of
+// an em. The comp drew the headline in Chewy; production sets it in Mona Sans
+// bold, so these widths are the comp's, not the rendered face's, and the fit
+// they compute is approximate until a table for Mona Sans replaces them.
+// Original note follows.
+// Chewy's advance for every character a headline can carry, in thousandths of
 // an em, read out of the font file this app ships. Index i of CHEWY_CHARS has
 // its advance at index i of CHEWY_ADVANCES. Each one is rounded up, so a sum
 // over a string is an upper bound on how wide the string can render and never

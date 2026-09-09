@@ -20,7 +20,7 @@ import { isPolymarketCollateral } from "@/lib/polymarket/config";
 import { canSellAsset } from "@/lib/sell";
 import { tokenBg } from "@/lib/trade/assets";
 import type { MemeToken } from "@/lib/meme/api";
-import type { BuyPayload, DetailPayload, SellPayload } from "@/lib/modal-types";
+import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/lib/modal-types";
 
 export interface HoldingsModalProps {
   /** Closes the shell this content sits in. */
@@ -29,6 +29,7 @@ export interface HoldingsModalProps {
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
+  onOpenRwaTrade: (rwaTrade: RwaTradePayload) => void;
   onOpenMemeSell: (token: MemeToken) => void;
   /** Funding, offered when there is nothing to list. */
   onAddFunds: () => void;
@@ -88,6 +89,7 @@ export function HoldingsModal({
   onOpenDetail,
   onOpenBuy,
   onOpenSell,
+  onOpenRwaTrade,
   onOpenMemeSell,
   onAddFunds,
 }: HoldingsModalProps) {
@@ -169,11 +171,10 @@ export function HoldingsModal({
     };
   }, []);
 
-  // Where a held asset goes. Same routing the holdings table uses: catalog
-  // memecoins through the meme sheet, prediction collateral back to its own
-  // page, and everything else through the asset sheet's Buy more / Sell pair.
-  // An RWA trades only through the RWA service, which is not on this build, so
-  // its sheet shows the holding and offers no trade.
+  // Where a held asset goes. Same routing the holdings table uses: RWAs trade
+  // through the RWA panel, catalog memecoins through the meme sheet, prediction
+  // collateral back to its own page, and everything else through the asset
+  // sheet's Buy more / Sell pair.
   const openToken = useCallback(
     (token: TokenBalance) => {
       restoreFocus.current = false;
@@ -187,7 +188,13 @@ export function HoldingsModal({
       const buyAction = isPredictionCollateral
         ? () => router.push("/prediction")
         : isRwa
-          ? undefined
+          ? () =>
+              onOpenRwaTrade({
+                network: token.network,
+                address: token.address as string,
+                symbol: token.symbol,
+                mode: "buy",
+              })
           : () =>
               onOpenBuy({
                 symbol: token.symbol,
@@ -197,7 +204,16 @@ export function HoldingsModal({
               });
 
       const sellAction = isRwa
-        ? {}
+        ? {
+            cta2: t("sell", { name: token.name }),
+            onCta2: () =>
+              onOpenRwaTrade({
+                network: token.network,
+                address: token.address as string,
+                symbol: token.symbol,
+                mode: "sell",
+              }),
+          }
         : isMeme
           ? {
               cta2: t("sell", { name: token.name }),
@@ -234,11 +250,7 @@ export function HoldingsModal({
           { k: t("network"), v: displayNetworkLabel(token) },
           { k: t("positionValue"), v: money.format(token.valueUsd) },
         ],
-        cta: isPredictionCollateral
-          ? t("managePrediction")
-          : isRwa
-            ? undefined
-            : t("buyMore", { name: token.name }),
+        cta: isPredictionCollateral ? t("managePrediction") : t("buyMore", { name: token.name }),
         onCta: buyAction,
         ...sellAction,
         coingeckoId: coingeckoId(token.symbol) ?? undefined,
@@ -246,7 +258,7 @@ export function HoldingsModal({
         logo: token.logo,
       });
     },
-    [money, onClose, onOpenBuy, onOpenDetail, onOpenMemeSell, onOpenSell, router, t]
+    [money, onClose, onOpenBuy, onOpenDetail, onOpenMemeSell, onOpenRwaTrade, onOpenSell, router, t]
   );
 
   return (

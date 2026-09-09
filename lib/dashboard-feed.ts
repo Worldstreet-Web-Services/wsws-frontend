@@ -25,6 +25,16 @@ export interface MemeBriefRow {
   change24h: number | null;
 }
 
+export interface RwaBriefRow {
+  id: string;
+  symbol: string;
+  name: string;
+  /** Route-relative logo URL, resolved by the token-logo handler. */
+  logo: string;
+  priceUsd: number | null;
+  change24h: number | null;
+}
+
 /** A Last Man Standing round that can still be joined. */
 export interface LiveRound {
   gameId: number;
@@ -50,6 +60,7 @@ export interface DashboardFeed {
   asOf: number;
   spot: SpotBriefRow[] | null;
   memes: MemeBriefRow[] | null;
+  rwa: RwaBriefRow[] | null;
   live: DashboardLive | null;
 }
 

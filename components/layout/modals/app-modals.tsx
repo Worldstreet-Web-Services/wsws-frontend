@@ -11,6 +11,7 @@ import type {
   ConfirmPayload,
   DashboardModal,
   DetailPayload,
+  RwaTradePayload,
   SellPayload,
 } from "@/lib/modal-types";
 import type { DepositPrefill } from "@/lib/voice/intent";
@@ -48,6 +49,10 @@ const MemeTradeSheet = dynamic(
   () => import("@/features/trade/components/meme-trade-sheet").then((m) => m.MemeTradeSheet),
   { ssr: false }
 );
+const RwaTradeModal = dynamic(
+  () => import("@/features/rwa/components/rwa-trade-modal").then((m) => m.RwaTradeModal),
+  { ssr: false }
+);
 
 export interface AppModals {
   modal: DashboardModal;
@@ -57,6 +62,7 @@ export interface AppModals {
   openBuy: (buy: BuyPayload) => void;
   openSell: (sell: SellPayload) => void;
   openMemeSell: (token: MemeToken) => void;
+  openRwaTrade: (trade: RwaTradePayload) => void;
   /**
    * Takes no argument, deliberately.
    *
@@ -94,6 +100,10 @@ export function useAppModals(): AppModals {
     openSell: useCallback((sell: SellPayload) => setModal({ type: "sell", sell }), []),
     openMemeSell: useCallback(
       (memeSell: MemeToken) => setModal({ type: "memeSell", memeSell }),
+      []
+    ),
+    openRwaTrade: useCallback(
+      (rwaTrade: RwaTradePayload) => setModal({ type: "rwaTrade", rwaTrade }),
       []
     ),
     openFunds: useCallback(() => setModal({ type: "funds" }), []),
@@ -141,6 +151,9 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
           onClose={onClose}
           showRisk={false}
         />
+      ) : null}
+      {active?.type === "rwaTrade" ? (
+        <RwaTradeModal payload={active.rwaTrade} onContinueInBackground={onClose} />
       ) : null}
       {active?.type === "funds" ? <FundsModal onClose={onClose} deposit={active.deposit} /> : null}
       {active?.type === "withdraw" ? <WithdrawModal onClose={onClose} /> : null}

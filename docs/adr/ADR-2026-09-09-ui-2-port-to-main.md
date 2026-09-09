@@ -164,3 +164,12 @@ main (#427) ──► ui/2.0 ──merge staging──► [full 2.0 UI]
   Vercel preview of `ui/2.0` walked page by page against the exclusion
   list; `git diff origin/staging..ui/2.0 --stat` reviewed as the whole
   change.
+
+## Amendment, 2026-09-09 (later the same day)
+
+Real assets returned. The removal in step 4 was reverted once the gateway's
+`rwa` and `gas-sponsor` services were confirmed live in production (see the
+release note `2026-09-09-dashboard-discovery-cards.md`, "Real assets
+return"), and the navigation switch that hid the section on main was
+emptied. Perps and the Explore market remain out; `/v1/perp/*` still
+answers not found.

@@ -83,10 +83,10 @@ describe("AppChromeProvider", () => {
     view.rerender(
       <AppChromeProvider>
         <Highlight />
-        <Reporter id="activity" />
+        <Reporter id="rwa" />
       </AppChromeProvider>
     );
-    expect(screen.getByTestId("active")).toHaveTextContent("activity");
+    expect(screen.getByTestId("active")).toHaveTextContent("rwa");
   });
 
   it("refuses to run outside the provider", () => {

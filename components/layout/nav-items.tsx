@@ -6,6 +6,7 @@ import {
   ClockIcon,
   FlameIcon,
   GridIcon,
+  HouseIcon,
 } from "@/components/ui/icons";
 import {
   HIDDEN_NAV_SECTIONS,
@@ -18,6 +19,7 @@ export const SECTION_ICONS: Record<SectionId, (props: { size?: number }) => Reac
   portfolio: GridIcon,
   spot: ChartBarsIcon,
   meme: FlameIcon,
+  rwa: HouseIcon,
   prediction: BulbIcon,
   earn: BriefcaseIcon,
   casino: DiceIcon,

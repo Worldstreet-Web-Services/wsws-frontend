@@ -5,7 +5,7 @@ import type { SectionId } from "@/lib/sections";
 export type ChainType = "ethereum" | "solana";
 
 // A pre-filled trade the target section should open. Derived from a Vivid
-// command frame (a spoken buy or sell): navigate to the section AND stage this
+// command frame (rwa.buy / rwa.sell): navigate to the section AND stage this
 // so the buy/sell form opens ready — the USER reviews and confirms the trade
 // themselves (we never auto-execute money actions).
 export interface TradePrefill {
@@ -36,8 +36,8 @@ export function isDepositChain(value: string): value is DepositChain {
 }
 
 // The typed result of understanding one command. Kept after the in-house voice
-// pipeline was removed because the prefill types below are what funds and trade
-// use to open a screen with values already filled in.
+// pipeline was removed because the prefill types below are what funds, trade and
+// rwa use to open a screen with values already filled in.
 //
 // - navigate: open a section. When `prefill` is present the section opens its
 //   trade form pre-filled from a spoken buy/sell (user confirms).
@@ -63,6 +63,7 @@ export const NAV_TARGETS: readonly SectionId[] = [
   "portfolio",
   "spot",
   "meme",
+  "rwa",
   "prediction",
   "earn",
   "casino",

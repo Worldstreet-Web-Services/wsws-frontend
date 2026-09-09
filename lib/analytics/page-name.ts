@@ -9,6 +9,7 @@ const PAGE_BY_SECTION: Record<SectionId, PageName> = {
   portfolio: "portfolio",
   spot: "spot",
   meme: "memecoins",
+  rwa: "real_assets",
   prediction: "prediction",
   earn: "earn",
   casino: "arkade",
@@ -27,6 +28,7 @@ const PAGE_BY_PATH_PREFIX: [string, PageName][] = [
   ["/prediction", "prediction"],
   ["/earn", "earn"],
   ["/activity", "arktivity"],
+  ["/rwa", "real_assets"],
   ["/portfolio", "portfolio"],
   ["/dashboard", "portfolio"],
 ];

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { chessClient, draughtsClient, vaultClient } from "./casino";
 import { pouchClient, paymentClient, rampingClient } from "./funds";
-import { tradeClient } from "./trade";
+import { rwaClient } from "./rwa";
+import { tradeClient, perpClient } from "./trade";
 
 describe("Domain Service Clients", () => {
   it("initializes all domain service clients with expected interfaces", () => {
@@ -12,7 +13,9 @@ describe("Domain Service Clients", () => {
       pouchClient,
       paymentClient,
       rampingClient,
+      rwaClient,
       tradeClient,
+      perpClient,
     ];
 
     for (const client of clients) {

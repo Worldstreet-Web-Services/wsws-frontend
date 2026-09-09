@@ -5,7 +5,9 @@ import { fetchPrices } from "@/lib/server/alchemy";
 import { dextopusRequest } from "@/lib/server/dextopus";
 import { fetchMarketTokens } from "@/lib/server/market-tokens";
 import { cached } from "@/lib/server/response-cache";
+import { fetchRwaMarket } from "@/lib/server/rwa-prices";
 import { CHESS_BASE, TRADE_BASE, VAULT_BASE } from "@/lib/server/upstreams";
+import { wsapiRwaRequest } from "@/lib/server/wsapi";
 import { BUY_ORIGIN, toBuyRoutes } from "@/lib/buy";
 import { isPlausiblyActiveMatch, type LiveMatchClock } from "@/lib/chess/live-match";
 import {
@@ -14,10 +16,12 @@ import {
   type DashboardLive,
   type LiveRound,
   type MemeBriefRow,
+  type RwaBriefRow,
   type SpotBriefRow,
 } from "@/lib/dashboard-feed";
 import { tradableHere, type Paged } from "@/lib/meme/catalog";
 import type { MemeToken } from "@/lib/meme/types";
+import { assetPriceUsd, listedRwaAssets, rwaLogoPath, type RwaApiAsset } from "@/lib/rwa/catalog";
 import { composeSpotMarkets } from "@/lib/spot-markets";
 import { readActiveGamesWith } from "@/lib/vault/read";
 import { baseReadClient } from "@/lib/server/vault-chain";
@@ -142,6 +146,30 @@ async function memesSection(): Promise<MemeBriefRow[]> {
   });
 }
 
+async function rwaSection(): Promise<RwaBriefRow[]> {
+  const assets = await envelopeData<RwaApiAsset[]>(
+    await wsapiRwaRequest("assets", { method: "GET", revalidate: 60 })
+  );
+  const listed = listedRwaAssets(assets).slice(0, DASHBOARD_FEED_ROWS);
+  // Market stats are an enrichment; the registry's own price still stands
+  // when the market read fails.
+  const market = await fetchRwaMarket(
+    listed.map((a) => ({ id: a.id, chain: a.chain, address: a.address })),
+    false
+  ).catch(() => ({}) as Awaited<ReturnType<typeof fetchRwaMarket>>);
+  return listed.map((a) => {
+    const stats = market[a.id];
+    return {
+      id: a.id,
+      symbol: a.symbol,
+      name: a.name,
+      logo: rwaLogoPath(a.chain, a.address),
+      priceUsd: assetPriceUsd(a) ?? stats?.priceUsd ?? null,
+      change24h: stats?.change24h ?? null,
+    };
+  });
+}
+
 // The vault index's game shape, only the fields the marquee reads.
 interface IndexedGame {
   gameId: number;
@@ -248,12 +276,13 @@ async function section<T>(name: keyof DashboardFeed, load: () => Promise<T>): Pr
 }
 
 async function compose(): Promise<DashboardFeed> {
-  const [spot, memes, live] = await Promise.all([
+  const [spot, memes, rwa, live] = await Promise.all([
     section("spot", spotSection),
     section("memes", memesSection),
+    section("rwa", rwaSection),
     section("live", liveSection),
   ]);
-  return { asOf: Date.now(), spot, memes, live };
+  return { asOf: Date.now(), spot, memes, rwa, live };
 }
 
 /** The feed, composed at most once per window for every caller. */

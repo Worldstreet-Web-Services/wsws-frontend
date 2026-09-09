@@ -89,3 +89,18 @@ the Arkade game card shared by phone and desktop, the prediction card's
 click fix, the phone prediction banner redesign (Predict Now only, opening
 the desk), Polymarket volume, and the new catalog strings. The meme board's
 fresh reads are scoped to the traded network as on main.
+
+## Real assets return
+
+Checked live against the production gateway on 2026-09-09: `/v1/rwa/health`
+and `/v1/gas-sponsor/health` answer ok, `/v1/rwa/assets` lists 45 assets
+across Ethereum, Base, Arbitrum, BSC, Polygon and Solana, `/v1/rwa/quote`
+and `/v1/rwa/build` validate requests, and `/v1/gas-sponsor/capabilities`
+and `/v1/gas-sponsor/solana/sponsor` are served. Perps (`/v1/perp/*`) is
+still not.
+
+So the Real assets removal is reverted in full (page, desk, proxies,
+client, trade modal, brief, feed section) and `HIDDEN_NAV_SECTIONS` in
+`lib/sections.ts` is emptied, which is the switch that had kept the section
+out of the rail on main. Real assets now shows in the desktop rail, the
+phone drawer, the marquee and the dashboard briefs.

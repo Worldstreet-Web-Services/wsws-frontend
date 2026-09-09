@@ -57,6 +57,7 @@ const feed = (live: DashboardFeed["live"]): DashboardFeed => ({
   asOf: Date.now(),
   spot: null,
   memes: null,
+  rwa: null,
   live,
 });
 

@@ -56,3 +56,32 @@ describe("MARKET_SQUARE_HIDDEN", () => {
     expect(MARKET_SQUARE_HIDDEN).toBe(true);
   });
 });
+
+describe("SQUARE_SECTIONS_HIDDEN", () => {
+  it("keeps the in-app sections off while the rail still links out to the square", async () => {
+    const { MARKET_SQUARE_HIDDEN, SQUARE_SECTIONS_HIDDEN } = await loadWith({
+      url: "https://square.example",
+    });
+    // The two switches are independent: a configured square is reachable from
+    // the rail, and its sections still do not render inside this app.
+    expect(MARKET_SQUARE_HIDDEN).toBe(false);
+    expect(SQUARE_SECTIONS_HIDDEN).toBe(true);
+  });
+
+  it("cannot be turned back on from the environment", async () => {
+    const { SQUARE_SECTIONS_HIDDEN } = await loadWith({
+      url: "https://square.example",
+      live: "true",
+    });
+    expect(SQUARE_SECTIONS_HIDDEN).toBe(true);
+  });
+
+  it("stays off under the operator takedown, which closes every surface", async () => {
+    const { MARKET_SQUARE_HIDDEN, SQUARE_SECTIONS_HIDDEN } = await loadWith({
+      url: "https://square.example",
+      live: "false",
+    });
+    expect(MARKET_SQUARE_HIDDEN).toBe(true);
+    expect(SQUARE_SECTIONS_HIDDEN).toBe(true);
+  });
+});

@@ -6,11 +6,15 @@
  * so it belongs in the navigation at top level: prominent by default, never
  * buried behind a menu.
  *
- * With the URL unset the entry is hidden entirely — an inert link to a social
- * network that does not open is worse than no link, and hiding it means a
- * deployment without the variable degrades quietly instead of breaking.
+ * The production square is the default, so a deployment that says nothing
+ * links there, the way the API gateway defaults to production. Setting the
+ * variable to an empty string hides the entry entirely: an inert link to a
+ * social network that does not open is worse than no link.
  */
-export const MARKET_SQUARE_URL = process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? "";
+export const PRODUCTION_MARKET_SQUARE_URL = "https://square.tsionark.com";
+
+export const MARKET_SQUARE_URL =
+  process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? PRODUCTION_MARKET_SQUARE_URL;
 
 /**
  * Whether the product offers a way in to the square. It does, wherever the
@@ -32,8 +36,8 @@ export const MARKET_SQUARE_URL = process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? ""
  * NEXT_PUBLIC_MARKET_SQUARE_LIVE to exactly "false" closes the square in that
  * environment without a code change. Any other value, including none, is on.
  * The URL stays the real precondition: without a destination every entry is
- * a dead link, so a deployment without NEXT_PUBLIC_MARKET_SQUARE_URL shows
- * nothing whatever the switch says.
+ * a dead link, so a deployment that sets NEXT_PUBLIC_MARKET_SQUARE_URL to an
+ * empty string shows nothing whatever the switch says.
  *
  * Both are inlined at build like every NEXT_PUBLIC_ value, so flipping either
  * means a redeploy, which is also what makes them tamper-proof at runtime.

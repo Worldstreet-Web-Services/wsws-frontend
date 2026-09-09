@@ -53,7 +53,8 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
     // The second icon is the spot desk, the section its marker already claims.
     else if (i === 1) onNavigate("spot");
     else if (i === 2) {
-      if (squareHref !== "#") window.location.assign(squareHref);
+      // A sibling deployment, so it opens beside the app, as the rail does.
+      if (squareHref !== "#") window.open(squareHref, "_blank", "noopener,noreferrer");
     } else if (i === 3) onNavigate("casino");
     else onOpenMore();
   };

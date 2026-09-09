@@ -5,8 +5,20 @@ const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 // The marker slides with motion; the bar under test is the tap zones.
+// The marker animates its position; the stub applies the animated values as
+// plain style so a test can read where it landed.
 vi.mock("motion/react", () => ({
-  motion: { div: (props: Record<string, unknown>) => <div {...props} /> },
+  motion: {
+    div: ({
+      animate,
+      transition: _transition,
+      ...props
+    }: {
+      animate?: Record<string, string>;
+      transition?: unknown;
+      [key: string]: unknown;
+    }) => <div {...props} style={animate} />,
+  },
   useReducedMotion: () => true,
 }));
 
@@ -16,9 +28,11 @@ vi.mock("@/lib/market-square", () => ({
 
 const { CurvedTabBar } = await import("./curved-tab-bar");
 
-function renderBar(onNavigate = vi.fn()) {
-  render(<CurvedTabBar items={[]} activeSection="portfolio" onNavigate={onNavigate} />);
-  return { onNavigate, zones: screen.getAllByRole("button") };
+function renderBar(onNavigate = vi.fn(), activeSection: "portfolio" | "activity" = "portfolio") {
+  const { container } = render(
+    <CurvedTabBar items={[]} activeSection={activeSection} onNavigate={onNavigate} />
+  );
+  return { onNavigate, zones: screen.getAllByRole("button"), container };
 }
 
 beforeEach(() => {
@@ -49,6 +63,15 @@ describe("CurvedTabBar", () => {
     const { zones } = renderBar();
     fireEvent.click(zones[4]);
     expect(router.push).toHaveBeenCalledWith("/activity");
+  });
+
+  it("rings the clock on the Activity page, as it rings the home on Portfolio", () => {
+    const { container } = renderBar(vi.fn(), "activity");
+    const marker = container.querySelector(
+      ".rounded-full.border-\\[1\\.5px\\]"
+    ) as HTMLElement | null;
+    expect(marker).not.toBeNull();
+    expect(marker?.style.left).toBe("86.8%");
   });
 
   it("scroll-spies portfolio and casino, which are sections of the shell", () => {

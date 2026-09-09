@@ -25,6 +25,8 @@ const TABS: { id: SectionId; x: number; y: number }[] = [
   { id: "portfolio", x: 15.0, y: 72 },
   { id: "spot", x: 32.3, y: 48 },
   { id: "casino", x: 71.6, y: 50 },
+  // The clock: drawn at (348.9, 69.9) in the 402x90 art.
+  { id: "activity", x: 86.8, y: 77.7 },
 ];
 
 // Tap zones over the art, left→right: portfolio, market, market square, casino, activity.
@@ -40,8 +42,8 @@ export function CurvedTabBar({ activeSection, onNavigate }: CurvedTabBarProps) {
   const router = useRouter();
   const reduce = useReducedMotion();
   const squareHref = marketSquareHref() ?? "#";
-  // Only three icons carry an active state (portfolio, spot, casino). On any
-  // other section (rwa, meme, prediction, activity, earn) none of them owns the
+  // Four icons carry an active state (portfolio, spot, casino, activity). On
+  // any other section (rwa, meme, prediction, earn) none of them owns the
   // page, so the marker is hidden rather than snapping onto Portfolio.
   const active = TABS.find((t) => t.id === activeSection) ?? null;
 

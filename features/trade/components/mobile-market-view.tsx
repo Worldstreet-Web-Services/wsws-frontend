@@ -27,7 +27,7 @@ import { SpotTicket } from "@/features/trade/components/spot-ticket";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { useTrendingMemes } from "@/features/trade/hooks/use-meme-tokens";
-import { useFitRows } from "@/features/trade/hooks/use-fit-rows";
+import { useFitRows } from "@/hooks/use-fit-rows";
 import {
   useMemePreview,
   useMemeTrade,
@@ -68,7 +68,7 @@ interface MobileMarketViewProps {
    * The Real assets tab's content, supplied by the route for the same reason:
    * real assets is its own feature.
    */
-  rwaSlot: ReactNode;
+  rwaSlot: (query: string) => ReactNode;
 }
 
 // The Market design's phone Spot page (Figma 173:42337): its own MARKET head on
@@ -84,12 +84,13 @@ interface MobileMarketViewProps {
 // when they do.
 //
 // `searchable` says whether the search field can act on the panel below it.
-// Spot and Memecoins are lists this view filters itself; real assets and
-// prediction own their own selection, and neither takes a query from us.
+// Spot and Memecoins are lists this view filters itself, and Real assets is a
+// list its own feature filters by the query handed to it; prediction owns its
+// own selection and takes no query from us.
 const TABS = [
   { id: "spot", labelKey: "tabSpot", searchable: true },
   { id: "memecoins", labelKey: "tabMemecoins", searchable: true },
-  { id: "rwa", labelKey: "tabRealAssets", searchable: false },
+  { id: "rwa", labelKey: "tabRealAssets", searchable: true },
   { id: "prediction", labelKey: "tabPrediction", searchable: false },
 ] as const;
 
@@ -621,11 +622,8 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
             // search and the asset table, with its detail and trade sheets.
             // Mounted only while this tab is selected, so its registry read is
             // not made for someone who never opens it.
-            <div
-              data-testid="rwa-panel-scroll"
-              className="-mx-1 mt-3 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
-            >
-              {rwaSlot}
+            <div data-testid="rwa-panel-scroll" className="flex min-h-0 flex-1 flex-col">
+              {rwaSlot(query)}
             </div>
           ) : activeTab === "memecoins" ? (
             <>

@@ -22,13 +22,15 @@ export default function MarketPage() {
           onOpenDetail={modals.openDetail}
           onOpenBuy={modals.openBuy}
           predictionSlot={<PredictionMarketList />}
-          rwaSlot={
+          rwaSlot={(query) => (
             <RwaSection
+              phone
+              query={query}
               onOpenDetail={modals.openDetail}
               onOpenConfirm={modals.openConfirm}
               onAddFunds={modals.openFunds}
             />
-          }
+          )}
         />
       </Suspense>
       <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />

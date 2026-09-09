@@ -126,3 +126,12 @@ wider and ran into their taglines. Both are now fitted by measuring the
 rendered text (`hooks/use-fit-text.ts`): the Set The Stake words are a row
 whose pitch takes what the tagline leaves, and the Kash headline scales to
 its slot. Fonts are unchanged.
+
+## The Real assets tab as a list
+
+The phone Market page's Real assets tab now draws the same list as the
+Memecoins tab: logo, ticker and name on the left, price and the day's move
+on the right, as many rows as the phone holds with the shared foot pager,
+filtered by the page's search box. A tap opens the asset's sheet, which
+carries Buy. The desk's section keeps its sheets and renders the list in
+place of its table when hosted on the phone.

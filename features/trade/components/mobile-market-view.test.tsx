@@ -161,7 +161,7 @@ function renderView() {
         onOpenDetail={onOpenDetail}
         onOpenBuy={onOpenBuy}
         predictionSlot={<div data-testid="prediction-panel" />}
-        rwaSlot={<div data-testid="rwa-panel" />}
+        rwaSlot={(query) => <div data-testid="rwa-panel" data-query={query} />}
       />
     </NextIntlClientProvider>
   );
@@ -292,7 +292,7 @@ describe("MobileMarketView chrome", () => {
     expect(screen.getByPlaceholderText("Search")).toBeEnabled();
 
     fireEvent.click(tabs()[2]);
-    expect(screen.getByPlaceholderText("Search")).toBeDisabled();
+    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
 
     fireEvent.click(tabs()[3]);
     expect(screen.getByPlaceholderText("Search")).toBeDisabled();
@@ -418,7 +418,10 @@ describe("MobileMarketView chrome", () => {
     fireEvent.click(tabs()[2]);
     const panel = screen.getByTestId("rwa-panel-scroll");
     expect(panel).toContainElement(screen.getByTestId("rwa-panel"));
-    expect(panel.className).toMatch(/overflow-y-auto/);
+
+    // The page's search box filters the list, through the slot.
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "gold" } });
+    expect(screen.getByTestId("rwa-panel").dataset.query).toBe("gold");
 
     fireEvent.click(tabs()[0]);
     expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();

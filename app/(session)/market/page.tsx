@@ -1,0 +1,24 @@
+"use client";
+
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
+import { MobileMarketView } from "@/features/trade/components/mobile-market-view";
+import { PredictionView } from "@/features/prediction";
+
+// The phone Market page (Figma 173:42337): a full-screen Spot trading view with
+// its own MARKET head, standalone from the app shell. It lives in (session) —
+// not (app) — so it gets the wallet providers without the topbar/sidebar/tab
+// bar that the shell would otherwise wrap every product route in.
+export default function MarketPage() {
+  const modals = useAppModals();
+  return (
+    <AuthGuard>
+      <MobileMarketView
+        onOpenDetail={modals.openDetail}
+        onOpenBuy={modals.openBuy}
+        predictionSlot={<PredictionView />}
+      />
+      <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
+    </AuthGuard>
+  );
+}

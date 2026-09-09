@@ -131,20 +131,35 @@ export function HyperliquidAssetPicker({
           fallback="gradient"
         />
         <button
+          type="button"
           onClick={() => setOpen((v) => !v)}
           disabled={assets.length === 0}
+          // This button owns a dropdown, so it has to say so. Without these a
+          // screen reader announces it as a plain button and gives no hint that
+          // anything opened. It matters more now that the same trigger is the
+          // only way to change market from the fullscreen chart.
+          aria-haspopup="listbox"
+          aria-expanded={open}
           className="flex min-w-0 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
         >
           {compact ? (
             <div className="flex items-center gap-1.5 font-sans text-[17px] font-semibold whitespace-nowrap">
               {asset ? hlPairLabel(asset.symbol) : loading ? "Loading…" : "No markets"}
-              {assets.length > 0 ? <span className="text-white/40">▾</span> : null}
+              {assets.length > 0 ? (
+                <span aria-hidden className="text-white/40">
+                  ▾
+                </span>
+              ) : null}
             </div>
           ) : (
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 font-sans text-[16px] font-semibold">
                 {asset ? hlPairLabel(asset.symbol) : loading ? "Loading markets…" : "No markets"}
-                {assets.length > 0 ? <span className="text-white/40">▾</span> : null}
+                {assets.length > 0 ? (
+                  <span aria-hidden className="text-white/40">
+                    ▾
+                  </span>
+                ) : null}
               </div>
               <div className="truncate text-xs font-normal text-white/50">
                 {asset ? `${asset.maxLeverage}x max leverage` : "—"}

@@ -37,6 +37,19 @@ export const MARKET_SQUARE_URL = process.env.NEXT_PUBLIC_MARKET_SQUARE_URL ?? ""
 export const MARKET_SQUARE_HIDDEN: boolean =
   process.env.NEXT_PUBLIC_MARKET_SQUARE_LIVE === "false" || MARKET_SQUARE_URL === "";
 
+/**
+ * The operator TAKEDOWN alone: NEXT_PUBLIC_MARKET_SQUARE_LIVE set to exactly
+ * "false", independent of whether a URL is configured.
+ *
+ * A surface that should still appear in a URL-less dev environment (so it can be
+ * built and reviewed) but MUST vanish when the square is deliberately taken down
+ * gates on THIS, not MARKET_SQUARE_HIDDEN. The mobile "Join the Conversation"
+ * doorway is the one such surface: it renders as a static promo without a URL,
+ * but a real takedown has to remove it and its live "Join Space" link.
+ */
+export const MARKET_SQUARE_TAKEN_DOWN: boolean =
+  process.env.NEXT_PUBLIC_MARKET_SQUARE_LIVE === "false";
+
 export function marketSquareHref(path = ""): string | null {
   if (MARKET_SQUARE_URL === "") return null;
   const base = MARKET_SQUARE_URL.replace(/\/+$/, "");

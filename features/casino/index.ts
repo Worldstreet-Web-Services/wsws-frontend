@@ -1,5 +1,7 @@
 export { CasinoPage } from "./components/casino-page";
 export { HubSection } from "./components/hub-section";
+export { ArkadeMobile } from "./components/arkade-mobile";
+export { ArkadeDesktop } from "./components/arkade-desktop";
 export { ArkBallSection } from "./components/arkball/arkball-section";
 export { ArkjetSection } from "./components/arkjet/arkjet-section";
 export { ChickenSection } from "./components/chicken/chicken-section";

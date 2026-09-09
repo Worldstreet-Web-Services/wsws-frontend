@@ -1,5 +1,5 @@
 import type { Prediction } from "@/lib/types";
-import type { PredictionMarketCategory } from "./categories";
+import type { PredictionCategory } from "./categories";
 import type { DiscoveryMarketEvent, DiscoveryMarketSummary } from "./markets/api";
 
 export interface CategoryPrediction extends Prediction {
@@ -37,7 +37,7 @@ export function compactVolume(value: number | null): string {
   }).format(value)} vol`;
 }
 
-export function marketTag(event: DiscoveryMarketEvent, category: PredictionMarketCategory): string {
+export function marketTag(event: DiscoveryMarketEvent, category: PredictionCategory): string {
   return (
     event.tags.find((tag) => tag.slug !== category && tag.slug !== "all")?.label ??
     category[0].toUpperCase() + category.slice(1)
@@ -47,7 +47,7 @@ export function marketTag(event: DiscoveryMarketEvent, category: PredictionMarke
 export function marketPrediction(
   event: DiscoveryMarketEvent,
   market: DiscoveryMarketSummary,
-  category: PredictionMarketCategory
+  category: PredictionCategory
 ): CategoryPrediction | null {
   const yes = market.outcomes.find((outcome) => outcome.name.toLowerCase() === "yes");
   const no = market.outcomes.find((outcome) => outcome.name.toLowerCase() === "no");
@@ -91,6 +91,20 @@ export function marketPrediction(
   };
 }
 
-export function categoryEventHref(eventId: string, category: PredictionMarketCategory): string {
-  return `/prediction/markets/${encodeURIComponent(eventId)}?category=${category}`;
+// Where a Polymarket event opens.
+//
+// `source=markets` is the disambiguator, and it is the whole reason this
+// function exists rather than a template literal at each call site. The detail
+// route serves two products off one path: Polymarket events, keyed by Gamma's
+// ids, and sportsbook fixtures, keyed by the sportsbook's own. Nothing in an id
+// says which space it came from, so without a marker the route has to guess,
+// and it guessed by category. That worked only because sports was refused
+// outright, which is what left every sports card on the desk dead.
+//
+// With the marker the route stops guessing: this parameter says "Gamma id,
+// serve it from the discovery feed", and it says so for sports too. Bare
+// `?category=politics` links still resolve, so anything already bookmarked
+// keeps working.
+export function categoryEventHref(eventId: string, category: PredictionCategory): string {
+  return `/prediction/markets/${encodeURIComponent(eventId)}?category=${category}&source=markets`;
 }

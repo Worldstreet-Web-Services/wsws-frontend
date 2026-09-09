@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { usePrivy } from "@privy-io/react-auth";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { PredictionCategoryButton } from "./prediction-category-drawer";
-import type { PredictionMarketCategory } from "../categories";
+import type { PredictionCategory } from "../categories";
 import { usdcVolume, type CategoryPrediction } from "../category-market-presenter";
 
 export const CategoryBetSidebar = dynamic(
@@ -62,7 +62,7 @@ export function CategoryTopNav({
 }: {
   onOpenCategories: () => void;
   categoriesOpen: boolean;
-  category: PredictionMarketCategory;
+  category: PredictionCategory;
 }) {
   const { authenticated, login } = usePrivy();
   return (

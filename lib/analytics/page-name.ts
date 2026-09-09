@@ -30,6 +30,7 @@ const PAGE_BY_PATH_PREFIX: [string, PageName][] = [
   ["/earn", "earn"],
   ["/activity", "arktivity"],
   ["/rwa", "real_assets"],
+  ["/portfolio", "portfolio"],
   ["/dashboard", "portfolio"],
 ];
 

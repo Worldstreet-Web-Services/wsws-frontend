@@ -15,7 +15,7 @@ import { PredictionCashoutTracker } from "@/features/prediction/components/predi
 import { usePredictionQueryBroadcast } from "@/features/prediction/markets/query-broadcast";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
-// including the chess and arkjet screens, and this provider is mounted on
+// including the chess screens, and this provider is mounted on
 // every signed-in route — so the barrel pulled the whole casino into the
 // initial payload for one timer. optimizePackageImports only rewrites npm
 // barrels, not ours. This file sits under app/ rather than components/ for

@@ -80,15 +80,15 @@ const checkers: CasinoGame = {
   comingSoon: false,
 };
 
-const arkjet: CasinoGame = {
-  id: "arkjet",
-  name: "Arkjet",
+const lastStanding: CasinoGame = {
+  id: "last-standing",
+  name: "The Last Man",
   category: "New",
   size: "tall",
-  glyph: "✈",
-  image: "/casino/arkjet/hero.webp",
-  href: "/casino/arkjet",
-  note: "Cash out before the multiplier crashes",
+  glyph: "♛",
+  image: "/casino/last-standing/hero.png",
+  href: "/casino/last-standing",
+  note: "Last wager standing takes the pot",
   comingSoon: false,
 };
 
@@ -103,7 +103,7 @@ const poker: CasinoGame = {
   comingSoon: true,
 };
 
-const catalogue = [chess, arkball, checkers, arkjet, poker];
+const catalogue = [chess, arkball, checkers, lastStanding, poker];
 
 describe("ArkadeDesktopRow", () => {
   it("renders one tile per game it is given, in order", () => {
@@ -194,7 +194,7 @@ describe("ArkadeDesktop", () => {
   it("renders every game in the catalogue it is handed", () => {
     renderWithIntl(<ArkadeDesktop games={catalogue} />);
 
-    for (const name of ["Chess", "ArkBall", "Checkers", "Arkjet", "Poker"]) {
+    for (const name of ["Chess", "ArkBall", "Checkers", "The Last Man", "Poker"]) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
   });
@@ -237,8 +237,8 @@ describe("ArkadeDesktop", () => {
     const onSelectGame = vi.fn();
     renderWithIntl(<ArkadeDesktop games={catalogue} onSelectGame={onSelectGame} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Play Arkjet" }));
-    expect(onSelectGame).toHaveBeenCalledWith(arkjet);
+    fireEvent.click(screen.getByRole("button", { name: "Play The Last Man" }));
+    expect(onSelectGame).toHaveBeenCalledWith(lastStanding);
   });
 
   it("shows loading rails, and no tiles, while the catalogue is loading", () => {

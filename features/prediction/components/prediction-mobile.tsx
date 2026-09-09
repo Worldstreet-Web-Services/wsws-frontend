@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Artboard } from "@/components/ui/artboard";
 import { useMoney } from "@/components/ui/currency-select";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { formatCountdown, parseCloseTime, useCountdown } from "@/hooks/use-countdown";
@@ -45,30 +46,35 @@ function usePrefersReducedMotion(): boolean {
  */
 function BannerFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative aspect-[330/172] w-full overflow-hidden rounded-[15px] bg-gradient-to-b from-[#FEE685] to-[#FFD425]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/sunburst-yellow.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-large.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[31%] left-[46%] w-[24%] opacity-80"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-small.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[19%] left-[29%] w-[13%] opacity-70"
-      />
-      {children}
-    </div>
+    // The comp's 330x213 artboard, scaled as one piece to the slide it gets,
+    // so the type and the pill grow with the card on a wide phone instead of
+    // sitting small in a bigger box.
+    <Artboard width={330} height={213} className="rounded-[15px]">
+      <div className="relative h-full w-full bg-gradient-to-b from-[#FEE685] to-[#FFD425]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/sunburst-yellow.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/cloud-large.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute top-[31%] left-[46%] w-[24%] opacity-80"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/cloud-small.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute top-[19%] left-[29%] w-[13%] opacity-70"
+        />
+        {children}
+      </div>
+    </Artboard>
   );
 }
 
@@ -135,7 +141,7 @@ function BannerChip({ prediction: p }: { prediction: Prediction }) {
   const closed = remaining !== null && remaining <= 0;
 
   const chip =
-    "inline-flex max-w-[70%] items-center gap-1 rounded-full border border-black/30 px-2 py-[3px] text-[10px] font-semibold tracking-[0.62px] text-[#0B0A0A] uppercase";
+    "inline-flex max-w-[70%] items-center gap-1 rounded-full border border-black/30 px-2 py-[3px] text-[9px] font-semibold tracking-[0.62px] text-[#0B0A0A] uppercase";
 
   if (countdown === null) {
     return (
@@ -190,7 +196,7 @@ function PredictionBanner({
   return (
     <BannerFrame>
       <div className="relative flex h-full flex-col">
-        <div className="flex min-h-0 flex-1 items-stretch gap-2 px-[6%] pt-[5%] pb-[2%]">
+        <div className="flex min-h-0 flex-1 items-stretch gap-2 px-[6%] pt-[6%] pb-[2%]">
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-center gap-2">
               <BannerChip prediction={p} />
@@ -201,7 +207,7 @@ function PredictionBanner({
                 market this opens rather than "card". The stretched pseudo-element
                 hands the rest of the banner to the same link, and the controls
                 below sit above it with their own clicks. */}
-            <h3 className="ws-chewy mt-[4%] text-[17px] leading-[1.22] text-[#252525]">
+            <h3 className="ws-chewy mt-[5%] text-[15px] leading-[1.22] text-[#252525]">
               <Link
                 href={href}
                 // The global click ripple turns whatever was pressed into a
@@ -226,7 +232,7 @@ function PredictionBanner({
                 advice. It is sample copy, not anything the feed sends, so the
                 line carries what the market actually reports instead: where the
                 Yes side stands, and how much has traded. */}
-            <p className="tnum mt-auto flex items-center gap-3 text-[12px] font-semibold text-[#0B0A0A]">
+            <p className="tnum mt-auto flex items-center gap-3 text-[10px] font-semibold text-[#0B0A0A]">
               <span className="flex items-center gap-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/prediction/icon-trades.svg" alt="" aria-hidden className="size-[11px]" />
@@ -284,14 +290,14 @@ function PredictionBanner({
             card. Raised above the stretched question link so each action keeps
             its own destination, and each is a 44px target wrapped around the
             smaller pill the design draws. */}
-        <div className="relative z-[1] flex h-[62px] shrink-0 items-center gap-[3.6%] bg-gradient-to-b from-[#FEECA6] to-[#FFF5CD] px-[6%]">
+        <div className="relative z-[1] flex h-[34%] shrink-0 items-center gap-[3.6%] bg-gradient-to-b from-[#FEECA6] to-[#FFF5CD] px-[6%]">
           {/* One action, into the market on show. The desk itself is where the
               section's heading goes. */}
           <Link
             href={href}
             className="ws-pressable flex min-h-11 shrink-0 items-center justify-center"
           >
-            <span className="flex h-[42px] w-full items-center justify-center gap-2 rounded-full bg-white px-6 text-[14px] font-semibold whitespace-nowrap text-[#0B0A0A] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+            <span className="flex h-[34px] w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[11px] font-semibold whitespace-nowrap text-[#0B0A0A] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/market/prediction-coins-black.svg"
@@ -448,7 +454,7 @@ export function PredictionMobile() {
         <Link
           href="/prediction"
           aria-label={t("beltCardAria")}
-          className="ws-pressable aspect-[330/172] w-[88%] shrink-0 snap-start overflow-hidden rounded-[15px]"
+          className="ws-pressable aspect-[330/213] w-[88%] shrink-0 snap-start overflow-hidden rounded-[15px]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/prediction/boxing-card.png" alt="" className="h-full w-full object-cover" />

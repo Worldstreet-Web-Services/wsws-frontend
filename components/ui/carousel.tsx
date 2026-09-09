@@ -13,8 +13,11 @@ const SLIDE_MS = 420;
 // `perView`. Two slides and a peek on a phone leaves each one about a third of
 // a narrow screen, which is not a card any more. Measured on the carousel's own
 // frame rather than on the viewport, so a carousel inside a narrow column
-// switches when that column gets narrow, not when the window does.
-const ONE_UP_BELOW = 640;
+// switches when that column gets narrow, not when the window does. 768 is the
+// md breakpoint: the phone home renders below it at full width, and a wide
+// phone in the 640 to 767 band was getting two cards too narrow for their
+// copy.
+const ONE_UP_BELOW = 768;
 
 // The narrowest slide a trim is allowed to touch, in pixels.
 //

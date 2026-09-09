@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Artboard } from "@/components/ui/artboard";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import { tokenBg } from "@/lib/trade/assets";
@@ -73,7 +74,10 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
   const up = hasChange && token.change24h >= 0;
 
   return (
-    <div className="relative aspect-[339/168] w-full overflow-hidden rounded-[16.272px]">
+    // The comp's 339x168 artboard, scaled as one piece to the slide it gets, so
+    // the chip, the bubble and the button keep the comp's proportions and type
+    // size on a wide phone rather than stretching around 8px text.
+    <Artboard width={339} height={168} className="rounded-[16.272px]">
       {/* Figma export, used for the gradient and the decoration only. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/trade/token-moves/card-bg.svg" alt="" className="block h-full w-full" />
@@ -131,7 +135,7 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
           {tSpot("ctaBuy", { symbol: token.symbol })}
         </span>
       </button>
-    </div>
+    </Artboard>
   );
 }
 

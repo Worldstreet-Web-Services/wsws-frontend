@@ -5,7 +5,16 @@ import { resolve } from "node:path";
 const shared = {
   globals: true,
   setupFiles: ["./vitest.setup.ts"],
-  exclude: ["node_modules", ".next", "out", "build", "casino-service", "reference"],
+  exclude: [
+    "node_modules",
+    ".next",
+    "out",
+    "build",
+    "casino-service",
+    "reference",
+    "features/casino/components/chess/**",
+    "features/casino/components/chess-app/**",
+  ],
   passWithNoTests: true,
 };
 

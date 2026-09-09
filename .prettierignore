@@ -21,4 +21,6 @@ public/
 .agents/
 .claude/
 reference/
+features/casino/components/chess/
+features/casino/components/chess-app/
 .eslintcache

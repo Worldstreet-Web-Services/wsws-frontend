@@ -1,11 +1,9 @@
-"use client";
-
-import { CasinoPage, LobbySection } from "@/features/casino";
-
 export default function ChessLobbyPage() {
   return (
-    <CasinoPage hideBackLink>
-      <LobbySection />
-    </CasinoPage>
+    <iframe
+      src="/api/chess/play"
+      title="Ark Chess"
+      className="fixed inset-0 h-dvh w-full border-0 bg-[#11100e]"
+    />
   );
 }

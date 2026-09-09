@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,6 +21,12 @@ git.txt
 
 # production
 /build
+/features/casino/components/chess/.build/build/
+/features/casino/components/chess/*/dist/
+/public/compiled/
+/public/css/
+/public/hashed/
+/public/npm/
 
 # misc
 .DS_Store

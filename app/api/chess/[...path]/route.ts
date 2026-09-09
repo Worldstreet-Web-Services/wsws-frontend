@@ -122,13 +122,19 @@ async function forward(
   wallet?: string,
   searchParams?: URLSearchParams,
   countryCode?: string | null,
-  displayName?: string | null
+  displayName?: string | null,
+  requestContentType?: string | null
 ) {
   const search = searchParams ? searchParams.toString() : req.nextUrl.searchParams.toString();
   const query = search ? `?${search}` : "";
   const url = `${BASE}/${joined}${query}`;
-  const headers: Record<string, string> = { accept: "application/json" };
-  if (method !== "GET") headers["content-type"] = "application/json";
+  const headers: Record<string, string> = {
+    accept: req.headers.get("accept") ?? "application/json",
+  };
+  if (method !== "GET") {
+    headers["content-type"] = requestContentType ?? "application/json";
+  }
+  if (/^play(?:\/|$)/u.test(joined)) headers["x-forwarded-prefix"] = "/api/chess";
   if (wallet) {
     headers["x-wallet-address"] = wallet;
     forwardAuthHeaders(req, headers);
@@ -187,9 +193,20 @@ async function forward(
         contentType,
       });
     }
+    const responseHeaders: Record<string, string> = {
+      "content-type": contentType,
+      "cache-control": NO_STORE,
+    };
+    const location = res.headers.get("location");
+    if (location) {
+      responseHeaders.location =
+        /^play(?:\/|$)/u.test(joined) && location.startsWith("/play")
+          ? `/api/chess${location}`
+          : location;
+    }
     return new NextResponse(text, {
       status: res.status,
-      headers: { "content-type": contentType, "cache-control": NO_STORE },
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("Chess proxy failed:", joined, error);
@@ -210,6 +227,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
   if (needsSession && !claims) return unauthorized();
   const user = needsSession ? await getRequestUser(req, claims) : null;
   const wallet = needsSession ? walletOfUser(user) : null;
+  const displayName = needsSession ? chessDisplayNameOfUser(user) : null;
   if (needsSession && !user) return walletUnavailable();
   if (needsSession && !wallet) return noWallet();
   const forwardedSearch = wallet
@@ -228,7 +246,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ path: strin
     }
   }
 
-  return forward(req, joined, "GET", undefined, wallet ?? undefined, forwardedSearch);
+  return forward(
+    req,
+    joined,
+    "GET",
+    undefined,
+    wallet ?? undefined,
+    forwardedSearch,
+    undefined,
+    displayName
+  );
 }
 
 async function authedWrite(
@@ -249,7 +276,9 @@ async function authedWrite(
 
   const raw = await req.text();
   const joined = path.join("/");
-  const identified = withChessIdentity(joined, raw, wallet);
+  const requestContentType = req.headers.get("content-type");
+  const isForm = requestContentType?.startsWith("application/x-www-form-urlencoded") ?? false;
+  const identified = isForm ? raw : withChessIdentity(joined, raw, wallet);
   const country = COUNTRY_WRITE.test(joined) ? await detectRequestCountry(req.headers) : null;
   const displayName = PLAYER_PROFILE_WRITE.test(joined) ? chessDisplayNameOfUser(user) : null;
   return forward(
@@ -260,7 +289,8 @@ async function authedWrite(
     wallet,
     undefined,
     country,
-    displayName
+    displayName,
+    requestContentType
   );
 }
 

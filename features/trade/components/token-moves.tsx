@@ -28,7 +28,9 @@ const MAX_TOKENS = 5;
 //   button rect x=68.678 y=134.264  w=65.088  h=24.408  rx=12.204 (not rotated)
 const CHIP = { left: "20.943%", top: "13.112%", width: "49.725%", height: "26.560%" };
 const BUBBLE = { left: "10.914%", top: "41.420%", width: "65.487%", height: "34.524%" };
-const BUTTON = { left: "20.259%", top: "79.919%", minWidth: "19.199%", height: "14.529%" };
+// The comp draws the button 65x24 at 8px type, which reads tiny beside the
+// bubble; it is 82x30 at 10px here, kept at the comp's bottom-left anchor.
+const BUTTON = { left: "20.259%", top: "77.5%", minWidth: "24.2%", height: "17.9%" };
 
 // A token the insight card can render, as composed by useSpotMarkets: the
 // symbol and logo from the buy catalogue, the price from the price feed, the
@@ -128,10 +130,10 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
       <button
         type="button"
         onClick={onBuy}
-        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[12.2px] border-[1.4px] border-[#ffd52d] bg-black px-[6px]"
+        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[15px] border-[1.4px] border-[#ffd52d] bg-black px-[10px]"
         style={BUTTON}
       >
-        <span className="text-[8px] font-semibold whitespace-nowrap text-white">
+        <span className="text-[10px] font-semibold whitespace-nowrap text-white">
           {tSpot("ctaBuy", { symbol: token.symbol })}
         </span>
       </button>

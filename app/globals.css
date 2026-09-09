@@ -112,10 +112,19 @@
   --ws-frame-inset: max(0px, calc((100vw - var(--ws-frame-max)) / 2));
 }
 
-body {
+/* The root element is the frame: the whole document, body and all, sits in
+   this column and is centred on a wider screen. Position: fixed measures from
+   the viewport regardless, which is why fixed chrome offsets itself by
+   --ws-frame-inset. */
+html {
   width: 100%;
   max-width: var(--ws-frame-max);
   margin-inline: auto;
+  background: #000;
+}
+
+body {
+  width: 100%;
   background: #000;
   color: #fff;
   font-family: var(--font-sans), sans-serif;

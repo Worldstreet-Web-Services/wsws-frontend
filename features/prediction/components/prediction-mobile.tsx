@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMoney } from "@/components/ui/currency-select";
 import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
-import { formatCountdown, parseCloseTime, useCountdown } from "@/hooks/use-countdown";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import type { Prediction } from "@/lib/types";
 
@@ -14,16 +13,12 @@ import type { Prediction } from "@/lib/types";
 const ROTATE_MS = 10_000;
 
 /**
- * Whether the reader asked their system to cut animation.
- *
- * Read through an effect rather than during render so the server and the first
- * client paint agree. `matchMedia` is missing in jsdom, so its absence is
- * treated as "no preference stated", which is what a browser without the query
- * reports anyway.
+ * Whether the reader asked their system to cut animation. Read through an effect
+ * so the server and the first client paint agree. matchMedia is missing in
+ * jsdom, so its absence is treated as "no preference stated".
  */
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
-
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -32,319 +27,109 @@ function usePrefersReducedMotion(): boolean {
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
   }, []);
-
   return reduced;
 }
 
 /**
- * The card's yellow treatment, and nothing else.
+ * The prediction card, drawn from the exact Figma export (card-bg.svg). The SVG
+ * carries the whole illustration: the yellow ground, the rays and clouds, the
+ * photo frames and the Predict button. Three text nodes and the two photos are
+ * placeholders the design shipped, and this component patches them with the live
+ * market so the art stays the designer's and only the data is ours:
+ *   pred-title / pred-title-2 — the question, wrapped over two lines
+ *   pred-subtitle             — the Yes price and the volume (in the reader's currency)
+ *   pred-tag                  — the countdown, or the category when there is no close time
+ *   the two photo fills        — the market's artwork
  *
- * The gradient is the design's own (#FEE685 to #FFD425) and the rays and clouds
- * are the artwork-only exports beside it. Every word on the card is DOM drawn on
- * top of this, so a market question, a price, or a volume never lives in an
- * asset.
+ * Patching over <object> rather than recreating the card in code keeps it
+ * pixel-identical to the comp and out of a 300-line reimplementation.
  */
-function BannerFrame({ children }: { children: ReactNode }) {
+function PredictionMobileCard({
+  prediction,
+  chipText,
+  volume,
+}: {
+  prediction: Prediction;
+  /** The countdown, or the category, already chosen by the caller. */
+  chipText: string;
+  /** Volume in the reader's currency, or null when the feed states none. */
+  volume: string | null;
+}) {
+  const ref = useRef<HTMLObjectElement>(null);
+  // Holds the latest data so `patch` can stay stable and still read the current
+  // values. Written in the effect below, never during render.
+  const dataRef = useRef({ prediction, chipText, volume });
+
+  // Patch the SVG text and photos. Stable, reads from the ref, so it can be the
+  // <object>'s onLoad handler and be called again whenever the data changes.
+  const patch = useCallback(() => {
+    const doc = ref.current?.contentDocument;
+    if (!doc) return;
+    const { prediction: p, chipText: chip, volume: vol } = dataRef.current;
+
+    const set = (id: string, text: string) => {
+      const el = doc.getElementById(id);
+      if (el) el.textContent = text;
+    };
+
+    const q = p.q;
+    const mid = q.lastIndexOf(" ", 28);
+    if (mid > 0 && q.length > 28) {
+      set("pred-title", q.slice(0, mid));
+      set("pred-title-2", q.slice(mid + 1));
+    } else {
+      set("pred-title", q);
+      set("pred-title-2", "");
+    }
+
+    set("pred-subtitle", vol ? `${p.yes} Yes · ${vol}` : `${p.yes} Yes`);
+    set("pred-tag", chip);
+
+    if (p.image) {
+      const setHref = (id: string) => {
+        const el = doc.getElementById(id);
+        if (!el) return;
+        el.setAttribute("href", p.image!);
+        el.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", p.image!);
+        // Force the pattern to repaint: an href change inside a <pattern> often
+        // does not re-render on its own, so swap the element for a clone (which
+        // already carries the new href) to make the engine re-read it.
+        el.replaceWith(el.cloneNode(true));
+      };
+      setHref("image0_1_5692");
+      setHref("image1_1_5692");
+    }
+  }, []); // stable — reads from the ref
+
+  // Repatch whenever the market, its countdown, or its volume changes. The
+  // countdown ticks every second, so this is what keeps the clock live.
+  useEffect(() => {
+    dataRef.current = { prediction, chipText, volume };
+    patch();
+  }, [prediction, chipText, volume, patch]);
+
   return (
-    <div className="relative aspect-[330/213] w-full overflow-hidden rounded-[15px] bg-gradient-to-b from-[#FEE685] to-[#FFD425]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/sunburst-yellow.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-large.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[31%] left-[46%] w-[24%] opacity-80"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-small.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[19%] left-[29%] w-[13%] opacity-70"
-      />
+    <object
+      ref={ref}
+      data="/prediction/card-bg.svg"
+      type="image/svg+xml"
+      aria-label={prediction.q}
+      onLoad={patch}
+      // pointer-events-none: the SVG carries its own <a href> ("Predict"), and
+      // because <object> is a nested browsing context, a click inside it would
+      // load the whole app INTO the card. Killing pointer events lets the
+      // wrapping Link take the tap and navigate the main window instead.
+      className="pointer-events-none block aspect-[330/213] w-full overflow-hidden rounded-[15px]"
+    />
+  );
+}
+
+/** A yellow card-shaped frame for the states that have no market to draw. */
+function CardFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative grid aspect-[330/213] w-full place-items-center overflow-hidden rounded-[15px] bg-gradient-to-b from-[#FEE685] to-[#FFD425] p-[8%] text-center">
       {children}
     </div>
-  );
-}
-
-interface PauseControlProps {
-  paused: boolean;
-  onToggle: () => void;
-}
-
-/**
- * The stop control WCAG 2.2.2 requires of content that starts moving on its own
- * and runs past five seconds. Hover and focus hold the rotation too, but neither
- * is available to a touch reader, so the button is the mechanism that always is.
- */
-function PauseControl({ paused, onToggle }: PauseControlProps) {
-  const t = useTranslations("prediction");
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={paused}
-      aria-label={paused ? t("mobileResumeRotation") : t("mobilePauseRotation")}
-      // The drawn control is the design's 24px dot. The button around it is the
-      // 44px target the guidelines ask for, pulled back out of the layout with a
-      // negative margin so honouring the target does not push the chip row open.
-      className="ws-pressable relative z-[1] -m-2.5 grid size-11 shrink-0 cursor-pointer place-items-center"
-    >
-      <span className="grid size-6 place-items-center rounded-full bg-black/10 text-[#0B0A0A] hover:bg-black/20">
-        <svg viewBox="0 0 12 12" aria-hidden className="size-3" fill="currentColor">
-          {paused ? <path d="M3 1.5l7 4.5-7 4.5z" /> : <path d="M3 2h2.2v8H3zm3.8 0H9v8H6.8z" />}
-        </svg>
-      </span>
-    </button>
-  );
-}
-
-interface PredictionBannerProps {
-  prediction: Prediction;
-  /**
-   * The market's volume, already formatted in the reader's own currency, or
-   * null when the feed states none. Formatted by the caller rather than here:
-   * money belongs to the money layer, and a card that converts its own figures
-   * is a card that can disagree with the rest of the app.
-   */
-  volume: string | null;
-  paused: boolean;
-  onTogglePause: () => void;
-  /** Hidden when there is only one market, since nothing is rotating. */
-  showPauseControl: boolean;
-}
-
-/**
- * The chip in the top-left corner of the card.
- *
- * The design draws a live countdown there. A market only has one when the feed
- * gave it a close date, so a market without one falls back to its category
- * rather than to an invented clock. Both are the market's own data; neither is
- * a placeholder.
- */
-function BannerChip({ prediction: p }: { prediction: Prediction }) {
-  const t = useTranslations("prediction");
-  const remaining = useCountdown(parseCloseTime(p.endsAt));
-  const countdown = formatCountdown(remaining);
-  const closed = remaining !== null && remaining <= 0;
-
-  const chip =
-    "inline-flex max-w-[70%] items-center gap-1 rounded-full border border-black/30 px-2 py-[3px] text-[9px] font-semibold tracking-[0.62px] text-[#0B0A0A] uppercase";
-
-  if (countdown === null) {
-    return (
-      <span className={chip}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/market/prediction-coins-black.svg" alt="" aria-hidden className="size-3" />
-        <span className="truncate">{p.tag}</span>
-      </span>
-    );
-  }
-
-  return (
-    <span className={chip}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/prediction/stopwatch-icon.svg" alt="" aria-hidden className="size-3" />
-      {closed ? (
-        <span className="truncate">{t("marketClosedLabel")}</span>
-      ) : (
-        <>
-          {/* Bare digits read as nonsense out loud, so the clock says what it
-              is counting to. It is not a live region: a value that changes
-              every second would interrupt a screen reader continuously. */}
-          <span className="sr-only">{t("closesIn")}</span>
-          <span className="tnum">{countdown}</span>
-        </>
-      )}
-    </span>
-  );
-}
-
-/**
- * One market, drawn as the design's yellow banner.
- *
- * Everything the reader sees comes from the market being shown: the category,
- * the question, the Yes price, the volume, and the artwork. The prices arrive
- * from the feed already formatted for display, and nothing here does arithmetic
- * on them.
- */
-function PredictionBanner({
-  prediction: p,
-  volume,
-  paused,
-  onTogglePause,
-  showPauseControl,
-}: PredictionBannerProps) {
-  const t = useTranslations("prediction");
-  const [artworkFailed, setArtworkFailed] = useState(false);
-  // Live markets carry a detail route, the rest open the markets index.
-  const href = predictionDetailHref(p) ?? "/prediction";
-
-  return (
-    <BannerFrame>
-      <div className="relative flex h-full flex-col">
-        <div className="flex min-h-0 flex-1 items-stretch gap-2 px-[6%] pt-[6%] pb-[2%]">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center gap-2">
-              <BannerChip prediction={p} />
-              {showPauseControl ? <PauseControl paused={paused} onToggle={onTogglePause} /> : null}
-            </div>
-
-            {/* The question is the link text, so a screen reader hears which
-                market this opens rather than "card". The stretched pseudo-element
-                hands the rest of the banner to the same link, and the controls
-                below sit above it with their own clicks. */}
-            <h3 className="ws-chewy mt-[5%] text-[15px] leading-[1.22] text-[#252525]">
-              <Link
-                href={href}
-                // The global click ripple turns whatever was pressed into a
-                // positioning context so it can hang its own layer inside. On
-                // this link that is fatal: the press would make the link the
-                // containing block for the pseudo-element below, the stretched
-                // area would collapse to the width of the text, and the release
-                // would land on nothing. This is the ripple's own opt-out.
-                data-no-ripple
-                className="block rounded-sm outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-[#0B0A0A]"
-              >
-                {/* The clamp is on this span and not on the link or the heading
-                    above it. `line-clamp` is `overflow: hidden`, and any clip
-                    between the link and the box it stretches to cuts the
-                    stretched pseudo-element back to the width of the text,
-                    which leaves most of the card dead to a tap. */}
-                <span className="line-clamp-3">{p.q}</span>
-              </Link>
-            </h3>
-
-            {/* The design fills this line with a worked example of trading
-                advice. It is sample copy, not anything the feed sends, so the
-                line carries what the market actually reports instead: where the
-                Yes side stands, and how much has traded. */}
-            <p className="tnum mt-auto flex items-center gap-3 text-[10px] font-semibold text-[#0B0A0A]">
-              <span className="flex items-center gap-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/prediction/icon-trades.svg" alt="" aria-hidden className="size-[11px]" />
-                {p.yes} {t("yesLabel")}
-              </span>
-              {volume ? (
-                <span className="flex items-center gap-1">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/prediction/icon-volume.svg"
-                    alt=""
-                    aria-hidden
-                    className="size-[11px]"
-                  />
-                  {volume}
-                </span>
-              ) : null}
-            </p>
-          </div>
-
-          {/* The market's own artwork. The design tilts two photos here; the
-              feed carries one image per market, so one is what is drawn rather
-              than another market's picture beside it. It is served from a
-              provider-controlled host, so it renders through a plain img:
-              next/image would reject a host that is not in the allowlist. */}
-          <div className="relative w-[21%] shrink-0 rotate-[5deg] self-start overflow-hidden rounded-[10px] border-2 border-white/70 bg-black/10 shadow-[0_4px_10px_rgba(0,0,0,0.15)]">
-            <div className="aspect-square w-full">
-              {p.image && !artworkFailed ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={p.image}
-                  alt=""
-                  loading="lazy"
-                  onError={() => setArtworkFailed(true)}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                // No artwork on this market, so the frame keeps the design's
-                // shape with a decorative mark instead of another market's photo.
-                <div className="grid h-full w-full place-items-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/market/prediction-coins-black.svg"
-                    alt=""
-                    aria-hidden
-                    className="w-1/2 opacity-50"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* The action band: the design's lighter strip across the foot of the
-            card. Raised above the stretched question link so each action keeps
-            its own destination, and each is a 44px target wrapped around the
-            smaller pill the design draws. */}
-        <div className="relative z-[1] flex h-[34%] shrink-0 items-center gap-[3.6%] bg-gradient-to-b from-[#FEECA6] to-[#FFF5CD] px-[6%]">
-          <Link
-            href={href}
-            className="ws-pressable flex min-h-11 shrink-0 items-center justify-center"
-          >
-            <span className="flex h-[34px] w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[11px] font-semibold whitespace-nowrap text-[#0B0A0A] shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/market/prediction-coins-black.svg"
-                alt=""
-                aria-hidden
-                className="size-3.5 shrink-0"
-              />
-              <span className="truncate">{t("mobilePredictNow")}</span>
-            </span>
-          </Link>
-          <Link
-            href="/prediction"
-            className="ws-pressable flex min-h-11 flex-1 items-center justify-center"
-          >
-            <span className="flex h-[34px] w-full items-center justify-center rounded-full bg-[#0B0A0A] px-2 text-[11px] font-semibold text-white">
-              <span className="truncate">{t("mobileSeeOtherPredictions")}</span>
-            </span>
-          </Link>
-        </div>
-      </div>
-    </BannerFrame>
-  );
-}
-
-/** The banner's shape while the markets are still in flight. */
-function BannerSkeleton() {
-  const t = useTranslations("prediction");
-
-  return (
-    <BannerFrame>
-      <div className="flex h-full flex-col gap-3 p-[5%]" role="status" aria-live="polite">
-        <span className="sr-only">{t("loading")}</span>
-        <div className="h-4 w-20 animate-pulse rounded-full bg-black/10" />
-        <div className="h-3 w-4/5 animate-pulse rounded-full bg-black/10" />
-        <div className="h-3 w-3/5 animate-pulse rounded-full bg-black/10" />
-        <div className="mt-auto h-6 w-28 animate-pulse rounded-full bg-black/10" />
-      </div>
-    </BannerFrame>
-  );
-}
-
-interface BannerMessageProps {
-  message: string;
-  action?: ReactNode;
-}
-
-/** The banner with no market to show: an error, or an empty feed. */
-function BannerMessage({ message, action }: BannerMessageProps) {
-  return (
-    <BannerFrame>
-      <div className="relative flex h-full flex-col items-center justify-center gap-3 p-[8%] text-center">
-        <p className="text-[12px] font-semibold text-[#0B0A0A]">{message}</p>
-        {action}
-      </div>
-    </BannerFrame>
   );
 }
 
@@ -352,21 +137,27 @@ export function PredictionMobile() {
   const t = useTranslations("prediction");
   const money = useMoney();
   const { data, isPending, isError, refetch } = usePredictions();
-  const markets = data ?? [];
+  const predictions = data ?? [];
 
-  // Two separate holds, because they answer to different people. `pausedByUser`
-  // is the explicit button and stays where the reader put it. `held` is hover,
-  // focus, and touch, and releases itself. Reduced motion stops the rotation
-  // outright.
-  const [pausedByUser, setPausedByUser] = useState(false);
+  // Hover, focus, and a finger on the card hold the rotation; reduced motion
+  // stops it outright. Both are pause mechanisms that need no visible control,
+  // so the card stays the clean comp it is drawn as.
   const [held, setHeld] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
-  const index = useRotatingIndex(markets.length, {
+  const index = useRotatingIndex(predictions.length, {
     intervalMs: ROTATE_MS,
-    paused: pausedByUser || held || reducedMotion,
+    paused: held || reducedMotion,
   });
-  const current = markets[index];
+  const current = predictions[index];
+
+  // The chip shows the market's own category, as the comp draws it. Deliberately
+  // not a countdown: a live clock can read "Market closed", which is not what
+  // the card is meant to say.
+  const chipText = current?.tag ?? "";
+  // Converted once, here, through the app's money layer, so the figure agrees
+  // with every other amount on the phone and the card never touches a rate.
+  const volume = current?.volumeUsd != null ? money.format(current.volumeUsd) : null;
 
   return (
     <div className="w-full p-4">
@@ -389,8 +180,8 @@ export function PredictionMobile() {
       {/* A swipe carousel of distinct prediction cards, as the Market design
           draws it: the rotating live market, then the illustrated promo card.
           Each slide is just under full width so the next one peeks, signalling
-          there is more to swipe to. Native scroll-snap, so each card renders
-          once (no carousel clones). */}
+          there is more to swipe to. Native scroll-snap, so each heavy card
+          renders once (no carousel clones). */}
       <div className="mt-3 flex snap-x snap-mandatory [scrollbar-width:none] gap-2.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
         {/* Hover, focus, and a finger on the card all hold the rotation. Without
             that, a market can swap under a pointer already on its way down and
@@ -404,9 +195,11 @@ export function PredictionMobile() {
           onBlurCapture={() => setHeld(false)}
         >
           {isError ? (
-            <BannerMessage
-              message={t("mobileMarketsError")}
-              action={
+            <CardFrame>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-[12px] font-semibold text-[#0B0A0A]">
+                  {t("mobileMarketsError")}
+                </p>
                 <button
                   type="button"
                   onClick={() => void refetch()}
@@ -414,43 +207,50 @@ export function PredictionMobile() {
                 >
                   {t("refresh")}
                 </button>
-              }
-            />
+              </div>
+            </CardFrame>
           ) : isPending ? (
-            <BannerSkeleton />
+            <CardFrame>
+              <div className="flex w-full flex-col gap-3" role="status" aria-live="polite">
+                <span className="sr-only">{t("loading")}</span>
+                <div className="h-4 w-20 animate-pulse rounded-full bg-black/10" />
+                <div className="h-3 w-4/5 animate-pulse rounded-full bg-black/10" />
+                <div className="h-3 w-3/5 animate-pulse rounded-full bg-black/10" />
+              </div>
+            </CardFrame>
           ) : current ? (
-            <PredictionBanner
-              // Remounting per market resets the artwork's error state, so one
-              // market's broken image does not blank the next market's frame.
-              key={current.q}
-              prediction={current}
-              // Converted once, here, through the app's money layer, so the
-              // figure agrees with every other amount on the phone and the card
-              // itself never touches an exchange rate. A market the feed gave no
-              // volume for shows none rather than a zero.
-              volume={current.volumeUsd != null ? money.format(current.volumeUsd) : null}
-              paused={pausedByUser}
-              onTogglePause={() => setPausedByUser((was) => !was)}
-              showPauseControl={markets.length > 1 && !reducedMotion}
-            />
+            <Link
+              href={predictionDetailHref(current) ?? "/prediction"}
+              aria-label={current.q}
+              className="ws-pressable block"
+            >
+              <PredictionMobileCard
+                // Remounting per market resets the SVG's patched state, so one
+                // market's artwork never lingers on the next market's frame.
+                key={current.q}
+                prediction={current}
+                chipText={chipText}
+                volume={volume}
+              />
+            </Link>
           ) : (
-            <BannerMessage
-              message={t("mobileNoMarkets")}
-              action={
+            <CardFrame>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-[12px] font-semibold text-[#0B0A0A]">{t("mobileNoMarkets")}</p>
                 <Link
                   href="/prediction"
                   className="ws-pressable rounded-full bg-[#0B0A0A] px-3 py-[6px] text-[10px] font-semibold text-[#FFD425]"
                 >
                   {t("exploreAllMarkets")}
                 </Link>
-              }
-            />
+              </div>
+            </CardFrame>
           )}
         </div>
 
-        {/* The boxing card is a wider export than the market banner, so it sits
-            in the same aspect box and fills it: the slides stay one height and
-            the carousel does not jump as it swipes. */}
+        {/* The boxing card is a wider export than the market card, so it sits in
+            the same aspect box and fills it: the slides stay one height and the
+            carousel does not jump as it swipes. */}
         <Link
           href="/prediction"
           aria-label={t("beltCardAria")}

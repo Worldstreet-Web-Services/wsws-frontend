@@ -1,9 +1,12 @@
 "use client";
 
-// import { useState } from "react"; // parked with the Portfolio Allocation toggle below
+import { useState } from "react";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { useTranslations } from "next-intl";
-import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, HelpIcon, WalletIcon } from "@/components/ui/icons";
+import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, WalletIcon } from "@/components/ui/icons";
+import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { HoldingsModal } from "@/features/portfolio/components/holdings-modal";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
 // The mobile balance card, drawn to the wallet comp (node 1:972): a starfield-
@@ -22,10 +25,24 @@ export function BalanceCardMobile({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
-  onTakeTour,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
+  const tPortfolio = useTranslations("portfolio");
   const money = useMoney();
+  const modals = useAppModals();
+
+  // The holdings list opens from the coins button beside the currency, the same
+  // way the desktop card works. Nothing here mounts until the button is first
+  // pressed: this card is on the dashboard's first paint, and neither the
+  // holdings query nor the trade sheets belong in that load.
+  const [holdingsOpen, setHoldingsOpen] = useState(false);
+  const [tradeMounted, setTradeMounted] = useState(false);
+  const openHoldings = () => {
+    setTradeMounted(true);
+    setHoldingsOpen(true);
+  };
+  const closeHoldings = () => setHoldingsOpen(false);
+
   // Portfolio Allocation toggle hidden on mobile for now (see the commented
   // button below); its state is parked until it returns.
   // const [allocationOpen, setAllocationOpen] = useState(false);
@@ -53,20 +70,21 @@ export function BalanceCardMobile({
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-1.5">
             <CurrencySelect value={money.currency} onSelect={money.setCurrency} />
-            {/* Take-a-tour affordance from the comp.
-
-                A question mark, not the stacked coins this drew before. A coins
-                glyph beside a balance reads as "my holdings", and on the
-                desktop card the identical pairing sent people looking for a
-                holdings list and finding the walkthrough instead. The label
-                always said takeTour; only the picture disagreed. */}
+            {/* What the wallet holds, one tap from the total it adds up to. The
+                coins-01 glyph opens the holdings list, the same button and the
+                same exported icon the desktop card carries beside the currency
+                (Figma node 1:1534). Fixed-colour export, so no text colour. */}
             <button
               type="button"
-              onClick={onTakeTour}
-              aria-label={t("takeTour")}
-              className="grid size-[30px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/70 transition-colors active:bg-white/12"
+              onClick={openHoldings}
+              aria-label={tPortfolio("yourHoldings")}
+              title={tPortfolio("yourHoldings")}
+              aria-haspopup="dialog"
+              aria-expanded={holdingsOpen}
+              className="grid size-[30px] cursor-pointer place-items-center rounded-full border-[0.789px] border-white/14 bg-white/5 transition-colors active:bg-white/12"
             >
-              <HelpIcon size={13} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/market/balance-icon-coins.svg" alt="" className="size-3 shrink-0" />
             </button>
           </div>
 
@@ -161,6 +179,31 @@ export function BalanceCardMobile({
           */}
         </div>
       </div>
+
+      {tradeMounted ? (
+        <>
+          <ModalShell open={holdingsOpen} onClose={closeHoldings}>
+            <HoldingsModal
+              onClose={closeHoldings}
+              onOpenDetail={modals.openDetail}
+              onOpenBuy={modals.openBuy}
+              onOpenSell={modals.openSell}
+              onOpenRwaTrade={modals.openRwaTrade}
+              onOpenMemeSell={modals.openMemeSell}
+              onAddFunds={() => {
+                closeHoldings();
+                modals.openFunds();
+              }}
+            />
+          </ModalShell>
+
+          <AppModalHost
+            active={modals.modal}
+            onClose={modals.close}
+            onConfirmed={modals.showDone}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

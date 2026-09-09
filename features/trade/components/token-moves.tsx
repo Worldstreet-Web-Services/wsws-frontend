@@ -74,29 +74,36 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
   const up = hasChange && token.change24h >= 0;
 
   return (
-    <div className="relative aspect-[339/168] w-full overflow-hidden rounded-[16.272px]">
+    // @container so the overlays below can size themselves in cqw (1cqw = 1% of
+    // the card's width). The card art scales with its width, so every figure,
+    // label and icon on it is set in cqw against the 339px comp too, and the
+    // whole card grows or shrinks as one instead of the text staying a fixed
+    // pixel size that reads tiny on a wide phone.
+    <div className="@container relative aspect-[339/168] w-full overflow-hidden rounded-[4.8cqw]">
       {/* Figma export, used for the gradient and the decoration only. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/trade/token-moves/card-bg.svg" alt="" className="block h-full w-full" />
 
       <div
-        className="absolute flex items-center rounded-[8.68px] bg-white p-[7px] shadow-[0_2px_6px_rgba(120,90,0,0.1)]"
+        className="absolute flex items-center rounded-[2.56cqw] bg-white p-[2.06cqw] shadow-[0_2px_6px_rgba(120,90,0,0.1)]"
         style={{ ...CHIP, transform: "rotate(-3.07027deg)", transformOrigin: "0 0" }}
       >
-        <span className="size-[30px] shrink-0 overflow-hidden rounded-full">
+        {/* The icon fills a cqw box, so it scales with the card. AssetIcon sizes
+            itself in fixed pixels, so its inner elements are forced to fill. */}
+        <span className="size-[8.85cqw] shrink-0 overflow-hidden rounded-full [&_img]:!size-full [&_span]:!size-full [&_svg]:!size-full">
           <AssetIcon
             sym={token.symbol}
             bg={tokenBg(token.symbol)}
             logo={token.logo}
             fallback="gradient"
-            size={30}
+            size={40}
           />
         </span>
-        <span className="ml-[5px] min-w-0 leading-tight">
-          <span className="block truncate text-[10px] font-semibold text-black">
+        <span className="ml-[1.47cqw] min-w-0 leading-tight">
+          <span className="block truncate text-[3.4cqw] font-semibold text-black">
             {token.symbol}
           </span>
-          <span className="flex items-center gap-[3.7px] text-[10px] font-medium">
+          <span className="flex items-center gap-[1.09cqw] text-[3.4cqw] font-medium">
             {/* An absent price prints a dash. It never falls back to a number. */}
             <span className="text-[#9b9b9b]">{hasPrice ? formatUsd(token.priceUsd) : "—"}</span>
             {hasChange ? (
@@ -106,14 +113,14 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
             ) : null}
           </span>
         </span>
-        <span className="ml-auto pl-[4px] text-[13px]">🔥</span>
+        <span className="ml-auto pl-[1.18cqw] text-[4.3cqw]">🔥</span>
       </div>
 
       <div
-        className="absolute overflow-hidden rounded-[10.12px] bg-white px-[10px] py-[9px] shadow-[0_2px_8px_rgba(120,90,0,0.08)]"
+        className="absolute overflow-hidden rounded-[2.99cqw] bg-white px-[2.95cqw] py-[2.65cqw] shadow-[0_2px_8px_rgba(120,90,0,0.08)]"
         style={BUBBLE}
       >
-        <p className="text-[10.5px] leading-[1.3] font-medium text-[#656464]">
+        <p className="text-[3.5cqw] leading-[1.3] font-medium text-[#656464]">
           {t.rich(moveKey(token.change24h), {
             symbol: token.symbol,
             change: hasChange ? changeMagnitude(token.change24h) : "",
@@ -125,10 +132,10 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
       <button
         type="button"
         onClick={onBuy}
-        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[12.2px] border-[1.4px] border-[#ffd52d] bg-black px-[6px]"
+        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[0.8cqw] rounded-[3.6cqw] border-[0.41cqw] border-[#ffd52d] bg-black px-[1.77cqw]"
         style={BUTTON}
       >
-        <span className="text-[8px] font-semibold whitespace-nowrap text-white">
+        <span className="text-[2.7cqw] font-semibold whitespace-nowrap text-white">
           {tSpot("ctaBuy", { symbol: token.symbol })}
         </span>
       </button>

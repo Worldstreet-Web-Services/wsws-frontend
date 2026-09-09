@@ -5,21 +5,9 @@ import enMessages from "@/messages/en.json";
 import type { Prediction } from "@/lib/types";
 
 // The real catalogue, not a stand-in: a key dropped from messages/*.json has to
-// fail this suite rather than pass it.
-//
-// The two pill labels are the exception, and only until they land. This branch
-// does not edit messages/*.json, so they are supplied here with the exact
-// English being requested for all five locales. The real catalogue is spread
-// last, so the moment the keys are added there these local copies stop being
-// read and can be deleted.
-const messages = {
-  ...enMessages,
-  prediction: {
-    predictYes: "Predict Yes",
-    predictNo: "Predict No",
-    ...enMessages.prediction,
-  },
-};
+// fail this suite rather than pass it. The pill labels that used to be supplied
+// here have landed in messages, so the local override is gone.
+const messages = enMessages;
 
 const feed = vi.hoisted(() => ({
   data: undefined as Prediction[] | undefined,

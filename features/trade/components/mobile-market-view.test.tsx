@@ -30,8 +30,14 @@ vi.mock("@/features/trade/hooks/use-meme-tokens", () => ({
   useTrendingMemes: () => memes,
 }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const router = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  useSearchParams: () => new URLSearchParams(),
+}));
+// This suite mounts the phone view directly, so it always renders as mobile; the
+// md handoff to /spot etc. is exercised by the route pages, not here.
+vi.mock("@/hooks/use-is-mobile", () => ({ useIsMobile: () => true }));
 
 // The hosted panels are other agents' components. They are stubbed so this
 // suite tests the chrome, and so a change inside them cannot fail it.
@@ -452,9 +458,19 @@ describe("MobileMarketView, hosting the prediction list", () => {
   });
 });
 
-// Both list tabs page through usePaged with the same 8-row page and the same
-// foot control, rather than scrolling the whole catalogue in one go.
+// Both list tabs fill the device: usePaged shows as many rows as the list box
+// measures (useFitRows), then the shared foot pager
+// (components/ui/list-pagination.tsx) walks the rest, the same control the
+// leverage list uses. jsdom runs no layout, so the box measures zero and the
+// page size falls back to eight, which is the size these cases page through.
 describe("MobileMarketView, list pagination", () => {
+  // The page label shows in two places at once: the visible pager and an
+  // sr-only region that announces a page change to a screen reader. This is the
+  // live region, which is unique and always reflects the current page (the
+  // visible pager hides itself when there is only one page, the live region
+  // does not).
+  const liveStatus = () => document.querySelector('[aria-live="polite"].sr-only');
+
   it("shows only the first page of the spot list, with Prev disabled and Next enabled", () => {
     spot.markets = markets(10);
     renderView();
@@ -465,7 +481,7 @@ describe("MobileMarketView, list pagination", () => {
 
     expect(screen.getByRole("button", { name: "Prev" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 
   it("pages the spot list forward and back, and disables Next on the last page", () => {
@@ -477,11 +493,11 @@ describe("MobileMarketView, list pagination", () => {
     expect(screen.getByText("SYM9")).toBeInTheDocument();
     expect(screen.queryByText("SYM0")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     fireEvent.click(screen.getByRole("button", { name: "Prev" }));
     expect(screen.getByText("SYM0")).toBeInTheDocument();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 
   // A screen reader on the Next button must hear the page change without
@@ -490,19 +506,21 @@ describe("MobileMarketView, list pagination", () => {
     spot.markets = markets(10);
     renderView();
 
-    const status = screen.getByText("Page 1 of 2");
+    const status = liveStatus();
     expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("Page 1 of 2");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toHaveAttribute("aria-live", "polite");
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
   });
 
-  // Every pager control is a real 44px target, not a shrunk icon button.
-  it("gives the spot list's pager buttons a 44px hit area", () => {
+  // Spot pages with the same shared pill control the leverage list uses, not a
+  // one-off icon button.
+  it("gives the spot list the shared foot pager", () => {
     spot.markets = markets(10);
     renderView();
 
-    expect(screen.getByRole("button", { name: "Prev" }).className).toMatch(/size-11/);
-    expect(screen.getByRole("button", { name: "Next" }).className).toMatch(/size-11/);
+    expect(screen.getByRole("button", { name: "Prev" }).className).toMatch(/rounded-full/);
+    expect(screen.getByRole("button", { name: "Next" }).className).toMatch(/rounded-full/);
   });
 
   it("resets the spot list to page 1 when a search narrows it", () => {
@@ -510,17 +528,18 @@ describe("MobileMarketView, list pagination", () => {
     renderView();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     // Narrow to a single match, then clear back to the full list: page 1
-    // either way, not the page 2 the reader left.
+    // either way, not the page 2 the reader left. One match fits a single page,
+    // so the visible pager hides and only the live region reports it.
     const field = screen.getByPlaceholderText("Search");
     fireEvent.change(field, { target: { value: "SYM0" } });
-    expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 1");
     expect(screen.getByText("SYM0")).toBeInTheDocument();
 
     fireEvent.change(field, { target: { value: "" } });
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
     expect(screen.getByText("SYM0")).toBeInTheDocument();
   });
 
@@ -531,7 +550,7 @@ describe("MobileMarketView, list pagination", () => {
 
     expect(screen.getByText("MEME0")).toBeInTheDocument();
     expect(screen.queryByText("MEME8")).not.toBeInTheDocument();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("MEME8")).toBeInTheDocument();
@@ -543,11 +562,11 @@ describe("MobileMarketView, list pagination", () => {
     renderView();
     fireEvent.click(tabs()[2]);
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "MEME0" } });
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "" } });
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 });
 

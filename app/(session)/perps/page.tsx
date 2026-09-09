@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { PerpsSection, PerpsMenuDrawer } from "@/features/trade";
+import { useMarketHandoff } from "@/hooks/use-market-handoff";
 
 // Perpetuals as its own immersive, full-viewport screen: no sidebar, no
 // topbar, just a hamburger and the perps desk itself. PerpsSection is the same
@@ -15,6 +16,10 @@ import { PerpsSection, PerpsMenuDrawer } from "@/features/trade";
 // goes inert while the overlay is up.
 export default function PerpsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const handingOff = useMarketHandoff("leverage");
+
+  // Below md this hands off to /market; render nothing meanwhile.
+  if (handingOff) return null;
 
   return (
     <AuthGuard>

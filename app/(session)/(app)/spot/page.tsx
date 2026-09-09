@@ -2,16 +2,13 @@
 
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { SpotDesktopView } from "@/features/trade/components/spot-desktop-view";
-import { SpotSection } from "@/features/trade/components/spot-section";
-import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useMarketHandoff } from "@/hooks/use-market-handoff";
 
-// Spot as its own page, like Prediction and Arkade. Two interfaces, picked by
-// width rather than drawn on top of each other: the phone keeps SpotSection
-// (the market list, the mode switch and the sheet flow), and a desktop gets the
-// 2.0 desk, with the market list and the order ticket side by side.
-//
-// The branch runs on useIsMobile rather than `md:` classes because both trees
-// mount a data hook and a hidden one would pay for a market feed nobody sees.
+// Spot as its own page, like Prediction and Arkade: the 2.0 desk, with the
+// market list and the order ticket side by side. It is the md-and-up half of a
+// pair; below md the Spot surface is the phone Market page's Spot tab, so this
+// hands off to it (see useMarketHandoff) rather than drawing a phone layout of
+// its own.
 //
 // The desk hands its Sell up to the modal host here: selling needs the origin
 // network, the gas check and the exact held balance, all of which the existing
@@ -19,10 +16,12 @@ import { useIsMobile } from "@/hooks/use-is-mobile";
 //
 // The auth guard and the app shell come from the (app) layout.
 export default function SpotPage() {
-  const isMobile = useIsMobile();
   const modals = useAppModals();
+  const handingOff = useMarketHandoff("spot");
 
-  if (isMobile) return <SpotSection />;
+  // Below md this hands off to /market; render nothing meanwhile so the desk is
+  // never painted at phone width before the redirect lands.
+  if (handingOff) return null;
 
   return (
     <>

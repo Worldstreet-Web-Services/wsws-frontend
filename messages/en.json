@@ -148,7 +148,13 @@
     "txSecondsAgo": "{n}s ago",
     "txMinutesAgo": "{n}m ago",
     "txHoursAgo": "{n}h ago",
-    "txDaysAgo": "{n}d ago"
+    "txDaysAgo": "{n}d ago",
+    "marketMetrics": "Market Metrics",
+    "closeMetrics": "Close Market Metrics",
+    "marketCap": "Market Cap",
+    "volume24h": "Volume (24h)",
+    "liquidity": "Liquidity",
+    "fdv": "FDV"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -1185,7 +1191,9 @@
     "searchEventMarketsLabel": "Search event markets",
     "myBets": "My bets",
     "openEventAria": "Open {title} details",
-    "oddsAria": "{side} {odds}"
+    "oddsAria": "{side} {odds}",
+    "predictYes": "Yes",
+    "predictNo": "No"
   },
   "perps": {
     "eyebrow": "Perpetuals",

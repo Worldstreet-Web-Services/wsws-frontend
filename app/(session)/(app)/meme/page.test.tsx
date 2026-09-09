@@ -69,14 +69,13 @@ vi.mock("@/hooks/use-portfolio", () => ({
 
 const viewport = vi.hoisted(() => ({ mobile: false }));
 vi.mock("@/hooks/use-is-mobile", () => ({ useIsMobile: () => viewport.mobile }));
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/hooks/use-coingecko-id", () => ({
   useCoingeckoId: () => ({ id: null, loading: false }),
 }));
 vi.mock("@/features/trade/components/meme-settlement-tracker", () => ({
   MemeSettlementTracker: () => null,
-}));
-vi.mock("@/features/trade/components/meme-board", () => ({
-  MemeBoard: () => <div>mobile board</div>,
 }));
 vi.mock("@/features/trade/components/meme-trade-sheet", () => ({
   MemeTradeSheet: () => <div>trade sheet</div>,
@@ -236,24 +235,15 @@ describe("the memecoin desk", () => {
     expect(desk.className).not.toMatch(/(^|\s)(md:)?(max-)?h-\[calc\(100dvh/);
   });
 
-  // Below md the route swaps in MemeBoard, and the two figures above do not
-  // hold there: the topbar is shorter and the shell's main reserves 92px for
-  // the tab bar. The phone gets no viewport height at all, so the breakpoint
-  // prefix is part of the fix, not decoration.
-  it("leaves the phone's board without a window height", () => {
+  // Below md the Memecoins surface is the phone Market page's tab, so this route
+  // hands off to it and mounts nothing here: no desk, and no second catalogue to
+  // poll twice or disagree with the phone's about the selected coin.
+  it("hands off to the Market page below md, mounting no desk", () => {
     viewport.mobile = true;
     renderDesk();
     expect(document.querySelector('[data-region="meme-desk"]')).toBeNull();
-    viewport.mobile = false;
-  });
-
-  // The desk replaces the phone's board, it does not join it: two catalogues on
-  // one screen would poll twice and disagree about which coin is selected.
-  it("leaves the phone on its own board and mounts no desk beside it", () => {
-    viewport.mobile = true;
-    renderDesk();
-    expect(screen.getByText("mobile board")).toBeInTheDocument();
     expect(screen.queryByLabelText("Search all memecoins")).toBeNull();
+    expect(router.replace).toHaveBeenCalledWith("/market?tab=memecoins");
     viewport.mobile = false;
   });
 });

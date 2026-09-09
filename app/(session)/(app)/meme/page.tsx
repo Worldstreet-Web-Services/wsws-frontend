@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { MemeBoard } from "@/features/trade/components/meme-board";
 import {
   MemeDesktopBoard,
   MEME_LIST_PAGE_SIZE,
@@ -27,7 +26,7 @@ import {
 } from "@/features/trade/hooks/use-meme-trade";
 import { useCoingeckoId } from "@/hooks/use-coingecko-id";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useMarketHandoff } from "@/hooks/use-market-handoff";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { displaySymbol } from "@/lib/buy";
 import { friendlyError } from "@/lib/errors";
@@ -38,19 +37,16 @@ import { exceedsHeld } from "@/lib/meme/sell-amount";
 import { toast } from "@/lib/toast";
 import { belowMinimumBuy, minimumBuyUsd } from "@/lib/trade/minimums";
 
-// Memecoins as their own page, in two interfaces picked by width rather than
-// drawn on top of each other. A phone keeps MemeBoard: the trending shortlist,
-// the catalogue and the trade sheet. A desktop gets the 2.0 desk, with the
-// catalogue on the left and the coin being traded on the right.
+// Memecoins as their own page: the 2.0 desk, with the catalogue on the left and
+// the coin being traded on the right. It is the md-and-up half of a pair; below
+// md the Memecoins surface is the phone Market page's Memecoins tab, so this
+// hands off to it (see useMarketHandoff) rather than drawing a phone layout.
 //
 // The four memecoin desktop frames in the design are one surface in three
 // orthogonal states, not four screens: which side is selected, whether the
 // chart is disclosed, and whether the market metrics are. So there is one
 // route, one catalogue and one rail, and the state lives here because
 // MemeDesktopBoard is presentational and owns none of it.
-//
-// The branch runs on useIsMobile rather than `md:` classes because both trees
-// mount data hooks, and a hidden one would pay for a catalogue nobody sees.
 
 // The catalogue arrives in one request and is filtered here, the same way the
 // phone's grid reads it, so both interfaces share one cache entry.
@@ -544,8 +540,8 @@ function MemeDesk() {
     //
     // 100dvh rather than 100vh: vh is the tall viewport on a mobile browser,
     // which overshoots by the address bar. `md:` because both figures are the
-    // desktop shell's; below it useIsMobile mounts MemeBoard instead, and the
-    // phone's main reserves 92px for the tab bar on top of the live bar.
+    // desktop shell's, and this desk only ever renders at md and up: below it
+    // the page hands off to the phone Market page.
     <div
       data-region="meme-desk"
       className="mx-auto flex w-full max-w-[1520px] flex-col overflow-x-auto p-4 sm:p-6 md:min-h-[calc(100dvh-79px-var(--ws-live-bar,0px))] lg:p-8"
@@ -642,11 +638,15 @@ function MemeDesk() {
 // tracker finishes any Solana purchase whose USD is still on its way, and is
 // mounted on the dashboard too.
 export default function MemePage() {
-  const isMobile = useIsMobile();
+  const handingOff = useMarketHandoff("memecoins");
+
+  // Below md this hands off to /market; render nothing meanwhile so the desk is
+  // never painted at phone width before the redirect lands.
+  if (handingOff) return null;
 
   return (
     <>
-      {isMobile ? <MemeBoard /> : <MemeDesk />}
+      <MemeDesk />
       <MemeSettlementTracker />
     </>
   );

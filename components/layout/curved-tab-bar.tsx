@@ -38,7 +38,7 @@ const ZONES = [
   { left: 79, width: 21 },
 ];
 
-export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTabBarProps) {
+export function CurvedTabBar({ activeSection, onNavigate }: CurvedTabBarProps) {
   const reduce = useReducedMotion();
   const router = useRouter();
   const squareHref = marketSquareHref() ?? "#";
@@ -58,7 +58,8 @@ export function CurvedTabBar({ activeSection, onNavigate, onOpenMore }: CurvedTa
     else if (i === 2) {
       if (squareHref !== "#") window.location.assign(squareHref);
     } else if (i === 3) onNavigate("casino");
-    else onOpenMore();
+    // The last icon opens the Activity page (its own route), not the drawer.
+    else router.push("/activity");
   };
 
   return (

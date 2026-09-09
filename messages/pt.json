@@ -148,7 +148,13 @@
     "txSecondsAgo": "há {n} s",
     "txMinutesAgo": "há {n} min",
     "txHoursAgo": "há {n} h",
-    "txDaysAgo": "há {n} d"
+    "txDaysAgo": "há {n} d",
+    "marketMetrics": "Métricas do mercado",
+    "closeMetrics": "Fechar métricas",
+    "marketCap": "Cap. de mercado",
+    "volume24h": "Volume (24h)",
+    "liquidity": "Liquidez",
+    "fdv": "FDV"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -1185,7 +1191,9 @@
     "searchEventMarketsLabel": "Pesquisar mercados do evento",
     "myBets": "Minhas apostas",
     "openEventAria": "Abrir detalhes de {title}",
-    "oddsAria": "{side} {odds}"
+    "oddsAria": "{side} {odds}",
+    "predictYes": "Sim",
+    "predictNo": "Não"
   },
   "perps": {
     "eyebrow": "Perpétuos",

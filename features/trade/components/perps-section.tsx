@@ -7,6 +7,7 @@ import { ChevronLeftIcon } from "@/components/ui/icons";
 import { PerpsView } from "@/features/trade/components/perps-view";
 import { PerpMarketList } from "@/features/trade/components/perp-market-list";
 import { HyperliquidProPerps } from "@/features/trade/components/hyperliquid-pro-perps";
+import { useFitRows } from "@/features/trade/hooks/use-fit-rows";
 
 // Perpetuals as its own sidebar section: an eyebrow over the perps desk. Spot
 // lives in its own section now.
@@ -83,6 +84,12 @@ export function PerpsSection({ embedded = false }: PerpsSectionProps = {}) {
     }
   }, [symbol]);
 
+  // The list shows as many rows as its box can hold, so the perps list fills
+  // the phone the same way the Spot and Memecoins lists do. listRef is that
+  // box. Harmless on the non-embedded route below, where the ref never attaches
+  // and the count falls back to a default this branch does not read anyway.
+  const listPageSize = useFitRows(listRef);
+
   if (embedded) {
     // pt-3 against the host's own mt-3 makes the 24px the comp leaves between
     // the tab rule and the pair pill. No horizontal padding and no width cap:
@@ -118,7 +125,7 @@ export function PerpsSection({ embedded = false }: PerpsSectionProps = {}) {
           hidden={symbol !== null}
           className="min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
         >
-          <PerpMarketList onSelect={openTicket} />
+          <PerpMarketList onSelect={openTicket} pageSize={listPageSize} />
         </div>
       </div>
     );

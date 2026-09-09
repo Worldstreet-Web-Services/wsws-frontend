@@ -148,7 +148,13 @@
     "txSecondsAgo": "il y a {n} s",
     "txMinutesAgo": "il y a {n} min",
     "txHoursAgo": "il y a {n} h",
-    "txDaysAgo": "il y a {n} j"
+    "txDaysAgo": "il y a {n} j",
+    "marketMetrics": "Données du marché",
+    "closeMetrics": "Fermer les données",
+    "marketCap": "Cap. boursière",
+    "volume24h": "Volume (24h)",
+    "liquidity": "Liquidité",
+    "fdv": "FDV"
   },
   "spot": {
     "balance": "Solde {amount} {symbol}",
@@ -1185,7 +1191,9 @@
     "searchEventMarketsLabel": "Rechercher les marchés de l'événement",
     "myBets": "Mes paris",
     "openEventAria": "Ouvrir les détails de {title}",
-    "oddsAria": "{side} {odds}"
+    "oddsAria": "{side} {odds}",
+    "predictYes": "Oui",
+    "predictNo": "Non"
   },
   "perps": {
     "eyebrow": "Perpétuels",

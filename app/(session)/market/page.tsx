@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { MobileMarketView } from "@/features/trade/components/mobile-market-view";
@@ -13,11 +14,15 @@ export default function MarketPage() {
   const modals = useAppModals();
   return (
     <AuthGuard>
-      <MobileMarketView
-        onOpenDetail={modals.openDetail}
-        onOpenBuy={modals.openBuy}
-        predictionSlot={<PredictionMarketList />}
-      />
+      {/* Suspense boundary for the view's useSearchParams (it reads ?tab= to
+          open on the right tab); without it the static prerender check fails. */}
+      <Suspense fallback={null}>
+        <MobileMarketView
+          onOpenDetail={modals.openDetail}
+          onOpenBuy={modals.openBuy}
+          predictionSlot={<PredictionMarketList />}
+        />
+      </Suspense>
       <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
     </AuthGuard>
   );

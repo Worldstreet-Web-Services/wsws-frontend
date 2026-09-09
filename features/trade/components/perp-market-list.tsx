@@ -20,6 +20,12 @@ export interface PerpMarketListProps {
   /** A row was tapped; the caller opens that symbol's ticket. This component
    *  holds no selection state of its own — see perps-section.tsx. */
   onSelect: (symbol: string) => void;
+  /**
+   * Rows per page. The embedded phone host measures this from the list box so
+   * the list fills the device (see perps-section.tsx). Omitted elsewhere, where
+   * usePaged's own default applies.
+   */
+  pageSize?: number;
 }
 
 interface MarketRow {
@@ -94,7 +100,7 @@ function changeLabel(pct: number): string {
 // same gating on trading.authenticated that hyperliquid-pro-perps.tsx already
 // uses for this pair — this file does not invent a second way to fetch or
 // join them.
-export function PerpMarketList({ onSelect }: PerpMarketListProps) {
+export function PerpMarketList({ onSelect, pageSize }: PerpMarketListProps) {
   const t = useTranslations("perps");
   const tCommon = useTranslations("common");
   const trading = useHyperliquidTrading();
@@ -108,7 +114,7 @@ export function PerpMarketList({ onSelect }: PerpMarketListProps) {
     [trading.assets, trading.prices, contexts]
   );
 
-  const paged = usePaged(rows);
+  const paged = usePaged(rows, pageSize);
 
   // Neither hook this list depends on surfaces a query error, only a loading
   // flag (see use-hyperliquid-markets.ts and use-hyperliquid-market-contexts.ts).

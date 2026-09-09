@@ -2,9 +2,34 @@
 
 ## Status
 
-Proposed, 2026-09-09. Awaiting the maintainer's authorization. Nothing has
-been merged: the branch `ui/2.0` exists at `main` (`0bf8eb34`, #427) with
-this record and its plan on it, and no other change.
+Accepted and built, 2026-09-09. Authorized by the maintainer on the plan
+below; the branch `ui/2.0` carries the merge and every removal, each with
+a passing preflight from the Arkade step on. The maintainer's own changes
+and the pull request are still to come.
+
+What differed from the plan as written, recorded here rather than rewritten
+above:
+
+- The removals ran in the order 2, 3, 1, 4, 5, 6, so the two sections that
+  held the merged tree's only type errors went first and every later step
+  had a fully green preflight, build included.
+- The dry-run merge was wrong: `hooks/use-portfolio.ts` and
+  `lib/server/activity.test.ts` conflicted with #427 and were resolved by
+  hand, and six bare `refetchFresh` / `refetchUntilChanged` calls from
+  staging were scoped as #423 requires.
+- `app/api/polymarket` stays whole, relayer included, and so does
+  `lib/polymarket/config.ts`: the prediction desk's own trading client uses
+  the relayer, so neither was Explore-only as step 1 assumed. The
+  `/trade/[symbol]` route and the PnL card model went with perps; the
+  unused perps service client went with real assets.
+- Real assets: the server registry and price modules stay, so a token
+  already held still shows and is priced; its sheet offers no trade.
+- The bottom tab bar's second icon opens the spot desk, the section its
+  marker already claimed, in place of the deleted Market page. The three
+  public preview routes are gone. `/vault`, `/welcome` and `/privacy` ship.
+- Lint: 50 warnings became 33. The 30 raw image tags in the new UI and the
+  three React Compiler notes on the table component are left for the
+  maintainer.
 
 ## Context
 

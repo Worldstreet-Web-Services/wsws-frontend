@@ -6,6 +6,12 @@ Every step ends with `./scripts/preflight.sh`; a step that fails preflight
 is fixed before the next starts. Nothing is pushed until the maintainer
 runs the ship script.
 
+Done 2026-09-09, in the order 0, 2, 3, 1, 4, 5, 6, plus a lint clean-up
+commit. Steps 7 and 8 remain. Commits, oldest first: `6bddb7ee` docs,
+`368ad3fb` merge, `a5a8e6ef` scoped refetches, `d441c5a9` perps,
+`e413f8a4` Arkade, `2e9aa3d1` Explore, `422c91ec` real assets,
+`c4b6367a` previews and redirect, `5b1d89a2` lint.
+
 | #   | Step                                 | What it touches                                                                                                                                                                                                                                                                                                                                                                      | Check                                                                                                                      |
 | --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | 0   | Merge `origin/staging` into `ui/2.0` | 856 files; dry run reports no conflicts                                                                                                                                                                                                                                                                                                                                              | preflight on the merged tree, `hooks/use-portfolio.ts` read against #427                                                   |

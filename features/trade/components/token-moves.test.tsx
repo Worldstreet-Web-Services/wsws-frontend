@@ -11,7 +11,7 @@ const messages = {
   ...en,
   markets: {
     ...en.markets,
-    tokenMovesTitle: "Stay Ahead of Token Moves",
+    tokenMovesTitle: "Stay Ahead of Token Moves on Spot",
     tokenMovesRegion: "Trending token moves",
     tokenMoveUp: "<b>{symbol} is up {change}</b> in the last 24 hours.",
     tokenMoveDown: "<b>{symbol} is down {change}</b> in the last 24 hours.",

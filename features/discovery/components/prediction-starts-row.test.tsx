@@ -160,6 +160,16 @@ describe("prediction starts row", () => {
     }
   });
 
+  it("offers one way in, Predict Now, and no pill back to the desk", () => {
+    renderRow([first]);
+
+    const card = screen.getAllByRole("link", { name: first.question })[0].closest("article");
+    const pills = within(card as HTMLElement)
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-label") !== first.question);
+    expect(pills.map((pill) => pill.textContent)).toEqual([expect.stringMatching(/Predict Now/i)]);
+  });
+
   it("falls back to the prediction desk when no market has reached the row", () => {
     renderRow();
 

@@ -5,6 +5,8 @@ interface DiscoveryRowProps {
   title: React.ReactNode;
   /** Where the heading's chevron leads: the service this row is a doorway to. */
   href: string;
+  /** A sibling deployment: the heading opens it in a new tab as a plain anchor. */
+  external?: boolean;
   children: React.ReactNode;
 }
 
@@ -23,33 +25,36 @@ interface DiscoveryRowProps {
 //
 // Hover is `ws-pressable` and nothing else: the whole link lifts, chevron
 // included. No shadow, and no second treatment layered on top of it.
-export function DiscoveryRow({ title, href, children }: DiscoveryRowProps) {
+export function DiscoveryRow({ title, href, external, children }: DiscoveryRowProps) {
+  const className = "ws-pressable flex w-fit max-w-full items-center gap-1.5 text-white";
+  const heading = (
+    <>
+      <span className="ws-discovery-title min-w-0 text-[19px] tracking-[-0.01em] break-words">
+        {title}
+      </span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+        <path
+          d="m9 6 6 6-6 6"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </>
+  );
+
   return (
     <section className="flex flex-col gap-4">
-      <Link
-        href={href}
-        className="ws-pressable flex w-fit max-w-full items-center gap-1.5 text-white"
-      >
-        <span className="ws-discovery-title min-w-0 text-[19px] tracking-[-0.01em] break-words">
-          {title}
-        </span>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden
-          className="shrink-0"
-        >
-          <path
-            d="m9 6 6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </Link>
+      {external ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+          {heading}
+        </a>
+      ) : (
+        <Link href={href} className={className}>
+          {heading}
+        </Link>
+      )}
       {children}
     </section>
   );

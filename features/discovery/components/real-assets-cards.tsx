@@ -56,7 +56,7 @@ function Frame({ surface, art, kicker, headline, detail, figure, cta, onHold }: 
       onBlur={() => setFocused(false)}
     >
       {art}
-      <div className="relative z-[1] max-w-[62%]">
+      <div className="relative z-[1] max-w-[56%] md:max-w-[62%]">
         <p className="font-serif text-[11px] leading-[1.2] font-semibold tracking-[0.04em] text-white/70 uppercase">
           {kicker}
         </p>
@@ -116,7 +116,10 @@ export function GoldCard({ spots }: CategoryCardProps) {
                 "radial-gradient(circle, rgba(246,211,122,0.55) 0%, rgba(246,211,122,0) 70%)",
             }}
           />
-          <span aria-hidden className={`${ART} top-[26px] right-[26px] w-[150px]`}>
+          <span
+            aria-hidden
+            className={`${ART} top-[18px] right-[10px] w-[150px] origin-top-right scale-[0.62] md:top-[26px] md:right-[26px] md:scale-100`}
+          >
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
@@ -156,7 +159,7 @@ export function TreasuriesCard({ spots }: CategoryCardProps) {
       art={
         <span
           aria-hidden
-          className={`${ART} top-[22px] right-[26px] grid size-[120px] place-items-center`}
+          className={`${ART} top-[16px] right-[14px] grid size-[120px] origin-top-right scale-[0.72] place-items-center md:top-[22px] md:right-[26px] md:scale-100`}
         >
           <svg viewBox="0 0 120 120" width="120" height="120" className="absolute inset-0">
             <circle
@@ -220,7 +223,10 @@ export function RealEstateCard({ spots }: CategoryCardProps) {
     <Frame
       surface="linear-gradient(160deg, #1f1d26 0%, #4a2f33 55%, #b5533a 100%)"
       art={
-        <span aria-hidden className={`${ART} right-[18px] bottom-0 flex items-end gap-[6px]`}>
+        <span
+          aria-hidden
+          className={`${ART} right-[12px] bottom-0 flex origin-bottom-right scale-[0.78] items-end gap-[6px] md:right-[18px] md:scale-100`}
+        >
           {BUILDINGS.map((b, i) => (
             <span
               key={i}
@@ -267,8 +273,8 @@ export function StocksCard({ spots, index, onHold }: StocksCardProps) {
         tape.length > 0 ? (
           <span
             aria-hidden
-            className={`${ART} top-[22px] right-[-40px] flex w-[260px] flex-col gap-[8px]`}
-            style={{ transform: "rotate(-6deg)" }}
+            className={`${ART} top-[14px] right-[-48px] flex w-[260px] origin-top-right scale-[0.62] flex-col gap-[8px] md:top-[22px] md:right-[-40px] md:scale-100`}
+            style={{ rotate: "-6deg" }}
           >
             {[0, 1].map((line) => (
               <span key={line} className="flex gap-[8px]" style={{ marginLeft: line * 26 }}>

@@ -1,3 +1,7 @@
+// @vitest-environment jsdom
+// This suite renders, so it needs a DOM. vitest.config.ts puts .ts suites in
+// the node project to avoid booting jsdom for the many that never touch it;
+// the pragma above opts this one back in, per that config's own note.
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prediction } from "@/lib/types";

@@ -83,7 +83,7 @@ export function Topbar({ onOpenAccount }: TopbarProps) {
         data-tour="profile"
         onClick={onOpenAccount}
         aria-label={t("account")}
-        className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left md:gap-[8.29px]"
+        className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left md:hidden md:gap-[8.29px]"
       >
         <Avatar seed={profile.avatarSeed} size={38} />
         <span className={`min-w-0 flex-col md:flex md:gap-[5.43px] ${isHome ? "flex" : "hidden"}`}>

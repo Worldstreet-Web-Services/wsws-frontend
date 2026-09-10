@@ -17,7 +17,7 @@
 <path d="M293.092 44.4782H292.99" stroke="white" stroke-opacity="0.5" stroke-width="1.48988" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M284.456 31.2014C284.463 31.9106 285.044 32.4796 285.753 32.4729H286.755C287.85 32.4644 288.746 33.3424 288.761 34.4376V35.438" stroke="white" stroke-opacity="0.5" stroke-width="1.48988" stroke-linecap="round" stroke-linejoin="round"/>
 <path fill-rule="evenodd" clip-rule="evenodd" d="M297.665 42.8017C297.665 37.2793 295.294 35.4379 288.182 35.4379C281.068 35.4379 278.698 37.2793 278.698 42.8017C278.698 48.3251 281.068 50.1656 288.182 50.1656C295.294 50.1656 297.665 48.3251 297.665 42.8017Z" stroke="white" stroke-opacity="0.5" stroke-width="1.48988" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M340.973 76.8717H356.865M342.959 76.8717V66.9392M346.932 76.8717V62.9662M350.905 76.8717V69.919M354.878 76.8717V65.946" stroke="white" stroke-opacity="0.5" stroke-width="1.78784" stroke-linecap="round"/>
+<circle cx="348.919" cy="69.92" r="7.2" stroke="white" stroke-opacity="0.5" stroke-width="1.78784" fill="none"/><path d="M348.919 65.820V69.92L351.419 71.520" stroke="white" stroke-opacity="0.5" stroke-width="1.78784" stroke-linecap="round" stroke-linejoin="round"/>
 <defs>
 <filter id="filter0_i_104_2688" x="-90" y="58" width="582" height="587" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>

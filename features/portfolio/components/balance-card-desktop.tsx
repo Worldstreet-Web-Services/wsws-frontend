@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { EyeOffIcon } from "@/components/ui/icons";
-import { ModalShell } from "@/components/ui/modal-shell";
-import { HoldingsModal } from "@/features/portfolio/components/holdings-modal";
+import { useHoldingsLauncher } from "@/features/portfolio/components/holdings-launcher";
 import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
@@ -39,19 +37,9 @@ export function BalanceCardDesktop({
   const [showBreakdown, setShowBreakdown] = useState(false);
   const canBreakdown = !loading && !errored && tokens.length > 0;
 
-  // The holdings list, and the buy/sell stack it hands assets to. Nothing here
-  // mounts until the coins button is pressed for the first time: this card is
-  // on the dashboard's first paint, and neither a second portfolio query nor
-  // the trade sheets belong in that load.
-  const [holdingsOpen, setHoldingsOpen] = useState(false);
-  const [tradeMounted, setTradeMounted] = useState(false);
-  const modals = useAppModals();
-
-  const openHoldings = () => {
-    setTradeMounted(true);
-    setHoldingsOpen(true);
-  };
-  const closeHoldings = () => setHoldingsOpen(false);
+  // The holdings list, and the buy/sell stack it hands assets to, shared with
+  // the phone card.
+  const holdings = useHoldingsLauncher();
 
   return (
     // The design draws this card 551x370. We run it taller: it carries two rows
@@ -92,11 +80,11 @@ export function BalanceCardDesktop({
               the walkthrough's help mark took its place in the topbar. */}
           <button
             type="button"
-            onClick={openHoldings}
+            onClick={holdings.openHoldings}
             aria-label={tPortfolio("yourHoldings")}
             title={tPortfolio("yourHoldings")}
             aria-haspopup="dialog"
-            aria-expanded={holdingsOpen}
+            aria-expanded={holdings.open}
             className="ws-pressable grid size-[45.87px] shrink-0 cursor-pointer place-items-center rounded-full border-[1.21px] border-white/14 bg-white/5 transition-colors hover:bg-white/10"
           >
             {/* A fixed-colour export, so it sits in an explicitly sized box
@@ -253,37 +241,7 @@ export function BalanceCardDesktop({
         ) : null}
       </div>
 
-      {tradeMounted ? (
-        <>
-          {/* Wider than the standard 440px sheet: a holdings row carries a
-              symbol, a network line and a value, and at the default width the
-              three were fighting for the same inches. */}
-          <ModalShell
-            open={holdingsOpen}
-            onClose={closeHoldings}
-            panelClassName="md:w-[min(760px,100%)]"
-          >
-            <HoldingsModal
-              onClose={closeHoldings}
-              onOpenDetail={modals.openDetail}
-              onOpenBuy={modals.openBuy}
-              onOpenSell={modals.openSell}
-              onOpenRwaTrade={modals.openRwaTrade}
-              onOpenMemeSell={modals.openMemeSell}
-              onAddFunds={() => {
-                closeHoldings();
-                modals.openFunds();
-              }}
-            />
-          </ModalShell>
-
-          <AppModalHost
-            active={modals.modal}
-            onClose={modals.close}
-            onConfirmed={modals.showDone}
-          />
-        </>
-      ) : null}
+      {holdings.host}
     </div>
   );
 }

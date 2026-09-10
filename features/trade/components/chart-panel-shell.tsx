@@ -372,7 +372,15 @@ export function ChartPanelShell({
           // The 1px top highlight is the hairline colour used as an inset
           // shadow. Tailwind cannot read a colour token from inside a shadow,
           // so the value is spelled out.
-          className="bg-surface border-hairline rounded-card w-full overflow-hidden border shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          //
+          // max-md: strips the border, the radius and that inset shadow on
+          // the phone ticket, where the chart is meant to run edge to edge.
+          // There is exactly one render call site for this shell (the
+          // leverage desk and the phone ticket share it through the same
+          // component tree), so a bare CSS variant is safe: the base classes
+          // above are untouched, and md: and up render byte-identical to
+          // before.
+          className="bg-surface border-hairline rounded-card w-full overflow-hidden border shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] max-md:rounded-none max-md:border-0 max-md:shadow-none"
         >
           {effective === "loading" ? (
             <div role="status" aria-live="polite" className="size-full p-3">

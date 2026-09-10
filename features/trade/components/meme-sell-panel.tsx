@@ -250,8 +250,8 @@ export function MemeSellPanel({
         </div>
         <div className="flex items-center justify-between">
           <span className="text-grey-400">{t("slippage")}</span>
-          {/* Quicksand medium, the one row the design does not set in Mona Sans. */}
-          <span className="tnum font-[family-name:var(--font-discovery)] font-medium text-white">
+          {/* The one row the design did not set in Mona Sans; production keeps it there. */}
+          <span className="tnum font-serif font-medium text-white">
             {preview ? `${(preview.slippageBps / 100).toFixed(2)}%` : "—"}
           </span>
         </div>
@@ -272,7 +272,7 @@ export function MemeSellPanel({
         type="button"
         onClick={() => void submit()}
         disabled={disabled}
-        className={`bg-sell h-12 w-full rounded-3xl font-[family-name:var(--font-sportsbook)] text-base font-semibold text-white ${
+        className={`bg-sell h-12 w-full rounded-3xl font-sans text-base font-semibold text-white ${
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"
         }`}
       >

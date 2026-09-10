@@ -468,6 +468,33 @@ describe("ChartPanelShell", () => {
     expect(root).toHaveClass("mt-6");
     expect(root).toHaveClass("flex");
   });
+
+  it("drops the frame's border, radius and inset shadow below md, and keeps them from md up", () => {
+    const { container } = render(
+      <ChartPanelShell labels={labels}>
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    const frame = region(container, "chart-panel-frame") as HTMLElement;
+    // The phone ticket wants the chart edge to edge, borderless. There is one
+    // render call site for this shell (the leverage desk and the phone ticket
+    // share it), so the split is a bare CSS variant rather than a prop: base
+    // classes keep the desktop frame exactly as it was, and max-md: undoes it
+    // below the breakpoint.
+    expect(frame).toHaveClass("max-md:border-0", "max-md:rounded-none", "max-md:shadow-none");
+    // The base (desktop) classes stay untouched. md: and up must render
+    // byte-identical to before this change.
+    expect(frame).toHaveClass(
+      "bg-surface",
+      "border-hairline",
+      "rounded-card",
+      "w-full",
+      "overflow-hidden",
+      "border",
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+    );
+  });
 });
 
 describe("ChartPanelToggle", () => {

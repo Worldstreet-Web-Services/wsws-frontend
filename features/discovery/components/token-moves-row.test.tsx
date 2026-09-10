@@ -74,16 +74,9 @@ function shown(text: string | RegExp) {
   return screen.queryAllByText(text);
 }
 
-// The token call cards, and nothing else on the shelf.
-//
-// The static Eth Africa promo carries a percentage of its own ("70% win rate"),
-// so a check that no percentage is on screen has to be asked of the card that
-// is supposed to be reporting the market, not of the whole row. Both are
-// articles, and only one of them is the promo.
+// The token call cards: every article on the shelf is one.
 function callCards(): HTMLElement[] {
-  return Array.from(document.querySelectorAll("article")).filter(
-    (card) => !card.textContent?.includes(enMessages.discovery.ethAfricaTitle)
-  );
+  return Array.from(document.querySelectorAll("article"));
 }
 
 function callText(): string {
@@ -173,12 +166,29 @@ describe("token moves row", () => {
     expect(shown(COMP_PRICE)).toHaveLength(0);
     expect(shown(COMP_CHANGE)).toHaveLength(0);
     expect(shown(COMP_MOVE)).toHaveLength(0);
-    // No call card at all, so nothing on the shelf is reporting a market.
+    // No call card at all, so nothing on the shelf is reporting a market, and
+    // the row goes with it rather than standing over an empty carousel.
     expect(callCards()).toHaveLength(0);
-    // The static Eth Africa card is what is left, and it still stands.
-    expect(shown(enMessages.discovery.ethAfricaTitle).length).toBeGreaterThan(0);
+    expect(shown(enMessages.discovery.tokenMovesTitle)).toHaveLength(0);
     // Nothing is left pretending to load either.
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it("deals a different coin to each card, the featured one first", () => {
+    renderRow({
+      tokens: [
+        token({ symbol: "BTC", href: "/spot?symbol=BTC" }),
+        token({ symbol: "ETH", href: "/spot?symbol=ETH" }),
+        token({ symbol: "SOL", href: "/spot?symbol=SOL" }),
+        token({ symbol: "XRP", href: "/spot?symbol=XRP" }),
+      ],
+    });
+
+    // Three cards, three coins, in ranking order; the fourth waits its turn.
+    expect(screen.getAllByRole("link", { name: /Buy BTC/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Buy ETH/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Buy SOL/ }).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("link", { name: /Buy XRP/ })).toHaveLength(0);
   });
 
   it("takes the token's own symbol through to the buy link", () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildActivityEntries, isStable } from "@/lib/activity/entries";
 import type { ActivityItem } from "@/lib/server/activity";
 
@@ -351,5 +351,43 @@ describe("fetchActivity", () => {
     const read = await fetchActivity(undefined, undefined);
     expect(read).toEqual({ items: [], unavailable: [] });
     expect(alchemyStub).not.toHaveBeenCalled();
+  });
+});
+
+// One sweep is the most expensive read in the app and history changes only
+// when a transaction lands. The bell asks every 10 min; a snapshot served
+// for 5 min means at most one sweep per poll, never one per tab.
+describe("fetchActivity snapshot window", () => {
+  beforeEach(async () => {
+    const { resetResponseCache } = await import("@/lib/server/response-cache");
+    resetResponseCache();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-09T12:00:00Z"));
+    rwaStub.mockResolvedValue({});
+    buyableStub.mockResolvedValue({ buyable: {}, meme: {} });
+    actionStub.mockResolvedValue({});
+    alchemyStub.mockImplementation(async () =>
+      jsonResponse({ jsonrpc: "2.0", id: 1, result: { transfers: [] } })
+    );
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("serves a wallet's history from one sweep for five minutes", async () => {
+    const { fetchActivity } = await import("@/lib/server/activity");
+    const wallet = "0x1111111111111111111111111111111111111111";
+    await fetchActivity(wallet, undefined);
+    const sweep = alchemyStub.mock.calls.length;
+    expect(sweep).toBeGreaterThan(0);
+
+    vi.advanceTimersByTime(4 * 60_000);
+    await fetchActivity(wallet, undefined);
+    expect(alchemyStub).toHaveBeenCalledTimes(sweep);
+
+    vi.advanceTimersByTime(2 * 60_000);
+    await fetchActivity(wallet, undefined);
+    expect(alchemyStub).toHaveBeenCalledTimes(sweep * 2);
   });
 });

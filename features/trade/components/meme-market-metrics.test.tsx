@@ -267,3 +267,140 @@ describe("MemeMarketMetrics", () => {
     expect(panel).toHaveAttribute("role", "group");
   });
 });
+
+// The phone comp (Figma 122:7205 "memecoin - Close Market Metrics" and
+// 122:7351 "memecoin - Sell Metrics", both 402 wide) measures the metric tile
+// at 70px and the traders card at 110.5px, where this file shipped 73px and
+// 117.5px. The file is also mounted by the desktop meme desk, so every phone
+// step below has to ship with the `md:` class that restores what desktop had.
+// jsdom has no layout and no media queries, so these assert the class pair:
+// dropping either half is what a later edit would get wrong.
+describe("MemeMarketMetrics phone sizing", () => {
+  function classesOf(node: Element | null | undefined): string[] {
+    if (!node) throw new Error("no node to read classes from");
+    return (node.getAttribute("class") ?? "").split(/\s+/).filter(Boolean);
+  }
+
+  function expectClasses(node: Element | null | undefined, expected: string[]) {
+    const classes = classesOf(node);
+    for (const name of expected) expect(classes).toContain(name);
+  }
+
+  it("draws the metric tile at the comp's 70px box on phones, and the desk's 73px box on desktop", () => {
+    renderPanel();
+    const tile = statFor("Market Cap");
+    expectClasses(tile, ["min-h-[70px]", "md:min-h-[73px]", "p-[12.5px]", "md:p-[13px]"]);
+  });
+
+  it("steps the tile's label and value type to the comp on phones and restores the desk's", () => {
+    renderPanel();
+    const tile = statFor("Market Cap");
+    const label = within(tile).getByTestId("meme-metric-label");
+    expectClasses(label, ["text-[11.5px]", "leading-[14px]", "md:text-[12px]", "md:leading-[1.5]"]);
+    expectClasses(within(tile).getByText("$84.2M"), [
+      "text-[14.6px]",
+      "leading-[18px]",
+      "md:text-[15px]",
+      "md:leading-[1.5]",
+    ]);
+  });
+
+  it("reserves the phone tile height while loading, so the panel does not jump on arrival", () => {
+    const { container } = renderPanel({ status: "loading", metrics: null });
+    const blocks = [...container.querySelectorAll(".animate-pulse")];
+    const tiles = blocks.slice(0, 4);
+    expect(tiles).toHaveLength(4);
+    for (const block of tiles) expectClasses(block, ["h-[70px]", "md:h-[73px]"]);
+  });
+
+  it("steps the traders card corner and its chevron to the comp on phones", () => {
+    renderPanel();
+    const card = screen.getByTestId("meme-traders-card");
+    expectClasses(card, ["rounded-[19px]", "md:rounded-card"]);
+    const chevron = card.querySelector("svg");
+    expect(chevron).not.toBeNull();
+    expect(chevron).toHaveAttribute("width", "19");
+    expectClasses(chevron, ["md:size-[17px]"]);
+  });
+
+  it("steps the trader legend type to the comp on phones and restores the desk's", () => {
+    renderPanel();
+    const card = screen.getByTestId("meme-traders-card");
+    for (const name of ["Buyers", "Sellers"]) {
+      expectClasses(within(card).getByText(name), [
+        "text-[10.4px]",
+        "leading-[13px]",
+        "md:text-[11px]",
+        "md:leading-[1.5]",
+      ]);
+    }
+    for (const count of ["1,245", "892"]) {
+      expectClasses(within(card).getByText(count), ["leading-[16px]", "md:leading-[1.5]"]);
+    }
+    expectClasses(within(card).getByText("58.2% / 41.8%"), [
+      "text-[11.4px]",
+      "leading-[14px]",
+      "md:text-[12px]",
+      "md:leading-[1.5]",
+    ]);
+  });
+
+  it("gives the disclosure trigger a 44px hit area without growing the comp's 16px row", () => {
+    renderPanel({ expanded: false });
+    const toggle = screen.getByRole("button", { name: "View Market Metrics" });
+    const classes = classesOf(toggle);
+    expect(classes).toContain("relative");
+    expect(classes).toContain("after:absolute");
+    expect(classes).toContain("after:h-11");
+    expect(classes).toContain("after:min-w-11");
+    // A min-height would push the row past the comp's 16px and move the panel
+    // down with it, so the target has to be an overlay rather than padding.
+    expect(classes.some((name) => name.startsWith("min-h-"))).toBe(false);
+  });
+
+  it("sets the trigger's phone gaps and glyph sizes to the comp, restoring the desk's", () => {
+    renderPanel({ expanded: false });
+    const toggle = screen.getByRole("button", { name: "View Market Metrics" });
+    // The comp groups dot, mark and label on a 4px rhythm and holds the
+    // chevron 8px off the end of that group.
+    const dot = toggle.querySelector("span[aria-hidden]");
+    expectClasses(dot?.parentElement, ["gap-1", "md:gap-2"]);
+    // The inherited 1.5 leading made the row 18px where the comp is 16px.
+    expectClasses(screen.getByText("View Market Metrics"), [
+      "text-[12px]",
+      "leading-[15px]",
+      "md:text-[12.6px]",
+      "md:leading-[1.5]",
+    ]);
+
+    const [mark, chevron] = [...toggle.querySelectorAll("svg")];
+    expect(mark).toHaveAttribute("width", "13");
+    expectClasses(mark, ["md:size-[14px]"]);
+    expect(chevron).toHaveAttribute("width", "16");
+    expectClasses(chevron, ["md:size-[17px]"]);
+  });
+
+  it("gives the retry control a 44px touch target on phones and leaves the desk's alone", () => {
+    renderPanel({ status: "error", metrics: null, onRetry: vi.fn() });
+    expectClasses(screen.getByRole("button", { name: "Try again" }), [
+      "min-h-11",
+      "min-w-11",
+      "md:min-h-[auto]",
+      "md:min-w-[auto]",
+    ]);
+  });
+
+  // Both new comp states draw the traders chevron identically: a static
+  // down-pointing glyph in an 18.96px box, never rotated, over the same card
+  // content. The design specifies no second disclosure, so it must not gain a
+  // control.
+  it("keeps the traders chevron a glyph the design never wires to anything", () => {
+    renderPanel();
+    const card = screen.getByTestId("meme-traders-card");
+    expect(within(card).queryAllByRole("button")).toHaveLength(0);
+    const glyph = card.querySelector("svg")?.parentElement;
+    expect(glyph).toHaveAttribute("aria-hidden");
+    expect(glyph?.tagName).toBe("SPAN");
+    expect(classesOf(card.querySelector("svg")).some((n) => n.includes("rotate"))).toBe(false);
+  });
+});

@@ -162,8 +162,7 @@ function ActionButton({
   describedBy: string;
   onClick: () => void;
 }) {
-  // The label is Inter, per the design. Inter is already loaded and preloaded
-  // on every route as --font-sportsbook, so naming it here costs no extra bytes.
+  // The design set the label in Inter; production keeps its body face, Geist.
   //
   // The button must not carry flex-1. Its parent is a column, so flex-1 would
   // set flex-basis: 0% on the vertical axis, which replaces h-12 as the flex
@@ -178,7 +177,7 @@ function ActionButton({
       disabled={disabled}
       aria-busy={busy}
       aria-describedby={describedBy}
-      className={`flex h-12 w-full shrink-0 items-center justify-center rounded-3xl font-[family-name:var(--font-sportsbook)] text-[16px] font-semibold text-white transition-opacity disabled:opacity-45 ${
+      className={`flex h-12 w-full shrink-0 items-center justify-center rounded-3xl font-sans text-[16px] font-semibold text-white transition-opacity disabled:opacity-45 ${
         tone === "buy" ? "bg-buy" : "bg-sell"
       }`}
     >

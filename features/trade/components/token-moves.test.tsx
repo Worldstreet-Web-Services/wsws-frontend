@@ -11,7 +11,7 @@ const messages = {
   ...en,
   markets: {
     ...en.markets,
-    tokenMovesTitle: "Stay Ahead of Token Moves",
+    tokenMovesTitle: "Stay Ahead of Token Moves on Spot",
     tokenMovesRegion: "Trending token moves",
     tokenMoveUp: "<b>{symbol} is up {change}</b> in the last 24 hours.",
     tokenMoveDown: "<b>{symbol} is down {change}</b> in the last 24 hours.",
@@ -56,8 +56,8 @@ function tick(ms = 10_000) {
   });
 }
 
-// The Eth Africa promo carries a "Buy ETH" button of its own, so every query
-// about the rotating card is scoped to its region.
+// The second card carries a Buy button of its own for the next token, so every
+// query about the rotating card is scoped to its region.
 function insightCard(): HTMLElement {
   return screen.getByRole("region", { name: "Trending token moves" });
 }
@@ -183,6 +183,17 @@ describe("TokenMoves", () => {
     tick();
     fireEvent.click(within(insightCard()).getByRole("button", { name: "Buy ETH" }));
     expect(onBuyToken).toHaveBeenCalledWith("ETH");
+  });
+
+  it("shows the token after the featured one on the second card", () => {
+    vi.useFakeTimers();
+    renderMoves([token({ symbol: "BTC" }), token({ symbol: "ETH" }), token({ symbol: "SOL" })]);
+    expect(shownSymbol()).toMatch(/BTC/);
+    const buys = screen.getAllByRole("button", { name: /^Buy / }).map((b) => b.textContent);
+    expect(buys).toEqual([expect.stringMatching(/BTC/), expect.stringMatching(/ETH/)]);
+    tick(10_000);
+    expect(shownSymbol()).toMatch(/ETH/);
+    expect(screen.getAllByRole("button", { name: /^Buy / })[1].textContent).toMatch(/SOL/);
   });
 
   it("cycles at most five tokens even when handed more", () => {

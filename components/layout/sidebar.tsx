@@ -111,7 +111,7 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
       <aside
         id="app-sidebar"
         aria-label={t("menu")}
-        className={`bg-panel fixed top-0 bottom-0 left-0 z-[110] flex w-[280px] flex-col border-r border-white/8 px-4 py-5 transition-transform duration-300 ease-out md:z-100 md:w-[248px] md:translate-x-0 ${
+        className={`bg-panel fixed top-0 bottom-0 left-[var(--ws-frame-inset)] z-[110] flex w-[280px] flex-col border-r border-white/8 px-4 py-5 transition-transform duration-300 ease-out md:z-100 md:w-[248px] md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

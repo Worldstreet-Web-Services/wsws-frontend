@@ -116,6 +116,50 @@ describe("fetchPredictions", () => {
     expect(prediction.eventId).toBe("481717");
   });
 
+  it("carries the volume as a number as well as a formatted string", async () => {
+    // The formatted string is dollars. Any surface that shows the figure in the
+    // reader's own currency needs the amount itself to hand to the money layer,
+    // so both travel on the domain object.
+    stubGamma([gammaEvent()]);
+
+    const [prediction] = await fetchPredictions();
+
+    expect(prediction.volumeUsd).toBe(4_200_000);
+    expect(prediction.vol).toBe("$4.2M vol");
+  });
+
+  it("carries no volume number when Gamma states no volume", async () => {
+    // Zero is Gamma saying nothing, not a market that traded nothing, and an
+    // invented "$0" would read as a fact. The field is left off instead.
+    stubGamma([
+      gammaEvent({
+        volume: undefined,
+        markets: [{ ...gammaEvent().markets[0], volumeNum: undefined }],
+      }),
+    ]);
+
+    const [prediction] = await fetchPredictions();
+
+    expect(prediction.volumeUsd).toBeUndefined();
+    expect(prediction.vol).toBe("");
+  });
+
+  it("carries the event's close date through as the market deadline", async () => {
+    stubGamma([gammaEvent({ endDate: "2027-02-22T15:30:00Z" })]);
+
+    const [prediction] = await fetchPredictions();
+
+    expect(prediction.endsAt).toBe("2027-02-22T15:30:00Z");
+  });
+
+  it("carries no deadline when Gamma states no close date", async () => {
+    stubGamma([gammaEvent()]);
+
+    const [prediction] = await fetchPredictions();
+
+    expect(prediction.endsAt).toBeUndefined();
+  });
+
   it("raises the upstream failure rather than returning an empty list", async () => {
     vi.stubGlobal(
       "fetch",

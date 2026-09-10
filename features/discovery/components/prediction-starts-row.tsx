@@ -340,22 +340,21 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
       </div>
 
       {/* 82px is the design's bar, and the floor rather than the height: a
-          locale whose two labels will not sit side by side wraps the second
-          pill under the first and the bar grows to hold it. */}
+          locale whose label will not sit on one line wraps it and the bar
+          grows to hold it. */}
       {/* The bar itself is transparent to the pointer so the space around the
-          pills belongs to the stretched link, the same as the rest of the card.
-          Each pill takes its own clicks back. */}
-      <div className="pointer-events-none relative flex min-h-[82px] flex-wrap items-start gap-x-[7.714px] gap-y-[10px] bg-white/60 px-[22px] py-[12px]">
+          pill belongs to the stretched link, the same as the rest of the card.
+          The pill takes its own clicks back. */}
+      <div className="pointer-events-none relative flex min-h-[82px] flex-wrap items-start bg-white/60 px-[22px] py-[12px]">
         {/* The padding override stays. `DiscoveryCta` now derives its gutters
             from the label size, and at 15px that gives 17.143 by 10.714. The
-            design draws this pair larger than its type: 21.214px around the
+            design draws this pill larger than its type: 21.214px around the
             label, of which 0.643 is the border, in a pill 45px tall. Dropping
             the override would take 6.9px off the width and 4.3px off the
-            height of both pills, so it is the more generous of the two and the
-            one the designer measured. The glyph gap is left to the scale. */}
-        {/* The first pill is the one that leads to the market on show, so it
-            follows it. The second stays on the desk: it is the way out of the
-            featured market, not into it. */}
+            height, so it is the more generous of the two and the one the
+            designer measured. The glyph gap is left to the scale. */}
+        {/* One pill, and it leads to the market on show. The desk itself is
+            where the row's heading goes. */}
         <DiscoveryCta
           href={market ? market.href : "/prediction"}
           label={t("predictNow")}
@@ -373,14 +372,6 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
               className="block size-[18px] shrink-0"
             />
           }
-        />
-        <DiscoveryCta
-          href="/prediction"
-          label={t("predictionOther")}
-          tone="dark"
-          size={15}
-          padding="px-[20.571px] py-[12.857px]"
-          className="pointer-events-auto border-[0.643px] border-[#fffcfc] tracking-[-0.15px]"
         />
       </div>
     </article>

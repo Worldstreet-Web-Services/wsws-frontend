@@ -4,8 +4,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { CasinoGame } from "@/features/casino/lib/games";
+
+vi.mock("@/lib/analytics/mixpanel", () => ({ track: vi.fn() }));
+
+import { track } from "@/lib/analytics/mixpanel";
 import { ArkadeDesktop } from "@/features/casino/components/arkade-desktop";
 import { ArkadeDesktopRow } from "@/features/casino/components/arkade-desktop-row";
+
+const tracked = vi.mocked(track);
 
 // Copy the desktop Arkade needs that the catalogues do not carry yet. The
 // adoption PR adds these six keys to en, de, es, fr and pt; until then the
@@ -80,15 +86,15 @@ const checkers: CasinoGame = {
   comingSoon: false,
 };
 
-const arkjet: CasinoGame = {
-  id: "arkjet",
-  name: "Arkjet",
+const lastStanding: CasinoGame = {
+  id: "last-standing",
+  name: "The Last Man",
   category: "New",
   size: "tall",
-  glyph: "✈",
-  image: "/casino/arkjet/hero.webp",
-  href: "/casino/arkjet",
-  note: "Cash out before the multiplier crashes",
+  glyph: "♛",
+  image: "/casino/last-standing/hero.png",
+  href: "/casino/last-standing",
+  note: "Last wager standing takes the pot",
   comingSoon: false,
 };
 
@@ -103,7 +109,7 @@ const poker: CasinoGame = {
   comingSoon: true,
 };
 
-const catalogue = [chess, arkball, checkers, arkjet, poker];
+const catalogue = [chess, arkball, checkers, lastStanding, poker];
 
 describe("ArkadeDesktopRow", () => {
   it("renders one tile per game it is given, in order", () => {
@@ -170,6 +176,34 @@ describe("ArkadeDesktopRow", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
+  it("leaves game_opened to the route that owns the navigation", () => {
+    // The desktop rail is presentational: it hands the game back and the
+    // casino route fires the event beside its router push. Reporting from the
+    // shared card as well would double-count every desktop open, and the two
+    // surfaces would need two copies of the catalogue's id map.
+    tracked.mockClear();
+    const onSelectGame = vi.fn();
+    renderWithIntl(<ArkadeDesktopRow games={[chess]} label="Row 1" onSelectGame={onSelectGame} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Play Chess" }));
+    expect(onSelectGame).toHaveBeenCalledWith(chess);
+    expect(tracked).not.toHaveBeenCalled();
+  });
+
+  it("draws the rail with the shared card, as buttons", () => {
+    renderWithIntl(<ArkadeDesktopRow games={[chess, arkball]} label="Row 1" />);
+
+    for (const item of screen.getAllByRole("listitem")) {
+      const card = item.firstElementChild as HTMLElement;
+      expect(card.className).toContain("ws-card");
+      expect(card.className).toContain("h-[204px]");
+      expect(card.tagName).toBe("BUTTON");
+    }
+    // Desktop metrics: the badge and the pill are sized by padding here, not
+    // by a fixed height the way the phone's are.
+    expect(screen.getAllByText("Play now")[0].className).toContain("py-2.5");
+  });
+
   it("draws cover art with object-fit cover, so nothing figurative is stretched", () => {
     const { container } = renderWithIntl(<ArkadeDesktopRow games={[chess]} label="Row 1" />);
 
@@ -194,7 +228,7 @@ describe("ArkadeDesktop", () => {
   it("renders every game in the catalogue it is handed", () => {
     renderWithIntl(<ArkadeDesktop games={catalogue} />);
 
-    for (const name of ["Chess", "ArkBall", "Checkers", "Arkjet", "Poker"]) {
+    for (const name of ["Chess", "ArkBall", "Checkers", "The Last Man", "Poker"]) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
   });
@@ -237,8 +271,8 @@ describe("ArkadeDesktop", () => {
     const onSelectGame = vi.fn();
     renderWithIntl(<ArkadeDesktop games={catalogue} onSelectGame={onSelectGame} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Play Arkjet" }));
-    expect(onSelectGame).toHaveBeenCalledWith(arkjet);
+    fireEvent.click(screen.getByRole("button", { name: "Play The Last Man" }));
+    expect(onSelectGame).toHaveBeenCalledWith(lastStanding);
   });
 
   it("shows loading rails, and no tiles, while the catalogue is loading", () => {

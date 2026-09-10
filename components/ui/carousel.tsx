@@ -13,8 +13,11 @@ const SLIDE_MS = 420;
 // `perView`. Two slides and a peek on a phone leaves each one about a third of
 // a narrow screen, which is not a card any more. Measured on the carousel's own
 // frame rather than on the viewport, so a carousel inside a narrow column
-// switches when that column gets narrow, not when the window does.
-const ONE_UP_BELOW = 640;
+// switches when that column gets narrow, not when the window does. 768 is the
+// md breakpoint: the phone home renders below it at full width, and a wide
+// phone in the 640 to 767 band was getting two cards too narrow for their
+// copy.
+const ONE_UP_BELOW = 768;
 
 // The narrowest slide a trim is allowed to touch, in pixels.
 //
@@ -260,19 +263,32 @@ export function Carousel({
 
   // Lead clones are the tail of the list, trail clones are its head. Both are
   // taken cyclically, so a carousel with fewer slides than it shows still fills.
+  // `slot` is where each one stands in the track's own coordinates, the ones
+  // `position` is measured in: the real slides are 0 to count-1, the lead
+  // clones are below 0 and the trail clones from count up.
   const rendered = [
     ...Array.from({ length: cloneCount }, (_, i) => ({
       key: `lead-${i}`,
       index: wrap(count - cloneCount + i, count),
+      slot: i - cloneCount,
       clone: true,
     })),
-    ...slides.map((_, index) => ({ key: `slide-${index}`, index, clone: false })),
+    ...slides.map((_, index) => ({ key: `slide-${index}`, index, slot: index, clone: false })),
     ...Array.from({ length: cloneCount }, (_, i) => ({
       key: `trail-${i}`,
       index: wrap(i, count),
+      slot: count + i,
       clone: true,
     })),
   ];
+
+  // A clone is switched off, except while it is in the frame. The frame is
+  // `cloneCount` slots wide from the position, and on the last real position
+  // the slots beside it are clones: three slides two-up, standing on the
+  // third, show the third and a copy of the first. That copy is what the
+  // reader sees and what they click, so it has to be live. The clones behind
+  // the frame stay inert so nothing is read out or tabbed through twice.
+  const inFrame = (slot: number) => slot >= position && slot < position + cloneCount;
 
   // The redesign's round icon button, taken to artwork.
   //
@@ -373,7 +389,7 @@ export function Carousel({
               transform: `translate3d(calc((var(--ws-carousel-slide) + ${gapPx}px) * ${-offset}), 0, 0)`,
             }}
           >
-            {rendered.map(({ key, index, clone }) => (
+            {rendered.map(({ key, index, slot, clone }) => (
               <div
                 key={key}
                 // The clones render the same element twice. Slides are artwork
@@ -381,8 +397,8 @@ export function Carousel({
                 // stateful belongs above the carousel, not on a slide.
                 role="group"
                 aria-roledescription="slide"
-                aria-hidden={clone || undefined}
-                inert={clone}
+                aria-hidden={(clone && !inFrame(slot)) || undefined}
+                inert={clone && !inFrame(slot)}
                 data-carousel-slide={clone ? undefined : index}
                 className="shrink-0"
                 style={{ width: "var(--ws-carousel-slide)" }}

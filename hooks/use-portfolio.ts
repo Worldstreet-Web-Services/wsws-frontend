@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
 import { apiFetch } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useSessionWallet } from "@/components/providers/server-session";
 import type { Portfolio } from "@/lib/server/alchemy";
-
 import type { TokenBalance } from "@/lib/server/alchemy";
+import { freshParam, type FreshScope } from "@/lib/portfolio/fresh-scope";
+import { applyTransfers } from "@/lib/portfolio/apply-transfers";
+import type { ReceiptLog } from "@/lib/meme/delivery";
 
 export type { Portfolio, TokenBalance } from "@/lib/server/alchemy";
 
@@ -18,6 +21,18 @@ export type { Portfolio, TokenBalance } from "@/lib/server/alchemy";
 // effect immediately (e.g. right after a trade or withdrawal) calls
 // `refetch()` directly instead of waiting on this interval.
 const POLL_MS = 60 * 1000;
+// Off the portfolio page only the balance chip in the shell reads this, and
+// a trade gets its own scoped fresh read, so three minutes is plenty there
+// (ADR-2026-09-09-portfolio-polling-at-scale).
+const GLANCED_POLL_MS = 3 * 60 * 1000;
+const INCOMPLETE_POLL_MS = 5_000;
+
+function watchesBalance(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return ["/portfolio", "/dashboard"].some(
+    (page) => pathname === page || pathname.startsWith(`${page}/`)
+  );
+}
 
 // Stable identity for the empty/loading state. Consumers key memos and effects
 // on `tokens` (trade balances, swap net-balances, global search, funding), so a
@@ -66,11 +81,12 @@ export function usePortfolio() {
   const solana = useSessionWallet("solana");
   const enabled = ready && authenticated && Boolean(evm || solana);
   const queryKey = queryKeys.portfolio.byWallet(evm, solana);
+  const pollMs = watchesBalance(usePathname()) ? POLL_MS : GLANCED_POLL_MS;
 
-  // Set while waiting for a just-made trade to show up, so those reads skip the
-  // server's shared cache. A ref because the queryFn must see the current value
-  // without the query being re-created.
-  const forceFreshRef = useRef(false);
+  // Set while waiting for a just-made trade to show up, naming the networks
+  // the trade touched so only those skip the server's caches. A ref because
+  // the queryFn must see the current value without the query being re-created.
+  const freshScopeRef = useRef<FreshScope | null>(null);
 
   const query = useQuery<Portfolio>({
     queryKey,
@@ -79,7 +95,7 @@ export function usePortfolio() {
       const params = new URLSearchParams();
       if (evm) params.set("evm", evm);
       if (solana) params.set("solana", solana);
-      if (forceFreshRef.current) params.set("fresh", "1");
+      if (freshScopeRef.current) params.set("fresh", freshParam(freshScopeRef.current));
       // requireAuth: the query only runs when Privy is authenticated, so a
       // missing token means it isn't warm yet on a cold first load. apiFetch
       // then throws a retryable error instead of a token-less request that 401s.
@@ -102,24 +118,30 @@ export function usePortfolio() {
       return failureCount < 5;
     },
     retryDelay: (attempt) => Math.min(800 * 2 ** attempt, 4000),
-    staleTime: POLL_MS,
-    refetchInterval: POLL_MS,
+    staleTime: pollMs,
+    // A snapshot that names a network which did not answer in time is a
+    // floor, not the balance: ask again in seconds rather than a minute.
+    refetchInterval: (query) => (query.state.data?.missing?.length ? INCOMPLETE_POLL_MS : pollMs),
     refetchOnWindowFocus: false,
   });
 
   const { refetch } = query;
-  // A just-completed wallet transaction must bypass the short server cache.
-  // This keeps the portfolio reactive during an active cross-chain settlement
-  // without shortening the normal background polling interval for everyone.
-  const refetchFresh = useCallback(async (): Promise<Portfolio | undefined> => {
-    forceFreshRef.current = true;
-    try {
-      const result = await refetch();
-      return result.data;
-    } finally {
-      forceFreshRef.current = false;
-    }
-  }, [refetch]);
+  // A just-completed wallet transaction must bypass the short server cache
+  // on the networks it touched. This keeps the portfolio reactive during an
+  // active settlement without shortening the background poll for everyone,
+  // and without re-reading the networks the transaction never went near.
+  const refetchFresh = useCallback(
+    async (scope: FreshScope): Promise<Portfolio | undefined> => {
+      freshScopeRef.current = scope;
+      try {
+        const result = await refetch();
+        return result.data;
+      } finally {
+        freshScopeRef.current = null;
+      }
+    },
+    [refetch]
+  );
 
   // Refetch until the balances actually move. A single refetch after a trade
   // races two lags — the shared server cache and Alchemy's balance index — and
@@ -128,23 +150,26 @@ export function usePortfolio() {
   //
   // The baseline is read from the cache rather than from `query`, which would
   // make the callback change identity on every refetch and restart the poll.
-  const refetchUntilChanged = useCallback(async (): Promise<boolean> => {
-    const before = balancesSignature(
-      queryClient.getQueryData<Portfolio>(["portfolio", evm, solana])
-    );
-    const startedAt = Date.now();
-    forceFreshRef.current = true;
-    try {
-      for (let attempt = 0; Date.now() - startedAt < SETTLE_DEADLINE_MS; attempt++) {
-        await delay(SETTLE_BACKOFF_MS[Math.min(attempt, SETTLE_BACKOFF_MS.length - 1)]);
-        const { data } = await refetch();
-        if (balancesSignature(data) !== before) return true;
+  const refetchUntilChanged = useCallback(
+    async (scope: FreshScope): Promise<boolean> => {
+      const before = balancesSignature(
+        queryClient.getQueryData<Portfolio>(["portfolio", evm, solana])
+      );
+      const startedAt = Date.now();
+      freshScopeRef.current = scope;
+      try {
+        for (let attempt = 0; Date.now() - startedAt < SETTLE_DEADLINE_MS; attempt++) {
+          await delay(SETTLE_BACKOFF_MS[Math.min(attempt, SETTLE_BACKOFF_MS.length - 1)]);
+          const { data } = await refetch();
+          if (balancesSignature(data) !== before) return true;
+        }
+        return false;
+      } finally {
+        freshScopeRef.current = null;
       }
-      return false;
-    } finally {
-      forceFreshRef.current = false;
-    }
-  }, [refetch, queryClient, evm, solana]);
+    },
+    [refetch, queryClient, evm, solana]
+  );
 
   // Wait for a particular incoming token amount rather than any portfolio
   // change. A sell can change the RWA row before its USDC output is indexed;
@@ -152,7 +177,7 @@ export function usePortfolio() {
   const waitForTokenBalance = useCallback(
     async (network: string, address: string, atLeast: bigint): Promise<boolean> => {
       const startedAt = Date.now();
-      forceFreshRef.current = true;
+      freshScopeRef.current = [network];
       try {
         for (let attempt = 0; Date.now() - startedAt < SETTLE_DEADLINE_MS; attempt++) {
           await delay(SETTLE_BACKOFF_MS[Math.min(attempt, SETTLE_BACKOFF_MS.length - 1)]);
@@ -161,10 +186,22 @@ export function usePortfolio() {
         }
         return false;
       } finally {
-        forceFreshRef.current = false;
+        freshScopeRef.current = null;
       }
     },
     [refetch]
+  );
+
+  // The receipt of a trade already says what left the wallet and what
+  // arrived. Applied to the cached snapshot at once, the screen is right the
+  // moment the receipt lands; the scoped read that follows confirms it.
+  const applyReceipt = useCallback(
+    (network: string, wallet: string, logs: readonly ReceiptLog[]) => {
+      queryClient.setQueryData<Portfolio>(["portfolio", evm, solana], (current) =>
+        current ? applyTransfers(current, { network, wallet, logs }) : current
+      );
+    },
+    [queryClient, evm, solana]
   );
 
   return {
@@ -184,5 +221,6 @@ export function usePortfolio() {
     refetchFresh,
     refetchUntilChanged,
     waitForTokenBalance,
+    applyReceipt,
   };
 }

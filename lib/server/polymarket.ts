@@ -202,6 +202,9 @@ export async function fetchPredictions(limit = 12): Promise<Prediction[]> {
     out.push({
       tag,
       vol: formatVol(market.vol),
+      // Left off rather than sent as 0, so a market Gamma reports no volume for
+      // renders as having none instead of as having traded nothing.
+      volumeUsd: market.vol > 0 ? market.vol : undefined,
       q: market.question,
       yes: `${yesCents}¢`,
       no: `${100 - yesCents}¢`,

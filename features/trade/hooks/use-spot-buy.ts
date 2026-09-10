@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BASE_CHAIN_ID } from "@/lib/meme/chain";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
+import { networkForChainId } from "@/lib/trade-share";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useDepositStatus } from "@/hooks/use-deposit";
 import { useBuyDestinations } from "@/features/trade/hooks/use-buy-catalog";
@@ -61,6 +63,11 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
 
   const swapRoute = useMemo(() => swapRouteForSymbol(symbol), [symbol]);
   const isSwapMarket = swapRoute != null;
+  // Where the trade settles: USDC leaves Base, the asset lands on the
+  // route's destination. A swap-market buy is entirely on Base.
+  const settledNetworks = isSwapMarket
+    ? scopeOf(networkForChainId(BASE_CHAIN_ID))
+    : scopeOf(networkForChainId(BASE_CHAIN_ID), networkForChainId(route?.destinationChainId ?? -1));
   const memeTrade = useMemeTrade();
   const swapBusy = isSwapMarket && memeTrade.phase !== "idle" && memeTrade.phase !== "failed";
 
@@ -114,14 +121,14 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
       track("trade_completed", { vertical: "spot", asset: symbol, side: "buy", amount_usd: value });
       toast.success(t("boughtToast", { name }), { id: toastRef.current });
       toastRef.current = undefined;
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(settledNetworks);
     } else if (s === "failed" || s === "refunded") {
       settledRef.current = true;
       track("trade_failed", { vertical: "spot", asset: symbol, reason: s });
       toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
       toastRef.current = undefined;
     }
-  }, [requestId, status.data, symbol, name, value, portfolio, t]);
+  }, [requestId, status.data, symbol, name, value, portfolio, settledNetworks, t]);
 
   // A loading toast never times out, so dismiss any orphan on unmount.
   useEffect(
@@ -156,7 +163,7 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
         });
         toast.success(t("boughtToast", { name }), { id: toastRef.current });
         toastRef.current = undefined;
-        void portfolio.refetchUntilChanged();
+        void portfolio.refetchUntilChanged(settledNetworks);
       } catch (e) {
         toast.error(friendlyError(e, t("buyFailedToast", { name })), { id: toastRef.current });
         toastRef.current = undefined;

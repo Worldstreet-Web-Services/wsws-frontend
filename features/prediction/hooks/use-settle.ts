@@ -248,7 +248,8 @@ export function useSettleToBase() {
         );
       }
       savePendingPredictionCashout({ ...pending, originTxHash });
-      void refetchFresh();
+      // The USDC.e just left Polygon; Base is read when the bridge lands.
+      void refetchFresh(["polygon-mainnet"]);
       return {
         requestId: quote.requestId,
         originTxHash,

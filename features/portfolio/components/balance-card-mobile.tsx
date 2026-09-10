@@ -3,12 +3,13 @@
 // import { useState } from "react"; // parked with the Portfolio Allocation toggle below
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
 import { useTranslations } from "next-intl";
-import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, HelpIcon, WalletIcon } from "@/components/ui/icons";
+import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, WalletIcon } from "@/components/ui/icons";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
+import { useHoldingsLauncher } from "@/features/portfolio/components/holdings-launcher";
 
 // The mobile balance card, drawn to the wallet comp (node 1:972): a starfield-
-// and-cloud card with the currency pill and a tour button up top, the total in a
-// rounded gradient figure, and the two money actions on a full-width row. The
+// and-cloud card with the currency pill and the coins button up top, the total
+// in a rounded gradient figure, and the two money actions on a full-width row. The
 // decorative sky is one exported asset — the comp builds it from masked cloud
 // and star art that does not reduce to CSS cleanly.
 export function BalanceCardMobile({
@@ -22,16 +23,20 @@ export function BalanceCardMobile({
   formatMasked,
   onOpenFunds,
   onOpenWithdraw,
-  onTakeTour,
 }: BalanceCardViewProps) {
   const t = useTranslations("balance");
+  const tPortfolio = useTranslations("portfolio");
   const money = useMoney();
+  // The holdings list behind the coins button, shared with the desktop card.
+  const holdings = useHoldingsLauncher();
   // Portfolio Allocation toggle hidden on mobile for now (see the commented
   // button below); its state is parked until it returns.
   // const [allocationOpen, setAllocationOpen] = useState(false);
 
+  // The two money actions. A 40px pill at 13px type: the 46px pills the comp
+  // drew read heavy on a phone next to the figure they sit under.
   const action =
-    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[13px] font-sans text-[14px] font-semibold tracking-[-0.14px] whitespace-nowrap transition-opacity";
+    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[10px] font-sans text-[13px] font-semibold tracking-[-0.13px] whitespace-nowrap transition-opacity";
 
   return (
     <div
@@ -53,20 +58,28 @@ export function BalanceCardMobile({
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-1.5">
             <CurrencySelect value={money.currency} onSelect={money.setCurrency} />
-            {/* Take-a-tour affordance from the comp.
-
-                A question mark, not the stacked coins this drew before. A coins
-                glyph beside a balance reads as "my holdings", and on the
-                desktop card the identical pairing sent people looking for a
-                holdings list and finding the walkthrough instead. The label
-                always said takeTour; only the picture disagreed. */}
+            {/* What the wallet holds, one tap from the total it adds up to: the
+                stacked-coins glyph the comp draws beside the currency pill,
+                opening the same holdings list as the desktop card. */}
             <button
               type="button"
-              onClick={onTakeTour}
-              aria-label={t("takeTour")}
-              className="grid size-[30px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 text-white/70 transition-colors active:bg-white/12"
+              onClick={holdings.openHoldings}
+              aria-label={tPortfolio("yourHoldings")}
+              title={tPortfolio("yourHoldings")}
+              aria-haspopup="dialog"
+              aria-expanded={holdings.open}
+              className="grid size-[30px] cursor-pointer place-items-center rounded-full border border-white/14 bg-white/5 transition-colors active:bg-white/12"
             >
-              <HelpIcon size={13} />
+              {/* A fixed-colour export, so it sits in an explicitly sized box
+                  rather than inheriting the button's text colour. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/market/balance-icon-coins.svg"
+                alt=""
+                width={14}
+                height={14}
+                className="size-[14px] shrink-0"
+              />
             </button>
           </div>
 
@@ -110,7 +123,7 @@ export function BalanceCardMobile({
         </div>
 
         <div className="flex w-full flex-col items-center gap-3">
-          <div className="flex w-full items-center gap-2">
+          <div className="mx-auto flex w-full max-w-[300px] items-center gap-2">
             <button
               data-tour="add-funds"
               onClick={onOpenFunds}
@@ -119,7 +132,7 @@ export function BalanceCardMobile({
               // only) drops out but this card now still renders.
               className={`${action} ws-chrome text-ink bg-white shadow-[0_1.6px_3.3px_rgba(0,0,0,0.5)]`}
             >
-              <WalletIcon size={17} />
+              <WalletIcon size={15} />
               {t("addFunds")}
             </button>
             <button
@@ -127,7 +140,7 @@ export function BalanceCardMobile({
               disabled={withdrawHeld}
               className={`${action} border-2 border-white bg-white/6 text-white active:bg-white/12 disabled:cursor-not-allowed disabled:opacity-40`}
             >
-              <ArrowUpRightIcon size={17} />
+              <ArrowUpRightIcon size={15} />
               {t("withdraw")}
             </button>
           </div>
@@ -161,6 +174,7 @@ export function BalanceCardMobile({
           */}
         </div>
       </div>
+      {holdings.host}
     </div>
   );
 }

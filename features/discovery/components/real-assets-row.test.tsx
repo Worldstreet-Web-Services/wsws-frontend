@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { beforeAll, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import { RealAssetsRow, realAssetsLead } from "@/features/discovery/components/real-assets-row";
+import type { RwaSpot } from "@/features/discovery/types";
 
 beforeAll(() => {
   if (typeof window.matchMedia !== "function") {
@@ -54,6 +55,53 @@ describe("Own the Real World", () => {
       "href",
       "/rwa"
     );
+  });
+
+  it("threads onBuy to a card, which calls back with the tapped spot", () => {
+    const onBuy = vi.fn();
+    const goldSpot: RwaSpot = {
+      id: "base:paxg",
+      symbol: "PAXG",
+      name: "Paxos Gold",
+      issuer: "Paxos",
+      category: "commodity",
+      price: "$2,412.50",
+      change: "+0.26%",
+      up: true,
+      apy: null,
+      logo: null,
+      href: "/rwa",
+      chain: "base",
+      address: "0xabc",
+    };
+    render(<RealAssetsRow spots={{ ...empty, gold: [goldSpot] }} onBuy={onBuy} />, { wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: /Buy PAXG/ }));
+
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith(goldSpot);
+  });
+
+  it("keeps every pill a link with no onBuy supplied", () => {
+    const goldSpot: RwaSpot = {
+      id: "base:paxg",
+      symbol: "PAXG",
+      name: "Paxos Gold",
+      issuer: "Paxos",
+      category: "commodity",
+      price: "$2,412.50",
+      change: "+0.26%",
+      up: true,
+      apy: null,
+      logo: null,
+      href: "/rwa",
+      chain: "base",
+      address: "0xabc",
+    };
+    render(<RealAssetsRow spots={{ ...empty, gold: [goldSpot] }} />, { wrapper });
+
+    expect(screen.getByRole("link", { name: /Buy PAXG/ })).toHaveAttribute("href", "/rwa");
+    expect(screen.queryByRole("button", { name: /Buy PAXG/ })).toBeNull();
   });
 });
 

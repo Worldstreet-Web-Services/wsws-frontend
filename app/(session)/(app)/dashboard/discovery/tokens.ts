@@ -153,6 +153,11 @@ function rank(token: MarketToken): RankedSpot | null {
       // The name is decorative; the symbol is the identity, so it stands in.
       name: token.name?.trim() || symbol,
       price: formatUsd(price),
+      priceUsd: price,
+      // The feed is CoinGecko's own markets list, so `id` is the coin id the
+      // chart needs. Blank ids are dropped rather than passed on, since an
+      // empty string would read as "charts here" and then draw nothing.
+      ...(token.id?.trim() ? { coingeckoId: token.id.trim() } : {}),
       change,
       up,
       movePercent,
@@ -232,6 +237,11 @@ function holdFeaturedSlots(ranked: readonly RankedSpot[], limit: number): Ranked
   return [...kept, ...survivors, ...held].sort((a, b) => b.marketCap - a.marketCap);
 }
 
+// `priceUsd` is deliberately not compared: it moves on almost every refetch
+// even when the formatted `price` does not, and comparing it would restart
+// the rotation on every tick, which is exactly what this check exists to
+// prevent. Whichever spot survives the hold below still carries a real price,
+// just not necessarily this tick's.
 function sameSpots(a: readonly TokenSpot[], b: readonly TokenSpot[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((left, index) => {

@@ -3,7 +3,6 @@
 import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
@@ -139,15 +138,8 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <Eyebrow>{t("eyebrow")}</Eyebrow>
-          <h2 className="ws-display mt-2.5 text-[30px] tracking-[-0.02em]">{t("heading")}</h2>
-        </div>
-      </div>
-
       {/* Source switch: live Polymarket markets vs our on-chain CPMM markets. */}
-      <div className="mt-4 inline-flex gap-1 rounded-xl bg-white/5 p-1">
+      <div className="inline-flex gap-1 rounded-xl bg-white/5 p-1">
         {(["polymarket", "local"] as const).map((s) => (
           <button
             key={s}

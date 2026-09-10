@@ -82,7 +82,9 @@ describe("conversation row", () => {
     render(<ConversationRow />, { wrapper });
     expect(realSlideHeadlines()).toEqual([
       enMessages.discovery.conversationHeadline,
-      enMessages.discovery.lastManIdleHeadline,
+      // The Last Man card is the event's poster now, so what stands where the
+      // other cards put a headline is its wordmark.
+      `${enMessages.discovery.lastManMarathonLead} ${enMessages.discovery.lastManMarathonTitle}`,
       enMessages.discovery.squareIdleHeadline,
       enMessages.discovery.checkersIdleHeadline,
       enMessages.discovery.arkballHeadline,
@@ -110,7 +112,7 @@ describe("conversation row", () => {
       }),
     });
     render(<ConversationRow />, { wrapper });
-    const joins = screen.getAllByRole("link", { name: /Join the round/ });
+    const joins = screen.getAllByRole("link", { name: /Join Now/ });
     for (const join of joins) expect(join).toHaveAttribute("href", "/casino/last-standing/9");
     expect(screen.getAllByText("2 matches being played right now").length).toBeGreaterThan(0);
   });

@@ -273,6 +273,36 @@ export function RoomPill({
   );
 }
 
+/**
+ * The handlers a card on this band spreads to report itself held.
+ *
+ * WCAG 2.2.2 (Pause, Stop, Hide): the row advances the chess and square cards
+ * on a timer, and a reader needs a way to hold them still. Hovering or focusing
+ * any card on the band is that way, so every card reports, not just the ones
+ * that rotate. `onFocus` and `onBlur` are focusin and focusout in React, so
+ * focus anywhere inside the card counts rather than only on the card itself.
+ */
+export function useHoldReport(onHold?: (held: boolean) => void) {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const held = hovered || focused;
+
+  useEffect(() => {
+    if (!held || !onHold) return;
+    onHold(true);
+    // Released when the pointer leaves, when focus goes, and when the card
+    // unmounts. A hold that outlived its card would stop a rotation for good.
+    return () => onHold(false);
+  }, [held, onHold]);
+
+  return {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
+  };
+}
+
 export interface ConversationCardProps {
   /** The card's two-stop gradient, as a Tailwind background class. */
   gradient: string;
@@ -305,30 +335,10 @@ export function ConversationCard({
   secondary,
   onHold,
 }: ConversationCardProps) {
-  // WCAG 2.2.2 (Pause, Stop, Hide): a card whose content changes on its own
-  // needs a way to hold it still, and hover and focus-within are that way.
-  // onFocus and onBlur are focusin and focusout in React, so focus anywhere
-  // inside the card counts, not just on the card.
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const held = hovered || focused;
-
-  useEffect(() => {
-    if (!held || !onHold) return;
-    onHold(true);
-    // Released when the pointer leaves, when focus goes, and when the card
-    // unmounts. A hold that outlived its card would stop a rotation for good.
-    return () => onHold(false);
-  }, [held, onHold]);
+  const hold = useHoldReport(onHold);
 
   return (
-    <article
-      className={`relative h-[203px] overflow-hidden rounded-[18px] ${gradient}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-    >
+    <article className={`relative h-[203px] overflow-hidden rounded-[18px] ${gradient}`} {...hold}>
       {art}
 
       {/* Copy on the left, pills on the right, both inside the band the design

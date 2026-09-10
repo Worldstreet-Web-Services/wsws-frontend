@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { TokenSpot } from "@/features/discovery/types";
@@ -58,7 +58,13 @@ function token(overrides: Partial<TokenSpot> = {}): TokenSpot {
   };
 }
 
-function renderRow(props: { tokens?: readonly TokenSpot[]; loading?: boolean } = {}) {
+function renderRow(
+  props: {
+    tokens?: readonly TokenSpot[];
+    loading?: boolean;
+    onBuy?: (token: TokenSpot) => void;
+  } = {}
+) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <TokenMovesRow {...props} />
@@ -199,5 +205,48 @@ describe("token moves row", () => {
     for (const link of links) {
       expect(link).toHaveAttribute("href", "/spot?symbol=SOL");
     }
+  });
+
+  it("opens the buy sheet in place, with this card's own token, when a priced spot has a callback", () => {
+    const onBuy = vi.fn();
+    const priced = token({ symbol: "SOL", href: "/spot?symbol=SOL", priceUsd: 142.5 });
+    renderRow({ tokens: [priced], onBuy });
+
+    // The pill is a real button, not a link to the token page.
+    const buttons = screen.getAllByRole("button", { name: /Buy SOL/ });
+    expect(buttons.length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("link", { name: /Buy SOL/ })).toHaveLength(0);
+
+    fireEvent.click(buttons[0]);
+
+    expect(onBuy).toHaveBeenCalledTimes(1);
+    expect(onBuy).toHaveBeenCalledWith(priced);
+  });
+
+  it("keeps the buy pill a link to token.href when no callback is supplied", () => {
+    renderRow({ tokens: [token({ symbol: "SOL", href: "/spot?symbol=SOL", priceUsd: 142.5 })] });
+
+    const links = screen.getAllByRole("link", { name: /Buy SOL/ });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/spot?symbol=SOL");
+    }
+    expect(screen.queryAllByRole("button", { name: /Buy SOL/ })).toHaveLength(0);
+  });
+
+  it("keeps the buy pill a link when the spot has no priceUsd, even with a callback", () => {
+    const onBuy = vi.fn();
+    renderRow({
+      tokens: [token({ symbol: "SOL", href: "/spot?symbol=SOL", priceUsd: undefined })],
+      onBuy,
+    });
+
+    const links = screen.getAllByRole("link", { name: /Buy SOL/ });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/spot?symbol=SOL");
+    }
+    expect(screen.queryAllByRole("button", { name: /Buy SOL/ })).toHaveLength(0);
+    expect(onBuy).not.toHaveBeenCalled();
   });
 });

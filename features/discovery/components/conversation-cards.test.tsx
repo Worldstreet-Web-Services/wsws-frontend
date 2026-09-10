@@ -24,32 +24,54 @@ function renderWithIntl(ui: ReactNode) {
 
 const link = (name: RegExp) => screen.getByRole("link", { name });
 
+// The card is now the event's poster rather than the band's shared frame, so
+// the copy it used to carry — the kicker, the headline, the pot and the clock
+// — is gone and the wordmark is all it says. What survives is where the pill
+// goes, which is the only thing on this card that ever depended on the feed.
 describe("Last Man card", () => {
-  it("invites a round to start when none is open", () => {
+  it("stands on its own wordmark", () => {
     renderWithIntl(<LastManCard round={null} remainingMs={null} />);
-    expect(screen.getByText("Outlast everyone. Winner takes the pot.")).toBeInTheDocument();
-    expect(link(/Start a round/)).toHaveAttribute("href", "/casino/last-standing");
-    expect(link(/How it works/)).toHaveAttribute("href", "/casino/last-standing");
+    // One heading, not two: the name is broken over two lines by the artwork
+    // and has to be read back as the one name it is.
+    expect(screen.getByRole("heading", { name: /Last Man\s+Marathon/ })).toBeInTheDocument();
   });
 
-  it("links into the open round, with the pot and the clock on the card", () => {
+  it("opens the lobby when no round is open", () => {
+    renderWithIntl(<LastManCard round={null} remainingMs={null} />);
+    expect(link(/Join Now/)).toHaveAttribute("href", "/casino/last-standing");
+  });
+
+  it("links into the open round", () => {
     renderWithIntl(
       <LastManCard
         round={{ gameId: 42, endTime: 0, potUsd: 1240, pot: "$1,240" }}
         remainingMs={(1 * 3600 + 46 * 60 + 55) * 1000}
       />
     );
-    expect(screen.getByText("$1,240 in the pot")).toBeInTheDocument();
-    expect(screen.getByText("01:46:55")).toBeInTheDocument();
-    expect(link(/Join the round/)).toHaveAttribute("href", "/casino/last-standing/42");
+    expect(link(/Join Now/)).toHaveAttribute("href", "/casino/last-standing/42");
   });
 
+  // The pill reads the same in both states now, so the round having run out can
+  // only be told from where the pill goes. It must fall back to the lobby
+  // rather than deep-linking into a round nobody can still join.
   it("treats a round whose clock has run out as no round", () => {
     renderWithIntl(
       <LastManCard round={{ gameId: 42, endTime: 0, potUsd: 1, pot: "$1" }} remainingMs={0} />
     );
-    expect(screen.queryByRole("link", { name: /Join the round/ })).toBeNull();
-    expect(link(/Start a round/)).toBeInTheDocument();
+    expect(link(/Join Now/)).toHaveAttribute("href", "/casino/last-standing");
+  });
+
+  // The pot was on the old card and the design took it off. A feed value that
+  // found its way back onto the poster would be a regression, not a bonus.
+  it("keeps the feed's figures off the poster", () => {
+    renderWithIntl(
+      <LastManCard
+        round={{ gameId: 42, endTime: 0, potUsd: 1240, pot: "$1,240" }}
+        remainingMs={(1 * 3600 + 46 * 60 + 55) * 1000}
+      />
+    );
+    expect(screen.queryByText(/\$1,240/)).toBeNull();
+    expect(screen.queryByText("01:46:55")).toBeNull();
   });
 });
 

@@ -69,6 +69,8 @@ function toSpot(row: RwaBriefRow): RwaSpot {
     apy: formatApy(row.apyBps),
     logo: row.logo || null,
     href: RWA_DESK,
+    chain: row.chain,
+    address: row.address,
   };
 }
 

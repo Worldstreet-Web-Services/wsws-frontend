@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { formatCountdown } from "@/hooks/use-countdown";
 import type { LiveRound } from "@/lib/dashboard-feed";
 import type { LiveConversation } from "@/features/discovery/hooks/use-live-conversations";
+import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
 import {
   ConversationCard,
   Dust,
@@ -12,13 +12,15 @@ import {
   KickerIcon,
   across,
   artLayer,
+  useHoldReport,
 } from "@/features/discovery/components/conversation-card";
 
 // The four cards that sit beside the chess room on the "Join the Conversation"
-// band. Each is the chess card's frame in its own hue with its own motif where
-// the chess card scatters faces: an hourglass and a clock for the Last Man
-// round, a board and discs for Checkers, a row of balls for ArkBall, and the
-// hosts' faces for the rooms live on Market Square.
+// band. Three of them are the chess card's frame in its own hue with its own
+// motif where the chess card scatters faces: a board and discs for Checkers, a
+// row of balls for ArkBall, and the hosts' faces for the rooms live on Market
+// Square. The Last Man card is the exception — the event has its own poster,
+// so it wears the band's height and radius but none of the shared chrome.
 //
 // Every card here is pure. The row reads the feeds and hands each card what it
 // needs, so a card renders the same for a given input wherever it is drawn and
@@ -54,11 +56,8 @@ function ArrowOut() {
   );
 }
 
-/** "01:46:55" from the countdown's "00:01:46:55": the day field goes when it is zero. */
-function clock(remainingMs: number): string {
-  const full = formatCountdown(remainingMs) ?? "00:00:00:00";
-  return full.startsWith("00:") ? full.slice(3) : full;
-}
+/** The gold-to-bark fill the Marathon wordmark is lettered in. */
+const WORDMARK_INK = "bg-gradient-to-r from-[#ac6900] to-[#462b00] bg-clip-text text-transparent";
 
 export interface LastManCardProps {
   /** The round worth joining, or null when none is open. */
@@ -68,81 +67,95 @@ export interface LastManCardProps {
   onHold?: (held: boolean) => void;
 }
 
-// Ink to ember. The motif is the game's hourglass and, when a round is open,
-// the clock on it: the time left inside a ring, the pot under the kicker.
+// The Marathon poster. Where the other cards on this band wear the shared
+// frame, this one is the event's own artwork: the wordmark lettered in gold
+// over a hot yellow sky, the hourglass running behind it, and a single pill
+// into the round. It keeps the band's height and radius so it stands flush
+// beside its neighbours, and reports holds the way they do.
 export function LastManCard({ round, remainingMs, onHold }: LastManCardProps) {
   const t = useTranslations("discovery");
+  const hold = useHoldReport(onHold);
+
+  // The poster draws neither the clock nor the pot the old card did, so the
+  // round is read for one thing: where the pill goes. A round whose time has
+  // already run out is not one to join, and the lobby takes it from there.
   const live = round !== null && remainingMs !== null && remainingMs > 0;
 
   return (
-    <ConversationCard
-      gradient="bg-[linear-gradient(180deg,#12030a_0%,#c2263a_100%)]"
-      art={
-        <>
-          <Dust />
-          <img
-            src="/casino/last-man-hourglass.png"
-            alt=""
-            aria-hidden
-            width={68}
-            height={117}
-            className={`${artLayer} top-[-6px] h-[117px] w-auto opacity-90 drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)]`}
-            style={{ left: across(46), transform: "rotate(-9deg)" }}
-          />
-          {/* The ring is the card's clock face. It only ticks while a round
-              is open; idle it is a still ring with the hourglass, which is
-              the game's own mark. */}
-          <div
-            className={`${artLayer} top-[10px] flex h-[84px] w-[84px] items-center justify-center`}
-            style={{ right: across(52) }}
+    <article
+      className="relative h-[203px] overflow-hidden rounded-[18px] bg-[linear-gradient(126.36deg,#ffd52d_36.667%,#f5c500_87.735%)]"
+      {...hold}
+    >
+      {/* The two cloud bands, in the order the design paints them. Each export
+          is already the whole card rather than a strip, so it is laid over the
+          frame instead of being positioned along the bottom. */}
+      <div
+        aria-hidden
+        className={`${artLayer} inset-0 bg-[url('/market/lastman-clouds-back.png')] bg-[length:100%_100%] bg-no-repeat`}
+      />
+      <div
+        aria-hidden
+        className={`${artLayer} inset-0 bg-[url('/market/lastman-clouds-front.png')] bg-[length:100%_100%] bg-no-repeat`}
+      />
+
+      {/* The hourglass, and a blurred copy screened over it for the glow the
+          design puts around the glass. Anchored to the right edge as a share of
+          the card, so the wordmark keeps the left of it at every width. */}
+      <div
+        aria-hidden
+        className={`${artLayer} top-1/2 right-[-4%] h-[210px] w-[210px] -translate-y-1/2 rotate-[13.21deg]`}
+      >
+        <img
+          src="/market/lastman-hourglass.png"
+          alt=""
+          width={500}
+          height={500}
+          className="h-full w-full object-contain"
+        />
+        <img
+          src="/market/lastman-hourglass.png"
+          alt=""
+          width={500}
+          height={500}
+          className="absolute inset-0 h-full w-full object-contain mix-blend-screen blur-[5.71px]"
+        />
+      </div>
+
+      {/* The wordmark is one name broken over two lines, so it is one heading
+          with two lines in it rather than two headings: a reader hears "Last
+          Man Marathon" rather than a fragment and then another. */}
+      <div className="relative z-[1] flex h-full flex-col items-start justify-center pl-[32px]">
+        <h3>
+          <span
+            className={`block -rotate-[1.72deg] font-serif text-[26px] leading-[1.1] font-semibold tracking-[-2.72px] md:text-[34px] ${WORDMARK_INK}`}
           >
-            <svg
-              viewBox="0 0 84 84"
-              width="84"
-              height="84"
+            {t("lastManMarathonLead")}
+          </span>{" "}
+          <span
+            className={`ws-chewy mt-[2px] block text-[40px] leading-[1.1] tracking-[-0.53px] md:text-[53px] ${WORDMARK_INK}`}
+          >
+            {t("lastManMarathonTitle")}
+          </span>
+        </h3>
+        <DiscoveryCta
+          href={live ? `/casino/last-standing/${round.gameId}` : "/casino/last-standing"}
+          label={t("lastManJoinNow")}
+          tone="dark"
+          size={15}
+          className="mt-[14px] border-[1.974px] border-[#ffd52d]"
+          icon={
+            <img
+              src="/market/prediction-coins-white.svg"
+              alt=""
               aria-hidden
-              className="absolute inset-0"
-            >
-              <circle
-                cx="42"
-                cy="42"
-                r="38"
-                stroke="rgba(255,255,255,0.18)"
-                strokeWidth="3"
-                fill="none"
-              />
-              <circle
-                cx="42"
-                cy="42"
-                r="38"
-                stroke="#ffd166"
-                strokeWidth="3"
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray="239"
-                strokeDashoffset={live ? 60 : 180}
-                transform="rotate(-90 42 42)"
-              />
-            </svg>
-            <span className="tnum relative font-serif text-[15px] leading-none font-bold text-white">
-              {live ? clock(remainingMs) : "--:--"}
-            </span>
-          </div>
-        </>
-      }
-      kicker={{
-        icon: <KickerGlyph glyph="⌛" />,
-        label: live ? t("lastManLiveKicker", { pot: round.pot }) : t("lastManKicker"),
-      }}
-      headline={live ? t("lastManLiveHeadline") : t("lastManIdleHeadline")}
-      primary={{
-        href: live ? `/casino/last-standing/${round.gameId}` : "/casino/last-standing",
-        label: live ? t("lastManJoin") : t("lastManStart"),
-        icon: <Chevron />,
-      }}
-      secondary={{ href: "/casino/last-standing", label: t("lastManHow"), icon: <Chevron /> }}
-      onHold={onHold}
-    />
+              width={14}
+              height={14}
+              className="size-[13.818px] shrink-0"
+            />
+          }
+        />
+      </div>
+    </article>
   );
 }
 

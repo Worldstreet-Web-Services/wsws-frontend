@@ -150,15 +150,12 @@ describe("ArkadeMobile", () => {
     expect(segment.style.transform).toBe("translateX(226px)");
   });
 
-  it("gives the search field an accessible name and the comp's pill shape", () => {
+  it("draws no search field, and keeps the heading for the outline only", () => {
     const { container } = renderMobile(<ArkadeMobile games={sample} />);
 
-    const input = screen.getByRole("searchbox", {
-      name: enMessages.casino.hub.searchPlaceholder,
-    });
-    const field = input.parentElement!;
-    expect(field.className).toContain("h-[52px]");
-    expect(field.className).toContain("rounded-full");
+    // The phone browses by category alone. The desktop hub still has its own
+    // search, so this is a phone-only removal, not a catalogue key going away.
+    expect(screen.queryByRole("searchbox")).toBeNull();
     expect(container.querySelector("h1")?.className).toContain("sr-only");
   });
 
@@ -212,7 +209,7 @@ describe("ArkadeMobile", () => {
     expect(screen.getByText(enMessages.casino.hub.badgeComingSoon)).toBeInTheDocument();
   });
 
-  it("narrows the catalogue by category and by the name the player sees", () => {
+  it("narrows the catalogue by category, and goes back to all of it", () => {
     renderMobile(<ArkadeMobile games={sample} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
 
@@ -221,15 +218,15 @@ describe("ArkadeMobile", () => {
     expect(screen.getByText("ArkBall")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: enMessages.casino.hub.categoryAll }));
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "last man" } });
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("The Last Man")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
-  it("says so when nothing matches the search", () => {
+  it("says so when a category holds nothing", () => {
     renderMobile(<ArkadeMobile games={sample} />);
 
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "roulette" } });
+    // Nothing in the sample is a card game, so this is the empty state the
+    // list still has to draw now that there is no search to empty it.
+    fireEvent.click(screen.getByRole("button", { name: enMessages.casino.hub.categoryCards }));
     expect(screen.queryByRole("list")).toBeNull();
     expect(screen.getByText(enMessages.casino.hub.noGamesFound)).toBeInTheDocument();
   });

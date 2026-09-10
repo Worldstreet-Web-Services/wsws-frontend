@@ -205,6 +205,137 @@ describe("PredictionMarketList, the footer strip", () => {
   });
 });
 
+describe("PredictionMarketList, its own search field", () => {
+  const rates = market({
+    q: "Will the US cut rates before Q4 2026?",
+    tag: "Politics",
+    conditionId: "0xrates",
+  });
+  const solana = market({
+    q: "Will Solana close above $400?",
+    tag: "Crypto",
+    conditionId: "0xsolana",
+  });
+
+  function questions() {
+    return screen.getAllByRole("article").map((card) => card.getAttribute("aria-labelledby"));
+  }
+
+  function searchBox() {
+    return screen.getByRole("searchbox", {
+      name: messages.prediction.searchEventMarketsLabel,
+    });
+  }
+
+  // The tab owns its field now. The Market page used to pin one above the tab
+  // strip and disable it here, because this list took no query.
+  it("renders a working search field above the cards", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    const input = searchBox();
+    expect(input).toBeEnabled();
+    // First in document order, so it scrolls away with the rows rather than
+    // sitting pinned over them.
+    const firstCard = screen.getAllByRole("article")[0];
+    expect(input.compareDocumentPosition(firstCard)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("keeps only the markets whose question matches what was typed", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "solana" } });
+
+    expect(screen.getByText(solana.q)).toBeInTheDocument();
+    expect(screen.queryByText(rates.q)).not.toBeInTheDocument();
+    expect(questions()).toHaveLength(1);
+  });
+
+  it("matches the category as well as the question", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "crypto" } });
+
+    expect(screen.getByText(solana.q)).toBeInTheDocument();
+    expect(screen.queryByText(rates.q)).not.toBeInTheDocument();
+  });
+
+  it("ignores case and surrounding spaces", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "  SOLANA  " } });
+
+    expect(screen.getByText(solana.q)).toBeInTheDocument();
+    expect(questions()).toHaveLength(1);
+  });
+
+  // A query of spaces alone is no query, so it must not empty the panel.
+  it("leaves the list whole when the query is only whitespace", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "   " } });
+
+    expect(questions()).toHaveLength(2);
+  });
+
+  it("says nothing matches instead of leaving a blank panel", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "zzzz" } });
+
+    expect(screen.getByText(messages.prediction.noSearchMatches)).toBeInTheDocument();
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+    // The empty feed's line is a different statement and must not stand in for
+    // a search miss: these markets are open, they just are not these.
+    expect(screen.queryByText(messages.prediction.mobileNoMarkets)).not.toBeInTheDocument();
+    // And the field survives the miss, so the query can be cleared from here.
+    expect(searchBox()).toBeInTheDocument();
+  });
+
+  it("brings every market back when the query is cleared", () => {
+    feed.data = [rates, solana];
+    renderList();
+
+    fireEvent.change(searchBox(), { target: { value: "zzzz" } });
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+
+    fireEvent.change(searchBox(), { target: { value: "" } });
+
+    expect(questions()).toHaveLength(2);
+    expect(screen.getByText(rates.q)).toBeInTheDocument();
+    expect(screen.getByText(solana.q)).toBeInTheDocument();
+    expect(screen.queryByText(messages.prediction.noSearchMatches)).not.toBeInTheDocument();
+  });
+
+  // Nothing to search yet, so the field is off. It is off only while that is
+  // true, which is the difference from the page-level field it replaces.
+  it("disables the field while the feed is loading and while it has failed", () => {
+    feed.data = undefined;
+    feed.isPending = true;
+    const loading = renderList();
+    expect(searchBox()).toBeDisabled();
+    loading.unmount();
+
+    feed.isPending = false;
+    feed.isError = true;
+    renderList();
+    expect(searchBox()).toBeDisabled();
+  });
+
+  // Prediction is not offered at all there, so there is no list to search.
+  it("shows no field where the region gate has replaced the list", () => {
+    access.allowed = false;
+    renderList();
+
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+});
+
 describe("PredictionMarketList, its states", () => {
   it("shows placeholder cards while the feed is loading", () => {
     feed.data = undefined;

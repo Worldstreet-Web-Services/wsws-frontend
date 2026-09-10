@@ -172,6 +172,8 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
       logo: rwaLogoPath(a.chain, a.address),
       priceUsd: assetPriceUsd(a) ?? stats?.priceUsd ?? null,
       change24h: stats?.change24h ?? null,
+      chain: a.chain,
+      address: a.address,
     };
   });
 }

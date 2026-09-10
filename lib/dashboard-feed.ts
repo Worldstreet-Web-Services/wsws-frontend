@@ -7,6 +7,8 @@
 // its unavailable state, and no browser ever asks that upstream itself, which
 // is the point: a dead game gateway used to be polled by every open tab.
 
+import type { RwaChain } from "@/lib/rwa/catalog";
+
 export interface SpotBriefRow {
   symbol: string;
   name: string;
@@ -38,6 +40,14 @@ export interface RwaBriefRow {
   logo: string;
   priceUsd: number | null;
   change24h: number | null;
+  /**
+   * The registry chain and contract address. The composer already reads both
+   * to build `logo` (see `rwaLogoPath`); they are carried here too so the
+   * "Own the Real World" card can open a trade sheet for the asset without
+   * the dashboard mounting the RWA registry itself.
+   */
+  chain: RwaChain;
+  address: string;
 }
 
 /** A Last Man Standing round that can still be joined. */

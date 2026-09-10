@@ -258,6 +258,8 @@ describe("buildDashboardFeed", () => {
       priceUsd: 1.14,
       change24h: -0.01,
       logo: "/api/token-logo/base/0xUsdy",
+      chain: "base",
+      address: "0xUsdy",
     });
     // The indexed round leads by pot; the chain-only round is priced from ETH.
     expect(feed.live?.rounds.map((r) => [r.gameId, r.potUsd, r.pot])).toEqual([

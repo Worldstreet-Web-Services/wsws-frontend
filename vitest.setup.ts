@@ -76,6 +76,23 @@ class InertResizeObserver {
 
 globalThis.ResizeObserver = InertResizeObserver as unknown as typeof ResizeObserver;
 
+// jsdom ships no IntersectionObserver either, and Embla's carousels (the promo
+// deck, the balance and prediction sliders, and the shared ui/carousel) start
+// one on mount to track which slides are in view. Same shape, same reasoning:
+// an inert stub keeps them mountable, and jsdom runs no layout to observe
+// anyway.
+class InertIntersectionObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+globalThis.IntersectionObserver =
+  InertIntersectionObserver as unknown as typeof IntersectionObserver;
+
 afterEach(() => {
   cleanup();
 });

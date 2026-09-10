@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { Disclosure } from "@/components/ui/disclosure";
 import {
   ChartLineIcon,
   ChevronDownIcon,
@@ -246,6 +247,22 @@ export function ChartPanelShell({
   // happened to emit them in.
   const rootPosition = pinsFullscreen ? "relative" : "";
   const hasTimeframes = Boolean(timeframes && timeframes.length > 0);
+  const hasToggle = Boolean(onOpenChange && toggleLabel);
+  // The pinned header is drawn out of flow, so it is not a flex item and takes
+  // no gap. Only an identity header is a row the spacing below has to reckon
+  // with, and a header earns its row exactly when it carries identity.
+  const headerInFlow = hasIdentity;
+  // The 12px the panel used to get from the root's flex gap, now carried by
+  // whatever the panel's first element is.
+  //
+  // A margin on the content, not padding on the clip: a collapsed panel is a
+  // grid row of zero height, and padding sits outside that box, so `pt-3` left
+  // a 12px band under the toggle with the chart shut. Measured in Chrome at
+  // 1440px: the shut panel came to rest at 12px rather than 0. A margin is part
+  // of what gets clipped, so it goes with everything else.
+  //
+  // Only owed when something is laid out above the panel.
+  const panelLead = headerInFlow || hasToggle ? "mt-3" : "";
   // A ready panel with nothing in it is the blank frame this component exists
   // to prevent, so it falls through to the empty state.
   const hasChart = children !== null && children !== undefined && children !== false;
@@ -262,7 +279,14 @@ export function ChartPanelShell({
     // The space before each interpolation is load-bearing: Tailwind reads class
     // names out of the source text, and a class butted straight against `${` is
     // scanned as part of a longer token, so its rule is never emitted.
-    <div className={`flex w-full flex-col gap-3 ${rootPosition} ${className ?? ""}`}>
+    //
+    // No `gap-3` on the root any more. The panel below stays in the tree while
+    // it is shut, so the collapse can animate, and a flex gap is drawn between
+    // items whatever their height: a shut panel would keep a 12px band under
+    // the toggle and push everything below the shell down by it. The same 12px
+    // rhythm is spelled out instead, and the panel's share of it lives inside
+    // the clip, where a shut panel takes it away with everything else.
+    <div className={`flex w-full flex-col ${rootPosition} ${className ?? ""}`}>
       {hasHeader && (
         <div
           data-region="chart-panel-header"
@@ -328,7 +352,11 @@ export function ChartPanelShell({
       )}
 
       {onOpenChange && toggleLabel && (
-        <div data-region="chart-panel-toggle" className="flex items-center">
+        <div
+          data-region="chart-panel-toggle"
+          // Scanner rule again: space before the interpolation.
+          className={`flex items-center ${headerInFlow ? "mt-3" : ""}`}
+        >
           <ChartPanelToggle
             open={open}
             onOpenChange={onOpenChange}
@@ -338,83 +366,130 @@ export function ChartPanelShell({
         </div>
       )}
 
-      {open && hasTimeframes && (
-        <div
-          data-region="chart-panel-timeframes"
-          role="group"
-          aria-label={timeframeLabel}
-          className="ws-inset flex items-center gap-1 self-start p-1"
-        >
-          {timeframes?.map((option) => {
-            const selected = option.value === timeframe;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => onTimeframeChange?.(option.value)}
-                className={`ws-pressable cursor-pointer rounded-xl px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-                  selected ? "bg-surface-strong text-white" : "text-white/50 hover:text-white/80"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* One box whose only job is height. `Disclosure`'s animating root takes
+          no classes of its own, so the two things that root needs are handed to
+          it here through `[&>*]`.
 
-      {open && (
-        <div
-          id={PANEL_ID}
-          data-region="chart-panel-frame"
-          style={{ height }}
-          // The 1px top highlight is the hairline colour used as an inset
-          // shadow. Tailwind cannot read a colour token from inside a shadow,
-          // so the value is spelled out.
-          //
-          // max-md: strips the border, the radius and that inset shadow on
-          // the phone ticket, where the chart is meant to run edge to edge.
-          // There is exactly one render call site for this shell (the
-          // leverage desk and the phone ticket share it through the same
-          // component tree), so a bare CSS variant is safe: the base classes
-          // above are untouched, and md: and up render byte-identical to
-          // before.
-          className="bg-surface border-hairline rounded-card w-full overflow-hidden border shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] max-md:rounded-none max-md:border-0 max-md:shadow-none"
-        >
-          {effective === "loading" ? (
-            <div role="status" aria-live="polite" className="size-full p-3">
-              <span className="sr-only">{labels.loading}</span>
-              <div
-                data-region="chart-panel-skeleton"
-                aria-hidden="true"
-                className="size-full animate-pulse rounded-[14px] bg-white/6"
-              />
-            </div>
-          ) : effective === "error" ? (
-            <div className="grid size-full place-items-center px-5 text-center">
-              <div className="max-w-[42ch]">
-                <div className="text-[13.5px] font-normal text-white/55">{labels.error}</div>
-                {onRetry && labels.retry && (
+          `min-h-0` is what lets a shut panel actually reach zero. A flex item's
+          automatic minimum is its content's, and the frame inside carries a
+          real height, so without this the collapse stops at the frame's height
+          and the panel never closes. Measured in Chrome at 1440px: the desk
+          panel settled at 232px instead of 0. It is unconditional for that
+          reason.
+
+          `flex-1` is the height chain. LeverageDesktopLayout stretches the
+          frame with `[&_[data-region=chart-panel-frame]]:flex-1`, which only
+          resolves while every box between the column's definite height and the
+          frame is a growing flex child too; the clip inside the root is handed
+          `flex flex-col` through className, so the chain runs unbroken from the
+          shell root to the frame. It is dropped while the panel is shut: a
+          grown flex child with nothing in it would hold open the whole height
+          the column gave it.
+
+          Dropping it costs one frame on a stretched panel. The height stops
+          being definite the moment the panel shuts, so the fold starts from the
+          frame's own height rather than the stretched one: measured in Chrome
+          at 1440px, a 511px desk panel steps to 232px and folds smoothly from
+          there. Nothing sees it today, because LeverageDesktopLayout takes the
+          whole chart region out of the tree when the chart is closed, and every
+          other consumer gives the frame a real pixel height that does not move.
+          Holding the height would mean holding the hole. */}
+      <div
+        // Scanner rule again: space before the interpolation.
+        className={`flex min-h-0 flex-col [&>*]:min-h-0 ${open ? "flex-1 [&>*]:flex-1" : ""}`}
+      >
+        <Disclosure open={open} id={PANEL_ID} className="flex flex-col gap-3">
+          {hasTimeframes && (
+            <div
+              data-region="chart-panel-timeframes"
+              role="group"
+              aria-label={timeframeLabel}
+              // Scanner rule again: space before the interpolation.
+              className={`ws-inset flex shrink-0 items-center gap-1 self-start p-1 ${panelLead}`}
+            >
+              {timeframes?.map((option) => {
+                const selected = option.value === timeframe;
+                return (
                   <button
+                    key={option.value}
                     type="button"
-                    onClick={onRetry}
-                    className="ws-pressable mt-3 cursor-pointer rounded-full border border-white/15 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:border-white/35"
+                    aria-pressed={selected}
+                    onClick={() => onTimeframeChange?.(option.value)}
+                    className={`ws-pressable cursor-pointer rounded-xl px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                      selected
+                        ? "bg-surface-strong text-white"
+                        : "text-white/50 hover:text-white/80"
+                    }`}
                   >
-                    {labels.retry}
+                    {option.label}
                   </button>
-                )}
-              </div>
+                );
+              })}
             </div>
-          ) : effective === "empty" ? (
-            <div className="grid size-full place-items-center px-5 text-center text-[13.5px] font-normal text-white/45">
-              {labels.empty}
-            </div>
-          ) : (
-            children
           )}
-        </div>
-      )}
+
+          <div
+            data-region="chart-panel-frame"
+            style={{ height }}
+            // The 1px top highlight is the hairline colour used as an inset
+            // shadow. Tailwind cannot read a colour token from inside a shadow,
+            // so the value is spelled out.
+            //
+            // max-md: strips the border, the radius and that inset shadow on
+            // the phone ticket, where the chart is meant to run edge to edge.
+            // There is exactly one render call site for this shell (the
+            // leverage desk and the phone ticket share it through the same
+            // component tree), so a bare CSS variant is safe: the base classes
+            // above are untouched, and md: and up render byte-identical to
+            // before.
+            //
+            // Scanner rule again: space before the interpolation.
+            className={`bg-surface border-hairline rounded-card w-full overflow-hidden border shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] max-md:rounded-none max-md:border-0 max-md:shadow-none ${
+              hasTimeframes ? "" : panelLead
+            }`}
+          >
+            {/* The chart stays gated on the open state even though the frame
+                around it does not. The leverage screen's chart is a TradingView
+                iframe: wrapped rather than gated, every collapsed ticket on the
+                platform would keep one mounted and loading forever. The frame
+                is the box that animates, and it carries a real height of its
+                own, so the fold still has something to play on. The cost is
+                that the body goes at the moment the collapse starts and the
+                panel folds on an empty frame. */}
+            {!open ? null : effective === "loading" ? (
+              <div role="status" aria-live="polite" className="size-full p-3">
+                <span className="sr-only">{labels.loading}</span>
+                <div
+                  data-region="chart-panel-skeleton"
+                  aria-hidden="true"
+                  className="size-full animate-pulse rounded-[14px] bg-white/6"
+                />
+              </div>
+            ) : effective === "error" ? (
+              <div className="grid size-full place-items-center px-5 text-center">
+                <div className="max-w-[42ch]">
+                  <div className="text-[13.5px] font-normal text-white/55">{labels.error}</div>
+                  {onRetry && labels.retry && (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="ws-pressable mt-3 cursor-pointer rounded-full border border-white/15 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:border-white/35"
+                    >
+                      {labels.retry}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : effective === "empty" ? (
+              <div className="grid size-full place-items-center px-5 text-center text-[13.5px] font-normal text-white/45">
+                {labels.empty}
+              </div>
+            ) : (
+              children
+            )}
+          </div>
+        </Disclosure>
+      </div>
     </div>
   );
 }

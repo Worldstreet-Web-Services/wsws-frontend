@@ -12,6 +12,7 @@ import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import { formatCountdown, useCountdown } from "@/hooks/use-countdown";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
+import { SeeMoreCard } from "@/features/discovery/components/see-more-card";
 import type { PredictionSpot } from "@/features/discovery/types";
 
 /*
@@ -487,7 +488,8 @@ function TitleFightCard() {
 // one the heading's "next" actually refers to; the title fight has no deadline
 // on it. The repeat is third rather than second so the first two views are both
 // a genuine pair. Both copies show the same market, which is the one card
-// twice, as it has always been on this row.
+// twice, as it has always been on this row. The shelf then closes on the end
+// cap, which is the only slide here that leaves for the prediction desk.
 export function PredictionStartsRow({ markets = [] }: { markets?: readonly PredictionSpot[] }) {
   const t = useTranslations("discovery");
 
@@ -519,6 +521,7 @@ export function PredictionStartsRow({ markets = [] }: { markets?: readonly Predi
         <PredictionMarketCard market={featured} onHold={hold} />
         <TitleFightCard />
         <PredictionMarketCard market={featured} onHold={hold} />
+        <SeeMoreCard headline={t("predictionSeeMore")} href="/prediction" className={CARD_BOX} />
       </Carousel>
     </DiscoveryRow>
   );

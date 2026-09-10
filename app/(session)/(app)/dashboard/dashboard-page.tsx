@@ -37,6 +37,7 @@ import { useMemeSpots } from "@/app/(session)/(app)/dashboard/discovery/memecoin
 import { useTokenSpots } from "@/app/(session)/(app)/dashboard/discovery/tokens";
 import { usePredictionSpots } from "@/app/(session)/(app)/dashboard/discovery/predictions";
 import { useRwaSpots } from "@/app/(session)/(app)/dashboard/discovery/real-assets";
+import { useDiscoveryTrade } from "@/app/(session)/(app)/dashboard/discovery/trade-intents";
 import { useInterest } from "@/hooks/use-interest";
 import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
@@ -189,7 +190,6 @@ export function DashboardPage() {
   // come from the feed already loaded above.
   const rwaSpots = useRwaSpots();
   const rwaLeads = realAssetsLead(useInterest());
-  const realAssets = <RealAssetsRow spots={rwaSpots} />;
   // The square's feed tab lives here because two siblings drive it: the
   // section's own strip, and the plus sheet's discussions.
   const [squareTab, setSquareTab] = useState<string | undefined>(undefined);
@@ -212,6 +212,12 @@ export function DashboardPage() {
   const takeTour = useCallback(() => startDashboardTour(tTour), [tTour]);
 
   const modals = useAppModals();
+  // A discovery card's Buy pill opens the asset in place instead of sending the
+  // reader to a desk. The conversions the sheets need (registry chain to
+  // Alchemy network, display spot to meme token) live in the intents, since
+  // discovery may not import trade or rwa to do them itself.
+  const discoveryTrade = useDiscoveryTrade(modals);
+  const realAssets = <RealAssetsRow spots={rwaSpots} onBuy={discoveryTrade.onBuyRwa} />;
 
   // A spoken deposit ("deposit USDC on Solana") lands here as URL params: open
   // the funds modal on the crypto screen with the chain/token pre-selected. The
@@ -330,7 +336,7 @@ export function DashboardPage() {
             the phone. The row brings its own header and carousel; it just needs
             the phone's horizontal gutter, which the desktop shelf gives it too. */}
         <div className="px-4">
-          <Next100xRow memecoins={memeSpots} />
+          <Next100xRow memecoins={memeSpots} onBuy={discoveryTrade.onBuyMeme} />
         </div>
         {rwaLeads ? null : <div className="px-4">{realAssets}</div>}
       </div>
@@ -340,9 +346,13 @@ export function DashboardPage() {
           Conversation, Find the next 100X, then Prediction starts. */}
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
         {rwaLeads ? realAssets : null}
-        <TokenMovesRow tokens={tokenSpots} loading={tokenSpotsLoading} />
+        <TokenMovesRow
+          tokens={tokenSpots}
+          loading={tokenSpotsLoading}
+          onBuy={discoveryTrade.onBuyToken}
+        />
         <ConversationRow />
-        <Next100xRow memecoins={memeSpots} />
+        <Next100xRow memecoins={memeSpots} onBuy={discoveryTrade.onBuyMeme} />
         <PredictionStartsRow markets={predictionSpots} />
         {rwaLeads ? null : realAssets}
       </div>

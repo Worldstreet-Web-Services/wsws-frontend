@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Disclosure } from "@/components/ui/disclosure";
 import { ChartBarsIcon, TrendIcon } from "@/components/ui/icons";
 import { parseBaseUnits } from "@/features/trade/components/meme-base-units";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
@@ -280,15 +281,33 @@ export function MemeBoard() {
             </div>
           ) : (
             <>
-              <BoardDisclosure
-                icon={<TrendIcon size={11} />}
-                label={chartOpen ? t("mobileCloseChart") : t("mobileViewChart")}
-                open={chartOpen}
-                onToggle={() => setChartOpen((was) => !was)}
-                controls={chartPanelId}
-              />
-              <div id={chartPanelId} hidden={!chartOpen}>
-                {chartOpen ? <BoardChart token={selected} /> : null}
+              {/* Row and panel in one gapless box, so the screen's 12px rhythm
+                  reaches the row rather than the panel: the panel stays mounted
+                  while it is shut so it can fold, and a gap on the column would
+                  hold 12px of empty screen under a closed row. The 12px rides
+                  on the panel's content instead, and folds with it. */}
+              <div className="flex flex-col">
+                <BoardDisclosure
+                  icon={<TrendIcon size={11} />}
+                  label={chartOpen ? t("mobileCloseChart") : t("mobileViewChart")}
+                  open={chartOpen}
+                  onToggle={() => setChartOpen((was) => !was)}
+                  controls={chartPanelId}
+                />
+                {/* The chart is gated inside the panel, not wrapped by it: it
+                    resolves a CoinGecko id and pulls the chart bundle, so a
+                    closed disclosure must not be holding one open. The box
+                    still animates. The 12px lead rides on the gated wrapper,
+                    where the clip cuts it away; on the Disclosure's className
+                    it would sit on the grid item and hold the shut panel
+                    12px tall. */}
+                <Disclosure open={chartOpen} id={chartPanelId}>
+                  {chartOpen ? (
+                    <div className="pt-3">
+                      <BoardChart token={selected} />
+                    </div>
+                  ) : null}
+                </Disclosure>
               </div>
 
               <div
@@ -320,23 +339,31 @@ export function MemeBoard() {
                 })}
               </div>
 
-              <BoardDisclosure
-                icon={<ChartBarsIcon size={13} />}
-                label={metricsOpen ? t("metricsHide") : t("metricsShow")}
-                open={metricsOpen}
-                onToggle={() => setMetricsOpen((was) => !was)}
-                controls={metricsPanelId}
-              />
-              {/* The panel keeps its own trigger for screens with nowhere to
-                  put one; here the row above is it, so its trigger is off and
-                  the two share one panel id. */}
-              <MemeMarketMetrics
-                expanded={metricsOpen}
-                onToggle={setMetricsOpen}
-                metrics={metrics}
-                showTrigger={false}
-                panelId={metricsPanelId}
-              />
+              {/* Same gapless pairing as the chart row above, and for the same
+                  reason: the metrics panel keeps its place in the column while
+                  it is shut so it can fold, and it carries its own 12px lead
+                  on its content. */}
+              <div className="flex flex-col">
+                <BoardDisclosure
+                  icon={<ChartBarsIcon size={13} />}
+                  label={metricsOpen ? t("metricsHide") : t("metricsShow")}
+                  open={metricsOpen}
+                  onToggle={() => setMetricsOpen((was) => !was)}
+                  controls={metricsPanelId}
+                />
+                {/* The panel keeps its own trigger for screens with nowhere to
+                    put one; here the row above is it, so its trigger is off and
+                    the two share one panel id. The panel owns its own collapse:
+                    it draws figures the board already holds, so nothing is
+                    gained by unmounting it. */}
+                <MemeMarketMetrics
+                  expanded={metricsOpen}
+                  onToggle={setMetricsOpen}
+                  metrics={metrics}
+                  showTrigger={false}
+                  panelId={metricsPanelId}
+                />
+              </div>
 
               <TradeTicket
                 token={selected}

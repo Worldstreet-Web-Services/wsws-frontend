@@ -12,6 +12,8 @@ const row = (over: Partial<RwaBriefRow> = {}): RwaBriefRow => ({
   logo: "/api/token-logos/ethereum/0x1",
   priceUsd: 2412.5,
   change24h: 0.264,
+  chain: "ethereum",
+  address: "0x1",
   ...over,
 });
 
@@ -27,6 +29,11 @@ describe("groupRwaSpots", () => {
       apy: null,
       href: "/rwa",
     });
+  });
+
+  it("carries the registry chain and address, for the trade sheet", () => {
+    const { gold } = groupRwaSpots([row({ chain: "base", address: "0xAbC" })]);
+    expect(gold[0]).toMatchObject({ chain: "base", address: "0xAbC" });
   });
 
   it("leaves a missing price or move as null rather than a zero", () => {

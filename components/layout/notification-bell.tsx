@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { NetworkIcon } from "@/components/ui/network-icon";
 import { BellIcon } from "@/components/ui/icons";
@@ -79,6 +80,7 @@ export function NotificationBell() {
   const { items, loading } = useActivity({ pollMs: BELL_POLL_MS });
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
   const lastReadAt = useSyncExternalStore(
     subscribeLastRead,
     lastReadSnapshot,
@@ -149,44 +151,54 @@ export function NotificationBell() {
         ) : null}
       </button>
 
-      {open ? (
-        // Anchored to the bell, which is where a popover belongs. The width
-        // caps against the viewport rather than switching layout at a
-        // breakpoint, so it fits every screen down to the narrowest phone
-        // without ever running off the left edge.
-        <div className="bg-panel absolute top-[46px] right-0 z-[80] max-h-[min(70vh,420px)] w-[min(340px,calc(100vw-5rem))] overflow-auto rounded-[14px] border border-white/12 p-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)] md:top-[54px]">
-          <div className="flex items-center justify-between px-2.5 pt-2 pb-1.5">
-            <span className="text-[11px] tracking-[0.05em] text-white/40 uppercase">
-              {t("notifications")}
-            </span>
-            {badge ? (
-              <span className="text-accent text-[11px] font-medium">
-                {t("newCount", { count: unread.length })}
-              </span>
-            ) : null}
-          </div>
-
-          {loading ? (
-            <div className="px-3 py-6 text-center text-[13px] font-normal text-white/45">
-              {t("loading")}
-            </div>
-          ) : preview.length === 0 ? (
-            <div className="px-3 py-6 text-center text-[13px] font-normal text-white/45">
-              {t("emptyTitle")}
-            </div>
-          ) : (
-            preview.map((item) => <Row key={item.id} item={item} unread={unreadIds.has(item.id)} />)
-          )}
-
-          <Link
-            href="/activity"
-            onClick={close}
-            className="mt-1 flex items-center justify-center rounded-[10px] border border-white/10 bg-white/4 px-3 py-2.5 text-[12.5px] font-medium text-white hover:bg-white/8"
+      <AnimatePresence>
+        {open ? (
+          // Anchored to the bell, which is where a popover belongs. The width
+          // caps against the viewport rather than switching layout at a
+          // breakpoint, so it fits every screen down to the narrowest phone
+          // without ever running off the left edge.
+          <motion.div
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="bg-panel absolute top-[46px] right-0 z-[80] max-h-[min(70vh,420px)] w-[min(340px,calc(100vw-5rem))] overflow-auto rounded-[14px] border border-white/12 p-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)] md:top-[54px]"
           >
-            {t("viewAll")}
-          </Link>
-        </div>
-      ) : null}
+            <div className="flex items-center justify-between px-2.5 pt-2 pb-1.5">
+              <span className="text-[11px] tracking-[0.05em] text-white/40 uppercase">
+                {t("notifications")}
+              </span>
+              {badge ? (
+                <span className="text-accent text-[11px] font-medium">
+                  {t("newCount", { count: unread.length })}
+                </span>
+              ) : null}
+            </div>
+
+            {loading ? (
+              <div className="px-3 py-6 text-center text-[13px] font-normal text-white/45">
+                {t("loading")}
+              </div>
+            ) : preview.length === 0 ? (
+              <div className="px-3 py-6 text-center text-[13px] font-normal text-white/45">
+                {t("emptyTitle")}
+              </div>
+            ) : (
+              preview.map((item) => (
+                <Row key={item.id} item={item} unread={unreadIds.has(item.id)} />
+              ))
+            )}
+
+            <Link
+              href="/activity"
+              onClick={close}
+              className="mt-1 flex items-center justify-center rounded-[10px] border border-white/10 bg-white/4 px-3 py-2.5 text-[12.5px] font-medium text-white hover:bg-white/8"
+            >
+              {t("viewAll")}
+            </Link>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

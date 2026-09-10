@@ -16,6 +16,12 @@ const MESSAGES: Record<string, Record<string, string>> = {
     couldntLoad: "Couldn't load",
     portfolioAllocation: "Portfolio allocation",
     depositPending: "Your deposit is settling.",
+    assetsHeld: "assets",
+    breakdownEmpty: "Nothing held yet.",
+    slice_cash: "Cash",
+    slice_coins: "Coins",
+    slice_realAssets: "Real assets",
+    slice_tokens: "Tokens",
   },
   tour: { replayCta: "Take a tour" },
   portfolio: {
@@ -81,6 +87,7 @@ vi.mock("@/components/layout/modals/app-modals", () => ({
 const portfolio = vi.hoisted(() => ({ usePortfolio: vi.fn() }));
 vi.mock("@/hooks/use-portfolio", () => portfolio);
 
+import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { BalanceCardDesktop } from "@/features/portfolio/components/balance-card-desktop";
 
 const link: TokenBalance = {
@@ -216,5 +223,92 @@ describe("BalanceCardDesktop holdings button", () => {
     // tailwind-merge has to drop the shell's own default, or the two widths
     // race on source order instead of one of them simply winning.
     expect(panel.className).not.toContain("md:w-[min(440px,100%)]");
+  });
+});
+
+// The allocation ring behind the "Portfolio allocation" row. The reported defect
+// was that the chevron rotated smoothly while the panel under it snapped: the
+// panel was `{open ? <ring/> : null}`, and an unmount has no close to animate.
+describe("BalanceCardDesktop portfolio allocation disclosure", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    portfolio.usePortfolio.mockReturnValue({
+      tokens: [link, aave],
+      loading: false,
+      error: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  // The ring masks its own amounts, so it needs the visibility store the rest
+  // of the card gets from the app shell.
+  function renderCard(over: Partial<BalanceCardViewProps> = {}) {
+    return render(
+      <BalanceVisibilityProvider>
+        <BalanceCardDesktop {...view({ tokens: [link, aave], ...over })} />
+      </BalanceVisibilityProvider>
+    );
+  }
+
+  function trigger() {
+    return screen.getByRole("button", { name: /Portfolio allocation/ });
+  }
+
+  function panelOf(container: HTMLElement) {
+    const id = trigger().getAttribute("aria-controls");
+    expect(id).toBeTruthy();
+    const panel = container.querySelector(`[id="${id}"]`);
+    expect(panel).not.toBeNull();
+    return panel as HTMLElement;
+  }
+
+  it("keeps the ring mounted while the row is collapsed", () => {
+    renderCard();
+    expect(trigger()).toHaveAttribute("aria-expanded", "false");
+    // Nothing to fold away if the content has already left the tree.
+    expect(screen.getByText("Tokens")).toBeInTheDocument();
+  });
+
+  it("animates the panel's own height instead of swapping it in and out", () => {
+    const { container } = renderCard();
+    const panel = panelOf(container);
+
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel.className).toContain("transition-[grid-template-rows,opacity]");
+    // Collapsed content stays out of the tab order and unread, the way the
+    // unmounted panel was.
+    expect(panel.hasAttribute("inert")).toBe(true);
+
+    fireEvent.click(trigger());
+
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+    expect(panel.hasAttribute("inert")).toBe(false);
+  });
+
+  it("keeps the panel full width and puts its top gap on the ring, not the panel", () => {
+    // Two layout traps, both measured in a browser at 1440px.
+    // The panel's box is a flex item in an items-center column, so without a
+    // full-width parent it shrinks to the ring's own width and the legend
+    // beside it loses the room it stretches into.
+    // And the 16px gap has to sit on the ring inside the clip. A margin on
+    // either the panel or the clip counts towards the collapsed track, which
+    // then stands 16px tall while shut and leaves dead space under the row.
+    const { container } = renderCard();
+    const panel = panelOf(container);
+
+    expect(panel.parentElement?.className).toContain("w-full");
+    expect(panel.className).not.toContain("mt-");
+
+    const clip = panel.querySelector(".overflow-hidden") as HTMLElement;
+    expect(clip).not.toBeNull();
+    expect(clip.className).not.toContain("mt-");
+    expect((clip.firstElementChild as HTMLElement).className).toContain("mt-4");
+  });
+
+  it("still draws no allocation row at all when nothing is held", () => {
+    renderCard({ tokens: [] });
+    expect(screen.queryByRole("button", { name: /Portfolio allocation/ })).toBeNull();
+    expect(screen.queryByText("Tokens")).toBeNull();
   });
 });

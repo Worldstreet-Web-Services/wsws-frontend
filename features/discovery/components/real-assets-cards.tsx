@@ -20,6 +20,16 @@ const CARD_BOX =
 /** Decorative layers never take the pointer: the pill is the thing under it. */
 const ART = "pointer-events-none absolute select-none";
 
+/**
+ * What the pill does: go to the desk, or open the trade sheet in place. Never
+ * both, for the same reason `DiscoveryCta` itself splits the two: a pill that
+ * opens a sheet is not a link, and giving it an `href` too would promise a
+ * page tap and middle-click never load.
+ */
+type CardCta = { label: string } & (
+  { href: string; onClick?: never } | { onClick: () => void; href?: never }
+);
+
 interface FrameProps {
   surface: string;
   art: ReactNode;
@@ -29,7 +39,7 @@ interface FrameProps {
   detail: string;
   /** The figure row: price and move, or the yield. Null draws nothing. */
   figure: ReactNode;
-  cta: { href: string; label: string };
+  cta: CardCta;
   onHold?: (held: boolean) => void;
 }
 
@@ -67,7 +77,7 @@ function Frame({ surface, art, kicker, headline, detail, figure, cta, onHold }: 
       </div>
       <div className="relative z-[1] flex items-end justify-between gap-4">
         <div className="min-w-0">{figure}</div>
-        <DiscoveryCta href={cta.href} label={cta.label} tone="light" size={13} />
+        <DiscoveryCta {...cta} tone="light" size={13} />
       </div>
     </article>
   );
@@ -96,13 +106,40 @@ function detailOf(spot: RwaSpot, by: (issuer: string) => string): string {
 interface CategoryCardProps {
   spots: readonly RwaSpot[];
   onHold?: (held: boolean) => void;
+  /**
+   * Open the trade sheet on this spot instead of leaving for the desk.
+   * Wired only when the spot itself carries a `chain` and `address`; a
+   * placeholder card (no live asset) has nothing to trade and always keeps
+   * its link to `/rwa`.
+   */
+  onBuy?: (spot: RwaSpot) => void;
+}
+
+/**
+ * The pill's action for a featured spot: open the trade sheet when the row
+ * was given a callback and the spot itself carries a chain and address, the
+ * desk link otherwise. A category placeholder (`spot` null) has nothing to
+ * trade and always falls back to `/rwa`, same as before this shelf could
+ * open a sheet at all.
+ */
+function ctaFor(
+  spot: RwaSpot | null,
+  onBuy: ((spot: RwaSpot) => void) | undefined,
+  label: string
+): CardCta {
+  if (spot && onBuy && spot.chain && spot.address) {
+    return { onClick: () => onBuy(spot), label };
+  }
+  return { href: spot?.href ?? "/rwa", label };
 }
 
 // Charcoal to bronze, three bevelled bars in a soft glow. Features the gold
 // token the feed prices best.
-export function GoldCard({ spots }: CategoryCardProps) {
+export function GoldCard({ spots, onBuy }: CategoryCardProps) {
   const t = useTranslations("discovery");
   const spot = spots[0] ?? null;
+  const label = spot ? t("rwaBuy", { symbol: spot.symbol }) : t("rwaExplore");
+  const cta = ctaFor(spot, onBuy, label);
   return (
     <Frame
       surface="linear-gradient(160deg, #15110a 0%, #3b2a0d 55%, #8a5d16 100%)"
@@ -140,19 +177,18 @@ export function GoldCard({ spots }: CategoryCardProps) {
       headline={spot ? spot.symbol : t("rwaGoldHeadline")}
       detail={spot ? detailOf(spot, (i) => t("rwaBy", { issuer: i })) : t("rwaGoldIdle")}
       figure={spot ? <PriceFigure spot={spot} /> : null}
-      cta={{
-        href: spot?.href ?? "/rwa",
-        label: spot ? t("rwaBuy", { symbol: spot.symbol }) : t("rwaExplore"),
-      }}
+      cta={cta}
     />
   );
 }
 
 // Navy to teal, the yield inside a ring. Features the highest published APY.
-export function TreasuriesCard({ spots }: CategoryCardProps) {
+export function TreasuriesCard({ spots, onBuy }: CategoryCardProps) {
   const t = useTranslations("discovery");
   const spot = spots[0] ?? null;
   const apy = spot?.apy ?? null;
+  const label = apy ? t("rwaEarn", { apy }) : t("rwaExplore");
+  const cta = ctaFor(spot, onBuy, label);
   return (
     <Frame
       surface="linear-gradient(160deg, #051426 0%, #0b3b52 55%, #14707c 100%)"
@@ -197,10 +233,7 @@ export function TreasuriesCard({ spots }: CategoryCardProps) {
       headline={spot ? spot.symbol : t("rwaTreasuriesHeadline")}
       detail={spot ? detailOf(spot, (i) => t("rwaBy", { issuer: i })) : t("rwaTreasuriesIdle")}
       figure={spot ? <PriceFigure spot={spot} /> : null}
-      cta={{
-        href: spot?.href ?? "/rwa",
-        label: apy ? t("rwaEarn", { apy }) : t("rwaExplore"),
-      }}
+      cta={cta}
     />
   );
 }
@@ -216,9 +249,11 @@ const BUILDINGS = [
 ];
 
 // Slate to terracotta, a skyline with lit windows at the foot.
-export function RealEstateCard({ spots }: CategoryCardProps) {
+export function RealEstateCard({ spots, onBuy }: CategoryCardProps) {
   const t = useTranslations("discovery");
   const spot = spots[0] ?? null;
+  const label = spot ? t("rwaOwn") : t("rwaExplore");
+  const cta = ctaFor(spot, onBuy, label);
   return (
     <Frame
       surface="linear-gradient(160deg, #1f1d26 0%, #4a2f33 55%, #b5533a 100%)"
@@ -250,7 +285,7 @@ export function RealEstateCard({ spots }: CategoryCardProps) {
       headline={spot ? spot.symbol : t("rwaRealEstateHeadline")}
       detail={spot ? detailOf(spot, (i) => t("rwaBy", { issuer: i })) : t("rwaRealEstateIdle")}
       figure={spot ? <PriceFigure spot={spot} /> : null}
-      cta={{ href: spot?.href ?? "/rwa", label: spot ? t("rwaOwn") : t("rwaExplore") }}
+      cta={cta}
     />
   );
 }
@@ -262,10 +297,12 @@ interface StocksCardProps extends CategoryCardProps {
 
 // Ink to forest, a restrained ticker tape of the tokenised stocks. The
 // featured one rotates; the tape shows the rest with their moves.
-export function StocksCard({ spots, index, onHold }: StocksCardProps) {
+export function StocksCard({ spots, index, onHold, onBuy }: StocksCardProps) {
   const t = useTranslations("discovery");
   const spot = spots.length > 0 ? spots[index % spots.length] : null;
   const tape = spots.slice(0, 8);
+  const label = spot ? t("rwaTrade", { symbol: spot.symbol }) : t("rwaExplore");
+  const cta = ctaFor(spot, onBuy, label);
   return (
     <Frame
       surface="linear-gradient(160deg, #050a08 0%, #0f2c1f 55%, #1c5a3a 100%)"
@@ -298,10 +335,7 @@ export function StocksCard({ spots, index, onHold }: StocksCardProps) {
       headline={spot ? spot.symbol : t("rwaStocksHeadline")}
       detail={spot ? detailOf(spot, (i) => t("rwaBy", { issuer: i })) : t("rwaStocksIdle")}
       figure={spot ? <PriceFigure spot={spot} /> : null}
-      cta={{
-        href: spot?.href ?? "/rwa",
-        label: spot ? t("rwaTrade", { symbol: spot.symbol }) : t("rwaExplore"),
-      }}
+      cta={cta}
       onHold={onHold}
     />
   );

@@ -122,9 +122,14 @@ describe("MemeDesktopBoard rail", () => {
     );
   });
 
-  it("leaves the metrics panel unmounted until the caller opens it", () => {
+  // The metrics slot is the one panel the rail does not gate. It is handed a
+  // panel that draws figures the route already holds and that owns its own
+  // collapse (MemeMarketMetrics reads the same `metricsOpen`), so mounting it
+  // costs nothing and leaving it mounted is what lets it fold shut instead of
+  // vanishing. Anything with a cost belongs in the `chart` slot's category.
+  it("leaves the metrics slot mounted so the panel it holds can fold itself shut", () => {
     const props = renderBoard({ metrics: <div>metrics slot</div> });
-    expect(screen.queryByText("metrics slot")).toBeNull();
+    expect(screen.getByText("metrics slot")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Market Metrics" }));
     expect(props.onMetricsToggle).toHaveBeenCalledOnce();
   });
@@ -132,6 +137,71 @@ describe("MemeDesktopBoard rail", () => {
   it("renders the metrics slot once opened", () => {
     renderBoard({ metricsOpen: true, metrics: <div>metrics slot</div> });
     expect(screen.getByText("metrics slot")).toBeInTheDocument();
+  });
+
+  // The defect on the desk: both rows swapped their panel in and out, so the
+  // chevron turned smoothly and the rail snapped. The chart cannot stay mounted
+  // (it resolves an id and boots a chart), so the panel animates around it and
+  // the chart itself stays gated inside.
+  it("animates the chart panel open while leaving the chart unmounted when closed", () => {
+    renderBoard({ chart: <div>chart slot</div> });
+    const toggle = screen.getByRole("button", { name: "View Chart" });
+    const panel = document.getElementById(
+      toggle.getAttribute("aria-controls") as string
+    ) as HTMLElement;
+
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel.className).toContain("transition-[grid-template-rows,opacity]");
+    expect(panel).toHaveAttribute("inert");
+    expect(screen.queryByText("chart slot")).toBeNull();
+  });
+
+  it("unfolds the chart panel to the chart's own height once it is open", () => {
+    renderBoard({ chartOpen: true, chart: <div>chart slot</div> });
+    const toggle = screen.getByRole("button", { name: "Close Chart" });
+    const panel = document.getElementById(
+      toggle.getAttribute("aria-controls") as string
+    ) as HTMLElement;
+
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+    expect(panel).not.toHaveAttribute("inert");
+    expect(screen.getByText("chart slot")).toBeInTheDocument();
+  });
+
+  // The rail stacks on 13px. That gap has to fold with the panel rather than
+  // sit on the column as a flex gap, or a closed row would carry 13px of empty
+  // rail under it that the design never draws. It cannot ride on the
+  // Disclosure's className either: that lands on the grid item, whose padding
+  // counts towards the 0fr track and holds the shut panel 13px tall.
+  it("folds the rail's gap under each row away with its panel", () => {
+    renderBoard({
+      chartOpen: true,
+      chart: <div>chart slot</div>,
+      metrics: <div>metrics slot</div>,
+    });
+
+    for (const label of ["Close Chart", "Market Metrics"]) {
+      const row = screen.getByRole("button", { name: label });
+      expect((row.parentElement as HTMLElement).className).not.toContain("gap-");
+    }
+    const chartToggle = screen.getByRole("button", { name: "Close Chart" });
+    const chartPanel = document.getElementById(chartToggle.getAttribute("aria-controls") as string);
+    const clip = chartPanel?.firstElementChild as HTMLElement;
+    expect(clip.className).not.toMatch(/(^|\s)-?(m|p)(t|b|y)?-/);
+    expect((clip.firstElementChild as HTMLElement).className).toContain("pt-[13px]");
+  });
+
+  // Disclosure shouts in development when a caller puts spacing on its
+  // className, because that spacing never collapses. Nothing in this rail may
+  // trip it, in either state.
+  it("trips no spacing warning from the disclosure primitive", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderBoard({ chart: <div>chart slot</div>, metrics: <div>metrics slot</div> });
+    renderBoard({ chartOpen: true, metricsOpen: true, chart: <div>c</div>, metrics: <div>m</div> });
+
+    const shouted = spy.mock.calls.filter((call) => String(call[0]).startsWith("Disclosure:"));
+    expect(shouted).toEqual([]);
+    spy.mockRestore();
   });
 
   it("renders the ticket and the side the caller picked", () => {

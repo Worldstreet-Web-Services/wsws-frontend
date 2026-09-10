@@ -25,14 +25,13 @@ export interface RwaSectionProps {
   onAddFunds?: () => void;
   /**
    * The phone Market page's Real assets tab: the list in place of the table,
-   * filtered by the page's own search box, with no chrome of its own. The
-   * sheets behind a row are the same either way.
+   * with no chrome of its own. The list carries its own search field, so the
+   * page passes no query down. The sheets behind a row are the same either way.
    */
   phone?: boolean;
-  query?: string;
 }
 
-export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds, phone = false, query = "" }) => {
+export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds, phone = false }) => {
   const t = useTranslations("rwa");
   const { assets, loading, error } = useListedRwaAssets();
 
@@ -118,13 +117,7 @@ export const RwaSection: FC<RwaSectionProps> = ({ onAddFunds, phone = false, que
   if (phone) {
     return (
       <>
-        <RwaPhoneList
-          assets={buyable}
-          loading={loading}
-          error={error}
-          query={query}
-          onOpen={setDetailAsset}
-        />
+        <RwaPhoneList assets={buyable} loading={loading} error={error} onOpen={setDetailAsset} />
         {sheets}
       </>
     );

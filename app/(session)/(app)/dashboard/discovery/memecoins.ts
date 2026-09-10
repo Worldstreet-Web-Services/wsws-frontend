@@ -177,6 +177,7 @@ function rank(token: MemeToken): RankedSpot | null {
       up,
       image: logo(token.logoUrl),
       href: MEME_DESK,
+      token,
     },
   };
 }
@@ -248,6 +249,12 @@ function holdFeaturedSlots(ranked: readonly RankedSpot[], limit: number): Ranked
   return [...kept, ...held].sort((a, b) => b.percent - a.percent);
 }
 
+// `token` is deliberately not compared: the poll refetches a fresh object
+// every 30 seconds even when nothing the card shows has moved, and comparing
+// it would restart the rotation on every poll, which is exactly what this
+// check exists to prevent. The buy sheet requotes live before it trades, so a
+// held token that is a poll or two behind the on-screen figures is not a
+// correctness problem.
 function sameSpot(a: MemeSpot, b: MemeSpot): boolean {
   return (
     a.symbol === b.symbol &&

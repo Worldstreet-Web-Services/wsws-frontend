@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
+import { SeeMoreCard } from "@/features/discovery/components/see-more-card";
 import type { MemeSpot } from "@/features/discovery/types";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 
@@ -114,6 +115,16 @@ function useHold(onHold: (held: boolean) => void) {
 interface MemeBoomCardProps extends HeldCardProps {
   /** The coin on show, or null for the Pepe the design draws. */
   spot: MemeSpot | null;
+  /**
+   * Called with the coin whose Buy pill was pressed, so the caller can open
+   * the meme trade sheet in place instead of leaving the dashboard.
+   *
+   * Optional: a caller that has not wired the sheet up yet still gets a
+   * working card. It is also the reason the pill keeps its link even when
+   * this is supplied, for a card with nothing to trade: the placeholder Pepe
+   * (`spot === null`) and a live coin the adapter never attached a token to.
+   */
+  onBuy?: (spot: MemeSpot) => void;
 }
 
 // The black card is one centred composition: avatar, chips, heading and pill
@@ -125,7 +136,7 @@ interface MemeBoomCardProps extends HeldCardProps {
 // The design drew it for Pepe, with "+1000%" thrown around him. A live coin
 // takes his place: its picture in the avatar slot, its own move on every chip,
 // and its ticker in the heading. With no coin it is the design's card.
-function MemeBoomCard({ spot, onHold }: MemeBoomCardProps) {
+function MemeBoomCard({ spot, onHold, onBuy }: MemeBoomCardProps) {
   const t = useTranslations("discovery");
   const hold = useHold(onHold);
 
@@ -134,6 +145,23 @@ function MemeBoomCard({ spot, onHold }: MemeBoomCardProps) {
   const [logoBroken, setLogoBroken] = useState(false);
   const artwork = spot ? artworkFor(spot.symbol) : null;
   const logo = spot?.image && !logoBroken ? spot.image : null;
+
+  // Only a real coin with its token attached can open the trade sheet; the
+  // placeholder and a listing missing its token keep the link to /meme.
+  const buyableSpot = spot !== null && spot.token !== undefined ? spot : null;
+  const buyPillProps = {
+    label: spot === null ? t("pepeCta") : t("memeBuy", { symbol: spot.symbol }),
+    tone: "light" as const,
+    size: 14,
+    icon: (
+      <span
+        aria-hidden
+        className="size-[14.43px] shrink-0 bg-[url('/market/next100x-icon-coins.svg')] bg-[length:12.93px_12.93px] bg-center bg-no-repeat"
+      />
+    ),
+    padding: CTA_PADDING,
+    className: `mt-[11px] min-w-[125px] tracking-[-0.56px] ${CTA_SURFACE}`,
+  };
 
   return (
     <article className={CARD_BOX} style={{ background: PEPE_CARD_SURFACE }} {...hold}>
@@ -216,20 +244,11 @@ function MemeBoomCard({ spot, onHold }: MemeBoomCardProps) {
             ? t("pepeTitle")
             : t(spot.up ? "memeBoomTitle" : "memeCoolTitle", { symbol: spot.symbol })}
         </h3>
-        <DiscoveryCta
-          href={spot?.href ?? "/meme"}
-          label={spot === null ? t("pepeCta") : t("memeBuy", { symbol: spot.symbol })}
-          tone="light"
-          size={14}
-          icon={
-            <span
-              aria-hidden
-              className="size-[14.43px] shrink-0 bg-[url('/market/next100x-icon-coins.svg')] bg-[length:12.93px_12.93px] bg-center bg-no-repeat"
-            />
-          }
-          padding={CTA_PADDING}
-          className={`mt-[11px] min-w-[125px] tracking-[-0.56px] ${CTA_SURFACE}`}
-        />
+        {buyableSpot !== null && onBuy ? (
+          <DiscoveryCta {...buyPillProps} onClick={() => onBuy(buyableSpot)} />
+        ) : (
+          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/meme"} />
+        )}
       </div>
     </article>
   );
@@ -550,6 +569,17 @@ function MemeArt({ artwork, logo, symbol, up, onLogoError }: MemeArtProps) {
 interface MemeSpotCardProps extends HeldCardProps {
   /** The coin on show, or null for the Shiba the design draws. */
   spot: MemeSpot | null;
+  /**
+   * Called with the coin whose Buy pill was pressed, so the caller can open
+   * the meme trade sheet in place instead of leaving the dashboard.
+   *
+   * Optional: a caller that has not wired the sheet up yet still gets a
+   * working card. It is also the reason the pill keeps its link even when
+   * this is supplied, for a card with nothing to trade: the placeholder
+   * Shiba (`spot === null`) and a live coin the adapter never attached a
+   * token to.
+   */
+  onBuy?: (spot: MemeSpot) => void;
 }
 
 // The orange card. The artwork holds the bottom left corner at the size the
@@ -563,7 +593,7 @@ interface MemeSpotCardProps extends HeldCardProps {
 // none it shows the Shiba the design was drawn with, which is the same drawing
 // a live SHIB gets. He carries the design's own line and no figure: the
 // illustration is editorial, so there is no move to report.
-function MemeSpotCard({ spot, onHold }: MemeSpotCardProps) {
+function MemeSpotCard({ spot, onHold, onBuy }: MemeSpotCardProps) {
   const t = useTranslations("discovery");
   const hold = useHold(onHold);
 
@@ -571,6 +601,23 @@ function MemeSpotCard({ spot, onHold }: MemeSpotCardProps) {
   // on the coin, so the disc falls back to the ticker rather than a broken image.
   const [logoBroken, setLogoBroken] = useState(false);
   const logo = spot?.image && !logoBroken ? spot.image : null;
+
+  // Only a real coin with its token attached can open the trade sheet; the
+  // placeholder and a listing missing its token keep the link to /meme.
+  const buyableSpot = spot !== null && spot.token !== undefined ? spot : null;
+  const buyPillProps = {
+    label: t("shibaCta"),
+    tone: "light" as const,
+    size: 14,
+    icon: (
+      <span
+        aria-hidden
+        className="size-[14.43px] shrink-0 bg-[url('/market/next100x-icon-chart.svg')] bg-[length:11.72px_11.72px] bg-center bg-no-repeat"
+      />
+    ),
+    padding: CTA_PADDING,
+    className: `mt-3 min-w-[142px] tracking-[-0.56px] ${CTA_SURFACE}`,
+  };
 
   // The pictures this card needs are fetched up front, so a swap paints
   // something already in cache instead of leaving a gap until it lands. React
@@ -649,20 +696,11 @@ function MemeSpotCard({ spot, onHold }: MemeSpotCardProps) {
             t("shibaTitle")
           )}
         </h3>
-        <DiscoveryCta
-          href={spot?.href ?? "/meme"}
-          label={t("shibaCta")}
-          tone="light"
-          size={14}
-          icon={
-            <span
-              aria-hidden
-              className="size-[14.43px] shrink-0 bg-[url('/market/next100x-icon-chart.svg')] bg-[length:11.72px_11.72px] bg-center bg-no-repeat"
-            />
-          }
-          padding={CTA_PADDING}
-          className={`mt-3 min-w-[142px] tracking-[-0.56px] ${CTA_SURFACE}`}
-        />
+        {buyableSpot !== null && onBuy ? (
+          <DiscoveryCta {...buyPillProps} onClick={() => onBuy(buyableSpot)} />
+        ) : (
+          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/meme"} />
+        )}
       </div>
     </article>
   );
@@ -681,7 +719,19 @@ const MEME_HOLD_MS = 10_000;
 // ten seconds the featured coin advances and every card moves one place with
 // it. With no coins it is the design's own pair: Pepe, the Shiba, and Pepe
 // again so the loop has three slides.
-export function Next100xRow({ memecoins = [] }: { memecoins?: readonly MemeSpot[] }) {
+export function Next100xRow({
+  memecoins = [],
+  onBuy,
+}: {
+  memecoins?: readonly MemeSpot[];
+  /**
+   * Called with the coin whose Buy pill was pressed, threaded straight down
+   * to both card variants. Optional for the same reason it is optional on
+   * the cards: a caller that has not wired the meme trade sheet up yet still
+   * gets a row that works, its pills navigating to /meme as before.
+   */
+  onBuy?: (spot: MemeSpot) => void;
+}) {
   const t = useTranslations("discovery");
 
   // The holds are counted rather than flagged. The row draws several cards,
@@ -705,16 +755,24 @@ export function Next100xRow({ memecoins = [] }: { memecoins?: readonly MemeSpot[
     dealt.length > 0
       ? dealt.map((coin, slot) =>
           slot % 2 === 0 ? (
-            <MemeBoomCard key={coin.symbol} spot={coin} onHold={onHold} />
+            <MemeBoomCard key={coin.symbol} spot={coin} onHold={onHold} onBuy={onBuy} />
           ) : (
-            <MemeSpotCard key={coin.symbol} spot={coin} onHold={onHold} />
+            <MemeSpotCard key={coin.symbol} spot={coin} onHold={onHold} onBuy={onBuy} />
           )
         )
       : [
-          <MemeBoomCard key="pepe" spot={null} onHold={onHold} />,
-          <MemeSpotCard key="shiba" spot={null} onHold={onHold} />,
-          <MemeBoomCard key="pepe-again" spot={null} onHold={onHold} />,
+          <MemeBoomCard key="pepe" spot={null} onHold={onHold} onBuy={onBuy} />,
+          <MemeSpotCard key="shiba" spot={null} onHold={onHold} onBuy={onBuy} />,
+          <MemeBoomCard key="pepe-again" spot={null} onHold={onHold} onBuy={onBuy} />,
         ];
+
+  // The end-cap closes the row with a way through to the desk. Both branches
+  // get it: unlike the token row, neither of these is a loading state. The
+  // fallback is the design's own editorial pair, which the reader sees as a
+  // finished row whenever the feed has nothing live.
+  cards.push(
+    <SeeMoreCard key="see-more" headline={t("next100xSeeMore")} href="/meme" className={CARD_BOX} />
+  );
 
   return (
     <DiscoveryRow

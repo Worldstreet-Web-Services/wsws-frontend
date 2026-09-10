@@ -39,8 +39,18 @@ export function discoveryPillPadding(size: number) {
   };
 }
 
-interface DiscoveryCtaProps {
-  href: string;
+/**
+ * What the pill does: go somewhere, or act here. Never both.
+ *
+ * A pill that opens a sheet over the card is not a link, and rendering it as
+ * one would promise a page that is never loaded: middle click and "open in new
+ * tab" would both land on a destination the reader did not ask for. So an
+ * acting pill is a real button, and the union makes the two mutually exclusive
+ * rather than leaving a caller to pass both and pick a winner at runtime.
+ */
+type DiscoveryCtaAction = { href: string; onClick?: never } | { onClick: () => void; href?: never };
+
+interface DiscoveryCtaBase {
   label: string;
   /** "dark" is the black pill on a light card, "light" the white pill on a dark one. */
   tone: "dark" | "light";
@@ -56,6 +66,8 @@ interface DiscoveryCtaProps {
   padding?: string;
   className?: string;
 }
+
+type DiscoveryCtaProps = DiscoveryCtaBase & DiscoveryCtaAction;
 
 // Every discovery card ends in one of these: a rounded pill, black on the light
 // cards and white on the dark ones, carrying the design's Mona Sans semibold.
@@ -80,6 +92,7 @@ interface DiscoveryCtaProps {
 // resting shadows some cards pass in are design-verified and stay.
 export function DiscoveryCta({
   href,
+  onClick,
   label,
   tone,
   icon,
@@ -89,22 +102,30 @@ export function DiscoveryCta({
 }: DiscoveryCtaProps) {
   const pill = discoveryPillPadding(size);
 
-  return (
-    <Link
-      href={href}
-      style={{
-        fontSize: size,
-        gap: pill.gap,
-        ...(padding
-          ? null
-          : { paddingInline: pill.paddingInline, paddingBlock: pill.paddingBlock }),
-      }}
-      className={`ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? ""} text-center font-serif font-semibold ${
-        tone === "dark" ? "bg-black text-white" : "bg-white text-[#0a0a0a]"
-      } ${className}`}
-    >
+  const style = {
+    fontSize: size,
+    gap: pill.gap,
+    ...(padding ? null : { paddingInline: pill.paddingInline, paddingBlock: pill.paddingBlock }),
+  };
+  const classes = `ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? ""} text-center font-serif font-semibold ${
+    tone === "dark" ? "bg-black text-white" : "bg-white text-[#0a0a0a]"
+  } ${className}`;
+  const content = (
+    <>
       {icon ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
       <span className="min-w-0 break-words">{label}</span>
+    </>
+  );
+
+  // The button carries `type` because a pill inside a form would otherwise
+  // submit it, and the design's own font: a button does not inherit one.
+  return href === undefined ? (
+    <button type="button" onClick={onClick} style={style} className={`${classes} font-[inherit]`}>
+      {content}
+    </button>
+  ) : (
+    <Link href={href} style={style} className={classes}>
+      {content}
     </Link>
   );
 }

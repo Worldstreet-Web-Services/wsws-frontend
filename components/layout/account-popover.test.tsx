@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AccountPopover } from "./account-popover";
 
 vi.mock("next-intl", () => ({
@@ -69,5 +69,21 @@ describe("AccountPopover", () => {
 
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("stays mounted across an open/close cycle so it can play its exit animation", async () => {
+    // The component must never early-return null on `open`: AnimatePresence
+    // needs to see the closing render to play an exit frame, and an early
+    // unmount skips straight past it. This asserts the component itself
+    // reaches its own return regardless of `open`, and that the menu is
+    // eventually removed once the exit completes.
+    const triggerRef = { current: document.createElement("button") };
+    const { rerender } = render(
+      <AccountPopover open={true} onClose={() => {}} triggerRef={triggerRef} />
+    );
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    rerender(<AccountPopover open={false} onClose={() => {}} triggerRef={triggerRef} />);
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 });

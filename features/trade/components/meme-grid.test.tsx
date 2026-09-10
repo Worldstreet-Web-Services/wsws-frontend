@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "@/messages/en.json";
@@ -43,13 +43,14 @@ describe("MemeGrid", () => {
     expect(screen.getByText(/Mkt cap/)).toBeInTheDocument();
   });
 
-  it("closes the filter panel on Escape", () => {
+  it("closes the filter panel on Escape", async () => {
     catalog.tokens = [memeToken({ symbol: "AAA" })];
     renderTable();
     fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    // The panel now plays an exit animation before it unmounts.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("opens the coin modal from a card", () => {

@@ -165,4 +165,53 @@ describe("the card the rows are drawn in", () => {
     fireEvent.click(header);
     expect(header).toHaveAttribute("aria-expanded", "true");
   });
+
+  // The defect: the list was dropped out of the layout the instant the caret
+  // was pressed, so the caret turned smoothly and the card snapped shut under
+  // it. The rows have to stay while the card folds for there to be a fold.
+  it("keeps the rows mounted and collapsed while shut, rather than dropping them", () => {
+    renderCard({ swaps: [swap()] });
+    const header = screen.getByRole("button", { name: /Live transactions/i });
+    const panel = document.getElementById(
+      header.getAttribute("aria-controls") as string
+    ) as HTMLElement;
+
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+
+    fireEvent.click(header);
+    expect(panel).not.toHaveAttribute("hidden");
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel.className).toContain("transition-[grid-template-rows,opacity]");
+    expect(panel).toHaveAttribute("inert");
+    expect(within(panel).getByTestId("meme-tx-row")).toBeInTheDocument();
+  });
+
+  // The rows stay mounted while the card is shut, so it is worth being explicit
+  // that keeping them costs nothing: this card holds no query. It is rendered
+  // here with no QueryClientProvider at all, which a useQuery anywhere under it
+  // would throw on. The swap history and its 15s poll belong to the board
+  // (useMemeSwaps), and arrive as props, so collapsing the card neither starts
+  // a poll nor stops one.
+  it("holds no query of its own, so a collapsed card polls nothing", () => {
+    expect(() => renderCard({ swaps: [swap()] })).not.toThrow();
+    expect(screen.getByTestId("meme-tx-row")).toBeInTheDocument();
+  });
+
+  // The 10px between the header and the list has to fold with the list. Left on
+  // the card as a flex gap it would outlive the collapse and pad the closed
+  // card by 10px it never had, and on the Disclosure's className it would sit
+  // on the grid item, whose padding counts towards the 0fr track and holds a
+  // shut card 10px open. It belongs on the content inside the clip.
+  it("folds the gap under the header away with the list", () => {
+    renderCard({ swaps: [swap()] });
+    const header = screen.getByRole("button", { name: /Live transactions/i });
+    const panel = document.getElementById(header.getAttribute("aria-controls") as string);
+    const card = panel?.parentElement as HTMLElement;
+    const clip = panel?.firstElementChild as HTMLElement;
+
+    expect(card.className).not.toContain("gap-[10px]");
+    expect(clip.className).toContain("overflow-hidden");
+    expect(clip.className).not.toMatch(/(^|\s)-?(m|p)(t|b|y)?-/);
+    expect((clip.firstElementChild as HTMLElement).className).toContain("pt-[10px]");
+  });
 });

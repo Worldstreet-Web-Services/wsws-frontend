@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { BRAND } from "@/lib/brand";
 import { useMoney } from "@/components/ui/currency-select";
+import { SearchField } from "@/components/ui/search-field";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
@@ -12,9 +13,14 @@ import { usePolymarketAccess } from "@/features/prediction/hooks/use-polymarket-
 import type { Prediction } from "@/lib/types";
 
 // The Market design's phone Prediction tab (Figma 1:16194): the market cards
-// stacked in one column under the shared search and category strip. Each card is
-// a coloured header band carrying the market's artwork and question, the two
+// stacked in one column under this tab's own search field. Each card is a
+// coloured header band carrying the market's artwork and question, the two
 // outcomes as rows below it, and a footer of volume and close date.
+//
+// The search field belongs to this list rather than to the Market page around
+// it. The page used to pin one shared field above the tab strip and disable it
+// here, because this list took no query and could not filter; now every tab owns
+// a working field that scrolls away with its own rows.
 //
 // The comp draws three cards, two of them with several named outcomes. This
 // deployment's markets are binary: one Yes and one No per market, which is what
@@ -228,6 +234,26 @@ function CardSkeleton() {
   );
 }
 
+/**
+ * Does this market answer what the reader typed?
+ *
+ * Two fields are searched, and they are the two a reader can actually name. The
+ * question is the market's identity and the only sentence the card prints, so it
+ * is what someone types when they remember a market. The category beside it is
+ * how someone finds a whole subject ("politics", "sports") without recalling any
+ * one question.
+ *
+ * Nothing else is matched: prices and volume are numbers a reader searches by
+ * eye, and the feed's raw tag labels are not shown anywhere on the screen, so
+ * matching on them would hide markets behind words nobody can see.
+ *
+ * `needle` arrives trimmed and lower-cased so the query is normalised once per
+ * keystroke rather than once per market.
+ */
+function matchesQuery(p: Prediction, needle: string): boolean {
+  return p.q.toLowerCase().includes(needle) || p.tag.toLowerCase().includes(needle);
+}
+
 function Notice({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-[17px] border-2 border-white/8 px-6 py-10 text-center">
@@ -239,9 +265,14 @@ function Notice({ children }: { children: ReactNode }) {
 /**
  * The phone Prediction tab's market list.
  *
- * A container: it reads the feed, turns the two numbers the cards cannot format
- * themselves (volume and the close date) into strings, and hosts the bet flow a
- * pill opens. The card below it is presentational and holds no data layer.
+ * A container: it reads the feed, holds the tab's search query, turns the two
+ * numbers the cards cannot format themselves (volume and the close date) into
+ * strings, and hosts the bet flow a pill opens. The card below it is
+ * presentational and holds no data layer.
+ *
+ * It takes no query prop. The field is this list's own, so the Market page
+ * around it neither holds prediction search state nor knows how a prediction is
+ * matched.
  */
 export function PredictionMarketList() {
   const t = useTranslations("prediction");
@@ -250,7 +281,10 @@ export function PredictionMarketList() {
   const access = usePolymarketAccess();
   const { data, isPending, isError, refetch } = usePredictions();
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
+  const [query, setQuery] = useState("");
 
+  // The region gate is the one state with no list behind it at all, so it
+  // replaces the whole panel, search field included: there is nothing to search.
   if (!access.allowed) {
     return (
       <Notice>
@@ -262,18 +296,17 @@ export function PredictionMarketList() {
     );
   }
 
-  if (isPending) {
-    return (
-      <div className="flex flex-col gap-6 pb-6">
-        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-          <CardSkeleton key={i} />
-        ))}
-      </div>
-    );
-  }
+  const markets = data ?? [];
+  // Trimmed and lower-cased once here, not once per market: a query of spaces
+  // alone is no query at all and leaves the list whole.
+  const needle = query.trim().toLowerCase();
+  const visible = needle ? markets.filter((p) => matchesQuery(p, needle)) : markets;
 
-  if (isError) {
-    return (
+  let content: ReactNode;
+  if (isPending) {
+    content = Array.from({ length: SKELETON_COUNT }, (_, i) => <CardSkeleton key={i} />);
+  } else if (isError) {
+    content = (
       <Notice>
         <p className="text-[13px] font-normal text-white/55">{t("mobileMarketsError")}</p>
         <button
@@ -285,60 +318,88 @@ export function PredictionMarketList() {
         </button>
       </Notice>
     );
-  }
-
-  const markets = data ?? [];
-  if (markets.length === 0) {
-    return (
+  } else if (markets.length === 0) {
+    content = (
       <Notice>
         <p className="text-[13px] font-normal text-white/55">{t("mobileNoMarkets")}</p>
       </Notice>
     );
+  } else if (visible.length === 0) {
+    // A query that matches nothing gets its own line, separate from the feed
+    // being empty: the markets are open, they just are not these. The field
+    // stays above it so the reader can clear the query without leaving the tab.
+    content = (
+      <Notice>
+        <p className="text-[13px] font-normal text-white/55">{t("noSearchMatches")}</p>
+      </Notice>
+    );
+  } else {
+    content = visible.map((p) => {
+      // Volume is money, so it goes through the app's money layer and
+      // reaches the card already in the reader's currency. A market that
+      // reports no volume gets no volume element: nothing here invents a
+      // zero.
+      const volumeLabel =
+        typeof p.volumeUsd === "number" && Number.isFinite(p.volumeUsd) && p.volumeUsd > 0
+          ? money.format(p.volumeUsd)
+          : null;
+
+      // The deadline is the feed's own instant. parseCloseTime returns null
+      // for a missing or unparseable date, and a null here means the card
+      // shows no date at all rather than a made-up one. The date is
+      // rendered in UTC so the server's first paint and the client's
+      // hydration agree on which day it is.
+      const closeMs = parseCloseTime(p.endsAt);
+      const endsLabel =
+        closeMs === null
+          ? null
+          : t("closesAt", {
+              when: format.dateTime(new Date(closeMs), {
+                day: "numeric",
+                month: "short",
+                timeZone: "UTC",
+              }),
+            });
+
+      return (
+        <PredictionMarketCard
+          key={p.conditionId ?? p.eventId ?? p.q}
+          prediction={p}
+          // No detail route on this build: the question is plain text and
+          // the Yes and No pills are the way in.
+          href={undefined}
+          volumeLabel={volumeLabel}
+          endsLabel={endsLabel}
+          onPredict={(yes) => setBet({ p, side: yes ? "yes" : "no" })}
+        />
+      );
+    });
   }
 
   return (
     <>
+      {/* One column for the field and everything under it, so the 24px gap the
+          comp puts between the search box and the first card is the same gap
+          that separates the cards from each other.
+
+          No horizontal margin of its own: the host scroll box in the Market page
+          bleeds 4px each side (`-mx-1`) and the field is a direct child of that
+          box exactly as the cards are, so both meet the same edge and the field
+          lines up with the rows below it. Any margin here would push it out of
+          line with them. */}
       <div className="flex flex-col gap-6 pb-6">
-        {markets.map((p) => {
-          // Volume is money, so it goes through the app's money layer and
-          // reaches the card already in the reader's currency. A market that
-          // reports no volume gets no volume element: nothing here invents a
-          // zero.
-          const volumeLabel =
-            typeof p.volumeUsd === "number" && Number.isFinite(p.volumeUsd) && p.volumeUsd > 0
-              ? money.format(p.volumeUsd)
-              : null;
-
-          // The deadline is the feed's own instant. parseCloseTime returns null
-          // for a missing or unparseable date, and a null here means the card
-          // shows no date at all rather than a made-up one. The date is
-          // rendered in UTC so the server's first paint and the client's
-          // hydration agree on which day it is.
-          const closeMs = parseCloseTime(p.endsAt);
-          const endsLabel =
-            closeMs === null
-              ? null
-              : t("closesAt", {
-                  when: format.dateTime(new Date(closeMs), {
-                    day: "numeric",
-                    month: "short",
-                    timeZone: "UTC",
-                  }),
-                });
-
-          return (
-            <PredictionMarketCard
-              key={p.conditionId ?? p.eventId ?? p.q}
-              prediction={p}
-              // No detail route on this build: the question is plain text and
-              // the Yes and No pills are the way in.
-              href={undefined}
-              volumeLabel={volumeLabel}
-              endsLabel={endsLabel}
-              onPredict={(yes) => setBet({ p, side: yes ? "yes" : "no" })}
-            />
-          );
-        })}
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          label={t("searchEventMarketsLabel")}
+          placeholder={t("searchEventMarketsLabel")}
+          // Off only while there is no list behind it to search: the feed is
+          // still arriving, or it failed. It comes back the moment markets land,
+          // unlike the page-level field it replaces, which was disabled on this
+          // tab for good.
+          disabled={isPending || isError}
+        />
+        {content}
       </div>
 
       <BetModal

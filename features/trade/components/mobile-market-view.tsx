@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -9,18 +10,24 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { AssetIcon } from "@/components/ui/asset-icon";
-import { PerpsSection } from "@/features/trade/components/perps-section";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
 import { parseBaseUnits } from "@/features/trade/components/meme-base-units";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
 import { TradeTicket, USD_DECIMALS } from "@/features/trade/components/meme-trade-ticket";
+import {
+  MemeMarketMetrics,
+  type MemeMarketMetricsData,
+  type MemeMetricValue,
+} from "@/features/trade/components/meme-market-metrics";
 import { SpotTicket } from "@/features/trade/components/spot-ticket";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { useTrendingMemes } from "@/features/trade/hooks/use-meme-tokens";
+import { useFitRows } from "@/hooks/use-fit-rows";
 import {
   useMemePreview,
   useMemeTrade,
@@ -29,10 +36,12 @@ import {
 import { usePaged } from "@/hooks/use-paged";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { displaySymbol } from "@/lib/buy";
 import { friendlyError } from "@/lib/errors";
-import { isValidTradeAmount, type MemeToken } from "@/lib/meme/api";
+import { compactUsd, isValidTradeAmount, type MemeToken } from "@/lib/meme/api";
 import { SOLANA_CHAIN_ID, networkOf } from "@/lib/meme/chain";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { buyFunding } from "@/lib/meme/funding";
 import { exceedsHeld } from "@/lib/meme/sell-amount";
 import { toast } from "@/lib/toast";
@@ -55,6 +64,11 @@ interface MobileMarketViewProps {
    * feature, and features never import each other, so the route composes it.
    */
   predictionSlot: ReactNode;
+  /**
+   * The Real assets tab's content, supplied by the route for the same reason:
+   * real assets is its own feature.
+   */
+  rwaSlot: (query: string) => ReactNode;
 }
 
 // The Market design's phone Spot page (Figma 173:42337): its own MARKET head on
@@ -64,130 +78,81 @@ interface MobileMarketViewProps {
 // Memecoins tab opens its trade sheet. The list is kept, not replaced.
 
 // All four categories render inline on this page: nothing here navigates, so
-// the strip is a tab control rather than a set of links.
+// the strip is a tab control rather than a set of links. The order is the
+// rail's: Spot, Memecoins, Real assets, Prediction. The design's Leverage tab
+// is not on this build, since perpetuals are not; it returns as one entry here
+// when they do.
 //
 // `searchable` says whether the search field can act on the panel below it.
-// Spot and Memecoins are lists this view filters itself; the perps desk and
-// prediction own their own selection, and neither takes a query from us.
+// Spot and Memecoins are lists this view filters itself, and Real assets is a
+// list its own feature filters by the query handed to it; prediction owns its
+// own selection and takes no query from us.
 const TABS = [
   { id: "spot", labelKey: "tabSpot", searchable: true },
-  { id: "leverage", labelKey: "tabLeverage", searchable: false },
   { id: "memecoins", labelKey: "tabMemecoins", searchable: true },
+  { id: "rwa", labelKey: "tabRealAssets", searchable: true },
   { id: "prediction", labelKey: "tabPrediction", searchable: false },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+// Each tab's standalone desktop screen. Spot goes to the desk (with the app
+// sidebar), and Memecoins, Real assets and Prediction to their own routes.
+// Every tab has one, so md and up always leaves this phone column for the
+// matching desktop surface.
+const DESKTOP_ROUTE: Partial<Record<TabId, string>> = {
+  spot: "/spot",
+  memecoins: "/meme",
+  rwa: "/rwa",
+  prediction: "/prediction",
+};
 
 function changeLabel(chg: number): string {
   const v = Number.isFinite(chg) ? chg : 0;
   return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 }
 
-// Rows per page for the Spot and Memecoins lists. The viewport is fixed (this
-// is a phone screen, not the resizable desktop desk), so a measured hook is
-// overkill: 60px rows in the space left under a 76px header, the search
-// field, the tab strip and the pager itself comfortably fit 8 without the
-// page needing to scroll past the tab strip, on both a 390px and a taller
-// 430px+ phone.
-const PAGE_SIZE = 8;
-
-/**
- * Prev / "Page X of Y" / Next, sized for this screen's 44px targets. The
- * page count is announced through `aria-live` on the label so a screen
- * reader hears the change without focus moving off the button just pressed.
- *
- * A local control rather than components/ui/list-pagination.tsx: that
- * primitive's buttons run smaller than 44px, and this file cannot edit a
- * shared component to fix that for every other consumer. Both the Spot and
- * Memecoins tabs use this one control, so the two pagers still feel like the
- * same control.
- */
-function ListPager({
-  page,
-  pageCount,
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-}: {
-  page: number;
-  pageCount: number;
-  canPrev: boolean;
-  canNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  const t = useTranslations("markets");
-  return (
-    <div className="mt-1 flex shrink-0 items-center justify-between border-t border-white/6 px-1 pt-2 pb-1">
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={!canPrev}
-        aria-label={t("prev")}
-        className={`flex size-11 shrink-0 items-center justify-center rounded-full ${
-          canPrev
-            ? "cursor-pointer text-white/75 active:bg-white/5"
-            : "cursor-not-allowed text-white/25"
-        }`}
-      >
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M15 6l-6 6 6 6"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <span aria-live="polite" className="tnum text-[12px] font-semibold text-white/50">
-        {t("pageOf", { page: page + 1, pages: pageCount })}
-      </span>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={!canNext}
-        aria-label={t("next")}
-        className={`flex size-11 shrink-0 items-center justify-center rounded-full ${
-          canNext
-            ? "cursor-pointer text-white/75 active:bg-white/5"
-            : "cursor-not-allowed text-white/25"
-        }`}
-      >
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M9 6l6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-    </div>
-  );
+// A coin-feed USD field as a market-metric value, the same mapping meme-board
+// makes: compactUsd's em dash (a zero or a missing figure) becomes the null the
+// metrics panel draws as "Unavailable" rather than as "$0".
+function usdMetric(value: string | null): MemeMetricValue {
+  if (value === null) return { display: null };
+  const shown = compactUsd(value);
+  return { display: shown === "—" ? null : shown };
 }
 
 /**
- * One page of `items`, paginated with `usePaged`, plus its own foot pager.
- * Keyed by the caller on the search query, so a term that narrows the list
- * remounts this and resets to page 1 rather than stranding the reader on a
- * page number the new, shorter list may not even have.
+ * One page of `items`, paginated with `usePaged` at a caller-measured page
+ * size, under the shared foot pager (components/ui/list-pagination.tsx) the
+ * perps and prediction lists use, so the Market page's lists all page the same
+ * way. Keyed by the caller on the search query, so a term that narrows the list
+ * resets to page 1 rather than stranding the reader on a page the shorter list
+ * may not have.
  */
-function PagedRows<T>({ items, renderRow }: { items: T[]; renderRow: (item: T) => ReactNode }) {
-  const paged = usePaged(items, PAGE_SIZE);
+function PagedRows<T>({
+  items,
+  pageSize,
+  renderRow,
+}: {
+  items: T[];
+  pageSize: number;
+  renderRow: (item: T) => ReactNode;
+}) {
+  const tCommon = useTranslations("common");
+  const paged = usePaged(items, pageSize);
   if (items.length === 0) return null;
   return (
     <>
       {paged.pageItems.map(renderRow)}
-      <ListPager
-        page={paged.page}
-        pageCount={paged.pageCount}
-        canPrev={paged.canPrev}
-        canNext={paged.canNext}
-        onPrev={paged.goPrev}
-        onNext={paged.goNext}
+      {/* The visible page text lives inside ListPagination; this is only the
+          live region that announces a page change to a screen reader. */}
+      <p aria-live="polite" className="sr-only">
+        {tCommon("pageOf", { page: paged.page + 1, pages: paged.pageCount })}
+      </p>
+      <ListPagination
+        page={paged.page + 1}
+        pages={paged.pageCount}
+        onPage={(target) => (target > paged.page + 1 ? paged.goNext() : paged.goPrev())}
       />
     </>
   );
@@ -295,7 +260,7 @@ function MarketTabs({
   );
 }
 
-export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
+export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewProps) {
   const router = useRouter();
   const t = useTranslations("markets");
   const tCommon = useTranslations("common");
@@ -303,7 +268,24 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
   const tMeme = useTranslations("meme");
   const { markets, loading, error } = useSpotMarkets();
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabId>("spot");
+  // Open on the tab named in the URL (?tab=), so a handoff from a desktop route
+  // that shrank below md lands the reader back on the tab they were on. Falls
+  // back to Spot, and ignores anything that is not a real tab.
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const wanted = searchParams.get("tab");
+    return TABS.some((tab) => tab.id === wanted) ? (wanted as TabId) : "spot";
+  });
+
+  // A tab with a desktop route hands off to it at md and up, so md gets the full
+  // desk rather than this phone column. Driven off the same breakpoint hook as the render gate below, so the
+  // column is never painted at desktop width on the way out. Tabs with no
+  // desktop route stay on this page at every width.
+  const isMobile = useIsMobile();
+  const desktopRoute = DESKTOP_ROUTE[activeTab];
+  useEffect(() => {
+    if (!isMobile && desktopRoute) router.replace(desktopRoute);
+  }, [isMobile, desktopRoute, router]);
 
   // A market's own ticket opens in the list's place. The market is held by
   // symbol rather than by object, so a price tick that rebuilds the catalogue
@@ -345,6 +327,19 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
     () => (memeTicketAddress ? (memes.find((m) => m.address === memeTicketAddress) ?? null) : null),
     [memes, memeTicketAddress]
   );
+  // The market-metrics disclosure on the meme ticket. Open by default (the comp
+  // opens on "Close Market Metrics"); age and the buy/sell split are not in the
+  // feed, so they draw as Unavailable rather than invented.
+  const [metricsOpen, setMetricsOpen] = useState(true);
+  const memeMetrics: MemeMarketMetricsData | null = ticketMeme
+    ? {
+        marketCap: usdMetric(ticketMeme.marketCapUsd),
+        volume24h: usdMetric(ticketMeme.volume24hUsd),
+        liquidity: usdMetric(ticketMeme.liquidityUsd),
+        ageDays: null,
+        traders: null,
+      }
+    : null;
 
   const memeListRef = useRef<HTMLDivElement>(null);
   const memeListScrollTop = useRef(0);
@@ -361,6 +356,14 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
       memeListRef.current.scrollTop = memeListScrollTop.current;
     }
   }, [ticketMeme]);
+
+  // Each list shows as many rows as its own box can hold, so the page fills the
+  // phone rather than fixing a count that fits some phones and not others. Both
+  // refs are the lists' scroll boxes. The active flag re-measures when a tab
+  // mounts its list: a list behind an inactive tab is not in the DOM, so its box
+  // cannot be measured until its tab is shown.
+  const spotPageSize = useFitRows(listRef, activeTab === "spot");
+  const memePageSize = useFitRows(memeListRef, activeTab === "memecoins");
 
   const panelId = useId();
   const tabDomId = useCallback((id: TabId) => `${panelId}-tab-${id}`, [panelId]);
@@ -484,6 +487,9 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
       return;
     }
     const symbol = displaySymbol(ticketMeme.symbol ?? "");
+    // The fresh read after the trade is scoped to the networks it touched:
+    // the traded chain, and Base, where a buy is funded from.
+    const tradedNetworks = scopeOf("base-mainnet", networkOf(input.chainId));
     const toastId = toast.loading(
       input.side === "BUY" ? tMeme("buyingToast", { symbol }) : tMeme("sellingToast", { symbol })
     );
@@ -494,10 +500,10 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
         { id: toastId }
       );
       setMemeAmount("");
-      void memePortfolio.refetchUntilChanged();
+      void memePortfolio.refetchUntilChanged(tradedNetworks);
     } catch (e) {
       toast.error(friendlyError(e, tMeme("orderFailed")), { id: toastId });
-      void memePortfolio.refetchFresh();
+      void memePortfolio.refetchFresh(tradedNetworks);
     }
   }
 
@@ -512,6 +518,10 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
       ? memes.filter((m) => `${m.symbol ?? ""} ${m.name ?? ""}`.toLowerCase().includes(q))
       : memes;
   }, [memes, query]);
+
+  // While a tab is handing off to its desktop screen, render nothing rather than
+  // flash this phone column at desktop width until the target route paints.
+  if (!isMobile && desktopRoute) return null;
 
   // A phone design: full-bleed on a phone, but capped to a phone-width column on
   // desktop (centered, framed) instead of stretching edge to edge.
@@ -601,17 +611,19 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
           tabs={tabs}
         />
 
-        {/* One panel, named by the tab that selected it. The perps desk is told
-            it is a guest here so it drops its own page chrome; without the flag
-            its gutters stack on this page's and every card loses 32px. */}
+        {/* One panel, named by the tab that selected it. */}
         <div
           role="tabpanel"
           aria-labelledby={tabDomId(activeTab)}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {activeTab === "leverage" ? (
-            <div className="mt-3 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-              <PerpsSection embedded />
+          {activeTab === "rwa" ? (
+            // The real assets slot is the desk's own section: category tabs,
+            // search and the asset table, with its detail and trade sheets.
+            // Mounted only while this tab is selected, so its registry read is
+            // not made for someone who never opens it.
+            <div data-testid="rwa-panel-scroll" className="flex min-h-0 flex-1 flex-col">
+              {rwaSlot(query)}
             </div>
           ) : activeTab === "memecoins" ? (
             <>
@@ -667,6 +679,14 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
                       })}
                     </div>
 
+                    {/* Market metrics disclosure (Figma 173:44998), from the
+                        coin feed's real stats. */}
+                    <MemeMarketMetrics
+                      expanded={metricsOpen}
+                      onToggle={setMetricsOpen}
+                      metrics={memeMetrics}
+                    />
+
                     <TradeTicket
                       token={ticketMeme}
                       side={memeSide}
@@ -702,6 +722,7 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
                   <PagedRows
                     key={query}
                     items={memeRows}
+                    pageSize={memePageSize}
                     renderRow={(token) => (
                       <button
                         key={token.address}
@@ -779,6 +800,7 @@ export function MobileMarketView({ predictionSlot }: MobileMarketViewProps) {
                   <PagedRows
                     key={query}
                     items={rows}
+                    pageSize={spotPageSize}
                     renderRow={(m) => {
                       const up = m.change24h >= 0;
                       return (

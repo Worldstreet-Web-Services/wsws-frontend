@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Artboard } from "@/components/ui/artboard";
 import { useMoney } from "@/components/ui/currency-select";
-import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { formatCountdown, parseCloseTime, useCountdown } from "@/hooks/use-countdown";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
@@ -46,30 +46,35 @@ function usePrefersReducedMotion(): boolean {
  */
 function BannerFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative aspect-[330/213] w-full overflow-hidden rounded-[15px] bg-gradient-to-b from-[#FEE685] to-[#FFD425]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/sunburst-yellow.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-large.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[31%] left-[46%] w-[24%] opacity-80"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/prediction/cloud-small.svg"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute top-[19%] left-[29%] w-[13%] opacity-70"
-      />
-      {children}
-    </div>
+    // The comp's 330x213 artboard, scaled as one piece to the slide it gets,
+    // so the type and the pill grow with the card on a wide phone instead of
+    // sitting small in a bigger box.
+    <Artboard width={330} height={213} className="rounded-[15px]">
+      <div className="relative h-full w-full bg-gradient-to-b from-[#FEE685] to-[#FFD425]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/sunburst-yellow.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/cloud-large.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute top-[31%] left-[46%] w-[24%] opacity-80"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/prediction/cloud-small.svg"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute top-[19%] left-[29%] w-[13%] opacity-70"
+        />
+        {children}
+      </div>
+    </Artboard>
   );
 }
 
@@ -184,8 +189,9 @@ function PredictionBanner({
 }: PredictionBannerProps) {
   const t = useTranslations("prediction");
   const [artworkFailed, setArtworkFailed] = useState(false);
-  // Live markets carry a detail route, the rest open the markets index.
-  const href = predictionDetailHref(p) ?? "/prediction";
+  // A Polymarket card has no page of its own on this build; the banner opens
+  // the prediction desk, where the same market can be bet on.
+  const href = "/prediction";
 
   return (
     <BannerFrame>
@@ -285,6 +291,8 @@ function PredictionBanner({
             its own destination, and each is a 44px target wrapped around the
             smaller pill the design draws. */}
         <div className="relative z-[1] flex h-[34%] shrink-0 items-center gap-[3.6%] bg-gradient-to-b from-[#FEECA6] to-[#FFF5CD] px-[6%]">
+          {/* One action, into the market on show. The desk itself is where the
+              section's heading goes. */}
           <Link
             href={href}
             className="ws-pressable flex min-h-11 shrink-0 items-center justify-center"
@@ -298,14 +306,6 @@ function PredictionBanner({
                 className="size-3.5 shrink-0"
               />
               <span className="truncate">{t("mobilePredictNow")}</span>
-            </span>
-          </Link>
-          <Link
-            href="/prediction"
-            className="ws-pressable flex min-h-11 flex-1 items-center justify-center"
-          >
-            <span className="flex h-[34px] w-full items-center justify-center rounded-full bg-[#0B0A0A] px-2 text-[11px] font-semibold text-white">
-              <span className="truncate">{t("mobileSeeOtherPredictions")}</span>
             </span>
           </Link>
         </div>

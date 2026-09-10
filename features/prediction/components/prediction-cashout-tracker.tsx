@@ -80,7 +80,8 @@ export function PredictionCashoutTracker() {
             if (stage === "settled") {
               recordSelfInitiated(status.destinationTransactionHashes);
               clearPendingPredictionCashout(cashout.requestId);
-              await refetchFresh();
+              // The cashout lands as USDC on Base; nothing else moved.
+              await refetchFresh(["base-mainnet"]);
               toast.success("Prediction cashout is now available in your Base USDC balance.");
             } else if (stage === "refunded") {
               clearPendingPredictionCashout(cashout.requestId);

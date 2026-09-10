@@ -26,9 +26,9 @@ import { ArrowDownIcon, ChartBarsIcon } from "@/components/ui/icons";
 // trigger row 16px. The `md:leading-[1.5]` pairs restore the 1.5 line height
 // this app inherits, which is what made the desk's boxes taller than the comp.
 
-// Inter, loaded in app/layout.tsx as --font-sportsbook. The design sets the
-// whole metrics block in it; the disclosure label above is Mona Sans.
-const INTER = "font-[family-name:var(--font-sportsbook)]";
+// The design set the whole metrics block in Inter; production keeps its body
+// face, Geist. The disclosure label above is Mona Sans.
+const INTER = "font-sans";
 
 export type MemeMetricDirection = "up" | "down";
 

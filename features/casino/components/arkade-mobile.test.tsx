@@ -53,9 +53,11 @@ const arkball: CasinoGame = {
 
 // Coming soon and branded: the desktop keeps this one in colour, so the phone
 // has to as well.
+// A branded, coming-soon stand-in. The catalogue id has to be one this build's
+// catalogs name, since the card reads the name the player sees from them.
 const chicken: CasinoGame = {
-  id: "chicken",
-  name: "Pilot Chicken",
+  id: "last-standing",
+  name: "The Last Man",
   category: "New",
   size: "tall",
   glyph: "C",
@@ -219,9 +221,9 @@ describe("ArkadeMobile", () => {
     expect(screen.getByText("ArkBall")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: enMessages.casino.hub.categoryAll }));
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "pilot" } });
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "last man" } });
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Pilot Chicken")).toBeInTheDocument();
+    expect(screen.getByText("The Last Man")).toBeInTheDocument();
   });
 
   it("says so when nothing matches the search", () => {

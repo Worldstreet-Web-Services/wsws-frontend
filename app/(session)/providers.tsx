@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { PrivyProvider, type PrivyClientConfig } from "@privy-io/react-auth";
 import { createSolanaRpcSubscriptions } from "@solana/kit";
 import { base } from "viem/chains";
@@ -12,10 +11,9 @@ import { IdentityTokenBridge } from "@/components/providers/identity-token-bridg
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
-import { usePredictionQueryBroadcast } from "@/features/prediction/markets/query-broadcast";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
-// including the chess and arkjet screens, and this provider is mounted on
+// including the chess screens, and this provider is mounted on
 // every signed-in route — so the barrel pulled the whole casino into the
 // initial payload for one timer. optimizePackageImports only rewrites npm
 // barrels, not ours. This file sits under app/ rather than components/ for
@@ -49,11 +47,6 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
   // solana:mainnet". Reads and sends go through our proxy; the subscription
   // endpoint is only consulted when waiting for confirmation, which we skip
   // (optimisticBroadcast) and do ourselves against the same proxy.
-  // Staging's Polymarket market workspace fans query invalidations out across
-  // tabs. The query client lives in the root providers; this only needs a
-  // handle to it.
-  usePredictionQueryBroadcast(useQueryClient());
-
   const [solanaRpcs] = useState<SolanaRpcs>(() => ({
     "solana:mainnet": {
       // Privy declares this against the test-cluster RPC API, which includes

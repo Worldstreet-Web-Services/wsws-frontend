@@ -24,28 +24,11 @@ describe("casino game catalogue", () => {
     expect(CASINO_GAMES.slice(1).every((game) => game.size === "tall")).toBe(true);
   });
 
-  it("places ArkBall, Arkjet, and Chicken together after Checkers", () => {
+  it("places ArkBall after Checkers", () => {
     const checkersIndex = CASINO_GAMES.findIndex((game) => game.id === "checkers");
     expect(CASINO_GAMES[checkersIndex + 1]).toMatchObject({
       id: "arkball",
       href: "/casino/arkball",
-      comingSoon: false,
-    });
-    expect(CASINO_GAMES[checkersIndex + 2]).toMatchObject({
-      id: "arkjet",
-      name: "Arkjet",
-      image: "/casino/arkjet/hero.webp",
-      preserveImageColor: true,
-      href: "/casino/arkjet",
-      comingSoon: false,
-      note: "Cash out before the multiplier crashes",
-    });
-    expect(CASINO_GAMES[checkersIndex + 3]).toMatchObject({
-      id: "chicken",
-      name: "Pilot Chicken",
-      image: "/casino/chicken/ark-chicken.png",
-      preserveImageColor: true,
-      href: "/casino/chicken",
       comingSoon: false,
     });
     expect(CASINO_GAMES.some((game) => game.id === "draw")).toBe(false);
@@ -60,8 +43,6 @@ describe("casino game catalogue", () => {
 
   it("filters by category and by name search", () => {
     expect(filterGames(CASINO_GAMES, "Draws", "").map((g) => g.id)).toEqual(["arkball"]);
-    expect(filterGames(CASINO_GAMES, "All games", "arkjet").map((g) => g.id)).toEqual(["arkjet"]);
-    expect(filterGames(CASINO_GAMES, "All games", "chicken").map((g) => g.id)).toEqual(["chicken"]);
     expect(filterGames(CASINO_GAMES, "All games", "last").map((g) => g.id)).toEqual([
       "last-standing",
     ]);

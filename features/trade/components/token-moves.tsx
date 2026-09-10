@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Artboard } from "@/components/ui/artboard";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import { tokenBg } from "@/lib/trade/assets";
@@ -28,7 +28,9 @@ const MAX_TOKENS = 5;
 //   button rect x=68.678 y=134.264  w=65.088  h=24.408  rx=12.204 (not rotated)
 const CHIP = { left: "20.943%", top: "13.112%", width: "49.725%", height: "26.560%" };
 const BUBBLE = { left: "10.914%", top: "41.420%", width: "65.487%", height: "34.524%" };
-const BUTTON = { left: "20.259%", top: "79.919%", minWidth: "19.199%", height: "14.529%" };
+// The comp draws the button 65x24 at 8px type, which reads tiny beside the
+// bubble; it is 82x30 at 10px here, kept at the comp's bottom-left anchor.
+const BUTTON = { left: "20.259%", top: "77.5%", minWidth: "24.2%", height: "17.9%" };
 
 // A token the insight card can render, as composed by useSpotMarkets: the
 // symbol and logo from the buy catalogue, the price from the price feed, the
@@ -74,7 +76,10 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
   const up = hasChange && token.change24h >= 0;
 
   return (
-    <div className="relative aspect-[339/168] w-full overflow-hidden rounded-[16.272px]">
+    // The comp's 339x168 artboard, scaled as one piece to the slide it gets, so
+    // the chip, the bubble and the button keep the comp's proportions and type
+    // size on a wide phone rather than stretching around 8px text.
+    <Artboard width={339} height={168} className="rounded-[16.272px]">
       {/* Figma export, used for the gradient and the decoration only. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/trade/token-moves/card-bg.svg" alt="" className="block h-full w-full" />
@@ -125,40 +130,14 @@ function TokenInsightCard({ token, onBuy }: { token: InsightToken; onBuy?: () =>
       <button
         type="button"
         onClick={onBuy}
-        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[12.2px] border-[1.4px] border-[#ffd52d] bg-black px-[6px]"
+        className="absolute z-10 flex w-max cursor-pointer items-center justify-center gap-[2.7px] rounded-[15px] border-[1.4px] border-[#ffd52d] bg-black px-[10px]"
         style={BUTTON}
       >
-        <span className="text-[8px] font-semibold whitespace-nowrap text-white">
+        <span className="text-[10px] font-semibold whitespace-nowrap text-white">
           {tSpot("ctaBuy", { symbol: token.symbol })}
         </span>
       </button>
-    </div>
-  );
-}
-
-// The static "Eth Africa" promo card (Figma node 1:4145), kept as its
-// exported render.
-function EthAfricaCard({ onBuy }: { onBuy?: () => void }) {
-  const tSpot = useTranslations("spot");
-  return (
-    <div className="relative">
-      <Image
-        src="/trade/token-moves/eth-africa-card@3x.png"
-        alt="ETH Africa is hitting a 70% win rate on ETH predictions"
-        width={339}
-        height={167}
-        className="h-auto w-full"
-      />
-      {onBuy ? (
-        <button
-          type="button"
-          onClick={onBuy}
-          aria-label={tSpot("ctaBuy", { symbol: "ETH" })}
-          className="absolute cursor-pointer rounded-full"
-          style={{ left: "64%", top: "9%", width: "29%", height: "22.5%" }}
-        />
-      ) : null}
-    </div>
+    </Artboard>
   );
 }
 
@@ -173,8 +152,8 @@ const FADE_CSS = `
 
 // The "Stay Ahead of Token Moves" section (Figma node 1:4053): a header over a
 // two-card horizontal scroll. The first card cycles through the five tokens the
-// caller hands us, ten seconds each, forever. The second is the static Eth
-// Africa promo.
+// caller hands us, ten seconds each, forever; the second shows the token after
+// it, so a swipe is a step through the movers rather than the same coin twice.
 export function TokenMoves({
   tokens,
   onBuyToken,
@@ -192,12 +171,13 @@ export function TokenMoves({
   const cycle = useMemo(() => tokens.slice(0, MAX_TOKENS), [tokens]);
   const index = useRotatingIndex(cycle.length, { intervalMs: ROTATE_MS, paused: held });
   const current = cycle.length > 0 ? cycle[index] : null;
+  const next = cycle.length > 1 ? cycle[(index + 1) % cycle.length] : null;
 
   return (
     <div>
       <style>{FADE_CSS}</style>
 
-      <Link href="/market" className="mb-3 inline-flex items-end gap-[3px]">
+      <Link href="/spot" className="mb-3 inline-flex items-end gap-[3px]">
         <span className="ws-display text-[18px] leading-[1.2] tracking-[-0.36px] text-white">
           {t("tokenMovesTitle")}
         </span>
@@ -234,9 +214,13 @@ export function TokenMoves({
             </div>
           </section>
         ) : null}
-        <div className="w-[88%] shrink-0 snap-start overflow-hidden rounded-[16px]">
-          <EthAfricaCard onBuy={() => onBuyToken?.("ETH")} />
-        </div>
+        {next ? (
+          <div className="w-[88%] shrink-0 snap-start">
+            <div key={next.symbol} className="ws-token-move-fade">
+              <TokenInsightCard token={next} onBuy={() => onBuyToken?.(next.symbol)} />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

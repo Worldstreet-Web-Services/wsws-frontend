@@ -247,7 +247,7 @@ export function MarketSquareBanner({ href, className }: { href: string; classNam
               top: 29,
               width: 132.477,
               transform: "translateY(-50%)",
-              fontFamily: "var(--font-sportsbook)",
+              fontFamily: "var(--font-sans)",
               color: "#DDC4FA",
             }}
           >

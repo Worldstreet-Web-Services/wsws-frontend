@@ -5,21 +5,9 @@ import enMessages from "@/messages/en.json";
 import type { Prediction } from "@/lib/types";
 
 // The real catalogue, not a stand-in: a key dropped from messages/*.json has to
-// fail this suite rather than pass it.
-//
-// The two pill labels are the exception, and only until they land. This branch
-// does not edit messages/*.json, so they are supplied here with the exact
-// English being requested for all five locales. The real catalogue is spread
-// last, so the moment the keys are added there these local copies stop being
-// read and can be deleted.
-const messages = {
-  ...enMessages,
-  prediction: {
-    predictYes: "Predict Yes",
-    predictNo: "Predict No",
-    ...enMessages.prediction,
-  },
-};
+// fail this suite rather than pass it. The pill labels that used to be supplied
+// here have landed in messages, so the local override is gone.
+const messages = enMessages;
 
 const feed = vi.hoisted(() => ({
   data: undefined as Prediction[] | undefined,
@@ -88,10 +76,6 @@ function renderList() {
   );
 }
 
-function questionLink() {
-  return screen.getByRole("link", { name: market().q });
-}
-
 beforeEach(() => {
   feed.data = [market()];
   feed.isPending = false;
@@ -104,16 +88,15 @@ beforeEach(() => {
 });
 
 describe("PredictionMarketList, opening a market", () => {
-  it("links the question at the href the category map builds", () => {
+  // This build has no market detail route, so a card's question is plain text
+  // whatever the feed says about the market, and the Yes and No pills are the
+  // way in.
+  it("renders the question as plain text, never as a link", () => {
     renderList();
-    expect(questionLink()).toHaveAttribute(
-      "href",
-      "/prediction/markets/12345?category=politics&source=markets"
-    );
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText(market().q)).toBeInTheDocument();
   });
 
-  // A market whose tags name no category this app has cannot be linked. A card
-  // that does not open beats a card that opens the wrong screen.
   it("renders the question as plain text when the market has no destination", () => {
     feed.data = [market({ tagLabels: ["Weather"] })];
     renderList();
@@ -121,51 +104,14 @@ describe("PredictionMarketList, opening a market", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText(market().q)).toBeInTheDocument();
   });
-
-  it("keeps the whole card pressable: the link opts out of the click ripple", () => {
-    // click-ripple.tsx sets `position: relative` on a statically positioned
-    // anchor at pointerdown so it can host its ripple layer. That makes the
-    // anchor the containing block for its own stretched ::after, which collapses
-    // from the whole card to the text box between pointerdown and mouseup, so
-    // the press lands on nothing. Measured on the desktop card: 325x210 -> 218x18.
-    renderList();
-    expect(questionLink()).toHaveAttribute("data-no-ripple");
-  });
-
-  it("keeps the line clamp inside the link, never on an ancestor", () => {
-    // `line-clamp` is `overflow: hidden`, and hidden overflow on an ancestor
-    // clips the stretched ::after back to the text box.
-    renderList();
-    const link = questionLink();
-
-    expect(link.querySelector("[class*='line-clamp']")).not.toBeNull();
-    expect(link.closest("[class*='line-clamp']")).toBeNull();
-  });
-
-  // The stretched ::after is positioned against the nearest positioned
-  // ancestor. If anything between the card root and the link is positioned, the
-  // hit area shrinks to that box instead of covering the card.
-  it("puts no positioned element between the card root and the link", () => {
-    renderList();
-    const card = screen.getByRole("article");
-    let node = questionLink().parentElement;
-    while (node && node !== card) {
-      expect(node.className).not.toMatch(/(^|\s)(relative|absolute|fixed|sticky)(\s|$)/);
-      node = node.parentElement;
-    }
-    expect(card.className).toMatch(/(^|\s)relative(\s|$)/);
-  });
 });
 
 describe("PredictionMarketList, the outcome pills", () => {
-  it("keeps both pills outside the link so a tap on one does not navigate", () => {
+  it("keeps both pills real buttons, never inside an anchor", () => {
     renderList();
-    const link = questionLink();
     const yes = screen.getByRole("button", { name: /Yes/ });
     const no = screen.getByRole("button", { name: /No/ });
 
-    expect(link).not.toContainElement(yes);
-    expect(link).not.toContainElement(no);
     // An anchor around a button is invalid markup and browsers drop the button
     // out of the tab order when it happens.
     expect(yes.closest("a")).toBeNull();

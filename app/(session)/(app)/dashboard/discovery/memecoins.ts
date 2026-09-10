@@ -132,8 +132,19 @@ function formatChange(percent: number): { change: string; up: boolean } {
  */
 function promotable(token: MemeToken): boolean {
   if (!token.buyEnabled) return false;
+  if (linkLike(token.symbol) || linkLike(token.name)) return false;
   if (!PROMOTABLE_RISK.has(token.riskLevel)) return false;
   return visibleWarnings(token.warnings).length === 0;
+}
+
+// A scheme, a path, or a bare domain. The trending feed is a pump feed, and
+// listings named after a repository or a website come through it; a card
+// that read one out would name a codebase as the coin and send people to it.
+const LINK_LIKE = /https?:|www\.|\/|\.[a-z]{2,}(?:$|[\/?#])/i;
+
+/** Whether the listing's text is a link rather than a name. */
+function linkLike(text: string | null): boolean {
+  return text !== null && LINK_LIKE.test(text.trim());
 }
 
 interface RankedSpot {

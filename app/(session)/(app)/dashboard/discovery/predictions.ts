@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
-import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import type { Prediction } from "@/lib/types";
 import type { PredictionSpot } from "@/features/discovery/types";
@@ -50,10 +49,9 @@ function toSpot(prediction: Prediction): PredictionSpot | null {
     // draws what there is. An absent image yields no tile rather than a
     // placeholder standing in for artwork that does not exist.
     images: prediction.image ? [prediction.image] : [],
-    // The same destination the prediction desk's own cards use, so a market
-    // opens the same page from either surface. Markets the feed gives no
-    // category for have nowhere to go, and the desk is the honest fallback.
-    href: predictionDetailHref(prediction) ?? "/prediction",
+    // A Polymarket market has no page of its own on this build, so the card
+    // opens the prediction desk, where it can be bet on.
+    href: "/prediction",
   };
 }
 

@@ -270,12 +270,13 @@ describe("Sidebar", () => {
 });
 
 /**
- * Real assets are hidden from the navigation for now. The switch is
+ * Real assets returned to the navigation on 2026-09-09, once the gateway's rwa
+ * and gas-sponsor services were confirmed live. The switch that hid them is
  * HIDDEN_NAV_SECTIONS in lib/sections.ts, read by buildNav, so the rail is
  * asserted against a real nav rather than a hand-written item list: what is
  * checked is the row a user would see, not the array a test wrote.
  */
-describe("Real assets hidden from the rail", () => {
+describe("Real assets in the rail", () => {
   function renderRail(items: NavItem[], activeSection: DashboardSection = "portfolio") {
     return render(
       <Sidebar
@@ -288,50 +289,55 @@ describe("Real assets hidden from the rail", () => {
     );
   }
 
-  it("offers no Real assets entry", () => {
+  it("offers the Real assets entry", () => {
     renderRail(buildNav(null));
-    expect(screen.queryByRole("button", { name: "Real assets" })).toBeNull();
-    // The rest of the rail is untouched by the hide.
+    expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Spot" })).toBeInTheDocument();
   });
 
   // An onboarding interest that leads with Real assets (stocks, gold, yield,
-  // real estate, treasuries) must not put the row back through the reorder.
-  it("offers no Real assets entry for the interests that point at it", () => {
+  // real estate, treasuries) brings the row forward through the reorder.
+  it("offers the entry for the interests that point at it", () => {
     renderRail(buildNav("stocks"));
-    expect(screen.queryByRole("button", { name: "Real assets" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
   });
 
-  it("puts the entry back when the switch is flipped", async () => {
+  // The switch still works: listing the id takes the row out again without
+  // touching the route, the order or the rest of the rail.
+  async function renderHidden(activeSection: DashboardSection = "portfolio") {
     vi.resetModules();
     vi.doMock("@/lib/sections", async () => {
       const actual = await vi.importActual<typeof import("@/lib/sections")>("@/lib/sections");
-      return { ...actual, HIDDEN_NAV_SECTIONS: [] };
+      return { ...actual, HIDDEN_NAV_SECTIONS: ["rwa"] };
     });
-    const { buildNav: buildShown } = await import("./nav-items");
-    const { Sidebar: Shown } = await import("./sidebar");
-    render(
-      <Shown
-        items={buildShown(null)}
-        activeSection="portfolio"
+    const { buildNav: buildHidden } = await import("./nav-items");
+    const { Sidebar: Hidden } = await import("./sidebar");
+    return render(
+      <Hidden
+        items={buildHidden(null)}
+        activeSection={activeSection}
         onNavigate={() => {}}
         open={false}
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
+  }
+
+  it("takes the entry out again when the switch lists it", async () => {
+    await renderHidden();
+    expect(screen.queryByRole("button", { name: "Real assets" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
   });
 
   /**
-   * /rwa is still a route, so someone can land on it by URL and the shell
-   * still derives "rwa" as the active section. With no row to light, the rail
-   * must simply light none of them rather than fall back onto Portfolio or
-   * mark the row that happens to sit where Real assets used to.
+   * A hidden section keeps its route, so someone can land on it by URL and the
+   * shell still derives it as the active section. With no row to light, the
+   * rail must simply light none of them rather than fall back onto Portfolio
+   * or mark the row that happens to sit where the hidden one used to.
    */
-  it("highlights no row when the active section has no entry", () => {
-    const { container } = renderRail(buildNav(null), "rwa");
+  it("highlights no row when the active section has no entry", async () => {
+    const { container } = await renderHidden("rwa");
     const rail = container.querySelector("nav");
     if (rail === null) throw new Error("the rail rendered no nav element");
     const highlighted = [...rail.children].filter((el) => el.className.includes("bg-accent/14"));

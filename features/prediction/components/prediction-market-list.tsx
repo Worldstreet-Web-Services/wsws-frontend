@@ -7,7 +7,6 @@ import { BRAND } from "@/lib/brand";
 import { useMoney } from "@/components/ui/currency-select";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import { BetModal } from "@/features/prediction/components/bet-modal";
-import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { usePolymarketAccess } from "@/features/prediction/hooks/use-polymarket-access";
 import type { Prediction } from "@/lib/types";
@@ -331,7 +330,9 @@ export function PredictionMarketList() {
             <PredictionMarketCard
               key={p.conditionId ?? p.eventId ?? p.q}
               prediction={p}
-              href={predictionDetailHref(p)}
+              // No detail route on this build: the question is plain text and
+              // the Yes and No pills are the way in.
+              href={undefined}
               volumeLabel={volumeLabel}
               endsLabel={endsLabel}
               onPredict={(yes) => setBet({ p, side: yes ? "yes" : "no" })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useFitText } from "@/hooks/use-fit-text";
 
 // The banner is drawn to a 515.768 x 88 box in the design. Positions below are
 // that box expressed as a share of it, so the whole thing scales as one piece
@@ -58,41 +59,17 @@ const HEADLINE_SLOT_WIDTH = TEXT_SLOT_WIDTH - SUBLINE_WIDTH - DIVIDER_WIDTH - 2 
 const HEADLINE_FONT_SIZE = 43.238;
 const HEADLINE_TRACKING = -2.2091 / HEADLINE_FONT_SIZE;
 
-// Chewy's advance for every character a headline can carry, in thousandths of
-// an em, read out of the font file this app ships. Index i of CHEWY_CHARS has
-// its advance at index i of CHEWY_ADVANCES. Each one is rounded up, so a sum
-// over a string is an upper bound on how wide the string can render and never
-// an underestimate. A character the table does not carry is charged
-// CHEWY_WIDEST, which is "M", for the same reason.
-//
-// The table is here because Chewy is anything but even: "'" is 157 and "M" is
-// 746, nearly five times as wide. Sizing the headline off a single average
-// advance, as this file used to, is wrong by up to a fifth in both directions,
-// and the direction that matters is the one that shrinks a locale that would
-// have fitted.
-const CHEWY_CHARS =
-  " !\"'()+,-.0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
-  "ÀÁÂÄÇÈÉÊÍÑÓÔÖÚÜßàáâãäçèéêëíîïñóôõöùúûüÿ";
-const CHEWY_ADVANCES = [
-  236, 243, 285, 157, 266, 269, 470, 180, 450, 181, 618, 270, 507, 488, 532, 514, 529, 523, 592,
-  520, 192, 192, 489, 557, 476, 471, 547, 470, 404, 521, 534, 352, 426, 526, 491, 746, 633, 526,
-  477, 533, 511, 354, 373, 588, 486, 640, 479, 435, 429, 474, 522, 417, 486, 449, 373, 512, 513,
-  239, 264, 468, 257, 658, 467, 448, 507, 501, 422, 326, 375, 488, 487, 723, 442, 518, 458, 557,
-  557, 557, 557, 471, 470, 470, 470, 352, 633, 526, 526, 526, 588, 588, 593, 474, 474, 474, 474,
-  474, 400, 449, 449, 449, 449, 239, 239, 239, 467, 448, 448, 448, 448, 488, 488, 488, 488, 518,
-];
-const CHEWY_WIDEST = 746;
+// A first estimate of how wide a headline renders, in ems of its own font
+// size, at the design's tracking. The headline is set in the display face,
+// Mona Sans bold, and 0.6em is a fair average advance for a bold sans; the
+// rendered text is measured on mount and the estimate corrected, so this only
+// decides the server's first paint. Chrome applies letter-spacing after the
+// last character too, which is why every character is charged for it.
+const ESTIMATED_ADVANCE_EM = 0.6;
 
-// How wide a headline renders, in ems of its own font size, at the design's
-// tracking. Chrome applies letter-spacing after the last character too, which
-// is why every character is charged for it.
 function headlineEm(headline: string) {
   let em = 0;
-  for (const character of headline) {
-    const index = CHEWY_CHARS.indexOf(character);
-    em += (index === -1 ? CHEWY_WIDEST : CHEWY_ADVANCES[index]) / 1000;
-    em += HEADLINE_TRACKING;
-  }
+  for (const _ of headline) em += ESTIMATED_ADVANCE_EM + HEADLINE_TRACKING;
   return em;
 }
 
@@ -103,11 +80,7 @@ function headlineEm(headline: string) {
 // "Get Kash+". Type is the thing that can give here. The words are one line
 // against fixed artwork, so they cannot wrap and cannot push anything aside,
 // and cutting them off is not an option.
-//
-// The width comes from the font's own metrics rather than from a measurement of
-// the rendered text, so the size is settled before the page is drawn and
-// hydration moves nothing.
-function headlineScale(headline: string) {
+function estimatedHeadlineScale(headline: string) {
   return Math.min(1, HEADLINE_SLOT_WIDTH / (headlineEm(headline) * HEADLINE_FONT_SIZE));
 }
 
@@ -144,6 +117,11 @@ export function KashBanner({ onBuy }: KashBannerProps) {
   // The design splits the sentence into a headline and a fine subline beneath.
   const headline = t("railTitle");
   const subline = t("railSubtitle");
+  // Measured against the slot it sits in; the estimate is the server's first paint.
+  const { ref: headlineRef, scale: headlineScale } = useFitText<HTMLSpanElement>(
+    headline,
+    estimatedHeadlineScale(headline)
+  );
 
   return (
     <button
@@ -178,9 +156,9 @@ export function KashBanner({ onBuy }: KashBannerProps) {
 
       {/* The words sit in the slot between the coins and the right stub's
           gutter, and the row's own gap holds the hairline clear of both halves.
-          Nothing here clips: the headline is sized from the font's metrics so it
-          cannot outgrow its share, and clipping it was what cut the tail off the
-          "g" in "Consigue Kash+" and "Pegue Kash+". */}
+          Nothing here clips: the headline is scaled to its share, so it cannot
+          outgrow it, and clipping it was what cut the tail off the "g" in
+          "Consigue Kash+" and "Pegue Kash+". */}
       <span
         className="absolute top-[35.34%] flex h-[40.166%] items-center"
         style={{
@@ -190,11 +168,12 @@ export function KashBanner({ onBuy }: KashBannerProps) {
         }}
       >
         <span
+          ref={headlineRef}
           className="ws-poster min-w-0 flex-1 whitespace-nowrap text-[rgba(108,43,9,0.94)]"
           style={{
-            // The design's size, scaled to the locale. Tracking is in em so it
-            // scales with the type rather than fighting it.
-            fontSize: `calc(${cqw(HEADLINE_FONT_SIZE)} * ${headlineScale(headline).toFixed(4)})`,
+            // The design's size, scaled to the locale and the face. Tracking is
+            // in em so it scales with the type rather than fighting it.
+            fontSize: `calc(${cqw(HEADLINE_FONT_SIZE)} * ${headlineScale.toFixed(4)})`,
             lineHeight: 1,
             letterSpacing: `${HEADLINE_TRACKING.toFixed(6)}em`,
           }}

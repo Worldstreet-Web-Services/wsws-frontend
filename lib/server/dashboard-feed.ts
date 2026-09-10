@@ -1,15 +1,13 @@
 import "server-only";
 
-import { createPublicClient, custom, formatEther } from "viem";
-import { base } from "viem/chains";
+import { formatEther } from "viem";
 import { fetchPrices } from "@/lib/server/alchemy";
 import { dextopusRequest } from "@/lib/server/dextopus";
-import { forwardEvmRpcRead } from "@/lib/server/evm-rpc";
 import { fetchMarketTokens } from "@/lib/server/market-tokens";
 import { cached } from "@/lib/server/response-cache";
 import { fetchRwaMarket } from "@/lib/server/rwa-prices";
 import { CHESS_BASE, TRADE_BASE, VAULT_BASE } from "@/lib/server/upstreams";
-import { wsapiPerpRequest, wsapiRwaRequest } from "@/lib/server/wsapi";
+import { wsapiRwaRequest } from "@/lib/server/wsapi";
 import { BUY_ORIGIN, toBuyRoutes } from "@/lib/buy";
 import { isPlausiblyActiveMatch, type LiveMatchClock } from "@/lib/chess/live-match";
 import {
@@ -23,13 +21,10 @@ import {
 } from "@/lib/dashboard-feed";
 import { tradableHere, type Paged } from "@/lib/meme/catalog";
 import type { MemeToken } from "@/lib/meme/types";
-import { composePerpBrief, perpBriefFallbackSymbols, type PerpBriefRow } from "@/lib/perp/brief";
-import type { PerpPair, PerpPrice } from "@/lib/perp/types";
 import { assetPriceUsd, listedRwaAssets, rwaLogoPath, type RwaApiAsset } from "@/lib/rwa/catalog";
 import { composeSpotMarkets } from "@/lib/spot-markets";
-import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
-import { VAULT_CHAIN_ID } from "@/lib/vault/contract";
 import { readActiveGamesWith } from "@/lib/vault/read";
+import { baseReadClient } from "@/lib/server/vault-chain";
 
 // The dashboard's public data, composed once for every user.
 //
@@ -116,23 +111,6 @@ async function spotSection(): Promise<SpotBriefRow[]> {
     }));
 }
 
-async function perpsSection(): Promise<PerpBriefRow[]> {
-  const pairs = (
-    await envelopeData<PerpPair[]>(
-      await wsapiPerpRequest("pairs", { method: "GET", revalidate: 300 })
-    )
-  ).filter((p) => p.from !== "" && p.to !== "");
-  // The marks are a bonus over the CoinGecko fallback, not a requirement: a
-  // gateway that serves pairs but not prices still gets a priced brief.
-  const [marks, fallback] = await Promise.all([
-    wsapiPerpRequest("prices", { method: "GET", revalidate: 3 })
-      .then((res) => envelopeData<PerpPrice[]>(res))
-      .catch((): PerpPrice[] => []),
-    priceMap(perpBriefFallbackSymbols(DASHBOARD_FEED_ROWS)),
-  ]);
-  return composePerpBrief(pairs, marks, fallback, DASHBOARD_FEED_ROWS);
-}
-
 async function memesSection(): Promise<MemeBriefRow[]> {
   const trending = async () =>
     envelopeData<Paged<MemeToken>>(
@@ -172,7 +150,10 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
   const assets = await envelopeData<RwaApiAsset[]>(
     await wsapiRwaRequest("assets", { method: "GET", revalidate: 60 })
   );
-  const listed = listedRwaAssets(assets).slice(0, DASHBOARD_FEED_ROWS);
+  // Every listed asset, not the brief's eight: the "Own the Real World" shelf
+  // picks one per category out of this, and composing it here once for
+  // everyone is what keeps the dashboard from mounting the desk's own poll.
+  const listed = listedRwaAssets(assets);
   // Market stats are an enrichment; the registry's own price still stands
   // when the market read fails.
   const market = await fetchRwaMarket(
@@ -185,6 +166,9 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
       id: a.id,
       symbol: a.symbol,
       name: a.name,
+      issuer: a.issuer,
+      category: a.category ?? null,
+      apyBps: typeof a.yieldApyBps === "number" ? a.yieldApyBps : null,
       logo: rwaLogoPath(a.chain, a.address),
       priceUsd: assetPriceUsd(a) ?? stats?.priceUsd ?? null,
       change24h: stats?.change24h ?? null,
@@ -211,33 +195,6 @@ interface DraughtsMatchWireLite {
   id: string;
   computer?: unknown;
   result: unknown;
-}
-
-// A viem client for Base that reads through the same provider the RPC route
-// uses, without the route: this runs on the server already.
-function baseReadClient() {
-  const chain = getSponsoredEvmChainByNetwork("base-mainnet");
-  if (!chain || chain.chainId !== VAULT_CHAIN_ID) throw new Error("Base is not configured");
-  let id = 0;
-  return createPublicClient({
-    chain: base,
-    transport: custom({
-      async request({ method, params }) {
-        const { payload } = await forwardEvmRpcRead(chain, {
-          jsonrpc: "2.0",
-          id: ++id,
-          method,
-          params,
-        });
-        const envelope = (Array.isArray(payload) ? payload[0] : payload) as {
-          result?: unknown;
-          error?: { message?: string };
-        };
-        if (envelope?.error) throw new Error(envelope.error.message ?? "rpc error");
-        return envelope?.result;
-      },
-    }),
-  });
 }
 
 async function liveSection(): Promise<DashboardLive> {
@@ -325,14 +282,13 @@ async function section<T>(name: keyof DashboardFeed, load: () => Promise<T>): Pr
 }
 
 async function compose(): Promise<DashboardFeed> {
-  const [spot, perps, memes, rwa, live] = await Promise.all([
+  const [spot, memes, rwa, live] = await Promise.all([
     section("spot", spotSection),
-    section("perps", perpsSection),
     section("memes", memesSection),
     section("rwa", rwaSection),
     section("live", liveSection),
   ]);
-  return { asOf: Date.now(), spot, perps, memes, rwa, live };
+  return { asOf: Date.now(), spot, memes, rwa, live };
 }
 
 /** The feed, composed at most once per window for every caller. */

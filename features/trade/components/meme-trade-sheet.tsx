@@ -1,6 +1,7 @@
 "use client";
 
 import { SOLANA_CHAIN_ID, chainSlug, networkOf } from "@/lib/meme/chain";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -166,6 +167,8 @@ export function MemeTradeSheet({
   // the portfolio files its balances under.
   const wallet = walletFor(token.chainId);
   const network = networkOf(token.chainId);
+  // The USD side is always Base; the coin side is the token's chain.
+  const tradedNetworks = scopeOf("base-mainnet", network);
   const portfolio = usePortfolio();
   const linkTriedRef = useRef(false);
   const { user } = usePrivy();
@@ -237,8 +240,17 @@ export function MemeTradeSheet({
   };
 
   // The compiler memoizes this; a manual useMemo here fought its inference.
+  // Off from the moment a trade starts: a refetch after the sale would ask
+  // for the amount just sold and be refused for a balance no longer there.
+  const previewOpen = phase === "idle" || phase === "failed";
   const previewInput =
-    amountValid && sideEnabled && !overBalance && !belowMin && !needsFunding && wallet
+    previewOpen &&
+    amountValid &&
+    sideEnabled &&
+    !overBalance &&
+    !belowMin &&
+    !needsFunding &&
+    wallet
       ? {
           side,
           tokenAddress: token.address,
@@ -424,7 +436,7 @@ export function MemeTradeSheet({
       inFlightRef.current = false;
       toast.success(t("purchaseQueued", { symbol: displaySym }), { id: toastRef.current });
       toastRef.current = undefined;
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(tradedNetworks);
       setFunding("queued");
     } catch (e) {
       inFlightRef.current = false;
@@ -497,14 +509,14 @@ export function MemeTradeSheet({
         { id: toastRef.current }
       );
       toastRef.current = undefined;
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(tradedNetworks);
     } catch (e) {
       inFlightRef.current = false;
       if (saleHandoffId) clearPendingRwaSettlement(saleHandoffId);
       // A failure after signing may still have moved the balance. Read it
       // fresh so the form does not argue with an amount the wallet no longer
       // holds, or refuse one it now does.
-      void portfolio.refetchFresh();
+      void portfolio.refetchFresh(tradedNetworks);
       track("trade_failed", {
         vertical: "memecoin",
         asset: token.symbol ?? token.address,

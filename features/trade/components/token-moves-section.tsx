@@ -6,9 +6,7 @@ import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import type { BuyPayload } from "@/lib/modal-types";
 
 // "Stay Ahead of Token Moves" — the phone home's biggest-movers insight
-// carousel. Kept as its own section rather than folded into the perps trading
-// PerpsSection, so it can sit in the mobile home without touching the /perps
-// desk. The cards are driven by the largest 24h movers, so any token can
+// carousel. Its own section, so it can sit in the mobile home on its own. The cards are driven by the largest 24h movers, so any token can
 // surface here.
 export function TokenMovesSection({ onOpenBuy }: { onOpenBuy?: (buy: BuyPayload) => void }) {
   const { markets } = useSpotMarkets();

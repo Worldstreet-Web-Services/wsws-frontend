@@ -30,18 +30,17 @@ vi.mock("@/features/trade/hooks/use-meme-tokens", () => ({
   useTrendingMemes: () => memes,
 }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const router = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  useSearchParams: () => new URLSearchParams(),
+}));
+// This suite mounts the phone view directly, so it always renders as mobile; the
+// md handoff to /spot etc. is exercised by the route pages, not here.
+vi.mock("@/hooks/use-is-mobile", () => ({ useIsMobile: () => true }));
 
 // The hosted panels are other agents' components. They are stubbed so this
 // suite tests the chrome, and so a change inside them cannot fail it.
-const perpsProps = vi.hoisted(() => ({ last: null as { embedded?: boolean } | null }));
-vi.mock("@/features/trade/components/perps-section", () => ({
-  PerpsSection: (props: { embedded?: boolean }) => {
-    perpsProps.last = props;
-    return <div data-testid="perps-panel" />;
-  },
-}));
 // The mobile Memecoins tab drives TradeTicket directly (its own trade
 // state lives in mobile-market-view.tsx), so this suite mocks the hooks that
 // state is built from, the same way meme-board.test.tsx does for the same
@@ -162,13 +161,14 @@ function renderView() {
         onOpenDetail={onOpenDetail}
         onOpenBuy={onOpenBuy}
         predictionSlot={<div data-testid="prediction-panel" />}
+        rwaSlot={(query) => <div data-testid="rwa-panel" data-query={query} />}
       />
     </NextIntlClientProvider>
   );
   return { onOpenDetail, onOpenBuy };
 }
 
-const tabNames = ["Spot", "Leverage Trading", "Memecoins", "Prediction"];
+const tabNames = ["Spot", "Memecoins", "Real assets", "Prediction"];
 
 function tabs() {
   return within(screen.getByRole("tablist")).getAllByRole("tab");
@@ -221,13 +221,13 @@ describe("MobileMarketView chrome", () => {
 
   it("marks only the active tab selected and keeps it the sole tab stop", () => {
     renderView();
-    const [spotTab, leverageTab] = tabs();
+    const [spotTab, memeTab] = tabs();
     expect(spotTab).toHaveAttribute("aria-selected", "true");
     expect(spotTab).toHaveAttribute("tabindex", "0");
-    expect(leverageTab).toHaveAttribute("aria-selected", "false");
-    expect(leverageTab).toHaveAttribute("tabindex", "-1");
+    expect(memeTab).toHaveAttribute("aria-selected", "false");
+    expect(memeTab).toHaveAttribute("tabindex", "-1");
 
-    fireEvent.click(leverageTab);
+    fireEvent.click(memeTab);
     expect(tabs()[1]).toHaveAttribute("aria-selected", "true");
     expect(tabs()[1]).toHaveAttribute("tabindex", "0");
     expect(tabs()[0]).toHaveAttribute("tabindex", "-1");
@@ -289,7 +289,7 @@ describe("MobileMarketView chrome", () => {
     expect(screen.getByPlaceholderText("Search")).toBeEnabled();
 
     fireEvent.click(tabs()[1]);
-    expect(screen.getByPlaceholderText("Search")).toBeDisabled();
+    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
 
     fireEvent.click(tabs()[2]);
     expect(screen.getByPlaceholderText("Search")).toBeEnabled();
@@ -303,7 +303,7 @@ describe("MobileMarketView chrome", () => {
     renderView();
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Leverage Trading" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Real assets" })).toBeInTheDocument();
   });
 
   it("shows the catalogue's empty and error copy for the spot list", () => {
@@ -316,7 +316,7 @@ describe("MobileMarketView chrome", () => {
   it("shows the catalogue's empty and error copy for the memecoin list", () => {
     memes.error = new Error("down");
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     expect(screen.getByText("Memecoin markets are unavailable right now.")).toBeInTheDocument();
   });
 
@@ -328,7 +328,7 @@ describe("MobileMarketView chrome", () => {
     fireEvent.change(field, { target: { value: "eth" } });
     expect(screen.queryByText("BTC")).toBeNull();
 
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(tabs()[0]);
     expect(screen.getByPlaceholderText("Search")).toHaveValue("");
     expect(screen.getByText("BTC")).toBeInTheDocument();
@@ -390,7 +390,7 @@ describe("MobileMarketView chrome", () => {
   });
 
   // The field cannot filter what is under it once the ticket is open, and this
-  // view already holds that rule for the perps and prediction panels.
+  // view already holds that rule for the real assets and prediction panels.
   it("disables the search field while the ticket is open", () => {
     renderView();
     expect(screen.getByPlaceholderText("Search")).toBeEnabled();
@@ -402,21 +402,29 @@ describe("MobileMarketView chrome", () => {
   it("puts the ticket away when the category changes", () => {
     renderView();
     fireEvent.click(screen.getByText("BTC"));
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(tabs()[0]);
 
     expect(screen.queryByTestId("spot-ticket")).not.toBeInTheDocument();
     expect(marketList()).toBeVisible();
   });
 
-  // The perps desk draws its own page chrome unless it is told it is a guest
-  // here. Without the flag its gutters stack on this page's and every card
-  // loses 32px of width.
-  it("hosts the perps desk in embedded mode on the leverage tab", () => {
+  // The Real assets tab hosts the desk's own section, composed by the route,
+  // and only while its tab is selected.
+  it("mounts the real assets slot only on its own tab, in a scroll box", () => {
     renderView();
-    fireEvent.click(tabs()[1]);
-    expect(screen.getByTestId("perps-panel")).toBeInTheDocument();
-    expect(perpsProps.last?.embedded).toBe(true);
+    expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(tabs()[2]);
+    const panel = screen.getByTestId("rwa-panel-scroll");
+    expect(panel).toContainElement(screen.getByTestId("rwa-panel"));
+
+    // The page's search box filters the list, through the slot.
+    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "gold" } });
+    expect(screen.getByTestId("rwa-panel").dataset.query).toBe("gold");
+
+    fireEvent.click(tabs()[0]);
+    expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();
   });
 });
 
@@ -452,9 +460,18 @@ describe("MobileMarketView, hosting the prediction list", () => {
   });
 });
 
-// Both list tabs page through usePaged with the same 8-row page and the same
-// foot control, rather than scrolling the whole catalogue in one go.
+// Both list tabs fill the device: usePaged shows as many rows as the list box
+// measures (useFitRows), then the shared foot pager
+// (components/ui/list-pagination.tsx) walks the rest, the shared control. jsdom runs no layout, so the box measures zero and the
+// page size falls back to eight, which is the size these cases page through.
 describe("MobileMarketView, list pagination", () => {
+  // The page label shows in two places at once: the visible pager and an
+  // sr-only region that announces a page change to a screen reader. This is the
+  // live region, which is unique and always reflects the current page (the
+  // visible pager hides itself when there is only one page, the live region
+  // does not).
+  const liveStatus = () => document.querySelector('[aria-live="polite"].sr-only');
+
   it("shows only the first page of the spot list, with Prev disabled and Next enabled", () => {
     spot.markets = markets(10);
     renderView();
@@ -465,7 +482,7 @@ describe("MobileMarketView, list pagination", () => {
 
     expect(screen.getByRole("button", { name: "Prev" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 
   it("pages the spot list forward and back, and disables Next on the last page", () => {
@@ -477,11 +494,11 @@ describe("MobileMarketView, list pagination", () => {
     expect(screen.getByText("SYM9")).toBeInTheDocument();
     expect(screen.queryByText("SYM0")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     fireEvent.click(screen.getByRole("button", { name: "Prev" }));
     expect(screen.getByText("SYM0")).toBeInTheDocument();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 
   // A screen reader on the Next button must hear the page change without
@@ -490,19 +507,21 @@ describe("MobileMarketView, list pagination", () => {
     spot.markets = markets(10);
     renderView();
 
-    const status = screen.getByText("Page 1 of 2");
+    const status = liveStatus();
     expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("Page 1 of 2");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toHaveAttribute("aria-live", "polite");
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
   });
 
-  // Every pager control is a real 44px target, not a shrunk icon button.
-  it("gives the spot list's pager buttons a 44px hit area", () => {
+  // Spot pages with the same shared pill control, not a
+  // one-off icon button.
+  it("gives the spot list the shared foot pager", () => {
     spot.markets = markets(10);
     renderView();
 
-    expect(screen.getByRole("button", { name: "Prev" }).className).toMatch(/size-11/);
-    expect(screen.getByRole("button", { name: "Next" }).className).toMatch(/size-11/);
+    expect(screen.getByRole("button", { name: "Prev" }).className).toMatch(/rounded-full/);
+    expect(screen.getByRole("button", { name: "Next" }).className).toMatch(/rounded-full/);
   });
 
   it("resets the spot list to page 1 when a search narrows it", () => {
@@ -510,28 +529,29 @@ describe("MobileMarketView, list pagination", () => {
     renderView();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     // Narrow to a single match, then clear back to the full list: page 1
-    // either way, not the page 2 the reader left.
+    // either way, not the page 2 the reader left. One match fits a single page,
+    // so the visible pager hides and only the live region reports it.
     const field = screen.getByPlaceholderText("Search");
     fireEvent.change(field, { target: { value: "SYM0" } });
-    expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 1");
     expect(screen.getByText("SYM0")).toBeInTheDocument();
 
     fireEvent.change(field, { target: { value: "" } });
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
     expect(screen.getByText("SYM0")).toBeInTheDocument();
   });
 
   it("shows only the first page of the memecoin list, and pages it the same way", () => {
     memes.tokens = memeTokens(9);
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
 
     expect(screen.getByText("MEME0")).toBeInTheDocument();
     expect(screen.queryByText("MEME8")).not.toBeInTheDocument();
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("MEME8")).toBeInTheDocument();
@@ -541,13 +561,13 @@ describe("MobileMarketView, list pagination", () => {
   it("resets the memecoin list to page 1 when a search narrows it", () => {
     memes.tokens = memeTokens(9);
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "MEME0" } });
     fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "" } });
-    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 });
 
@@ -558,7 +578,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("opens a full-screen ticket for the tapped memecoin and puts the list away", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("PEPE"));
 
     expect(screen.getByTestId("meme-trade-ticket")).toBeInTheDocument();
@@ -569,7 +589,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("comes back to the memecoin list from the ticket without leaving the page", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("PEPE"));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -584,7 +604,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("keeps the memecoin list's scroll position across a trip into the ticket", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     const list = memeMarketList();
     let scrollTop = 0;
     Object.defineProperty(list, "scrollTop", {
@@ -609,7 +629,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("does not open the trade sheet from the row tap alone", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("PEPE"));
 
     expect(screen.queryByTestId("meme-sheet")).not.toBeInTheDocument();
@@ -620,7 +640,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("executes a Base memecoin order inline on submit, without opening the sheet", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe", chainId: 8453 })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("PEPE"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
 
@@ -636,7 +656,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("hands a Solana memecoin order to the trade sheet on submit, instead of running it inline", () => {
     memes.tokens = [memeToken({ symbol: "WIF", name: "dogwifhat", chainId: SOLANA_CHAIN_ID })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("WIF"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
 
@@ -651,7 +671,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("closes the trade sheet back to the ticket, not out to the list", () => {
     memes.tokens = [memeToken({ symbol: "WIF", name: "dogwifhat", chainId: SOLANA_CHAIN_ID })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("WIF"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
     fireEvent.click(screen.getByRole("button", { name: "close sheet" }));
@@ -664,10 +684,10 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("puts the memecoin ticket away when the category changes", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     fireEvent.click(screen.getByText("PEPE"));
     fireEvent.click(tabs()[0]);
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
 
     expect(screen.queryByTestId("meme-trade-ticket")).not.toBeInTheDocument();
     expect(memeMarketList()).toBeVisible();
@@ -676,7 +696,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("disables the search field while the memecoin ticket is open", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[1]);
     expect(screen.getByPlaceholderText("Search")).toBeEnabled();
 
     fireEvent.click(screen.getByText("PEPE"));

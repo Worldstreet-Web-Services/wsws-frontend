@@ -99,9 +99,9 @@ export function ArkadeDesktop({
                 type="button"
                 aria-pressed={active}
                 onClick={() => setCategory(value)}
-                // Quicksand bold at 12px, which the comp uses for the filter
-                // labels and nowhere else on this screen.
-                className={`h-[38px] w-[101px] shrink-0 cursor-pointer rounded-full font-[family-name:var(--font-discovery)] text-[12px] leading-4 font-bold whitespace-nowrap transition-colors ${
+                // Bold at 12px. The comp drew the filter labels in Quicksand;
+                // production keeps its display face.
+                className={`h-[38px] w-[101px] shrink-0 cursor-pointer rounded-full font-serif text-[12px] leading-4 font-bold whitespace-nowrap transition-colors ${
                   active ? "text-white" : "text-white/40 hover:text-white/70"
                 }`}
               >

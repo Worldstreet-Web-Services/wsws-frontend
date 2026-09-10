@@ -34,6 +34,7 @@ import { SOLANA_CHAIN_ID, networkOf } from "@/lib/meme/chain";
 import { buyFunding } from "@/lib/meme/funding";
 import { exceedsHeld } from "@/lib/meme/sell-amount";
 import { toast } from "@/lib/toast";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { belowMinimumBuy } from "@/lib/trade/minimums";
 
 // The memecoin screen on a phone (Figma 121:6811, and its two other states,
@@ -200,6 +201,9 @@ export function MemeBoard() {
       return;
     }
     const symbol = displaySymbol(selected.symbol ?? "");
+    // The fresh read after the trade is scoped to the networks it touched:
+    // the traded chain, and Base, where a buy is funded from.
+    const tradedNetworks = scopeOf("base-mainnet", networkOf(input.chainId));
     const toastId = toast.loading(
       input.side === "BUY" ? t("buyingToast", { symbol }) : t("sellingToast", { symbol })
     );
@@ -210,13 +214,13 @@ export function MemeBoard() {
         { id: toastId }
       );
       setAmount("");
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(tradedNetworks);
       swaps.refetch();
     } catch (e) {
       // The trade hook keeps the message for the ticket's inline error; the
       // toast is for the case where the user has already looked away.
       toast.error(friendlyError(e, t("orderFailed")), { id: toastId });
-      void portfolio.refetchFresh();
+      void portfolio.refetchFresh(tradedNetworks);
     }
   }
 

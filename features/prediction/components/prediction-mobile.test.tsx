@@ -133,10 +133,8 @@ describe("PredictionMobile", () => {
     expect(screen.getByText(rates.q)).toBeInTheDocument();
     expect(screen.getByText(/68¢/)).toBeInTheDocument();
     expect(screen.getByText("Politics")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: rates.q })).toHaveAttribute(
-      "href",
-      "/prediction/markets/481717?category=politics&source=markets"
-    );
+    // No page of its own on this build: the card opens the prediction desk.
+    expect(screen.getByRole("link", { name: rates.q })).toHaveAttribute("href", "/prediction");
 
     const artwork = document.querySelector(`img[src="${rates.image}"]`);
     expect(artwork).not.toBeNull();
@@ -202,7 +200,7 @@ describe("PredictionMobile", () => {
     // Exact, because the promo card beside it is labelled "… — Predict Now".
     expect(screen.getByRole("link", { name: "Predict Now" })).toHaveAttribute(
       "href",
-      "/prediction/markets/481717?category=politics&source=markets"
+      "/prediction"
     );
   });
 
@@ -211,7 +209,8 @@ describe("PredictionMobile", () => {
     renderBanner();
 
     expect(hasTouchTarget(screen.getByRole("link", { name: "Predict Now" }))).toBe(true);
-    expect(hasTouchTarget(screen.getByRole("link", { name: "See Other Predictions" }))).toBe(true);
+    // Predict Now is the banner's only action; there is no second pill.
+    expect(screen.queryByRole("link", { name: "See Other Predictions" })).toBeNull();
     expect(hasTouchTarget(screen.getByRole("button", { name: "Pause prediction rotation" }))).toBe(
       true
     );

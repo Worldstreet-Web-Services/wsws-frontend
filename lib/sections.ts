@@ -1,12 +1,10 @@
-// Spot and perpetuals are separate sections with their own sidebar entries;
-// each carries its own simple/pro interface switch inside.
+// Spot carries its own simple/pro interface switch inside.
 export type SectionId =
-  "portfolio" | "spot" | "perps" | "meme" | "rwa" | "prediction" | "earn" | "casino" | "activity";
+  "portfolio" | "spot" | "meme" | "rwa" | "prediction" | "earn" | "casino" | "activity";
 
 export const SECTION_LABEL: Record<SectionId, string> = {
   portfolio: "Portfolio",
   spot: "Spot",
-  perps: "Perpetuals",
   meme: "Memecoins",
   rwa: "Real assets",
   prediction: "Prediction",
@@ -20,12 +18,7 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 const PINNED: SectionId = "portfolio";
 const REORDERABLE: SectionId[] = [
   "spot",
-  // Perpetuals are hidden on production for now (#382). Staging is where the
-  // perps desk is exercised, so it stays in the nav here.
-  "perps",
   "meme",
-  // Real assets stay in the order; HIDDEN_NAV_SECTIONS below is what keeps
-  // them out of the navigation for now.
   "rwa",
   "prediction",
   // Earn is hidden from the nav for now.
@@ -35,30 +28,27 @@ const REORDERABLE: SectionId[] = [
 ];
 
 /**
- * Sections kept out of the navigation for now.
+ * Sections kept out of the navigation.
  *
  * A visibility switch, not a removal, the way MARKET_SQUARE_HIDDEN in
- * lib/market-square.ts is. Everything behind a listed id stays wired: Real
- * assets keeps its route at /rwa, its slice under features/rwa, its holdings
- * in the portfolio breakdown, and the settlement tracker that finishes
- * in-flight purchases. The id is only not offered as a way in.
+ * lib/market-square.ts is. Everything behind a listed id stays wired: its
+ * route, its slice, its holdings in the portfolio breakdown. The id is only
+ * not offered as a way in.
  *
  * buildNav in components/layout/nav-items.tsx is the single reader, so the
  * desktop rail, the phone drawer, the marquee and the dashboard's brief order
  * all drop a hidden section together.
  *
- * To bring Real assets back, delete "rwa" from this list. Nothing else needs
- * to change: the order above, the routes, the interest map and the rail's
- * highlight all still know about it, which is also why reaching /rwa by URL
- * keeps working while it is hidden.
+ * Empty since 2026-09-09: Real assets returned once the gateway's rwa and
+ * gas-sponsor services were confirmed live in production. To hide a section
+ * again, list its id here; nothing else needs to change.
  */
-export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = ["rwa"];
+export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = [];
 
 // Sections that are their own page rather than an anchor.
 export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
   portfolio: "/portfolio",
   spot: "/spot",
-  perps: "/perps",
   meme: "/meme",
   rwa: "/rwa",
   casino: "/casino",
@@ -85,7 +75,7 @@ const INTEREST_TO_SECTION: Record<string, SectionId> = {
   stocks: "rwa",
   gold: "rwa",
   crypto: "spot",
-  perps: "perps",
+  // Perpetuals are not on this build; the interest falls back to the default order.
   meme: "meme",
   prediction: "prediction",
   casino: "casino",

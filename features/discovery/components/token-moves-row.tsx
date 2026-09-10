@@ -362,120 +362,14 @@ function TokenCallCardSkeleton() {
   );
 }
 
-// Eth Africa: a dark card carrying a white panel, with the crowd and its two
-// coins rising over the panel's lower edge. Each coin runs off one side of the
-// card, so each holds that side; the crowd stands between them, and the card's
-// bottom edge cuts all three.
-function EthAfricaCard() {
-  const t = useTranslations("discovery");
-
-  return (
-    <article className={`${CARD_BOX} border-[1.08px] border-[#989898] bg-[#0f0f0f]`}>
-      {/* Each coin keeps the share of the card it has in the design, 212 and
-          216 of 510, and takes its height from that width, so it stays round
-          on any card. It hangs from the bottom edge and the card clips
-          whatever height that leaves above: at 510px this lands exactly on
-          the design's 28.93% top, and on a wider card the coins grow with
-          the card rather than leaving a bare strip between them and the
-          crowd. Nothing but the card's own corner is behind them. */}
-      <img
-        src="/market/token-coin.svg"
-        alt=""
-        aria-hidden
-        className={`${artLayer} bottom-0 left-0 w-[41.569%]`}
-      />
-      <img
-        src="/market/token-coin-right.svg"
-        alt=""
-        aria-hidden
-        className={`${artLayer} right-0 bottom-0 w-[42.353%]`}
-      />
-
-      {/* The panel is laid out rather than pinned, so a locale that needs more
-          panel makes the card taller instead of running out of the bottom of
-          it. The insets are the design's: 21.09 above and 35 and 35.54 at the
-          sides. Below is the design's 54.66 less the card's own 1.08px
-          border top and bottom, which now counts towards a height the
-          content sets rather than one min-h fixed, so the card still lands on
-          its 263px when the panel is at its drawn height. */}
-      <div className="relative pt-[21.09px] pr-[35.54px] pb-[52.5px] pl-[35px]">
-        {/* The panel's bottom padding is the band of white the crowd stands
-            in front of. Nothing is laid out in it, so however far the copy
-            runs the crowd still meets it at the same place it does in the
-            design instead of climbing over the words. */}
-        <div className="min-h-[187.25px] overflow-hidden rounded-[17.87px] bg-white pt-[12.74px] pr-[23.48px] pb-[73.21px] pl-[24.2px]">
-          {/* The buttons keep the width their own labels need, and the copy
-              takes what is left: it opens up to a readable measure on a panel
-              wider than the design, and gives width back down to 150px on a
-              narrower one. Below that the two stop sharing a line and the
-              buttons drop under the copy, each with the whole panel to sit
-              in, rather than the copy being squeezed to a ribbon. */}
-          <div className="flex flex-wrap items-end gap-x-[30.17px] gap-y-[18px]">
-            <div className="max-w-[340px] min-w-[150px] flex-[1_1_203.49px]">
-              <h3 className="text-[20px] leading-none font-bold tracking-[-1px] text-[#0f0f0f]">
-                {t("ethAfricaTitle")}
-              </h3>
-              <p className="mt-[11px] text-[15px] leading-normal font-medium break-words text-[#777474]">
-                {t.rich("ethAfricaBody", {
-                  strong: (chunks) => (
-                    <strong className="font-semibold text-black">{chunks}</strong>
-                  ),
-                })}
-              </p>
-            </div>
-            <div className="ml-auto flex max-w-full min-w-[158.12px] shrink-0 flex-col items-end gap-[8.25px]">
-              <DiscoveryCta
-                href="/spot"
-                label={t("ethAfricaBuy")}
-                tone="dark"
-                size={17}
-                icon={
-                  <img
-                    src="/market/token-coins-icon.svg"
-                    alt=""
-                    aria-hidden
-                    className="size-[19.25px]"
-                  />
-                }
-              />
-              <DiscoveryCta
-                href="/prediction"
-                label={t("ethAfricaJoin")}
-                tone="light"
-                size={17}
-                className="w-full border-[1.375px] border-black"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* The crowd is a fixed 510x136 at every card width, centred, standing
-          on the bottom edge. It is the one piece here that cannot be resized:
-          widen it and the figures go stout, scale it up and the heads climb
-          over the panel copy. The coins reach in far enough on either side to
-          meet it, so it does not have to grow to cover the card. Below 510px
-          the card clips its outer edges, which is the same cut the card's
-          bottom edge already makes. */}
-      <img
-        src="/market/token-crowd.svg"
-        alt=""
-        aria-hidden
-        className={`${artLayer} bottom-0 left-1/2 w-[510px] max-w-none -translate-x-1/2`}
-      />
-    </article>
-  );
-}
-
-// "Stay Ahead of Token Moves": a read on a coin the user holds, and the
-// community putting that read to work.
+// "Stay ahead of token moves on spot": the moves worth knowing about, one
+// coin to a card.
 //
-// The pair rides a carousel. Two cards cannot cycle, so the token call is dealt
-// twice: it is the row's subject, the only card that reads a position the user
-// actually holds, while Eth Africa is the aside beside it. The repeat is third
-// rather than second so the first two views, the call then Eth Africa and Eth
-// Africa then the call, are both a genuine pair. Both copies feature the same
-// token, off one rotation, because they are one card seen twice.
+// The cards ride a carousel, and each is a different coin. The row deals up to
+// three from the featured coin on: the featured coin, the next and the one
+// after, so a step through the carousel is a step through the ranking rather
+// than the same call seen twice. Every ten seconds the featured coin advances
+// and every card moves one place with it.
 export function TokenMovesRow({
   tokens = [],
   loading = false,
@@ -486,9 +380,9 @@ export function TokenMovesRow({
 }) {
   const t = useTranslations("discovery");
 
-  // The holds are counted rather than flagged. The row draws the card twice,
-  // and a pointer and a focus can rest on it at once, so the rotation restarts
-  // only when the last of them has left.
+  // The holds are counted rather than flagged. The row draws several cards,
+  // and a pointer and a focus can rest on them at once, so the rotation
+  // restarts only when the last of them has left.
   const holds = useRef(0);
   const [paused, setPaused] = useState(false);
   const onHold = useCallback((held: boolean) => {
@@ -498,38 +392,37 @@ export function TokenMovesRow({
 
   const featured = useRotatingIndex(tokens.length, { intervalMs: TOKEN_HOLD_MS, paused });
 
-  const token = tokens.length > 0 ? tokens[featured] : null;
+  // Up to three coins, each once. Two coins deal two cards, one coin one.
+  const dealt = tokens.slice(0, 3).map((_, offset) => tokens[(featured + offset) % tokens.length]);
 
   // Three states, and none of them invents a token.
   //
-  // With a token the row is the pair the design draws. Waiting on the route it
-  // is the same pair with the call drawn empty, so the shelf keeps its height
-  // and its place and no figure appears before there is one. With the route
-  // settled and nothing to feature there is no call to make: Eth Africa takes
-  // the row to itself rather than standing next to an empty card that is never
-  // going to fill. The card that used to stand here was the design's BTC comp,
-  // price and percentage included, and it was on screen every time the route
-  // handed the row nothing.
-  const call = token ? (
-    <TokenCallCard token={token} onHold={onHold} />
-  ) : loading ? (
-    <TokenCallCardSkeleton />
-  ) : null;
+  // With coins the row is the cards. Waiting on the route it is two cards
+  // drawn empty, so the shelf keeps its height and its place and no figure
+  // appears before there is one. With the route settled and nothing to
+  // feature there is no call to make, and the row goes rather than standing
+  // over an empty carousel. The card that used to stand here was the design's
+  // BTC comp, price and percentage included, and it was on screen every time
+  // the route handed the row nothing.
+  if (dealt.length === 0 && !loading) return null;
+
+  const cards =
+    dealt.length > 0
+      ? dealt.map((token) => <TokenCallCard key={token.symbol} token={token} onHold={onHold} />)
+      : [<TokenCallCardSkeleton key="first" />, <TokenCallCardSkeleton key="second" />];
 
   return (
     <DiscoveryRow title={t("tokenMovesTitle")} href="/spot">
-      {call ? (
+      {cards.length > 1 ? (
         <Carousel label={t("tokenMovesCarousel")} trimPx={50}>
-          {call}
-          <EthAfricaCard />
-          {call}
+          {cards}
         </Carousel>
       ) : (
         // One slide, so it is given the whole frame rather than half of one
-        // with a gutter where the call would have been. No peek either: there
+        // with a gutter where the next would have been. No peek either: there
         // is nothing behind it to show the edge of.
         <Carousel label={t("tokenMovesCarousel")} perView={1} peek={0}>
-          <EthAfricaCard />
+          {cards}
         </Carousel>
       )}
     </DiscoveryRow>

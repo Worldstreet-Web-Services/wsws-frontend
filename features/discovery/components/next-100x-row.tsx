@@ -5,7 +5,7 @@
 // callers, the dashboard and the preview harness, are already client pages, so
 // nothing that was rendering on the server stops doing so.
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
@@ -83,30 +83,102 @@ const GAIN_CHIPS: readonly GainChip[] = [
   { x: 449.6, y: 28.4, tilt: 20.52, width: 59.9, height: 25.8, border: 0.86, font: 12.55 },
 ];
 
-// The Pepe card is one centred composition: avatar, chips, heading and pill all
-// hang off the middle of the card in the design, so they sit in a 484px stage
-// centred in whatever width the slide gets. The cluster then stays around Pepe
-// rather than spreading toward the corners, and every coordinate here is still
-// the one the design uses.
-function PepeCard() {
+interface HeldCardProps {
+  /** Called with true while the pointer or focus is on this card. */
+  onHold: (held: boolean) => void;
+}
+
+// Hover and focus-within, reported upward. WCAG 2.2.2 (Pause, Stop, Hide): the
+// coins on these cards advance on their own, so a reader needs a way to hold
+// them still. The rotation is owned by the row because the carousel draws each
+// card more than once and every copy must show the same coin.
+function useHold(onHold: (held: boolean) => void) {
+  const held = useRef(false);
+  const set = useCallback(
+    (next: boolean) => {
+      if (held.current === next) return;
+      held.current = next;
+      onHold(next);
+    },
+    [onHold]
+  );
+  return {
+    onMouseEnter: () => set(true),
+    onMouseLeave: () => set(false),
+    // React's onFocus and onBlur bubble, so these are focus-within.
+    onFocus: () => set(true),
+    onBlur: () => set(false),
+  };
+}
+
+interface MemeBoomCardProps extends HeldCardProps {
+  /** The coin on show, or null for the Pepe the design draws. */
+  spot: MemeSpot | null;
+}
+
+// The black card is one centred composition: avatar, chips, heading and pill
+// all hang off the middle of the card in the design, so they sit in a 484px
+// stage centred in whatever width the slide gets. The cluster then stays
+// around the coin rather than spreading toward the corners, and every
+// coordinate here is still the one the design uses.
+//
+// The design drew it for Pepe, with "+1000%" thrown around him. A live coin
+// takes his place: its picture in the avatar slot, its own move on every chip,
+// and its ticker in the heading. With no coin it is the design's card.
+function MemeBoomCard({ spot, onHold }: MemeBoomCardProps) {
   const t = useTranslations("discovery");
+  const hold = useHold(onHold);
+
+  // A logo that fails is remembered for the life of this card, which is keyed
+  // on the coin, so the disc falls back to the ticker rather than a broken image.
+  const [logoBroken, setLogoBroken] = useState(false);
+  const artwork = spot ? artworkFor(spot.symbol) : null;
+  const logo = spot?.image && !logoBroken ? spot.image : null;
 
   return (
-    <article className={CARD_BOX} style={{ background: PEPE_CARD_SURFACE }}>
+    <article className={CARD_BOX} style={{ background: PEPE_CARD_SURFACE }} {...hold}>
       <span
         aria-hidden
         className={`${BACKDROP} top-[-112.03px] left-[-32.24%] h-[312.541px] w-[123.74%] bg-[url('/market/next100x-card-rays.svg')]`}
       />
 
-      <div className="absolute top-0 left-1/2 h-[212px] w-[484px] -translate-x-1/2">
+      <div className="pointer-events-none absolute top-0 left-1/2 h-[212px] w-[484px] -translate-x-1/2">
         <span
           aria-hidden
           className={`${BACKDROP} top-0 left-[14px] h-[165px] w-[274px] bg-[url('/market/next100x-pepe-glow.svg')]`}
         />
-        <span
-          aria-hidden
-          className={`${BACKDROP} top-0 left-[194px] h-[94px] w-[97px] bg-[url('/market/next100x-pepe-avatar.svg')]`}
-        />
+        {/* The avatar slot: Pepe's own portrait for the editorial card and for
+            a live PEPE, the Shiba for a live SHIB, and a disc carrying the
+            listing's logo over its ticker for every other coin. */}
+        {spot === null || artwork !== null ? (
+          <span
+            aria-hidden
+            className={`${BACKDROP} top-0 left-[194px] h-[94px] w-[97px]`}
+            style={{
+              backgroundImage: `url('${artwork?.src ?? "/market/next100x-pepe-avatar.svg"}')`,
+            }}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="absolute top-0 left-[194px] flex size-[94px] items-center justify-center overflow-hidden rounded-full border-[3px] border-white/70 bg-white/15 drop-shadow-[0_6px_18px_rgba(0,0,0,0.3)]"
+          >
+            <span className="px-2 text-center font-sans text-[18px] leading-none font-semibold tracking-[-0.04em] break-all text-white uppercase">
+              {spot.symbol}
+            </span>
+            {logo === null ? null : (
+              <img
+                src={logo}
+                alt=""
+                loading="eager"
+                decoding="sync"
+                referrerPolicy="no-referrer"
+                onError={() => setLogoBroken(true)}
+                className="absolute inset-0 size-full object-cover"
+              />
+            )}
+          </span>
+        )}
 
         {GAIN_CHIPS.map((chip) => (
           <span
@@ -121,9 +193,11 @@ function PepeCard() {
               fontSize: chip.font,
               transform: `translate(-50%, -50%) rotate(${chip.tilt}deg) skewX(-1.27deg)`,
             }}
-            className="pointer-events-none absolute flex items-center justify-center rounded-full border-[#dadada] bg-white font-sans font-bold tracking-[-0.08em] text-[#03df3d]"
+            className={`pointer-events-none absolute flex items-center justify-center rounded-full border-[#dadada] bg-white font-sans font-bold tracking-[-0.08em] ${
+              spot === null || spot.up ? "text-[#03df3d]" : "text-[#e5484d]"
+            }`}
           >
-            +1000%
+            {spot?.change ?? "+1000%"}
           </span>
         ))}
       </div>
@@ -138,11 +212,13 @@ function PepeCard() {
             axis, which otherwise sizes to its longest word and hangs off both
             sides of the card. With the cap in place break-words can do its job. */}
         <h3 className="max-w-full text-center font-serif text-[28px] leading-[41px] font-medium tracking-[-2.36px] break-words text-white">
-          {t("pepeTitle")}
+          {spot === null
+            ? t("pepeTitle")
+            : t(spot.up ? "memeBoomTitle" : "memeCoolTitle", { symbol: spot.symbol })}
         </h3>
         <DiscoveryCta
-          href="/meme"
-          label={t("pepeCta")}
+          href={spot?.href ?? "/meme"}
+          label={spot === null ? t("pepeCta") : t("memeBuy", { symbol: spot.symbol })}
           tone="light"
           size={14}
           icon={
@@ -471,8 +547,9 @@ function MemeArt({ artwork, logo, symbol, up, onLogoError }: MemeArtProps) {
   );
 }
 
-interface MemeSpotCardProps {
-  memecoins: readonly MemeSpot[];
+interface MemeSpotCardProps extends HeldCardProps {
+  /** The coin on show, or null for the Shiba the design draws. */
+  spot: MemeSpot | null;
 }
 
 // The orange card. The artwork holds the bottom left corner at the size the
@@ -482,51 +559,26 @@ interface MemeSpotCardProps {
 // Neither one is sized from the slide. On a slide the width of the artboard the
 // pair is the artboard; on a wider one the extra width is orange between them.
 //
-// With live coins it cycles through them on a ten second loop, one coin at a
-// time, each with its own heading, its own figure and its own artwork. With none
-// it shows the Shiba the design was drawn with, which is the same drawing a live
-// SHIB gets.
-function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
+// A live coin gets its own heading, its own figure and its own artwork. With
+// none it shows the Shiba the design was drawn with, which is the same drawing
+// a live SHIB gets. He carries the design's own line and no figure: the
+// illustration is editorial, so there is no move to report.
+function MemeSpotCard({ spot, onHold }: MemeSpotCardProps) {
   const t = useTranslations("discovery");
+  const hold = useHold(onHold);
 
-  // WCAG 2.2.2 (Pause, Stop, Hide): content that updates itself for longer than
-  // five seconds needs a way to stop it. Hovering the card or moving focus into
-  // it holds the current coin, so a pointer can read it and a keyboard reaching
-  // the Check Chart pill is not handed a different coin's chart mid-tab.
-  const [held, setHeld] = useState(false);
+  // A logo that fails is remembered for the life of this card, which is keyed
+  // on the coin, so the disc falls back to the ticker rather than a broken image.
+  const [logoBroken, setLogoBroken] = useState(false);
+  const logo = spot?.image && !logoBroken ? spot.image : null;
 
-  // The rotation: the live coins the desk is watching, and after them the Shiba
-  // the card was designed around. A null slot is that editorial entry.
-  //
-  // The dog is a member of the cycle rather than only what stands in when there
-  // is nothing live, so he comes round on a live dashboard instead of vanishing
-  // the moment the first coin arrives. He goes last, not first, so the card
-  // still opens on the freshest coin it was handed.
-  //
-  // He carries the design's own line and no figure. The illustration is
-  // editorial, so there is no move to report and nothing to call up or down.
-  // With no live coins the rotation is this entry alone and the card is exactly
-  // the still, editorial card it has always been.
-  const entries: readonly (MemeSpot | null)[] = [...memecoins, null];
-  const index = useRotatingIndex(entries.length, { paused: held });
-  const spot = entries[index] ?? null;
-
-  // Logo URLs come from an upstream listing and some of them will not resolve.
-  // A src that has failed once is remembered, so the disc falls back to the
-  // ticker rather than flashing a broken image every time that coin comes round.
-  const [brokenLogos, setBrokenLogos] = useState<ReadonlySet<string>>(() => new Set());
-  const listed = spot?.image ?? null;
-  const logo = listed !== null && !brokenLogos.has(listed) ? listed : null;
-
-  // Every picture the rotation will need is fetched up front, so a swap paints
-  // something already in cache instead of starting a request and leaving a gap
-  // until it lands. That is the whole of the flicker the reader was seeing.
-  // React dedupes these, so calling them on each render costs one link tag per
-  // URL for the life of the page.
+  // The pictures this card needs are fetched up front, so a swap paints
+  // something already in cache instead of leaving a gap until it lands. React
+  // dedupes these, so calling them on each render costs one link tag per URL.
   preload(SHIBA_ARTWORK.src, { as: "image" });
   preload(ARROW_SRC, { as: "image" });
-  for (const coin of memecoins) {
-    const source = sourceFor(coin);
+  if (spot !== null) {
+    const source = sourceFor(spot);
     if (source !== null) preload(source, { as: "image" });
   }
 
@@ -537,15 +589,11 @@ function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
   return (
     <article
       // `@container` only on this card, and not in CARD_BOX, because only this
-      // one carries the artwork the floor applies to. The Pepe card is a fixed
+      // one carries the artwork the floor applies to. The black card is a fixed
       // composition on a centred stage and has nothing to answer a query with.
       className={`${CARD_BOX} @container`}
       style={{ background: MEME_CARD_SURFACE }}
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      // React's onFocus and onBlur bubble, so these are focus-within.
-      onFocus={() => setHeld(true)}
-      onBlur={() => setHeld(false)}
+      {...hold}
     >
       <span
         aria-hidden
@@ -557,9 +605,6 @@ function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
       />
 
       <MemeArt
-        // Keyed on the coin, so the next one mounts fresh images and their own
-        // onError fires rather than being suppressed as a src swap.
-        key={spot?.symbol ?? "editorial"}
         artwork={artwork}
         logo={logo}
         symbol={spot?.symbol ?? ""}
@@ -567,9 +612,7 @@ function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
         // there is nothing here to call up. The dog's own drawing carries the
         // arrow regardless, which is why he still reads as rising.
         up={spot?.up ?? false}
-        onLogoError={() => {
-          if (logo !== null) setBrokenLogos((seen) => new Set(seen).add(logo));
-        }}
+        onLogoError={() => setLogoBroken(true)}
       />
 
       {/* The design's 242px column, held against the card's right edge by its
@@ -591,7 +634,10 @@ function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
         <h3 className="font-sans text-[30px] leading-[33.7px] font-medium tracking-[-2.5px] break-words text-white">
           {spot ? (
             <>
-              {t(spot.up ? "memeUpTitle" : "memeDownTitle", { name: spot.name })}
+              {/* The ticker, not the listing's name. The ticker is the whole
+                  identity of a coin on a card this size, and the names the
+                  trending feed carries run from a word to a sentence. */}
+              {t(spot.up ? "memeUpTitle" : "memeDownTitle", { name: spot.symbol })}
               {/* The move gets its own line rather than being folded into the
                   sentence. It arrives already signed, so a template that also
                   said "up" or "down" would either repeat the plus or argue with
@@ -622,19 +668,53 @@ function MemeSpotCard({ memecoins }: MemeSpotCardProps) {
   );
 }
 
-// "Find the next 100X": the memecoins the desk is watching. Both cards lead to
-// the meme desk, which is the only place either can actually be traded.
+// The featured coin holds for this long before the next one takes the row.
+const MEME_HOLD_MS = 10_000;
+
+// "Find the next 100X": the memecoins the desk is watching, one coin to a
+// card. Every card leads to the meme desk, which is the only place any of
+// them can actually be traded.
 //
-// The pair rides a carousel, and two cards cannot cycle, so Pepe is dealt
-// twice. Pepe is the card the row is named after: its chips are the 100X the
-// heading promises and its claim is present tense. The repeat is third rather
-// than second so the first two views are both a genuine pair.
-//
-// `memecoins` is the trending set, already display-ready. The orange card
-// cycles it; Pepe stays editorial. With no coins the row renders exactly what
-// it rendered before the card went live.
+// The cards ride a carousel. The row deals up to three coins from the featured
+// one on, black card, orange card, black card, so a step through the carousel
+// is a step through the ranking rather than the same coin seen twice. Every
+// ten seconds the featured coin advances and every card moves one place with
+// it. With no coins it is the design's own pair: Pepe, the Shiba, and Pepe
+// again so the loop has three slides.
 export function Next100xRow({ memecoins = [] }: { memecoins?: readonly MemeSpot[] }) {
   const t = useTranslations("discovery");
+
+  // The holds are counted rather than flagged. The row draws several cards,
+  // and a pointer and a focus can rest on them at once, so the rotation
+  // restarts only when the last of them has left.
+  const holds = useRef(0);
+  const [paused, setPaused] = useState(false);
+  const onHold = useCallback((held: boolean) => {
+    holds.current = Math.max(0, holds.current + (held ? 1 : -1));
+    setPaused(holds.current > 0);
+  }, []);
+
+  const featured = useRotatingIndex(memecoins.length, { intervalMs: MEME_HOLD_MS, paused });
+
+  // Up to three coins, each once. Two coins deal two cards, one coin one.
+  const dealt = memecoins
+    .slice(0, 3)
+    .map((_, offset) => memecoins[(featured + offset) % memecoins.length]);
+
+  const cards =
+    dealt.length > 0
+      ? dealt.map((coin, slot) =>
+          slot % 2 === 0 ? (
+            <MemeBoomCard key={coin.symbol} spot={coin} onHold={onHold} />
+          ) : (
+            <MemeSpotCard key={coin.symbol} spot={coin} onHold={onHold} />
+          )
+        )
+      : [
+          <MemeBoomCard key="pepe" spot={null} onHold={onHold} />,
+          <MemeSpotCard key="shiba" spot={null} onHold={onHold} />,
+          <MemeBoomCard key="pepe-again" spot={null} onHold={onHold} />,
+        ];
 
   return (
     <DiscoveryRow
@@ -643,11 +723,17 @@ export function Next100xRow({ memecoins = [] }: { memecoins?: readonly MemeSpot[
       })}
       href="/meme"
     >
-      <Carousel label={t("next100xCarousel")} trimPx={50}>
-        <PepeCard />
-        <MemeSpotCard memecoins={memecoins} />
-        <PepeCard />
-      </Carousel>
+      {cards.length > 1 ? (
+        <Carousel label={t("next100xCarousel")} trimPx={50}>
+          {cards}
+        </Carousel>
+      ) : (
+        // One slide, so it is given the whole frame rather than half of one
+        // with a gutter where the next would have been.
+        <Carousel label={t("next100xCarousel")} perView={1} peek={0}>
+          {cards}
+        </Carousel>
+      )}
     </DiscoveryRow>
   );
 }

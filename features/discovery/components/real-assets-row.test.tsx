@@ -53,7 +53,7 @@ describe("Own the Real World", () => {
     render(<RealAssetsRow spots={empty} />, { wrapper });
     expect(screen.getByRole("link", { name: /Own the Real World/ })).toHaveAttribute(
       "href",
-      "/rwa"
+      "/market?tab=rwa"
     );
   });
 

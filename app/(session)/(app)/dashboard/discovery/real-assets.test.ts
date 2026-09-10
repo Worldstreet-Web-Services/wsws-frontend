@@ -27,7 +27,7 @@ describe("groupRwaSpots", () => {
       change: "+0.26%",
       up: true,
       apy: null,
-      href: "/rwa",
+      href: "/market?tab=rwa",
     });
   });
 

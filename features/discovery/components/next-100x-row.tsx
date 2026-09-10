@@ -247,7 +247,7 @@ function MemeBoomCard({ spot, onHold, onBuy }: MemeBoomCardProps) {
         {buyableSpot !== null && onBuy ? (
           <DiscoveryCta {...buyPillProps} onClick={() => onBuy(buyableSpot)} />
         ) : (
-          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/meme"} />
+          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/market?tab=memecoins"} />
         )}
       </div>
     </article>
@@ -699,7 +699,7 @@ function MemeSpotCard({ spot, onHold, onBuy }: MemeSpotCardProps) {
         {buyableSpot !== null && onBuy ? (
           <DiscoveryCta {...buyPillProps} onClick={() => onBuy(buyableSpot)} />
         ) : (
-          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/meme"} />
+          <DiscoveryCta {...buyPillProps} href={spot?.href ?? "/market?tab=memecoins"} />
         )}
       </div>
     </article>
@@ -771,7 +771,12 @@ export function Next100xRow({
   // fallback is the design's own editorial pair, which the reader sees as a
   // finished row whenever the feed has nothing live.
   cards.push(
-    <SeeMoreCard key="see-more" headline={t("next100xSeeMore")} href="/meme" className={CARD_BOX} />
+    <SeeMoreCard
+      key="see-more"
+      headline={t("next100xSeeMore")}
+      href="/market?tab=memecoins"
+      className={CARD_BOX}
+    />
   );
 
   return (
@@ -779,7 +784,7 @@ export function Next100xRow({
       title={t.rich("next100xTitle", {
         hot: (chunks) => <span className="text-[#ddb4fd]">{chunks}</span>,
       })}
-      href="/meme"
+      href="/market?tab=memecoins"
     >
       {cards.length > 1 ? (
         <Carousel label={t("next100xCarousel")} trimPx={50}>

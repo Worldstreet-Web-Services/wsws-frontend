@@ -19,7 +19,10 @@ import type { MemeSpot } from "@/features/discovery/types";
  * would dead-end on an unselected desk. The desk is the honest destination
  * until a coin has a URL of its own.
  */
-const MEME_DESK = "/meme";
+// On mobile the meme desk is a tab inside /market; /market?tab=memecoins opens
+// it there and hands off to /meme from md up, so a card lands on the right
+// surface either way rather than a route the phone does not have.
+const MEME_DESK = "/market?tab=memecoins";
 
 const DEFAULT_LIMIT = 5;
 

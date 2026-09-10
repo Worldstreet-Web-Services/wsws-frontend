@@ -564,7 +564,10 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
         <MarketLogo className="h-5 w-auto" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-2">
+      {/* pb clears the curved bottom nav the Market page now carries (it is
+          fixed over the foot of this full-screen view). Mobile only, since the
+          bar is md:hidden. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-2 pb-[92px] md:pb-0">
         <MarketTabs
           active={activeTab}
           onSelect={selectTab}

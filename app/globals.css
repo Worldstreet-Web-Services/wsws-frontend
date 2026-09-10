@@ -108,7 +108,7 @@
      bubble, the connection banner) offsets itself by --ws-frame-inset, the
      margin the column leaves on each side, so it stays inside the frame too.
      Overlays that dim the whole screen stay at the viewport's edges. */
-  --ws-frame-max: 2000px;
+  --ws-frame-max: 2500px;
   --ws-frame-inset: max(0px, calc((100vw - var(--ws-frame-max)) / 2));
 }
 

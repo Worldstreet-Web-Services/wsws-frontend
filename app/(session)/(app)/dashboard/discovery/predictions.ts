@@ -51,7 +51,11 @@ function toSpot(prediction: Prediction): PredictionSpot | null {
     images: prediction.image ? [prediction.image] : [],
     // A Polymarket market has no page of its own on this build, so the card
     // opens the prediction desk, where it can be bet on.
-    href: "/prediction",
+    // On mobile the prediction desk is a tab inside /market, not a standalone
+    // route; /market?tab=prediction opens that tab there and hands off to the
+    // /prediction screen from md up. So a card resolves to the right surface
+    // either way instead of pointing at a route the phone does not have.
+    href: "/market?tab=prediction",
   };
 }
 

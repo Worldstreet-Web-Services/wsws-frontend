@@ -48,7 +48,7 @@ describe("usePredictionSpots", () => {
         question: "Will there be no change in Fed interest rates?",
         closesAt: Date.UTC(2026, 8, 16, 0, 0, 0),
         images: ["https://cdn.example/fed.jpg"],
-        href: "/prediction",
+        href: "/market?tab=prediction",
       },
     ]);
   });
@@ -111,7 +111,7 @@ describe("usePredictionSpots", () => {
     // destination; a fabricated category would open the wrong screen.
     feed([market({ tagLabels: ["Weather", "Hong Kong"] })]);
     const { result } = renderHook(() => usePredictionSpots());
-    expect(result.current[0].href).toBe("/prediction");
+    expect(result.current[0].href).toBe("/market?tab=prediction");
   });
 
   it("features at most five, in the order the feed ranked them", () => {

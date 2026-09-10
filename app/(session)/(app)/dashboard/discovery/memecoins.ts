@@ -19,7 +19,10 @@ import type { MemeSpot } from "@/features/discovery/types";
  * would dead-end on an unselected desk. The desk is the honest destination
  * until a coin has a URL of its own.
  */
-const MEME_DESK = "/meme";
+// On mobile the meme desk is a tab inside /market; /market?tab=memecoins opens
+// it there and hands off to /meme from md up, so a card lands on the right
+// surface either way rather than a route the phone does not have.
+const MEME_DESK = "/market?tab=memecoins";
 
 const DEFAULT_LIMIT = 5;
 
@@ -177,6 +180,7 @@ function rank(token: MemeToken): RankedSpot | null {
       up,
       image: logo(token.logoUrl),
       href: MEME_DESK,
+      token,
     },
   };
 }
@@ -248,6 +252,12 @@ function holdFeaturedSlots(ranked: readonly RankedSpot[], limit: number): Ranked
   return [...kept, ...held].sort((a, b) => b.percent - a.percent);
 }
 
+// `token` is deliberately not compared: the poll refetches a fresh object
+// every 30 seconds even when nothing the card shows has moved, and comparing
+// it would restart the rotation on every poll, which is exactly what this
+// check exists to prevent. The buy sheet requotes live before it trades, so a
+// held token that is a poll or two behind the on-screen figures is not a
+// correctness problem.
 function sameSpot(a: MemeSpot, b: MemeSpot): boolean {
   return (
     a.symbol === b.symbol &&

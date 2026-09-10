@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Carousel } from "@/components/ui/carousel";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
+import { SeeMoreCard } from "@/features/discovery/components/see-more-card";
 import type { TokenSpot } from "@/features/discovery/types";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
 
@@ -147,6 +148,19 @@ interface TokenCallCardProps {
   token: TokenSpot;
   /** Called with true while the pointer or focus is on this card. */
   onHold: (held: boolean) => void;
+  /**
+   * Called with the token shown on this card when its Buy pill is tapped, so
+   * the route can open a trade sheet in place instead of navigating to
+   * `token.href`.
+   *
+   * Optional for two reasons: a route that has not wired a trade sheet in
+   * yet still gets the working link it has today, and even a route that has
+   * cannot honestly open one without `token.priceUsd`. Discovery does not
+   * build the sheet's payload itself, that would mean importing trade
+   * vocabulary into a feature that must never import `features/trade`; it
+   * only reports the tap.
+   */
+  onBuy?: (token: TokenSpot) => void;
 }
 
 // The call on one token: a rocket over a moon glow and a cloud bank, with the
@@ -156,7 +170,7 @@ interface TokenCallCardProps {
 // Only the words move. The token supplies the logo, the symbol, the price, the
 // move and the destination; the artwork, the geometry and the colours are the
 // same card whichever token is featured.
-function TokenCallCard({ token, onHold }: TokenCallCardProps) {
+function TokenCallCard({ token, onHold, onBuy }: TokenCallCardProps) {
   const t = useTranslations("discovery");
   // The flat and unknown sentences live under `markets`; see the tip below.
   const tMarkets = useTranslations("markets");
@@ -164,6 +178,12 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
   const hasPrice = present(token.price);
   const hasDelta = present(token.change);
   const tone = moveTone(token);
+
+  // Opening a buy sheet in place needs the raw price the sheet's "you get
+  // about" estimate is computed from. A spot without one cannot honestly
+  // open a priced sheet, so the pill falls back to the link it has always
+  // been rather than opening a sheet with an invented number.
+  const canBuyInPlace = onBuy !== undefined && token.priceUsd !== undefined;
 
   return (
     <article
@@ -296,16 +316,39 @@ function TokenCallCard({ token, onHold }: TokenCallCardProps) {
           </p>
         </div>
 
-        <DiscoveryCta
-          href={token.href}
-          label={t("tokenCta", { symbol: token.symbol })}
-          tone="dark"
-          size={14}
-          icon={
-            <img src="/market/token-coins-icon.svg" alt="" aria-hidden className="size-[17.29px]" />
-          }
-          className="mt-[4.9px] ml-[18px] border-[2.47px] border-[#ffd52d]"
-        />
+        {canBuyInPlace ? (
+          <DiscoveryCta
+            onClick={() => onBuy?.(token)}
+            label={t("tokenCta", { symbol: token.symbol })}
+            tone="dark"
+            size={14}
+            icon={
+              <img
+                src="/market/token-coins-icon.svg"
+                alt=""
+                aria-hidden
+                className="size-[17.29px]"
+              />
+            }
+            className="mt-[4.9px] ml-[18px] border-[2.47px] border-[#ffd52d]"
+          />
+        ) : (
+          <DiscoveryCta
+            href={token.href}
+            label={t("tokenCta", { symbol: token.symbol })}
+            tone="dark"
+            size={14}
+            icon={
+              <img
+                src="/market/token-coins-icon.svg"
+                alt=""
+                aria-hidden
+                className="size-[17.29px]"
+              />
+            }
+            className="mt-[4.9px] ml-[18px] border-[2.47px] border-[#ffd52d]"
+          />
+        )}
       </div>
     </article>
   );
@@ -373,10 +416,20 @@ function TokenCallCardSkeleton() {
 export function TokenMovesRow({
   tokens = [],
   loading = false,
+  onBuy,
 }: {
   tokens?: readonly TokenSpot[];
   /** True while the route is still fetching the tokens. Draws the card empty. */
   loading?: boolean;
+  /**
+   * Called with a card's own token when its Buy pill is tapped, so the
+   * dashboard can open a trade sheet in place instead of sending the reader
+   * to `/spot`.
+   *
+   * Optional: without it, or for a token missing `priceUsd`, the pill keeps
+   * linking to `token.href` exactly as it always has. See `TokenCallCard`.
+   */
+  onBuy?: (token: TokenSpot) => void;
 }) {
   const t = useTranslations("discovery");
 
@@ -406,13 +459,26 @@ export function TokenMovesRow({
   // the route handed the row nothing.
   if (dealt.length === 0 && !loading) return null;
 
+  // The end-cap closes the row with a way through to the desk. It rides with
+  // the real cards only: on the loading path it would offer a way out of a
+  // shelf that has not arrived yet, and the empty path has already returned.
   const cards =
     dealt.length > 0
-      ? dealt.map((token) => <TokenCallCard key={token.symbol} token={token} onHold={onHold} />)
+      ? [
+          ...dealt.map((token) => (
+            <TokenCallCard key={token.symbol} token={token} onHold={onHold} onBuy={onBuy} />
+          )),
+          <SeeMoreCard
+            key="see-more"
+            headline={t("tokenMovesSeeMore")}
+            href="/market?tab=spot"
+            className={CARD_BOX}
+          />,
+        ]
       : [<TokenCallCardSkeleton key="first" />, <TokenCallCardSkeleton key="second" />];
 
   return (
-    <DiscoveryRow title={t("tokenMovesTitle")} href="/spot">
+    <DiscoveryRow title={t("tokenMovesTitle")} href="/market?tab=spot">
       {cards.length > 1 ? (
         <Carousel label={t("tokenMovesCarousel")} trimPx={50}>
           {cards}

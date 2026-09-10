@@ -246,6 +246,8 @@ describe("buildDashboardFeed", () => {
       priceUsd: 1.14,
       change24h: -0.01,
       logo: "/api/token-logo/base/0xUsdy",
+      chain: "base",
+      address: "0xUsdy",
     });
     // Only the live indexed round; the settled one is left out.
     expect(feed.live?.rounds.map((r) => [r.gameId, r.potUsd, r.pot])).toEqual([[5, 42, "$42.00"]]);

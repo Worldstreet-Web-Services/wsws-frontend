@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { AsyncError } from "@/components/ui/async-state";
 import { ChevronDownIcon } from "@/components/ui/icons";
+import { Disclosure } from "@/components/ui/disclosure";
 import { SpotAmountCard, formatDecimalString } from "@/features/trade/components/spot-amount-card";
 import { SpotOrderSummary } from "@/features/trade/components/spot-order-summary";
 import {
@@ -211,24 +212,30 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
           panelId={CHART_PANEL_ID}
         />
 
-        {/* The panel stays in the tree so aria-controls always resolves. Only
-            the chart itself, and the request behind it, wait for the open. */}
-        <div id={CHART_PANEL_ID} hidden={!chartExpanded}>
-          {chartExpanded ? (
-            market.coingeckoId ? (
-              <AssetChart
-                coingeckoId={market.coingeckoId}
-                up={market.change24h >= 0}
-                height={200}
-                allowCandles={false}
-              />
-            ) : (
-              <p className="px-1 py-6 text-center text-[13px] font-normal text-white/45">
-                {t("noChart", { symbol: market.symbol })}
-              </p>
-            )
-          ) : null}
-        </div>
+        {/* The panel unfolds rather than snapping. The body is gated on
+            `rendered`, not on `chartExpanded`: children dropped in the same
+            commit as the close would leave a box already zero tall, with
+            nothing for the fold to interpolate. `rendered` holds the chart for
+            one animation, then drops it, so a collapsed chart still subscribes
+            to nothing. */}
+        <Disclosure open={chartExpanded} id={CHART_PANEL_ID}>
+          {(rendered) =>
+            rendered ? (
+              market.coingeckoId ? (
+                <AssetChart
+                  coingeckoId={market.coingeckoId}
+                  up={market.change24h >= 0}
+                  height={200}
+                  allowCandles={false}
+                />
+              ) : (
+                <p className="px-1 py-6 text-center text-[13px] font-normal text-white/45">
+                  {t("noChart", { symbol: market.symbol })}
+                </p>
+              )
+            ) : null
+          }
+        </Disclosure>
       </div>
 
       <div className="flex flex-col gap-3">

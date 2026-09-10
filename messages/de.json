@@ -704,7 +704,8 @@
     "sell": "{name} verkaufen",
     "assetDetails": "Asset-Details",
     "goToCard": "Zu Karte {number}",
-    "searchHoldings": "Deine Bestände durchsuchen"
+    "searchHoldings": "Deine Bestände durchsuchen",
+    "noChart": "Noch kein Kursverlauf."
   },
   "markets": {
     "title": "Märkte",
@@ -907,8 +908,6 @@
     "useLandedBalance": "Stattdessen mit deinen {amount} kaufen"
   },
   "prediction": {
-    "eyebrow": "Prognosemärkte",
-    "heading": "Handeln Sie Ihre Überzeugung",
     "exploreAllMarkets": "Alle Märkte entdecken",
     "regionBlockedTitle": "In Ihrer Region nicht verfügbar",
     "regionBlockedBody": "Prognosemärkte werden dort, wo Sie sind, gerade nicht angeboten. Der Rest von {brand} bleibt voll verfügbar.",
@@ -1190,6 +1189,7 @@
     "eventLoadFailed": "Dieses Ereignis konnte nicht geladen werden.",
     "marketCount": "{count, plural, one {# Markt} other {# Märkte}}",
     "searchEventMarketsLabel": "Ereignismärkte durchsuchen",
+    "noSearchMatches": "Keine Märkte passen zu Ihrer Suche.",
     "myBets": "Meine Wetten",
     "openEventAria": "{title}-Details öffnen",
     "oddsAria": "{side} {odds}",
@@ -2791,8 +2791,7 @@
     "reconnecting": "Verbinde neu…"
   },
   "carousel": {
-    "previous": "Vorheriger Slide",
-    "next": "Nächster Slide"
+    "goToSlide": "Zu Folie {index}"
   },
   "discovery": {
     "promoRailCarousel": "Angebote",
@@ -2879,6 +2878,13 @@
     "rwaEarn": "{apy} verdienen",
     "rwaOwn": "Anteil besitzen",
     "rwaTrade": "{symbol} handeln",
-    "rwaExplore": "Sachwerte entdecken"
+    "rwaExplore": "Sachwerte entdecken",
+    "seeMore": "Mehr ansehen",
+    "next100xSeeMore": "Reite die Welle",
+    "tokenMovesSeeMore": "Handle das Nächste",
+    "predictionSeeMore": "Worauf wettest du als Nächstes?",
+    "lastManMarathonLead": "Last Man",
+    "lastManMarathonTitle": "Marathon",
+    "lastManJoinNow": "Mitmachen"
   }
 }

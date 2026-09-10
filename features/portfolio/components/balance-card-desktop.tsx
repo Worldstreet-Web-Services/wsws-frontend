@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CurrencySelect, useMoney } from "@/components/ui/currency-select";
+import { Disclosure } from "@/components/ui/disclosure";
 import { EyeOffIcon } from "@/components/ui/icons";
 import { useHoldingsLauncher } from "@/features/portfolio/components/holdings-launcher";
 import { PortfolioDonut } from "@/features/portfolio/components/portfolio-donut";
@@ -36,6 +37,9 @@ export function BalanceCardDesktop({
   // the card to one screenful and puts the ring behind a tap.
   const [showBreakdown, setShowBreakdown] = useState(false);
   const canBreakdown = !loading && !errored && tokens.length > 0;
+  // Ties the row to the panel it opens. Generated rather than hardcoded because
+  // the portfolio route renders this card in two branches.
+  const breakdownPanelId = useId();
 
   // The holdings list, and the buy/sell stack it hands assets to, shared with
   // the phone card.
@@ -211,6 +215,7 @@ export function BalanceCardDesktop({
             <button
               onClick={() => setShowBreakdown((open) => !open)}
               aria-expanded={showBreakdown}
+              aria-controls={breakdownPanelId}
               className="ws-pressable mt-[12px] flex max-w-full cursor-pointer items-center justify-center gap-[8px] rounded-full px-[16px] py-[7px] text-center font-serif text-[15px] leading-[1.35] font-medium tracking-[-0.075px] text-[#7a7a7a]"
             >
               <span className="block size-[4.59px] shrink-0">
@@ -232,11 +237,22 @@ export function BalanceCardDesktop({
                 />
               </span>
             </button>
-            {showBreakdown ? (
-              <div className="mt-4 w-full">
-                <PortfolioDonut tokens={tokens} />
-              </div>
-            ) : null}
+            {/* Two boxes around the ring, both earning their place.
+                Outside: the Disclosure's own box is a flex item in an
+                items-center column, so left to size itself it would shrink to
+                the ring's width and the legend beside it would lose the room it
+                stretches into.
+                Inside: the 16px gap has to be a margin on the ring, not on the
+                panel. A margin on the panel counts towards the collapsed track,
+                which measured 16px tall while shut and left dead space under
+                the row; inside the clip it is hidden with everything else. */}
+            <div className="w-full">
+              <Disclosure open={showBreakdown} id={breakdownPanelId}>
+                <div className="mt-4">
+                  <PortfolioDonut tokens={tokens} />
+                </div>
+              </Disclosure>
+            </div>
           </>
         ) : null}
       </div>

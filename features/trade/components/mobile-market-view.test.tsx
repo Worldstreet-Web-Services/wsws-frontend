@@ -161,7 +161,7 @@ function renderView() {
         onOpenDetail={onOpenDetail}
         onOpenBuy={onOpenBuy}
         predictionSlot={<div data-testid="prediction-panel" />}
-        rwaSlot={(query) => <div data-testid="rwa-panel" data-query={query} />}
+        rwaSlot={<div data-testid="rwa-panel" />}
       />
     </NextIntlClientProvider>
   );
@@ -169,6 +169,12 @@ function renderView() {
 }
 
 const tabNames = ["Spot", "Memecoins", "Real assets", "Prediction"];
+
+// Each tab names its own field, so a test says which list it is searching.
+// The Real assets and Prediction fields belong to those panels, not to this
+// view, so they are asserted in those components' own suites.
+const SPOT_SEARCH = "Search markets";
+const MEME_SEARCH = "Search trending memecoins";
 
 function tabs() {
   return within(screen.getByRole("tablist")).getAllByRole("tab");
@@ -269,40 +275,45 @@ describe("MobileMarketView chrome", () => {
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
-  // Gap 1: the comp shows the search field on all four screens. Hiding it moved
-  // the strip up by 51px between tabs.
-  it("keeps the search field mounted on every tab", () => {
+  // One field above the strip could not say which list it filtered, and it was
+  // still on screen inside a ticket, where there is no list to filter. Each tab
+  // carries its own field now, named for the list under it.
+  it("gives the spot and memecoin tabs a search field of their own", () => {
     renderView();
-    for (let i = 0; i < tabNames.length; i++) {
-      fireEvent.click(tabs()[i]);
-      expect(
-        screen.getByPlaceholderText("Search"),
-        `search missing on the ${tabNames[i]} tab`
-      ).toBeInTheDocument();
-    }
-  });
-
-  // A field that cannot filter the panel under it must say so rather than
-  // silently swallow what the user types.
-  it("disables the search field on tabs whose panel owns its own selection", () => {
-    renderView();
-    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
+    expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toBeEnabled();
+    expect(screen.queryByRole("searchbox", { name: MEME_SEARCH })).toBeNull();
 
     fireEvent.click(tabs()[1]);
-    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
+    expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toBeEnabled();
+    expect(screen.queryByRole("searchbox", { name: SPOT_SEARCH })).toBeNull();
+  });
 
+  // The field scrolls away with the rows rather than holding the top of the
+  // screen, so it has to sit inside the list's own scroll box.
+  it("puts each field inside the list that scrolls", () => {
+    renderView();
+    expect(marketList()).toContainElement(screen.getByRole("searchbox", { name: SPOT_SEARCH }));
+
+    fireEvent.click(tabs()[1]);
+    expect(memeMarketList()).toContainElement(screen.getByRole("searchbox", { name: MEME_SEARCH }));
+  });
+
+  // The other two panels search themselves, so this view draws nothing for
+  // them. A disabled field that swallowed what the reader typed is gone.
+  it("draws no field of its own for the panels that search themselves", () => {
+    renderView();
     fireEvent.click(tabs()[2]);
-    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
+    expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
 
     fireEvent.click(tabs()[3]);
-    expect(screen.getByPlaceholderText("Search")).toBeDisabled();
+    expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
   });
 
   // Gap 6: no user-facing literals left in the file.
   it("takes its chrome copy from the catalogue", () => {
     renderView();
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Search")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Real assets" })).toBeInTheDocument();
   });
 
@@ -320,18 +331,23 @@ describe("MobileMarketView chrome", () => {
     expect(screen.getByText("Memecoin markets are unavailable right now.")).toBeInTheDocument();
   });
 
-  // Behaviour that already worked and must survive the rework.
-  it("clears the query when the category changes", () => {
+  // Each tab holds its own query. The shared field had to be cleared on every
+  // category change, since a term typed on Spot would otherwise blank the
+  // memecoin list; separate fields cannot do that to each other.
+  it("keeps each tab's query to itself", () => {
     spot.markets = [market({ symbol: "BTC" }), market({ symbol: "ETH", name: "Ether" })];
     renderView();
-    const field = screen.getByPlaceholderText("Search");
-    fireEvent.change(field, { target: { value: "eth" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: SPOT_SEARCH }), {
+      target: { value: "eth" },
+    });
     expect(screen.queryByText("BTC")).toBeNull();
 
     fireEvent.click(tabs()[1]);
+    expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toHaveValue("");
+
     fireEvent.click(tabs()[0]);
-    expect(screen.getByPlaceholderText("Search")).toHaveValue("");
-    expect(screen.getByText("BTC")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toHaveValue("eth");
+    expect(screen.queryByText("BTC")).toBeNull();
   });
 
   // The Spot tab keeps its token list; a row tap opens the ticket for that one
@@ -389,14 +405,17 @@ describe("MobileMarketView chrome", () => {
     expect(list.scrollTop).toBe(420);
   });
 
-  // The field cannot filter what is under it once the ticket is open, and this
-  // view already holds that rule for the real assets and prediction panels.
-  it("disables the search field while the ticket is open", () => {
+  // A ticket has no list under it to filter, so the field goes away with the
+  // list rather than sitting there disabled and taking up the top of a phone.
+  it("takes the search field away while the ticket is open", () => {
     renderView();
-    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
+    expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toBeEnabled();
 
     fireEvent.click(screen.getByText("BTC"));
-    expect(screen.getByPlaceholderText("Search")).toBeDisabled();
+    expect(screen.queryByRole("searchbox", { name: SPOT_SEARCH })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toBeEnabled();
   });
 
   it("puts the ticket away when the category changes", () => {
@@ -418,10 +437,6 @@ describe("MobileMarketView chrome", () => {
     fireEvent.click(tabs()[2]);
     const panel = screen.getByTestId("rwa-panel-scroll");
     expect(panel).toContainElement(screen.getByTestId("rwa-panel"));
-
-    // The page's search box filters the list, through the slot.
-    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "gold" } });
-    expect(screen.getByTestId("rwa-panel").dataset.query).toBe("gold");
 
     fireEvent.click(tabs()[0]);
     expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();
@@ -534,7 +549,7 @@ describe("MobileMarketView, list pagination", () => {
     // Narrow to a single match, then clear back to the full list: page 1
     // either way, not the page 2 the reader left. One match fits a single page,
     // so the visible pager hides and only the live region reports it.
-    const field = screen.getByPlaceholderText("Search");
+    const field = screen.getByRole("searchbox", { name: SPOT_SEARCH });
     fireEvent.change(field, { target: { value: "SYM0" } });
     expect(liveStatus()).toHaveTextContent("Page 1 of 1");
     expect(screen.getByText("SYM0")).toBeInTheDocument();
@@ -565,8 +580,9 @@ describe("MobileMarketView, list pagination", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
-    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "MEME0" } });
-    fireEvent.change(screen.getByPlaceholderText("Search"), { target: { value: "" } });
+    const field = screen.getByRole("searchbox", { name: MEME_SEARCH });
+    fireEvent.change(field, { target: { value: "MEME0" } });
+    fireEvent.change(field, { target: { value: "" } });
     expect(liveStatus()).toHaveTextContent("Page 1 of 2");
   });
 });
@@ -693,13 +709,16 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
     expect(memeMarketList()).toBeVisible();
   });
 
-  it("disables the search field while the memecoin ticket is open", () => {
+  it("takes the search field away while the memecoin ticket is open", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
     fireEvent.click(tabs()[1]);
-    expect(screen.getByPlaceholderText("Search")).toBeEnabled();
+    expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toBeEnabled();
 
     fireEvent.click(screen.getByText("PEPE"));
-    expect(screen.getByPlaceholderText("Search")).toBeDisabled();
+    expect(screen.queryByRole("searchbox", { name: MEME_SEARCH })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toBeEnabled();
   });
 });

@@ -21,6 +21,7 @@ import { KashCard } from "@/features/portfolio/components/kash-card";
 // then a promo strip. Desktop keeps the side-by-side grid below.
 import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile";
 import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
+import Link from "next/link";
 import { PromoCarousel } from "@/components/ui/promo-deck";
 import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
 import { marketSquareHref } from "@/lib/market-square";
@@ -330,7 +331,16 @@ export function PortfolioView({
         </BalanceCarousel>
         <div className="mt-3">
           <PromoCarousel>
-            <SetTheStakeBanner />
+            {/* The ticket is presentational; the doorway to the casino lives
+                here at the composition site. Embla suppresses the click after a
+                drag, so a tap navigates and a swipe still pages the deck. */}
+            <Link
+              href="/casino"
+              aria-label="Set the stake, play in the casino"
+              className="block w-full"
+            >
+              <SetTheStakeBanner />
+            </Link>
             <GetKashBanner onBuy={() => setKashModal("buy")} />
             {squareBanner}
           </PromoCarousel>

@@ -62,6 +62,7 @@ export interface AppModals {
   openBuy: (buy: BuyPayload) => void;
   openSell: (sell: SellPayload) => void;
   openMemeSell: (token: MemeToken) => void;
+  openMemeBuy: (token: MemeToken) => void;
   openRwaTrade: (trade: RwaTradePayload) => void;
   /**
    * Takes no argument, deliberately.
@@ -102,6 +103,7 @@ export function useAppModals(): AppModals {
       (memeSell: MemeToken) => setModal({ type: "memeSell", memeSell }),
       []
     ),
+    openMemeBuy: useCallback((memeBuy: MemeToken) => setModal({ type: "memeBuy", memeBuy }), []),
     openRwaTrade: useCallback(
       (rwaTrade: RwaTradePayload) => setModal({ type: "rwaTrade", rwaTrade }),
       []
@@ -150,6 +152,14 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
           defaultSide="SELL"
           onClose={onClose}
           showRisk={false}
+        />
+      ) : null}
+      {active?.type === "memeBuy" ? (
+        <MemeTradeSheet
+          token={active.memeBuy}
+          defaultSide="BUY"
+          onClose={onClose}
+          showRisk={true}
         />
       ) : null}
       {active?.type === "rwaTrade" ? (

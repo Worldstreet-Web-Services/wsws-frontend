@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { AssetIcon } from "@/components/ui/asset-icon";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
 import { parseBaseUnits } from "@/features/trade/components/meme-base-units";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
@@ -25,6 +26,7 @@ import {
 } from "@/features/trade/components/meme-market-metrics";
 import { SpotTicket } from "@/features/trade/components/spot-ticket";
 import { ListPagination } from "@/components/ui/list-pagination";
+import { SearchField } from "@/components/ui/search-field";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { useTrendingMemes } from "@/features/trade/hooks/use-meme-tokens";
 import { useFitRows } from "@/hooks/use-fit-rows";
@@ -66,9 +68,10 @@ interface MobileMarketViewProps {
   predictionSlot: ReactNode;
   /**
    * The Real assets tab's content, supplied by the route for the same reason:
-   * real assets is its own feature.
+   * real assets is its own feature. It carries its own search field, so this
+   * view hands it no query.
    */
-  rwaSlot: (query: string) => ReactNode;
+  rwaSlot: ReactNode;
 }
 
 // The Market design's phone Spot page (Figma 173:42337): its own MARKET head on
@@ -83,15 +86,15 @@ interface MobileMarketViewProps {
 // is not on this build, since perpetuals are not; it returns as one entry here
 // when they do.
 //
-// `searchable` says whether the search field can act on the panel below it.
-// Spot and Memecoins are lists this view filters itself, and Real assets is a
-// list its own feature filters by the query handed to it; prediction owns its
-// own selection and takes no query from us.
+// Every tab carries its own search field, at the top of its own list. Spot and
+// Memecoins are the two this view filters itself; Real assets and Prediction
+// are their own features and filter themselves, so nothing about their search
+// is decided here.
 const TABS = [
-  { id: "spot", labelKey: "tabSpot", searchable: true },
-  { id: "memecoins", labelKey: "tabMemecoins", searchable: true },
-  { id: "rwa", labelKey: "tabRealAssets", searchable: true },
-  { id: "prediction", labelKey: "tabPrediction", searchable: false },
+  { id: "spot", labelKey: "tabSpot" },
+  { id: "memecoins", labelKey: "tabMemecoins" },
+  { id: "rwa", labelKey: "tabRealAssets" },
+  { id: "prediction", labelKey: "tabPrediction" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -226,7 +229,7 @@ function MarketTabs({
       role="tablist"
       aria-label={label}
       aria-orientation="horizontal"
-      className="mt-4 flex shrink-0 [scrollbar-width:none] gap-4 overflow-x-auto border-b border-white/8 [&::-webkit-scrollbar]:hidden"
+      className="mt-2 flex shrink-0 [scrollbar-width:none] gap-4 overflow-x-auto border-b border-white/8 [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((tab) => {
         const selected = tab.id === active;
@@ -267,7 +270,11 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
   const tSpot = useTranslations("spot");
   const tMeme = useTranslations("meme");
   const { markets, loading, error } = useSpotMarkets();
-  const [query, setQuery] = useState("");
+  // A query per list. They were one field and one term until each tab grew
+  // its own field; keeping them apart is what lets a tab hold what was typed
+  // on it while the reader looks at another.
+  const [spotQuery, setSpotQuery] = useState("");
+  const [memeQuery, setMemeQuery] = useState("");
   // Open on the tab named in the URL (?tab=), so a handoff from a desktop route
   // that shrank below md lands the reader back on the tab they were on. Falls
   // back to Spot, and ignores anything that is not a real tab.
@@ -327,10 +334,12 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
     () => (memeTicketAddress ? (memes.find((m) => m.address === memeTicketAddress) ?? null) : null),
     [memes, memeTicketAddress]
   );
-  // The market-metrics disclosure on the meme ticket. Open by default (the comp
-  // opens on "Close Market Metrics"); age and the buy/sell split are not in the
-  // feed, so they draw as Unavailable rather than invented.
-  const [metricsOpen, setMetricsOpen] = useState(true);
+  // The market-metrics disclosure on the meme ticket. Closed by default, like
+  // the desk board and the meme page: the comp draws it open, but the ticket
+  // leads with the trade, and the reader opens the figures if they want them.
+  // Age and the buy/sell split are not in the feed, so they draw as
+  // Unavailable rather than invented.
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const memeMetrics: MemeMarketMetricsData | null = ticketMeme
     ? {
         marketCap: usdMetric(ticketMeme.marketCapUsd),
@@ -369,18 +378,11 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
   const tabDomId = useCallback((id: TabId) => `${panelId}-tab-${id}`, [panelId]);
 
   const tabs = useMemo(() => TABS.map((tab) => ({ id: tab.id, label: t(tab.labelKey) })), [t]);
-  // Neither open ticket is a list this field can filter, so the same rule the
-  // perps and prediction panels get applies to both.
-  const searchable =
-    (TABS.find((tab) => tab.id === activeTab)?.searchable ?? false) &&
-    ticketSymbol === null &&
-    memeTicketAddress === null;
 
-  // Reset the query on a category change, so a term typed on Spot does not
-  // silently filter (and blank) the Memecoins list, and vice versa.
+  // A category change puts both tickets away. The queries stay: each belongs to
+  // one list, and the reader gets that list back as they left it.
   const selectTab = useCallback((id: TabId) => {
     setActiveTab(id);
-    setQuery("");
     setTicketSymbol(null);
     setMemeTicketAddress(null);
   }, []);
@@ -508,16 +510,16 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
   }
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = spotQuery.trim().toLowerCase();
     return q ? markets.filter((m) => `${m.symbol} ${m.name}`.toLowerCase().includes(q)) : markets;
-  }, [markets, query]);
+  }, [markets, spotQuery]);
 
   const memeRows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = memeQuery.trim().toLowerCase();
     return q
       ? memes.filter((m) => `${m.symbol ?? ""} ${m.name ?? ""}`.toLowerCase().includes(q))
       : memes;
-  }, [memes, query]);
+  }, [memes, memeQuery]);
 
   // While a tab is handing off to its desktop screen, render nothing rather than
   // flash this phone column at desktop width until the target route paints.
@@ -527,10 +529,11 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
   // desktop (centered, framed) instead of stretching edge to edge.
   return (
     <div className="fixed inset-0 mx-auto flex flex-col overflow-hidden bg-[#0f0f0f] md:max-w-[440px] md:border-x md:border-white/8">
-      {/* MARKET head on the ray fan. 76px (was 100px): the ray art is a
+      {/* MARKET head on the ray fan. 52px: the head was taking a fifth of a
+          phone screen before the list even started. The ray art is a
           background-image stretched with bg-size-[100%_100%], so it crops and
           reflows with the box rather than distorting. */}
-      <div className="relative flex h-[76px] shrink-0 items-end justify-center overflow-hidden bg-[#232323] bg-[url('/market/topbar-rays.svg')] bg-size-[100%_100%] bg-no-repeat pb-[15px]">
+      <div className="relative flex h-[52px] shrink-0 items-center justify-center overflow-hidden bg-[#232323] bg-[url('/market/topbar-rays.svg')] bg-size-[100%_100%] bg-no-repeat">
         <button
           type="button"
           // Inside either ticket, Back is the way out of the ticket. Only
@@ -548,61 +551,23 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
             else router.push("/portfolio");
           }}
           aria-label={tCommon("back")}
-          // 44px hit area around a 20px glyph, kept centred in the shorter
-          // header: (76 - 44) / 2 = 16px, i.e. bottom-4.
-          className="absolute bottom-4 left-[14px] flex size-11 cursor-pointer items-center justify-center rounded-full text-white/80 hover:text-white"
+          // 44px hit area around the 40px disc the design draws. The head is
+          // shorter than the hit area is tall, so the button is centred on it
+          // rather than inset, and the disc sits inside the tap target so the
+          // hit area stays 44px while the visible circle stays 40px.
+          className="absolute top-1/2 left-[14px] flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center text-white/80 hover:text-white"
         >
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M15 6l-6 6 6 6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <span className="grid size-10 place-items-center rounded-full bg-white/10">
+            <ChevronLeftIcon size={20} />
+          </span>
         </button>
         <MarketLogo className="h-5 w-auto" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-6">
-        {/* Search. The comp carries it on all four screens, so it stays mounted
-            rather than unmounting and lurching the strip up by 51px. On a tab
-            whose panel owns its own selection it is disabled: a field that
-            cannot filter what is under it must say so rather than swallow what
-            the user types. Giving perps and prediction a real query needs a
-            prop on those panels, which this view does not own. */}
-        <div
-          className={`flex h-[51px] shrink-0 items-center gap-1 rounded-[50px] border-2 border-white/2 px-6 ${
-            searchable ? "bg-white/5" : "bg-white/2"
-          }`}
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-            className="shrink-0"
-          >
-            <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.45)" strokeWidth="1.8" />
-            <path
-              d="m20 20-3.5-3.5"
-              stroke="rgba(255,255,255,0.45)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchLabel")}
-            aria-label={t("searchLabel")}
-            disabled={!searchable}
-            className="min-w-0 flex-1 bg-transparent font-serif text-[13px] font-semibold tracking-[-0.39px] text-white outline-none placeholder:text-white/45 disabled:cursor-not-allowed disabled:placeholder:text-white/25"
-          />
-        </div>
-
+      {/* pb clears the curved bottom nav the Market page now carries (it is
+          fixed over the foot of this full-screen view). Mobile only, since the
+          bar is md:hidden. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-2 pb-[92px] md:pb-0">
         <MarketTabs
           active={activeTab}
           onSelect={selectTab}
@@ -623,7 +588,7 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
             // Mounted only while this tab is selected, so its registry read is
             // not made for someone who never opens it.
             <div data-testid="rwa-panel-scroll" className="flex min-h-0 flex-1 flex-col">
-              {rwaSlot(query)}
+              {rwaSlot}
             </div>
           ) : activeTab === "memecoins" ? (
             <>
@@ -711,6 +676,18 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
                 hidden={ticketMeme !== null}
                 className="-mx-1 mt-2 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
               >
+                {/* Inside the scroll box on purpose: the field belongs to this
+                    list, and it scrolls away with it rather than holding the
+                    top of a phone screen. px-1 is the rows' own gutter, which
+                    puts its edges on theirs. */}
+                <div className="px-1 pb-2">
+                  <SearchField
+                    value={memeQuery}
+                    onChange={setMemeQuery}
+                    label={tMeme("searchTrendingLabel")}
+                    placeholder={tMeme("searchTrendingLabel")}
+                  />
+                </div>
                 {memeLoading && memeRows.length === 0 ? (
                   [0, 1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="flex h-[60px] items-center gap-3 px-1">
@@ -720,7 +697,7 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
                   ))
                 ) : (
                   <PagedRows
-                    key={query}
+                    key={memeQuery}
                     items={memeRows}
                     pageSize={memePageSize}
                     renderRow={(token) => (
@@ -772,7 +749,7 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
             // lists take.
             <div
               data-testid="prediction-panel-scroll"
-              className="-mx-1 mt-6 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
+              className="-mx-1 mt-2 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
             >
               {predictionSlot}
             </div>
@@ -789,6 +766,15 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
                 hidden={ticketMarket !== null}
                 className="-mx-1 mt-2 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
               >
+                {/* Inside the scroll box, for the reason the memecoin field is. */}
+                <div className="px-1 pb-2">
+                  <SearchField
+                    value={spotQuery}
+                    onChange={setSpotQuery}
+                    label={tSpot("searchPlaceholder")}
+                    placeholder={tSpot("searchPlaceholder")}
+                  />
+                </div>
                 {loading && rows.length === 0 ? (
                   [0, 1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="flex h-[60px] items-center gap-3 px-1">
@@ -798,7 +784,7 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
                   ))
                 ) : (
                   <PagedRows
-                    key={query}
+                    key={spotQuery}
                     items={rows}
                     pageSize={spotPageSize}
                     renderRow={(m) => {

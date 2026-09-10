@@ -15,7 +15,10 @@ import { formatUsd } from "@/lib/trade/math";
 // render strings and a colour flag, nothing else.
 
 /** Where every card leads. The desk is the only place these trade. */
-const RWA_DESK = "/rwa";
+// On mobile Real Assets is a tab inside /market; /market?tab=rwa opens it there
+// and hands off to /rwa from md up, so a card resolves to the right surface
+// either way rather than a route the phone does not have.
+const RWA_DESK = "/market?tab=rwa";
 
 // The registry's categories, grouped as the four cards see them. Funds and
 // cash equivalents are treasuries to a reader: they are the same short-dated
@@ -69,6 +72,8 @@ function toSpot(row: RwaBriefRow): RwaSpot {
     apy: formatApy(row.apyBps),
     logo: row.logo || null,
     href: RWA_DESK,
+    chain: row.chain,
+    address: row.address,
   };
 }
 

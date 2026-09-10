@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { Disclosure } from "@/components/ui/disclosure";
 import { ChartBarsIcon, ChevronLeftIcon, SearchIcon, TrendIcon } from "@/components/ui/icons";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
@@ -22,8 +23,10 @@ import { compactUsd, type MemeToken } from "@/lib/meme/api";
 // and `ticket` slots.
 //
 // Presentational on purpose: it fetches nothing, holds no server state and owns
-// none of the disclosure state, so the caller decides when the chart and the
-// metrics panels are mounted (and therefore when anything behind them polls).
+// none of the disclosure state. The caller still decides when the chart is
+// mounted, and therefore when anything behind it polls; the metrics slot is
+// mounted throughout, because the panel it is handed folds itself shut and
+// something unmounted has nothing to fold. See the two slots' own notes.
 
 export type MemeTradeSide = "BUY" | "SELL";
 
@@ -46,11 +49,21 @@ export interface MemeDesktopBoardProps {
   onSideChange: (side: MemeTradeSide) => void;
   chartOpen: boolean;
   onChartToggle: () => void;
-  /** The chart, mounted under the rail header while `chartOpen`. */
+  /**
+   * The chart, mounted under the rail header while `chartOpen` and unmounted
+   * the moment it closes, so nothing behind it keeps running. The panel around
+   * it animates either way.
+   */
   chart?: ReactNode;
   metricsOpen: boolean;
   onMetricsToggle: () => void;
-  /** The market metrics panel, mounted while `metricsOpen`. */
+  /**
+   * The market metrics panel. Unlike the chart this stays mounted, because the
+   * panel folds itself shut (it is given the same `metricsOpen`) and a panel
+   * that is unmounted cannot animate. So pass something presentational:
+   * anything that polls, opens a socket or boots a chart belongs behind
+   * `chart`, which this board does gate.
+   */
   metrics?: ReactNode;
   /** The order ticket: quantity, quote breakdown and the buy or sell action. */
   ticket: ReactNode;
@@ -135,17 +148,21 @@ function RailDisclosure({
   label,
   open,
   onToggle,
+  controls,
 }: {
   icon: ReactNode;
   label: string;
   open: boolean;
   onToggle: () => void;
+  /** The panel this row opens, where the rail owns its id. */
+  controls?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
+      aria-controls={controls}
       className="flex cursor-pointer items-center gap-[8px] text-left text-white"
     >
       <span className="flex items-center gap-[4px]">
@@ -188,6 +205,7 @@ export function MemeDesktopBoard({
 }: MemeDesktopBoardProps) {
   const t = useTranslations("meme");
   const tMarkets = useTranslations("markets");
+  const chartPanelId = `meme-desk-chart-${useId()}`;
 
   // How many rows the panel holds at this window height. The rows block carries
   // the ref, and its height comes from the panel alone: see the class list
@@ -461,13 +479,25 @@ export function MemeDesktopBoard({
                 </span>
               </div>
 
-              <RailDisclosure
-                icon={<TrendIcon size={11} />}
-                label={chartOpen ? t("mobileCloseChart") : t("mobileViewChart")}
-                open={chartOpen}
-                onToggle={onChartToggle}
-              />
-              {chartOpen ? chart : null}
+              {/* Row and panel in one gapless box. The panel keeps its place in
+                  the rail while it is shut so it can fold rather than vanish,
+                  and the rail's 13px lead rides on the panel's content, where
+                  the clip cuts it away with everything else. On the column it
+                  would leave 13px of empty rail under a closed row, and on the
+                  Disclosure's className it would sit on the grid item and hold
+                  the shut panel 13px tall. */}
+              <div className="flex flex-col">
+                <RailDisclosure
+                  icon={<TrendIcon size={11} />}
+                  label={chartOpen ? t("mobileCloseChart") : t("mobileViewChart")}
+                  open={chartOpen}
+                  onToggle={onChartToggle}
+                  controls={chartPanelId}
+                />
+                <Disclosure open={chartOpen} id={chartPanelId}>
+                  {chartOpen ? <div className="pt-[13px]">{chart}</div> : null}
+                </Disclosure>
+              </div>
 
               <div className="bg-grey-800 flex gap-[8px] rounded-full p-[8px]">
                 {(["BUY", "SELL"] as const).map((option) => {
@@ -494,13 +524,20 @@ export function MemeDesktopBoard({
                 })}
               </div>
 
-              <RailDisclosure
-                icon={<ChartBarsIcon size={13} />}
-                label={t("mobileMetrics")}
-                open={metricsOpen}
-                onToggle={onMetricsToggle}
-              />
-              {metricsOpen ? metrics : null}
+              {/* The metrics slot is not gated. It is handed a panel that draws
+                  figures the caller already holds and that reads the same
+                  `metricsOpen` to fold itself, so mounting it costs nothing and
+                  unmounting it is what used to make the rail snap. Gapless for
+                  the same reason as the chart row: the panel's lead is its own. */}
+              <div className="flex flex-col">
+                <RailDisclosure
+                  icon={<ChartBarsIcon size={13} />}
+                  label={t("mobileMetrics")}
+                  open={metricsOpen}
+                  onToggle={onMetricsToggle}
+                />
+                {metrics}
+              </div>
 
               {ticket}
               {activity}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { RwaSpot } from "@/features/discovery/types";
@@ -53,6 +53,31 @@ describe("Gold card", () => {
     expect(screen.queryByText(/\$/)).toBeNull();
     expect(screen.queryByText(/%/)).toBeNull();
   });
+
+  it("opens the trade sheet on the tapped spot when it can be traded", () => {
+    const onBuy = vi.fn();
+    const tradableSpot = spot({ chain: "base", address: "0xabc" });
+    renderWithIntl(<GoldCard spots={[tradableSpot]} onBuy={onBuy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Buy PAXG/ }));
+
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith(tradableSpot);
+    expect(screen.queryByRole("link", { name: /Buy PAXG/ })).toBeNull();
+  });
+
+  it("keeps the desk link when no onBuy is supplied", () => {
+    renderWithIntl(<GoldCard spots={[spot({ chain: "base", address: "0xabc" })]} />);
+    expect(link(/Buy PAXG/)).toHaveAttribute("href", "/rwa");
+    expect(screen.queryByRole("button", { name: /Buy PAXG/ })).toBeNull();
+  });
+
+  it("keeps the desk link when the spot has no chain or address to trade", () => {
+    const onBuy = vi.fn();
+    renderWithIntl(<GoldCard spots={[spot()]} onBuy={onBuy} />);
+    expect(link(/Buy PAXG/)).toHaveAttribute("href", "/rwa");
+    expect(screen.queryByRole("button", { name: /Buy PAXG/ })).toBeNull();
+  });
 });
 
 describe("Treasuries card", () => {
@@ -71,6 +96,31 @@ describe("Treasuries card", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(link(/Explore real assets/)).toBeInTheDocument();
   });
+
+  it("opens the trade sheet on the tapped spot when it can be traded", () => {
+    const onBuy = vi.fn();
+    const tradableSpot = spot({ apy: "3.76%", chain: "solana", address: "abc123" });
+    renderWithIntl(<TreasuriesCard spots={[tradableSpot]} onBuy={onBuy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Earn 3\.76%/ }));
+
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith(tradableSpot);
+    expect(screen.queryByRole("link", { name: /Earn 3\.76%/ })).toBeNull();
+  });
+
+  it("keeps the desk link when no onBuy is supplied", () => {
+    renderWithIntl(
+      <TreasuriesCard spots={[spot({ apy: "3.76%", chain: "solana", address: "abc123" })]} />
+    );
+    expect(link(/Earn 3\.76%/)).toHaveAttribute("href", "/rwa");
+  });
+
+  it("keeps the desk link when the spot has no chain or address to trade", () => {
+    const onBuy = vi.fn();
+    renderWithIntl(<TreasuriesCard spots={[spot({ apy: "3.76%" })]} onBuy={onBuy} />);
+    expect(link(/Earn 3\.76%/)).toHaveAttribute("href", "/rwa");
+  });
 });
 
 describe("Real estate card", () => {
@@ -82,6 +132,36 @@ describe("Real estate card", () => {
     );
     expect(screen.getByText("PRO")).toBeInTheDocument();
     expect(screen.getByText("$0.37")).toBeInTheDocument();
+    expect(link(/Own a share/)).toHaveAttribute("href", "/rwa");
+  });
+
+  it("opens the trade sheet on the tapped spot when it can be traded", () => {
+    const onBuy = vi.fn();
+    const tradableSpot = spot({
+      symbol: "PRO",
+      name: "Propy",
+      issuer: "Propy",
+      price: "$0.37",
+      chain: "base",
+      address: "0xdef",
+    });
+    renderWithIntl(<RealEstateCard spots={[tradableSpot]} onBuy={onBuy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Own a share/ }));
+
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith(tradableSpot);
+    expect(screen.queryByRole("link", { name: /Own a share/ })).toBeNull();
+  });
+
+  it("keeps the desk link when no onBuy is supplied", () => {
+    renderWithIntl(<RealEstateCard spots={[spot({ chain: "base", address: "0xdef" })]} />);
+    expect(link(/Own a share/)).toHaveAttribute("href", "/rwa");
+  });
+
+  it("keeps the desk link when the spot has no chain or address to trade", () => {
+    const onBuy = vi.fn();
+    renderWithIntl(<RealEstateCard spots={[spot()]} onBuy={onBuy} />);
     expect(link(/Own a share/)).toHaveAttribute("href", "/rwa");
   });
 });
@@ -103,6 +183,42 @@ describe("Stocks card", () => {
   it("wraps the index rather than running off the end", () => {
     renderWithIntl(<StocksCard spots={stocks} index={3} />);
     expect(link(/Trade NVDAx/)).toBeInTheDocument();
+  });
+
+  it("opens the trade sheet on the tapped spot when it can be traded", () => {
+    const onBuy = vi.fn();
+    const tradableStocks = [
+      spot({ id: "a", symbol: "TSLAx", name: "Tesla xStock", issuer: "Backed" }),
+      spot({
+        id: "b",
+        symbol: "NVDAx",
+        name: "NVIDIA xStock",
+        issuer: "Backed",
+        price: "$120.00",
+        chain: "base",
+        address: "0x123",
+      }),
+    ];
+    renderWithIntl(<StocksCard spots={tradableStocks} index={1} onBuy={onBuy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Trade NVDAx/ }));
+
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith(tradableStocks[1]);
+    expect(screen.queryByRole("link", { name: /Trade NVDAx/ })).toBeNull();
+  });
+
+  it("keeps the desk link when no onBuy is supplied", () => {
+    renderWithIntl(
+      <StocksCard spots={[spot({ symbol: "NVDAx", chain: "base", address: "0x123" })]} index={0} />
+    );
+    expect(link(/Trade NVDAx/)).toHaveAttribute("href", "/rwa");
+  });
+
+  it("keeps the desk link when the spot has no chain or address to trade", () => {
+    const onBuy = vi.fn();
+    renderWithIntl(<StocksCard spots={stocks} index={1} onBuy={onBuy} />);
+    expect(link(/Trade NVDAx/)).toHaveAttribute("href", "/rwa");
   });
 });
 

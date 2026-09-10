@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
 import { ListPagination } from "@/components/ui/list-pagination";
+import { SearchField } from "@/components/ui/search-field";
 import { useFitRows } from "@/hooks/use-fit-rows";
 import { usePaged } from "@/hooks/use-paged";
 import { tokenLogoKey, useTokenLogos } from "@/hooks/use-token-logos";
@@ -15,8 +16,6 @@ interface RwaPhoneListProps {
   assets: RwaAssetView[];
   loading: boolean;
   error: boolean;
-  /** The Market page's search box, which this list filters itself by. */
-  query: string;
   onOpen: (asset: RwaApiAsset) => void;
 }
 
@@ -25,9 +24,13 @@ interface RwaPhoneListProps {
 // name on the left and the price and the day's move on the right. A tap opens
 // the asset's sheet, which carries Buy. Rows fill the phone: as many as the
 // list's box holds, then the shared foot pager walks the rest.
-export function RwaPhoneList({ assets, loading, error, query, onOpen }: RwaPhoneListProps) {
+//
+// The search field belongs to this tab rather than to the Market page, so each
+// tab keeps its own query instead of one box resetting every list at once.
+export function RwaPhoneList({ assets, loading, error, onOpen }: RwaPhoneListProps) {
   const t = useTranslations("rwa");
   const tCommon = useTranslations("common");
+  const [query, setQuery] = useState("");
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -129,6 +132,18 @@ export function RwaPhoneList({ assets, loading, error, query, onOpen }: RwaPhone
       data-testid="rwa-market-list"
       className="-mx-1 mt-2 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
     >
+      {/*
+        Inside the scroll box, not pinned above it, so the field scrolls away
+        with the rows. `mx-1` cancels the box's `-mx-1` bleed so the field's
+        edges sit flush with the row content rather than 4px proud each side.
+      */}
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        label={t("searchPlaceholder")}
+        placeholder={t("searchPlaceholder")}
+        className="mx-1 mb-2 w-auto"
+      />
       {body}
     </div>
   );

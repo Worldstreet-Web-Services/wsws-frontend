@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { RwaAssetView } from "@/features/rwa/lib/presenter";
@@ -44,13 +44,16 @@ function renderList(props: Partial<React.ComponentProps<typeof RwaPhoneList>> = 
         ]}
         loading={false}
         error={false}
-        query=""
         onOpen={onOpen}
         {...props}
       />
     </NextIntlClientProvider>
   );
   return { onOpen };
+}
+
+function searchBox() {
+  return screen.getByRole("searchbox", { name: enMessages.rwa.searchPlaceholder });
 }
 
 describe("RwaPhoneList", () => {
@@ -68,8 +71,20 @@ describe("RwaPhoneList", () => {
     expect(tickers[0]).toContain("PRO");
   });
 
-  it("filters by the page's search query", () => {
-    renderList({ query: "gold" });
+  it("renders its own search field as the first child of the scrolling list box", () => {
+    renderList();
+    const box = screen.getByTestId("rwa-market-list");
+    // Inside the scroll box, so it scrolls away with the rows rather than
+    // staying pinned above them.
+    expect(within(box).getByRole("searchbox", { name: enMessages.rwa.searchPlaceholder })).toBe(
+      searchBox()
+    );
+    expect(box.firstElementChild).toContainElement(searchBox());
+  });
+
+  it("filters the rows by what is typed into its own search field", () => {
+    renderList();
+    fireEvent.change(searchBox(), { target: { value: "gold" } });
     expect(screen.getByText("GLDx")).toBeInTheDocument();
     expect(screen.queryByText("PRO")).toBeNull();
   });
@@ -80,8 +95,10 @@ describe("RwaPhoneList", () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ symbol: "GLDx" }));
   });
 
-  it("says so when nothing matches, and when the registry is down", () => {
-    renderList({ query: "zzz" });
+  it("says so when nothing matches, and keeps the field on screen to clear", () => {
+    renderList();
+    fireEvent.change(searchBox(), { target: { value: "zzz" } });
     expect(screen.getByText(enMessages.rwa.noSearchMatches)).toBeInTheDocument();
+    expect(searchBox()).toBeInTheDocument();
   });
 });

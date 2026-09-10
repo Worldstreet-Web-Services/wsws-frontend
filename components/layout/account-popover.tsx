@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLinkWithPasskey, useLogout, usePrivy } from "@privy-io/react-auth";
 import { Avatar } from "@/components/ui/avatar";
 import { InviteFriendsModal } from "@/features/referrals";
@@ -67,6 +68,7 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
   const [inviteOpen, setInviteOpen] = useState(false);
   const { user } = usePrivy();
   const router = useRouter();
+  const reduce = useReducedMotion();
 
   const { logout } = useLogout({
     onSuccess: () => router.push("/auth"),
@@ -116,92 +118,100 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
     };
   }, [open, onClose, triggerRef]);
 
-  if (!open) return null;
-
   const itemClass =
     "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium text-white/85 hover:bg-white/6 hover:text-white transition-colors cursor-pointer w-full text-left";
 
   return (
     <>
-      <div
-        ref={popoverRef}
-        role="menu"
-        aria-label={t("title")}
-        className="absolute bottom-[calc(100%+8px)] left-0 z-[120] w-full rounded-2xl border border-white/12 bg-[#121214] p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-xl md:bottom-0 md:left-[calc(100%+12px)] md:w-[280px]"
-      >
-        {/* User Identity Header */}
-        <div className="flex items-center gap-2.5 px-1 pb-2">
-          <Avatar seed={profile.avatarSeed} size={36} />
-          <div className="min-w-0 flex-1" data-sensitive="other">
-            <div className="truncate text-[13.5px] font-medium text-white">{profile.name}</div>
-            <div className="truncate text-[11.5px] font-normal text-white/50">{profile.email}</div>
-          </div>
-        </div>
-
-        {/* Wallets */}
-        <div className="border-t border-white/8 pt-2">
-          <WalletAddresses user={user ?? null} />
-        </div>
-
-        {/* Quick Actions */}
-        <div className="mt-2.5 flex flex-col gap-1 border-t border-white/8 pt-2">
-          {!hasPasskey ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                linkWithPasskey();
-                onClose();
-              }}
-              className={itemClass}
-            >
-              <span className="text-accent">
-                <PasskeyIcon />
-              </span>
-              <span>{t("addPasskey")}</span>
-            </button>
-          ) : null}
-
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setInviteOpen(true);
-            }}
-            className={itemClass}
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            ref={popoverRef}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 4 }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            role="menu"
+            aria-label={t("title")}
+            className="absolute bottom-[calc(100%+8px)] left-0 z-[120] w-full rounded-2xl border border-white/12 bg-[#121214] p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-xl md:bottom-0 md:left-[calc(100%+12px)] md:w-[280px]"
           >
-            <span className="text-accent">
-              <InviteIcon />
-            </span>
-            <span>{t("inviteFriends")}</span>
-          </button>
+            {/* User Identity Header */}
+            <div className="flex items-center gap-2.5 px-1 pb-2">
+              <Avatar seed={profile.avatarSeed} size={36} />
+              <div className="min-w-0 flex-1" data-sensitive="other">
+                <div className="truncate text-[13.5px] font-medium text-white">{profile.name}</div>
+                <div className="truncate text-[11.5px] font-normal text-white/50">
+                  {profile.email}
+                </div>
+              </div>
+            </div>
 
-          <a
-            href={SUPPORT_FORM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            role="menuitem"
-            onClick={onClose}
-            className={itemClass}
-          >
-            <HelpIcon size={18} />
-            <span>{t("helpSupport")}</span>
-          </a>
+            {/* Wallets */}
+            <div className="border-t border-white/8 pt-2">
+              <WalletAddresses user={user ?? null} />
+            </div>
 
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              logout();
-              onClose();
-            }}
-            className="text-down hover:bg-down/10 flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-medium transition-colors"
-          >
-            <SignOutIcon size={18} />
-            <span>{t("signOut")}</span>
-          </button>
-        </div>
-      </div>
+            {/* Quick Actions */}
+            <div className="mt-2.5 flex flex-col gap-1 border-t border-white/8 pt-2">
+              {!hasPasskey ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    linkWithPasskey();
+                    onClose();
+                  }}
+                  className={itemClass}
+                >
+                  <span className="text-accent">
+                    <PasskeyIcon />
+                  </span>
+                  <span>{t("addPasskey")}</span>
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setInviteOpen(true);
+                }}
+                className={itemClass}
+              >
+                <span className="text-accent">
+                  <InviteIcon />
+                </span>
+                <span>{t("inviteFriends")}</span>
+              </button>
+
+              <a
+                href={SUPPORT_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                role="menuitem"
+                onClick={onClose}
+                className={itemClass}
+              >
+                <HelpIcon size={18} />
+                <span>{t("helpSupport")}</span>
+              </a>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  logout();
+                  onClose();
+                }}
+                className="text-down hover:bg-down/10 flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-medium transition-colors"
+              >
+                <SignOutIcon size={18} />
+                <span>{t("signOut")}</span>
+              </button>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <InviteFriendsModal
         open={inviteOpen}

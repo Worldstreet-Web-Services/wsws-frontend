@@ -196,7 +196,7 @@ describe("ChartPanelShell", () => {
     expect(onSymbolClick).toHaveBeenCalledTimes(1);
   });
 
-  it("hides the framed panel but keeps its toggle when the chart is collapsed", () => {
+  it("folds the panel shut rather than dropping it, and keeps its toggle working", () => {
     const onOpenChange = vi.fn();
     const { container } = render(
       <ChartPanelShell
@@ -209,11 +209,159 @@ describe("ChartPanelShell", () => {
       </ChartPanelShell>
     );
 
-    expect(region(container, "chart-panel-frame")).toBeNull();
+    // The reported defect: the chevron rotated smoothly and the panel under it
+    // snapped, because the panel was swapped out of the tree. It stays in the
+    // tree now, at a zero-height grid row, so the collapse can animate.
+    const panel = container.querySelector("#chart-panel-shell-body");
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("[grid-template-rows:0fr]");
+    // Clipped content is out of the tab order and unread, the way an unmounted
+    // panel was.
+    expect(panel).toHaveAttribute("inert");
+    // The frame folds on an empty box: the chart itself is still gated on the
+    // open state, so a collapsed panel loads nothing.
     expect(screen.queryByText("chart-engine")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View Chart" }));
     expect(onOpenChange).toHaveBeenCalledWith(true);
+  });
+
+  it("opens the panel to its own content height, with no pixel figure to go stale", () => {
+    const { container, rerender } = render(
+      <ChartPanelShell labels={labels} open={false} onOpenChange={vi.fn()} toggleLabel="View Chart">
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    rerender(
+      <ChartPanelShell labels={labels} open onOpenChange={vi.fn()} toggleLabel="Close Chart">
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    const panel = container.querySelector("#chart-panel-shell-body");
+    expect(panel).toHaveClass("[grid-template-rows:1fr]");
+    expect(panel).not.toHaveAttribute("inert");
+    expect(screen.getByText("chart-engine")).toBeInTheDocument();
+  });
+
+  it("unmounts the chart on close so a collapsed panel keeps no iframe loading", () => {
+    // The whole reason the chart is gated inside the panel instead of simply
+    // wrapped: the leverage screen's chart is a TradingView iframe, and a
+    // panel that kept it mounted would leave one loading on every ticket.
+    const { container, rerender } = render(
+      <ChartPanelShell labels={labels} open onOpenChange={vi.fn()} toggleLabel="Close Chart">
+        <iframe title="tradingview" src="about:blank" />
+      </ChartPanelShell>
+    );
+
+    expect(container.querySelector("iframe")).not.toBeNull();
+
+    rerender(
+      <ChartPanelShell labels={labels} open={false} onOpenChange={vi.fn()} toggleLabel="View Chart">
+        <iframe title="tradingview" src="about:blank" />
+      </ChartPanelShell>
+    );
+
+    expect(container.querySelector("iframe")).toBeNull();
+    // The box it folds on is still there, so there is something to animate.
+    expect(region(container, "chart-panel-frame")).not.toBeNull();
+  });
+
+  it("keeps the frame a flex child of a flex box so the desk can still stretch it", () => {
+    // LeverageDesktopLayout turns the frame's inline height into a flexed one
+    // with `[&_[data-region=chart-panel-frame]]:flex-1`, and a flexed height is
+    // only definite while every box above it is too. The animating panel sits
+    // between the shell root and the frame now, so the chain runs through it.
+    const { container } = render(
+      <ChartPanelShell labels={labels} open onOpenChange={vi.fn()} toggleLabel="Close Chart">
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    const frame = region(container, "chart-panel-frame") as HTMLElement;
+    const clip = frame.parentElement as HTMLElement;
+    expect(clip).toHaveClass("flex", "flex-col", "min-h-0");
+
+    const panel = clip.parentElement as HTMLElement;
+    expect(panel).toHaveAttribute("id", "chart-panel-shell-body");
+
+    const stretch = panel.parentElement as HTMLElement;
+    expect(stretch).toHaveClass("flex", "flex-col", "min-h-0", "flex-1");
+    // Reaches the animating root, which takes no classes of its own.
+    expect(stretch).toHaveClass("[&>*]:flex-1", "[&>*]:min-h-0");
+  });
+
+  it("lets a shut panel reach zero rather than stopping at the frame's height", () => {
+    // Measured in Chrome at 1440px before this was unconditional: the desk
+    // panel collapsed to 232px and stayed there, because a flex item's
+    // automatic minimum is its content's and the frame carries a real height.
+    // The grown height goes when the panel shuts; the floor-remover must not.
+    const { container } = render(
+      <ChartPanelShell labels={labels} open={false} onOpenChange={vi.fn()} toggleLabel="View Chart">
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    const panel = container.querySelector("#chart-panel-shell-body") as HTMLElement;
+    const stretch = panel.parentElement as HTMLElement;
+    expect(stretch).toHaveClass("[&>*]:min-h-0");
+    // A grown flex child with nothing in it would hold open the height a
+    // definite-height column gave it.
+    expect(stretch).not.toHaveClass("flex-1");
+    expect(stretch).not.toHaveClass("[&>*]:flex-1");
+  });
+
+  it("leaves no gap under the toggle while the panel is shut", () => {
+    // The panel's own spacing lives inside the clip, not in a flex gap on the
+    // root: a gap would still be drawn between the toggle and a zero-height
+    // panel, pushing everything under the shell down by 12px while collapsed.
+    const { container } = render(
+      <ChartPanelShell labels={labels} open={false} onOpenChange={vi.fn()} toggleLabel="View Chart">
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    expect(container.firstElementChild).not.toHaveClass("gap-3");
+
+    // And it is a margin on the content, not padding on the clip: padding sits
+    // outside the zero-height box a collapsed grid row makes, so `pt-3` there
+    // left the shut panel resting at 12px instead of 0 in Chrome.
+    const clip = container.querySelector("#chart-panel-shell-body")
+      ?.firstElementChild as HTMLElement;
+    expect(clip).not.toHaveClass("pt-3");
+    expect(clip.firstElementChild).toHaveClass("mt-3");
+  });
+
+  it("gives the panel no lead margin when nothing is laid out above it", () => {
+    const { container } = render(
+      <ChartPanelShell labels={labels}>
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    expect(region(container, "chart-panel-frame")).not.toHaveClass("mt-3");
+  });
+
+  it("hangs the lead margin on the timeframe strip when the screen offers one", () => {
+    const { container } = render(
+      <ChartPanelShell
+        labels={labels}
+        open
+        onOpenChange={vi.fn()}
+        toggleLabel="Close Chart"
+        timeframes={[{ value: "1h", label: "1H" }]}
+        timeframe="1h"
+        timeframeLabel="Chart timeframe"
+      >
+        <div>chart-engine</div>
+      </ChartPanelShell>
+    );
+
+    // Whatever comes first inside the clip carries it, so the 12px is never
+    // counted twice.
+    expect(region(container, "chart-panel-timeframes")).toHaveClass("mt-3");
+    expect(region(container, "chart-panel-frame")).not.toHaveClass("mt-3");
   });
 
   it("omits the toggle when the screen does not offer collapsing", () => {

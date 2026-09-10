@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { SearchIcon } from "@/components/ui/icons";
 import { track } from "@/lib/analytics/mixpanel";
 import {
   CASINO_GAMES,
@@ -15,15 +14,17 @@ import {
 import { ARKADE_CARD_FRAME, ArkadeGameCard } from "@/features/casino/components/arkade-game-card";
 
 /**
- * Arkade on a phone, as the comp draws it (node 12:204, 402x1076): a pill
- * search field, an underlined category strip that scrolls sideways, and the
- * catalogue as one full-width card per row.
+ * Arkade on a phone, as the comp draws it (node 12:204, 402x1076): an
+ * underlined category strip that scrolls sideways, and the catalogue as one
+ * full-width card per row.
  *
  * From `md` up the desktop grid takes over, so this renders phone-only. The
  * card itself is ArkadeGameCard, the same one the desktop rail draws; only the
  * footprint changes, from a third of a row to the whole width. This file owns
- * the list: the search field, the category strip, and what an empty or loading
- * list looks like.
+ * the list: the category strip, and what an empty or loading list looks like.
+ *
+ * There is no search field here. The phone browses the catalogue by category
+ * alone; the desktop hub keeps its own search.
  */
 
 // Catalogue filter values mapped to their label keys in "casino.hub". The phone
@@ -78,42 +79,29 @@ export function ArkadeMobile({
 }: ArkadeMobileProps = {}) {
   const t = useTranslations("casino.hub");
   const [category, setCategory] = useState<GameCategoryFilter>(defaultCategory);
-  const [search, setSearch] = useState("");
 
-  // Search matches the names the player actually sees, i.e. the localized ones.
-  const visible = useMemo(
-    () => filterGames(games, category, search, (game) => t(`games.${game.id}.name`)),
-    [games, category, search, t]
-  );
+  // Category is the only filter on a phone, so the search argument is always
+  // empty. The call still goes through filterGames so the category rules,
+  // "All games" and the "Coming soon" pseudo-category included, live in one
+  // place rather than being restated here.
+  const visible = useMemo(() => filterGames(games, category, ""), [games, category]);
 
   const activeIndex = Math.max(0, GAME_CATEGORIES.indexOf(category));
 
   return (
-    // 20px at the edges, which is where the comp puts the search field and the
-    // tab strip. The card list pulls back to 16px below, which is where the
-    // comp puts the cards.
+    // 20px at the edges, which is where the comp puts the tab strip. The card
+    // list pulls back to 16px below, which is where the comp puts the cards.
     <div className="w-full px-5 pt-6 pb-8">
       {/* The comp carries the ARKADE wordmark in the header band above this
           surface, not in the content, so the heading is here for the document
           outline only. */}
       <h1 className="sr-only">{t("title")}</h1>
 
-      <label className="ws-inset flex h-[52px] items-center gap-2.5 rounded-full px-4">
-        <SearchIcon size={16} className="shrink-0 text-white/40" />
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          aria-label={t("searchPlaceholder")}
-          placeholder={t("searchPlaceholder")}
-          autoComplete="off"
-          className="w-full min-w-0 bg-transparent font-sans text-[14px] text-white outline-none placeholder:text-white/40 [&::-webkit-search-cancel-button]:appearance-none"
-        />
-      </label>
-
       {/* Full bleed so the strip can run past the right edge the way the comp
-          shows it, with the 20px lead-in kept as padding. */}
-      <div className="ws-no-scrollbar -mx-5 mt-2 overflow-x-auto px-5">
+          shows it, with the 20px lead-in kept as padding. The strip carries no
+          top margin: it now opens the surface, so the container's own padding
+          is the whole gap above it. */}
+      <div className="ws-no-scrollbar -mx-5 overflow-x-auto px-5">
         <div role="group" aria-label={t("categoriesLabel")} style={{ width: STRIP_WIDTH }}>
           <div className="flex" style={{ gap: TAB_PITCH - TAB_WIDTH }}>
             {GAME_CATEGORIES.map((value) => {

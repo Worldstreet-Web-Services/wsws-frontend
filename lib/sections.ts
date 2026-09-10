@@ -10,7 +10,11 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   prediction: "Prediction",
   earn: "Earn",
   casino: "Arkade",
-  activity: "Activity",
+  // "Arkivity" is the product name, and it is what `sections.activity` says
+  // in all five catalogues. This fallback only stands in when buildNav is
+  // called without a translate function, so it must not disagree with the
+  // translated string it is standing in for.
+  activity: "Arkivity",
 };
 
 // Portfolio is always the account home. The rest follow, led by whatever the

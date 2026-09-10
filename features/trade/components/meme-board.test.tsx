@@ -164,6 +164,45 @@ describe("the coin the phone screen is trading", () => {
   });
 });
 
+describe("the screen's two disclosures", () => {
+  // The chart is the one panel that must not stay mounted: it resolves a
+  // CoinGecko id and boots a chart. So the box animates and the chart itself
+  // stays gated inside it, which is the split Disclosure documents.
+  it("animates the chart panel open while leaving the chart itself unmounted when closed", async () => {
+    renderBoard();
+    const toggle = await screen.findByRole("button", { name: "View Chart" });
+    const panel = document.getElementById(
+      toggle.getAttribute("aria-controls") as string
+    ) as HTMLElement;
+
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel.className).toContain("transition-[grid-template-rows,opacity]");
+    expect(document.querySelector('[data-region="meme-chart"]')).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+    expect(document.querySelector('[data-region="meme-chart"]')).not.toBeNull();
+  });
+
+  // The metrics are figures the board already holds, so they stay mounted and
+  // the panel folds over them.
+  it("keeps the metrics mounted and collapsed until the row is opened", async () => {
+    renderBoard();
+    const toggle = await screen.findByRole("button", { name: "View Market Metrics" });
+    const panel = document.getElementById(
+      toggle.getAttribute("aria-controls") as string
+    ) as HTMLElement;
+
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel).toHaveAttribute("inert");
+    expect(within(panel).getByRole("group", { name: "Market metrics" })).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+    expect(panel).not.toHaveAttribute("inert");
+  });
+});
+
 describe("figures the service does not publish", () => {
   it("says Unavailable rather than showing a zero market cap", async () => {
     catalog.tokens = [

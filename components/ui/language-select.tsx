@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { GlobeIcon, CheckIcon } from "@/components/ui/icons";
 import { LOCALES, LOCALE_COOKIE, LOCALE_LABEL, isLocale, type Locale } from "@/lib/i18n";
 
@@ -32,6 +33,7 @@ export function LanguageSelect({ variant = "compact" }: LanguageSelectProps = {}
   const [pending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
   const chrome = variant === "chrome";
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (!open) return;
@@ -125,32 +127,38 @@ export function LanguageSelect({ variant = "compact" }: LanguageSelectProps = {}
         )}
       </button>
 
-      {open ? (
-        <div
-          role="listbox"
-          className="bg-panel absolute right-0 z-[80] mt-2 w-[168px] rounded-xl border border-white/12 p-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]"
-        >
-          {LOCALES.map((locale) => {
-            const on = locale === active;
-            return (
-              <button
-                key={locale}
-                role="option"
-                aria-selected={on}
-                onClick={() => select(locale)}
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-[13.5px] font-medium text-white/85 hover:bg-white/6"
-              >
-                <span className="flex-1">{LOCALE_LABEL[locale]}</span>
-                {on ? (
-                  <span className="text-accent">
-                    <CheckIcon size={15} />
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            role="listbox"
+            className="bg-panel absolute right-0 z-[80] mt-2 w-[168px] rounded-xl border border-white/12 p-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]"
+          >
+            {LOCALES.map((locale) => {
+              const on = locale === active;
+              return (
+                <button
+                  key={locale}
+                  role="option"
+                  aria-selected={on}
+                  onClick={() => select(locale)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-[13.5px] font-medium text-white/85 hover:bg-white/6"
+                >
+                  <span className="flex-1">{LOCALE_LABEL[locale]}</span>
+                  {on ? (
+                    <span className="text-accent">
+                      <CheckIcon size={15} />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

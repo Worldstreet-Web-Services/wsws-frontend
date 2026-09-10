@@ -704,7 +704,8 @@
     "sell": "Sell {name}",
     "assetDetails": "Asset details",
     "goToCard": "Go to card {number}",
-    "searchHoldings": "Search your holdings"
+    "searchHoldings": "Search your holdings",
+    "noChart": "No price history yet."
   },
   "markets": {
     "title": "Markets",
@@ -907,8 +908,6 @@
     "useLandedBalance": "Buy with the {amount} you have instead"
   },
   "prediction": {
-    "eyebrow": "Prediction markets",
-    "heading": "Trade your conviction",
     "exploreAllMarkets": "Explore all markets",
     "regionBlockedTitle": "Not available in your region",
     "regionBlockedBody": "Prediction markets aren't offered where you are right now. The rest of {brand} stays fully available.",
@@ -1190,6 +1189,7 @@
     "eventLoadFailed": "This event could not be loaded.",
     "marketCount": "{count, plural, one {# market} other {# markets}}",
     "searchEventMarketsLabel": "Search event markets",
+    "noSearchMatches": "No markets match your search.",
     "myBets": "My bets",
     "openEventAria": "Open {title} details",
     "oddsAria": "{side} {odds}",
@@ -2791,8 +2791,7 @@
     "reconnecting": "Reconnecting…"
   },
   "carousel": {
-    "previous": "Previous slide",
-    "next": "Next slide"
+    "goToSlide": "Go to slide {index}"
   },
   "discovery": {
     "promoRailCarousel": "Promotions",
@@ -2879,6 +2878,13 @@
     "rwaEarn": "Earn {apy}",
     "rwaOwn": "Own a share",
     "rwaTrade": "Trade {symbol}",
-    "rwaExplore": "Explore real assets"
+    "rwaExplore": "Explore real assets",
+    "seeMore": "See More",
+    "next100xSeeMore": "Ride the Hype",
+    "tokenMovesSeeMore": "Trade What’s Next",
+    "predictionSeeMore": "Bet On What’s Next?",
+    "lastManMarathonLead": "Last Man",
+    "lastManMarathonTitle": "Marathon",
+    "lastManJoinNow": "Join Now"
   }
 }

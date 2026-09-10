@@ -34,6 +34,13 @@ vi.mock("@privy-io/react-auth", () => ({
 vi.mock("@/components/broadcast/go-live-control", () => ({
   GoLiveControl: () => <button type="button">Go Live</button>,
 }));
+// AccountPopover is now always mounted (it plays its own exit animation off
+// its `open` prop), which pulls in InviteFriendsModal and its react-query
+// hook. The rail's own markup is what is under test here, not the popover, so
+// it is stubbed like the rail's other neighbours above.
+vi.mock("@/components/layout/account-popover", () => ({
+  AccountPopover: () => null,
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));

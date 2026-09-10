@@ -38,7 +38,8 @@ beforeEach(() => {
 
 describe("useMemeSpots", () => {
   it("features a coin by its ticker, with its move formatted", () => {
-    useTrendingMemes.mockReturnValue({ tokens: [coin()] });
+    const token = coin();
+    useTrendingMemes.mockReturnValue({ tokens: [token] });
     const { result } = renderHook(() => useMemeSpots());
     expect(result.current).toEqual([
       {
@@ -47,9 +48,17 @@ describe("useMemeSpots", () => {
         change: "+40.85%",
         up: true,
         image: "https://cdn.example/basecat.png",
-        href: "/meme",
+        href: "/market?tab=memecoins",
+        token,
       },
     ]);
+  });
+
+  it("carries the whole token, for the buy sheet to open on", () => {
+    const token = coin({ address: "0xabc" });
+    useTrendingMemes.mockReturnValue({ tokens: [token] });
+    const { result } = renderHook(() => useMemeSpots());
+    expect(result.current[0].token).toBe(token);
   });
 
   // The trending feed is a pump feed, and a listing named after a repository

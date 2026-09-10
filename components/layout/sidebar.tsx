@@ -218,13 +218,14 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
             </svg>
           </button>
 
-          {accountPopoverOpen ? (
-            <AccountPopover
-              open={accountPopoverOpen}
-              onClose={() => setAccountPopoverOpen(false)}
-              triggerRef={profileButtonRef}
-            />
-          ) : null}
+          {/* Always mounted: AccountPopover plays its own exit animation off
+              the `open` prop, and unmounting it here would skip straight past
+              that closing frame. */}
+          <AccountPopover
+            open={accountPopoverOpen}
+            onClose={() => setAccountPopoverOpen(false)}
+            triggerRef={profileButtonRef}
+          />
         </div>
       </aside>
     </>

@@ -12,6 +12,7 @@ import { useRotatingIndex } from "@/hooks/use-rotating-index";
 import { formatCountdown, useCountdown } from "@/hooks/use-countdown";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
+import { SeeMoreCard } from "@/features/discovery/components/see-more-card";
 import type { PredictionSpot } from "@/features/discovery/types";
 
 /*
@@ -262,7 +263,7 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
           follows the first pill, including its fallback, so the card and the
           pill can never lead to two different places. */}
       <Link
-        href={market ? market.href : "/prediction"}
+        href={market ? market.href : "/market?tab=prediction"}
         aria-label={question}
         className="absolute inset-0 rounded-[15px] outline-none focus-visible:ring-2 focus-visible:ring-[#0b0a0a]"
       />
@@ -356,7 +357,7 @@ function PredictionMarketCard({ market, onHold }: PredictionMarketCardProps) {
         {/* One pill, and it leads to the market on show. The desk itself is
             where the row's heading goes. */}
         <DiscoveryCta
-          href={market ? market.href : "/prediction"}
+          href={market ? market.href : "/market?tab=prediction"}
           label={t("predictNow")}
           tone="light"
           size={15}
@@ -437,7 +438,7 @@ function TitleFightCard() {
             368.83px across it. Centring there lets a longer label grow both
             ways instead of off the card. */}
         <DiscoveryCta
-          href="/prediction"
+          href="/market?tab=prediction"
           label={t("predictNow")}
           tone="dark"
           size={12}
@@ -487,7 +488,8 @@ function TitleFightCard() {
 // one the heading's "next" actually refers to; the title fight has no deadline
 // on it. The repeat is third rather than second so the first two views are both
 // a genuine pair. Both copies show the same market, which is the one card
-// twice, as it has always been on this row.
+// twice, as it has always been on this row. The shelf then closes on the end
+// cap, which is the only slide here that leaves for the prediction desk.
 export function PredictionStartsRow({ markets = [] }: { markets?: readonly PredictionSpot[] }) {
   const t = useTranslations("discovery");
 
@@ -513,12 +515,17 @@ export function PredictionStartsRow({ markets = [] }: { markets?: readonly Predi
       title={t.rich("predictionTitle", {
         accent: (chunks) => <span className="text-[#ffd62f]">{chunks}</span>,
       })}
-      href="/prediction"
+      href="/market?tab=prediction"
     >
       <Carousel label={t("predictionCarousel")} gapPx={28} trimPx={50}>
         <PredictionMarketCard market={featured} onHold={hold} />
         <TitleFightCard />
         <PredictionMarketCard market={featured} onHold={hold} />
+        <SeeMoreCard
+          headline={t("predictionSeeMore")}
+          href="/market?tab=prediction"
+          className={CARD_BOX}
+        />
       </Carousel>
     </DiscoveryRow>
   );

@@ -60,6 +60,8 @@ describe("useTokenSpots", () => {
         symbol: "BTC",
         name: "Bitcoin",
         price: "$110,000.00",
+        priceUsd: 110_000,
+        coingeckoId: "bitcoin",
         change: "+2.50%",
         up: true,
         movePercent: "2.50%",
@@ -67,6 +69,27 @@ describe("useTokenSpots", () => {
         href: "/spot/btc",
       },
     ]);
+  });
+
+  // Without this the detail sheet could only chart the dozen tickers in
+  // COINGECKO_IDS, and the rest of the row would show an empty chart even
+  // though the feed came from CoinGecko and named the coin.
+  it("carries the feed's coin id, so the chart is the asset's own", () => {
+    feed([token({ id: "hyperliquid", symbol: "HYPE" })]);
+    const { result } = renderHook(() => useTokenSpots());
+    expect(result.current.tokens[0].coingeckoId).toBe("hyperliquid");
+  });
+
+  it("omits a blank coin id rather than passing an empty string on", () => {
+    feed([token({ id: "  " })]);
+    const { result } = renderHook(() => useTokenSpots());
+    expect(result.current.tokens[0]).not.toHaveProperty("coingeckoId");
+  });
+
+  it("carries the raw price alongside the formatted one, for the buy sheet", () => {
+    feed([token({ priceUsd: 42.5 })]);
+    const { result } = renderHook(() => useTokenSpots());
+    expect(result.current.tokens[0].priceUsd).toBe(42.5);
   });
 
   it("invents nothing when the feed is empty", () => {
@@ -302,6 +325,21 @@ describe("useTokenSpots", () => {
     rerender();
 
     expect(result.current.tokens).toBe(first);
+  });
+
+  it("holds the same array when only the raw price ticks below display precision", () => {
+    // priceUsd moves almost every refetch, often by less than the formatted
+    // price's two decimals show. It must not be part of the rotation's
+    // change check, or the row would restart on every tick.
+    feed([token({ priceUsd: 110_000 })]);
+    const { result, rerender } = renderHook(() => useTokenSpots());
+    const first = result.current.tokens;
+
+    feed([token({ priceUsd: 110_000.001 })]);
+    rerender();
+
+    expect(result.current.tokens).toBe(first);
+    expect(result.current.tokens[0].priceUsd).toBe(110_000);
   });
 
   it("passes on a real change", () => {

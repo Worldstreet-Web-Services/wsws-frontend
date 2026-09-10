@@ -2,6 +2,7 @@
 
 import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import { Disclosure } from "@/components/ui/disclosure";
 import { groupBaseUnits, parseBaseUnits } from "@/features/trade/components/meme-base-units";
 import { Caret } from "@/features/trade/components/meme-board-disclosure";
 import type { MemeSwapsStatus } from "@/features/trade/hooks/use-meme-swaps";
@@ -135,7 +136,10 @@ export function LiveTransactions({ token, swaps, status, onRetry }: LiveTransact
   return (
     <section
       data-region="meme-live-transactions"
-      className="border-hairline rounded-card bg-surface flex flex-col gap-[10px] border p-4"
+      // No gap between the header and the list: the 10px rides on the panel's
+      // content instead, so it folds away with the list. On the card it would
+      // survive the collapse and pad a shut card by 10px it never had.
+      className="border-hairline rounded-card bg-surface flex flex-col border p-4"
     >
       <button
         type="button"
@@ -150,55 +154,65 @@ export function LiveTransactions({ token, swaps, status, onRetry }: LiveTransact
         <Caret open={open} />
       </button>
 
-      <div id={panelId} hidden={!open} className="flex flex-col">
-        {status === "loading" ? (
-          <div role="status" aria-label={t("txTitle")} className="flex flex-col gap-2">
-            {[0, 1].map((row) => (
-              <div key={row} className="h-[34px] animate-pulse rounded-[10px] bg-white/6" />
-            ))}
-          </div>
-        ) : status === "error" ? (
-          <div role="alert" className="flex flex-col items-start gap-2">
-            <span className="text-[13px] font-normal text-white/70">{t("txError")}</span>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="border-hairline bg-surface flex min-h-[44px] cursor-pointer items-center rounded-full border px-4 font-serif text-[12.5px] font-semibold text-white"
-            >
-              {t("retry")}
-            </button>
-          </div>
-        ) : transactions.length === 0 ? (
-          <span className="text-[13px] font-normal text-white/45">{t("txEmpty")}</span>
-        ) : (
-          <ul className="flex flex-col">
-            {transactions.map((row) => (
-              <li
-                key={row.id}
-                data-testid="meme-tx-row"
-                className="flex min-h-[44px] items-center gap-3"
+      {/* Wrapped whole, not gated: every state below is drawn from the `swaps`
+          prop, and the query and its 15s poll belong to the board (useMemeSwaps),
+          so keeping the rows mounted while the card is shut costs nothing and is
+          what lets the card fold rather than snap.
+
+          The 10px lead is on this inner box, not on the Disclosure's className:
+          that lands on the grid item, whose padding counts towards the 0fr
+          track and would hold a shut card 10px open. */}
+      <Disclosure open={open} id={panelId}>
+        <div className="flex flex-col pt-[10px]">
+          {status === "loading" ? (
+            <div role="status" aria-label={t("txTitle")} className="flex flex-col gap-2">
+              {[0, 1].map((row) => (
+                <div key={row} className="h-[34px] animate-pulse rounded-[10px] bg-white/6" />
+              ))}
+            </div>
+          ) : status === "error" ? (
+            <div role="alert" className="flex flex-col items-start gap-2">
+              <span className="text-[13px] font-normal text-white/70">{t("txError")}</span>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="border-hairline bg-surface flex min-h-[44px] cursor-pointer items-center rounded-full border px-4 font-serif text-[12.5px] font-semibold text-white"
               >
-                {/* The word carries the side, not the colour: "Buy" and "Sell"
+                {t("retry")}
+              </button>
+            </div>
+          ) : transactions.length === 0 ? (
+            <span className="text-[13px] font-normal text-white/45">{t("txEmpty")}</span>
+          ) : (
+            <ul className="flex flex-col">
+              {transactions.map((row) => (
+                <li
+                  key={row.id}
+                  data-testid="meme-tx-row"
+                  className="flex min-h-[44px] items-center gap-3"
+                >
+                  {/* The word carries the side, not the colour: "Buy" and "Sell"
                     read the same to someone who cannot tell the two fills
                     apart. */}
-                <span
-                  className={`shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[11px] font-bold ${
-                    row.side === "BUY" ? "bg-buy/15 text-buy" : "bg-sell/15 text-sell"
-                  }`}
-                >
-                  {row.side === "BUY" ? t("buy") : t("sell")}
-                </span>
-                <span className="tnum min-w-0 flex-1 truncate text-[12.5px] font-medium text-white">
-                  {row.amount === null ? t("metricUnavailable") : `${row.amount} ${symbol}`}
-                </span>
-                <span className="tnum shrink-0 text-[11px] font-normal text-white/40">
-                  {elapsed(row.at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  <span
+                    className={`shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[11px] font-bold ${
+                      row.side === "BUY" ? "bg-buy/15 text-buy" : "bg-sell/15 text-sell"
+                    }`}
+                  >
+                    {row.side === "BUY" ? t("buy") : t("sell")}
+                  </span>
+                  <span className="tnum min-w-0 flex-1 truncate text-[12.5px] font-medium text-white">
+                    {row.amount === null ? t("metricUnavailable") : `${row.amount} ${symbol}`}
+                  </span>
+                  <span className="tnum shrink-0 text-[11px] font-normal text-white/40">
+                    {elapsed(row.at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Disclosure>
     </section>
   );
 }

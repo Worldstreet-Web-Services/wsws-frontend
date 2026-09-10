@@ -5,16 +5,26 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { BRAND } from "@/lib/brand";
 import { useMoney } from "@/components/ui/currency-select";
+import { SearchField } from "@/components/ui/search-field";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { usePolymarketAccess } from "@/features/prediction/hooks/use-polymarket-access";
+import { usePolymarketPositionsController } from "@/features/prediction/hooks/use-polymarket-positions-controller";
+import { PredictionPositions } from "@/features/prediction/components/prediction-positions";
+import { LocalPredictionView } from "@/features/prediction/components/local-prediction-view";
 import type { Prediction } from "@/lib/types";
 
 // The Market design's phone Prediction tab (Figma 1:16194): the market cards
-// stacked in one column under the shared search and category strip. Each card is
-// a coloured header band carrying the market's artwork and question, the two
+// stacked in one column under this tab's own search field. Each card is a
+// coloured header band carrying the market's artwork and question, the two
 // outcomes as rows below it, and a footer of volume and close date.
+//
+// The search field belongs to this list rather than to the Market page around
+// it. The page used to pin one shared field above the tab strip and disable it
+// here, because this list took no query and could not filter; now every tab owns
+// a working field that scrolls away with its own rows.
 //
 // The comp draws three cards, two of them with several named outcomes. This
 // deployment's markets are binary: one Yes and one No per market, which is what
@@ -228,6 +238,26 @@ function CardSkeleton() {
   );
 }
 
+/**
+ * Does this market answer what the reader typed?
+ *
+ * Two fields are searched, and they are the two a reader can actually name. The
+ * question is the market's identity and the only sentence the card prints, so it
+ * is what someone types when they remember a market. The category beside it is
+ * how someone finds a whole subject ("politics", "sports") without recalling any
+ * one question.
+ *
+ * Nothing else is matched: prices and volume are numbers a reader searches by
+ * eye, and the feed's raw tag labels are not shown anywhere on the screen, so
+ * matching on them would hide markets behind words nobody can see.
+ *
+ * `needle` arrives trimmed and lower-cased so the query is normalised once per
+ * keystroke rather than once per market.
+ */
+function matchesQuery(p: Prediction, needle: string): boolean {
+  return p.q.toLowerCase().includes(needle) || p.tag.toLowerCase().includes(needle);
+}
+
 function Notice({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-[17px] border-2 border-white/8 px-6 py-10 text-center">
@@ -239,9 +269,14 @@ function Notice({ children }: { children: ReactNode }) {
 /**
  * The phone Prediction tab's market list.
  *
- * A container: it reads the feed, turns the two numbers the cards cannot format
- * themselves (volume and the close date) into strings, and hosts the bet flow a
- * pill opens. The card below it is presentational and holds no data layer.
+ * A container: it reads the feed, holds the tab's search query, turns the two
+ * numbers the cards cannot format themselves (volume and the close date) into
+ * strings, and hosts the bet flow a pill opens. The card below it is
+ * presentational and holds no data layer.
+ *
+ * It takes no query prop. The field is this list's own, so the Market page
+ * around it neither holds prediction search state nor knows how a prediction is
+ * matched.
  */
 export function PredictionMarketList() {
   const t = useTranslations("prediction");
@@ -250,9 +285,33 @@ export function PredictionMarketList() {
   const access = usePolymarketAccess();
   const { data, isPending, isError, refetch } = usePredictions();
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
+  const [query, setQuery] = useState("");
+  // Global = live Polymarket markets, Local = our on-chain CPMM markets, the
+  // same two sources the desktop prediction view switches between.
+  const [source, setSource] = useState<"polymarket" | "local">("polymarket");
+  // The positions flow (claim, sell, cash-out), shared with the desktop view
+  // through one hook. Nothing fetches until the reader opens the sheet.
+  const positionsCtl = usePolymarketPositionsController();
+  // On the phone the positions live behind a button in a sheet, not inline: the
+  // tab stays the market list, and "Load positions" opens the sheet and loads.
+  const [positionsOpen, setPositionsOpen] = useState(false);
+  const openPositions = () => {
+    setPositionsOpen(true);
+    positionsCtl.positions.refresh();
+  };
 
+  const markets = data ?? [];
+  // Trimmed and lower-cased once here, not once per market: a query of spaces
+  // alone is no query at all and leaves the list whole.
+  const needle = query.trim().toLowerCase();
+  const visible = needle ? markets.filter((p) => matchesQuery(p, needle)) : markets;
+
+  let content: ReactNode;
   if (!access.allowed) {
-    return (
+    // Region-blocked: the global (Polymarket) list has nothing behind it here.
+    // Local stays reachable through the toggle above, so this is a content
+    // state rather than replacing the whole tab.
+    content = (
       <Notice>
         <span className="ws-display text-[18px] text-white">{t("regionBlockedTitle")}</span>
         <p className="max-w-[300px] text-[13px] font-normal text-white/55">
@@ -260,20 +319,10 @@ export function PredictionMarketList() {
         </p>
       </Notice>
     );
-  }
-
-  if (isPending) {
-    return (
-      <div className="flex flex-col gap-6 pb-6">
-        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-          <CardSkeleton key={i} />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
+  } else if (isPending) {
+    content = Array.from({ length: SKELETON_COUNT }, (_, i) => <CardSkeleton key={i} />);
+  } else if (isError) {
+    content = (
       <Notice>
         <p className="text-[13px] font-normal text-white/55">{t("mobileMarketsError")}</p>
         <button
@@ -285,66 +334,130 @@ export function PredictionMarketList() {
         </button>
       </Notice>
     );
-  }
-
-  const markets = data ?? [];
-  if (markets.length === 0) {
-    return (
+  } else if (markets.length === 0) {
+    content = (
       <Notice>
         <p className="text-[13px] font-normal text-white/55">{t("mobileNoMarkets")}</p>
       </Notice>
     );
+  } else if (visible.length === 0) {
+    // A query that matches nothing gets its own line, separate from the feed
+    // being empty: the markets are open, they just are not these. The field
+    // stays above it so the reader can clear the query without leaving the tab.
+    content = (
+      <Notice>
+        <p className="text-[13px] font-normal text-white/55">{t("noSearchMatches")}</p>
+      </Notice>
+    );
+  } else {
+    content = visible.map((p) => {
+      // Volume is money, so it goes through the app's money layer and
+      // reaches the card already in the reader's currency. A market that
+      // reports no volume gets no volume element: nothing here invents a
+      // zero.
+      const volumeLabel =
+        typeof p.volumeUsd === "number" && Number.isFinite(p.volumeUsd) && p.volumeUsd > 0
+          ? money.format(p.volumeUsd)
+          : null;
+
+      // The deadline is the feed's own instant. parseCloseTime returns null
+      // for a missing or unparseable date, and a null here means the card
+      // shows no date at all rather than a made-up one. The date is
+      // rendered in UTC so the server's first paint and the client's
+      // hydration agree on which day it is.
+      const closeMs = parseCloseTime(p.endsAt);
+      const endsLabel =
+        closeMs === null
+          ? null
+          : t("closesAt", {
+              when: format.dateTime(new Date(closeMs), {
+                day: "numeric",
+                month: "short",
+                timeZone: "UTC",
+              }),
+            });
+
+      return (
+        <PredictionMarketCard
+          key={p.conditionId ?? p.eventId ?? p.q}
+          prediction={p}
+          // No detail route on this build: the question is plain text and
+          // the Yes and No pills are the way in.
+          href={undefined}
+          volumeLabel={volumeLabel}
+          endsLabel={endsLabel}
+          onPredict={(yes) => setBet({ p, side: yes ? "yes" : "no" })}
+        />
+      );
+    });
   }
 
   return (
     <>
+      {/* One column for the field and everything under it, so the 24px gap the
+          comp puts between the search box and the first card is the same gap
+          that separates the cards from each other.
+
+          No horizontal margin of its own: the host scroll box in the Market page
+          bleeds 4px each side (`-mx-1`) and the field is a direct child of that
+          box exactly as the cards are, so both meet the same edge and the field
+          lines up with the rows below it. Any margin here would push it out of
+          line with them. */}
       <div className="flex flex-col gap-6 pb-6">
-        {markets.map((p) => {
-          // Volume is money, so it goes through the app's money layer and
-          // reaches the card already in the reader's currency. A market that
-          // reports no volume gets no volume element: nothing here invents a
-          // zero.
-          const volumeLabel =
-            typeof p.volumeUsd === "number" && Number.isFinite(p.volumeUsd) && p.volumeUsd > 0
-              ? money.format(p.volumeUsd)
-              : null;
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          label={t("searchEventMarketsLabel")}
+          placeholder={t("searchEventMarketsLabel")}
+          // Off on the Local tab (it browses its own way) and while the global
+          // feed is arriving, failed, or region-blocked. Back the moment global
+          // markets land.
+          disabled={source === "local" || isPending || isError || !access.allowed}
+        />
 
-          // The deadline is the feed's own instant. parseCloseTime returns null
-          // for a missing or unparseable date, and a null here means the card
-          // shows no date at all rather than a made-up one. The date is
-          // rendered in UTC so the server's first paint and the client's
-          // hydration agree on which day it is.
-          const closeMs = parseCloseTime(p.endsAt);
-          const endsLabel =
-            closeMs === null
-              ? null
-              : t("closesAt", {
-                  when: format.dateTime(new Date(closeMs), {
-                    day: "numeric",
-                    month: "short",
-                    timeZone: "UTC",
-                  }),
-                });
+        {/* One row under the search: the Global/Local toggle on the left, the
+            Load-positions button on the right, spaced apart. Tapping Load opens
+            the positions sheet; the open bets never sit inline on the phone. */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex gap-1 rounded-xl bg-white/5 p-1">
+            {(["polymarket", "local"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSource(s)}
+                className={`flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg px-4 text-[13px] font-semibold transition-colors ${
+                  source === s ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
+                }`}
+              >
+                {t(`sourceTab_${s}`)}
+              </button>
+            ))}
+          </div>
+          {source === "polymarket" && access.allowed ? (
+            <button
+              type="button"
+              onClick={openPositions}
+              className="ws-pressable flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/12 bg-white/6 px-4 text-[13px] font-semibold text-white"
+            >
+              {t("loadPositions")}
+            </button>
+          ) : null}
+        </div>
 
-          return (
-            <PredictionMarketCard
-              key={p.conditionId ?? p.eventId ?? p.q}
-              prediction={p}
-              // No detail route on this build: the question is plain text and
-              // the Yes and No pills are the way in.
-              href={undefined}
-              volumeLabel={volumeLabel}
-              endsLabel={endsLabel}
-              onPredict={(yes) => setBet({ p, side: yes ? "yes" : "no" })}
-            />
-          );
-        })}
+        {source === "local" ? <LocalPredictionView /> : content}
       </div>
+
+      {/* The positions sheet: the same panel the desktop shows, opened from the
+          button above rather than sitting inline. */}
+      <ModalShell open={positionsOpen} onClose={() => setPositionsOpen(false)}>
+        <PredictionPositions controller={positionsCtl} />
+      </ModalShell>
 
       <BetModal
         prediction={bet?.p ?? null}
         side={bet?.side ?? "yes"}
         onClose={() => setBet(null)}
+        onPlaced={positionsCtl.positions.refresh}
       />
     </>
   );

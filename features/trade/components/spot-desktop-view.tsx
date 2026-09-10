@@ -5,6 +5,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import { AsyncEmpty, AsyncError } from "@/components/ui/async-state";
+import { Disclosure } from "@/components/ui/disclosure";
 import { SearchField } from "@/components/ui/search-field";
 import { SpotAmountCard } from "@/features/trade/components/spot-amount-card";
 import {
@@ -390,26 +391,31 @@ export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
                       disclosure that names it and beside the badge naming the
                       token it is drawn from, so it needs no label of its own.
 
-                      The panel stays in the tree so aria-controls always
-                      resolves; only the chart itself, and the request behind
-                      it, wait for the open. A collapsed chart subscribes to
-                      nothing. */}
-                  <div id={CHART_PANEL_ID} hidden={!chartExpanded}>
-                    {chartExpanded ? (
-                      selected.coingeckoId ? (
-                        <AssetChart
-                          coingeckoId={selected.coingeckoId}
-                          up={selected.change24h >= 0}
-                          height={200}
-                          allowCandles={false}
-                        />
-                      ) : (
-                        <p className="px-1 py-6 text-center text-[13px] font-normal text-white/45">
-                          {t("noChart", { symbol: selected.symbol })}
-                        </p>
-                      )
-                    ) : null}
-                  </div>
+                      The panel unfolds rather than snapping. The body is
+                      gated on `rendered`, not on `chartExpanded`: children
+                      dropped in the same commit as the close would leave a box
+                      already zero tall, with nothing for the fold to
+                      interpolate. `rendered` holds the chart for one
+                      animation, then drops it, so a collapsed chart still
+                      subscribes to nothing. */}
+                  <Disclosure open={chartExpanded} id={CHART_PANEL_ID}>
+                    {(rendered) =>
+                      rendered ? (
+                        selected.coingeckoId ? (
+                          <AssetChart
+                            coingeckoId={selected.coingeckoId}
+                            up={selected.change24h >= 0}
+                            height={200}
+                            allowCandles={false}
+                          />
+                        ) : (
+                          <p className="px-1 py-6 text-center text-[13px] font-normal text-white/45">
+                            {t("noChart", { symbol: selected.symbol })}
+                          </p>
+                        )
+                      ) : null
+                    }
+                  </Disclosure>
 
                   <div className="flex flex-col gap-[13.5px]">
                     <SpotAmountCard

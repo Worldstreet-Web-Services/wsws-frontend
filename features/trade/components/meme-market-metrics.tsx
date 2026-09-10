@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
+import { Disclosure } from "@/components/ui/disclosure";
 import { ArrowDownIcon, ChartBarsIcon } from "@/components/ui/icons";
 
 // The market-metrics disclosure on the memecoin desk (Figma 173:45712, the
@@ -242,8 +243,22 @@ export function MemeMarketMetrics({
   const panelId = panelIdProp ?? generatedId;
   const unavailableLabel = t("metricUnavailable");
 
+  // The gap between the trigger row and the panel, on the panel's content
+  // rather than on the section as a flex gap. The panel stays mounted while
+  // closed so the collapse can animate (see Disclosure), and a flex gap would
+  // outlive that collapse: a closed trigger would sit above a band of empty
+  // space the design never draws. It cannot go on the Disclosure's own
+  // className either, because that lands on the grid item, whose padding
+  // counts towards the 0fr track. On the content it is clipped away.
+  //
+  // 12px is the comp's gap under this component's own trigger. With the trigger
+  // suppressed the row above is the caller's, and on the desk that is the rail,
+  // which stacks on 13px: same phone-base plus `md:` pairing as every other
+  // measurement in this file, and the desk is the only place md is reached.
+  const panelLead = showTrigger ? "pt-3" : "pt-3 md:pt-[13px]";
+
   return (
-    <section className={`flex flex-col gap-3 ${className}`}>
+    <section className={`flex flex-col ${className}`}>
       {showTrigger ? (
         <button
           type="button"
@@ -257,8 +272,8 @@ export function MemeMarketMetrics({
           {/* The comp groups the dot, the mark and the label on a 4px rhythm
               and holds the chevron 8px off the end of that group. */}
           <span className="flex items-center gap-1 md:gap-2">
-            <span aria-hidden className="size-[3px] shrink-0 rounded-full bg-white" />
-            <ChartBarsIcon size={13} className="shrink-0 md:size-[14px]" />
+            <span aria-hidden className="bg-kash size-[3px] shrink-0 rounded-full" />
+            <ChartBarsIcon size={13} className="text-kash shrink-0 md:size-[14px]" />
             <span className="font-serif text-[12px] leading-[15px] font-semibold tracking-[-0.02em] md:text-[12.6px] md:leading-[1.5]">
               {expanded ? t("metricsHide") : t("metricsShow")}
             </span>
@@ -270,96 +285,98 @@ export function MemeMarketMetrics({
         </button>
       ) : null}
 
-      <div
-        id={panelId}
-        hidden={!expanded}
-        // A named group, not a landmark: the trade panel already carries
-        // enough regions without each disclosure adding one.
-        role="group"
-        aria-label={t("metricsRegion")}
-        className="flex flex-col gap-3"
-      >
-        {status === "loading" ? (
-          <div role="status" aria-live="polite" className="flex flex-col gap-3">
-            <span className="sr-only">{t("metricsLoading")}</span>
-            <div className="flex gap-3">
-              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
-              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+      <Disclosure open={expanded} id={panelId}>
+        <div
+          // A named group, not a landmark: the trade panel already carries
+          // enough regions without each disclosure adding one. It sits inside
+          // the panel rather than on it because the panel element is the
+          // animated box, and Disclosure owns that markup.
+          role="group"
+          aria-label={t("metricsRegion")}
+          className={`flex flex-col gap-3 ${panelLead}`}
+        >
+          {status === "loading" ? (
+            <div role="status" aria-live="polite" className="flex flex-col gap-3">
+              <span className="sr-only">{t("metricsLoading")}</span>
+              <div className="flex gap-3">
+                <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+                <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+                <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+              </div>
+              <div className="bg-grey-800 rounded-card h-[110px] animate-pulse" />
             </div>
-            <div className="flex gap-3">
-              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
-              <div className="bg-grey-800 h-[70px] flex-1 animate-pulse rounded-xl md:h-[73px]" />
+          ) : status === "error" ? (
+            <div
+              role="alert"
+              className="border-rule bg-grey-800 rounded-card flex flex-col items-start gap-2 border p-[15px]"
+            >
+              <span className={`${INTER} text-[13px] font-medium text-white/70`}>
+                {t("metricsError")}
+              </span>
+              {onRetry ? (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="border-hairline bg-surface min-h-11 min-w-11 rounded-full border px-3 py-1.5 text-[12px] font-semibold text-white md:min-h-[auto] md:min-w-[auto]"
+                >
+                  {t("metricsRetry")}
+                </button>
+              ) : null}
             </div>
-            <div className="bg-grey-800 rounded-card h-[110px] animate-pulse" />
-          </div>
-        ) : status === "error" ? (
-          <div
-            role="alert"
-            className="border-rule bg-grey-800 rounded-card flex flex-col items-start gap-2 border p-[15px]"
-          >
-            <span className={`${INTER} text-[13px] font-medium text-white/70`}>
-              {t("metricsError")}
-            </span>
-            {onRetry ? (
-              <button
-                type="button"
-                onClick={onRetry}
-                className="border-hairline bg-surface min-h-11 min-w-11 rounded-full border px-3 py-1.5 text-[12px] font-semibold text-white md:min-h-[auto] md:min-w-[auto]"
-              >
-                {t("metricsRetry")}
-              </button>
-            ) : null}
-          </div>
-        ) : metrics === null ? (
-          <div className="border-rule bg-grey-800 rounded-card border p-[15px]">
-            <span className={`${INTER} text-[13px] font-medium text-white/45`}>
-              {t("metricsEmpty")}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-3">
-              <StatItem
-                label={t("metricMarketCap")}
-                value={metrics.marketCap.display}
-                change={metrics.marketCap.change}
-                unavailableLabel={unavailableLabel}
-              />
-              <StatItem
-                label={t("metricVolume24h")}
-                value={metrics.volume24h.display}
-                change={metrics.volume24h.change}
-                unavailableLabel={unavailableLabel}
-              />
+          ) : metrics === null ? (
+            <div className="border-rule bg-grey-800 rounded-card border p-[15px]">
+              <span className={`${INTER} text-[13px] font-medium text-white/45`}>
+                {t("metricsEmpty")}
+              </span>
             </div>
-            <div className="flex gap-3">
-              <StatItem
-                label={t("metricLiquidity")}
-                value={metrics.liquidity.display}
-                change={metrics.liquidity.change}
+          ) : (
+            <>
+              <div className="flex gap-3">
+                <StatItem
+                  label={t("metricMarketCap")}
+                  value={metrics.marketCap.display}
+                  change={metrics.marketCap.change}
+                  unavailableLabel={unavailableLabel}
+                />
+                <StatItem
+                  label={t("metricVolume24h")}
+                  value={metrics.volume24h.display}
+                  change={metrics.volume24h.change}
+                  unavailableLabel={unavailableLabel}
+                />
+              </div>
+              <div className="flex gap-3">
+                <StatItem
+                  label={t("metricLiquidity")}
+                  value={metrics.liquidity.display}
+                  change={metrics.liquidity.change}
+                  unavailableLabel={unavailableLabel}
+                />
+                <StatItem
+                  label={t("metricAge")}
+                  // Days are a count, not money, so the plural message does the
+                  // formatting. null stays null so the item reads Unavailable
+                  // rather than "0 days".
+                  value={
+                    metrics.ageDays === null ? null : t("metricAgeDays", { days: metrics.ageDays })
+                  }
+                  unavailableLabel={unavailableLabel}
+                />
+              </div>
+              <TradersCard
+                traders={metrics.traders}
                 unavailableLabel={unavailableLabel}
+                headingLabel={t("metricActiveTraders")}
+                buyersLabel={t("metricBuyers")}
+                sellersLabel={t("metricSellers")}
               />
-              <StatItem
-                label={t("metricAge")}
-                // Days are a count, not money, so the plural message does the
-                // formatting. null stays null so the item reads Unavailable
-                // rather than "0 days".
-                value={
-                  metrics.ageDays === null ? null : t("metricAgeDays", { days: metrics.ageDays })
-                }
-                unavailableLabel={unavailableLabel}
-              />
-            </div>
-            <TradersCard
-              traders={metrics.traders}
-              unavailableLabel={unavailableLabel}
-              headingLabel={t("metricActiveTraders")}
-              buyersLabel={t("metricBuyers")}
-              sellersLabel={t("metricSellers")}
-            />
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      </Disclosure>
     </section>
   );
 }

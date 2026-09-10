@@ -120,6 +120,17 @@ describe("MemeMarketMetrics", () => {
     expect(up).not.toHaveClass("text-down");
   });
 
+  // The dot and the mark are kash yellow on every other disclosure trigger in
+  // the app (see the spot pair header and the meme board's own). This one drew
+  // them in the row's white, which read as a different control.
+  it("draws the dot and the glyph in the kash yellow", () => {
+    renderPanel({ expanded: false });
+
+    const trigger = screen.getByRole("button", { name: "View Market Metrics" });
+    expect(trigger.querySelector("span.rounded-full")).toHaveClass("bg-kash");
+    expect(trigger.querySelector("svg")).toHaveClass("text-kash");
+  });
+
   it("reports the toggle and describes the disclosure to assistive tech", () => {
     const onToggle = vi.fn();
     renderPanel({ expanded: false, onToggle });
@@ -131,7 +142,9 @@ describe("MemeMarketMetrics", () => {
     expect(controls).toBeTruthy();
     const panel = document.getElementById(controls as string);
     expect(panel).not.toBeNull();
-    expect(panel).toHaveAttribute("hidden");
+    // Closed is a collapsed panel, not a removed one: see the mounted-while-closed
+    // test below for why, and Disclosure for how.
+    expect(panel).toHaveAttribute("inert");
 
     fireEvent.click(toggle);
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -149,6 +162,48 @@ describe("MemeMarketMetrics", () => {
     expect(onToggle).toHaveBeenCalledWith(false);
     // The parent owns the state, so the panel is still open until it says so.
     expect(screen.getByRole("button", { name: "Close Market Metrics" })).toBeInTheDocument();
+  });
+
+  // The defect: the panel was swapped out of the layout with `hidden`, which is
+  // an instant disappearance. The trigger's chevron rotated smoothly and the
+  // metrics block under it snapped. Animating the collapse means the block has
+  // to still be there while it folds, which is what Disclosure holds open.
+  it("keeps the metrics mounted and collapsed while closed, rather than swapping them out", () => {
+    renderPanel({ expanded: false, panelId: "metrics-panel" });
+
+    const panel = document.getElementById("metrics-panel") as HTMLElement;
+    expect(panel).not.toHaveAttribute("hidden");
+    expect(panel.className).toContain("[grid-template-rows:0fr]");
+    expect(panel.className).toContain("transition-[grid-template-rows,opacity]");
+    // Mounted, so the fold has something to fold, and out of the tab order and
+    // the accessibility tree, so it costs nothing to have kept it.
+    expect(panel).toHaveAttribute("inert");
+    expect(within(panel).getByText("$84.2M")).toBeInTheDocument();
+  });
+
+  it("unfolds to the metrics' own height when it opens", () => {
+    renderPanel({ expanded: true, panelId: "metrics-panel" });
+
+    const panel = document.getElementById("metrics-panel") as HTMLElement;
+    expect(panel.className).toContain("[grid-template-rows:1fr]");
+    expect(panel).not.toHaveAttribute("inert");
+  });
+
+  // The gap between the trigger and the panel has to fold with the panel. Left
+  // on the section as a flex gap it would survive the collapse, leaving a band
+  // of empty space under a closed trigger that was never there before. Put on
+  // the Disclosure's className it would be no better: that lands on the grid
+  // item, whose own padding counts towards the 0fr track, so the shut panel
+  // would stand 12px tall instead of collapsing. It belongs on the content.
+  it("folds the gap under the trigger away with the panel", () => {
+    renderPanel({ expanded: false, panelId: "metrics-panel" });
+
+    const section = document.getElementById("metrics-panel")?.parentElement as HTMLElement;
+    expect(section.className).not.toContain("gap-");
+
+    const clip = document.querySelector("#metrics-panel > .overflow-hidden") as HTMLElement;
+    expect(clip.className).not.toMatch(/(^|\s)-?(m|p)(t|b|y)?-/);
+    expect(screen.getByRole("group", { name: "Market metrics" }).className).toContain("pt-3");
   });
 
   it("announces a loading panel instead of empty metric cards", () => {
@@ -207,22 +262,13 @@ describe("MemeMarketMetrics", () => {
     expect(within(card).queryByTestId("meme-trader-buy-share")).toBeNull();
   });
 
-  // The Figma comp paints both of these marks #FFD62F, which is exactly
-  // --color-kash, so a later pass working from the design would reasonably
-  // "restore" the yellow. The user asked for it gone across every page. This
-  // test is the only thing that records that decision in code.
-  it("draws the trigger dot and glyph in the row's own colour, never the kash yellow", () => {
+  // The label stays white. Only the two marks before it carry the yellow, so
+  // the row still reads as one control rather than a coloured heading.
+  it("keeps the trigger label in the row's own white", () => {
     renderPanel({ expanded: false });
     const toggle = screen.getByRole("button", { name: "View Market Metrics" });
 
-    for (const node of [toggle, ...toggle.querySelectorAll("*")]) {
-      expect(node.getAttribute("class") ?? "").not.toMatch(/kash/);
-    }
-
-    // The dot takes the row's white fill and the glyph is stroked with
-    // currentColor, so both follow the label instead of holding a colour.
     expect(toggle).toHaveClass("text-white");
-    expect(toggle.querySelector("span[aria-hidden]")).toHaveClass("bg-white");
     expect(toggle.querySelector("svg")?.querySelector("path")).toHaveAttribute(
       "stroke",
       "currentColor"
@@ -263,8 +309,12 @@ describe("MemeMarketMetrics", () => {
     const railTrigger = screen.getByRole("button", { name: "View Market Metrics" });
     const panel = document.getElementById(railTrigger.getAttribute("aria-controls") as string);
     expect(panel).not.toBeNull();
-    expect(panel).toHaveAttribute("hidden");
-    expect(panel).toHaveAttribute("role", "group");
+    expect(panel).toHaveAttribute("inert");
+    // The named group is inside the panel the trigger points at: the panel
+    // element itself is the animated box, and Disclosure owns its markup.
+    expect(
+      within(panel as HTMLElement).getByRole("group", { name: "Market metrics" })
+    ).toBeTruthy();
   });
 });
 

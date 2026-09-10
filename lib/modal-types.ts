@@ -27,6 +27,13 @@ export interface DetailPayload {
   // Show only the candlestick chart, with no area option. Set for the simple
   // spot flow, which is candles-only.
   candlesOnly?: boolean;
+  // Chain label for an asset whose CoinGecko coin id isn't known up front.
+  // Paired with chartAddress, this lets DetailModal resolve a real coin id
+  // from the contract so it can chart the asset instead of guessing.
+  chartChain?: string;
+  // Contract address to resolve a coin id from, alongside chartChain. Ignored
+  // if coingeckoId is already set.
+  chartAddress?: string;
 }
 
 export interface ConfirmPayload {
@@ -85,6 +92,7 @@ export type DashboardModal =
   | { type: "sell"; sell: SellPayload }
   | { type: "rwaTrade"; rwaTrade: RwaTradePayload }
   | { type: "memeSell"; memeSell: MemeToken }
+  | { type: "memeBuy"; memeBuy: MemeToken }
   | { type: "funds"; deposit?: DepositPrefill }
   | { type: "withdraw" }
   | { type: "crossBorder" }

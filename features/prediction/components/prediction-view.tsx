@@ -3,123 +3,28 @@
 import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ModalShell } from "@/components/ui/modal-shell";
-import { useMoney } from "@/components/ui/currency-select";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
 import { BetModal } from "@/features/prediction/components/bet-modal";
-import { BetSlipSheet } from "@/features/prediction/components/bet-slip-sheet";
-import { PositionsPanel } from "@/features/prediction/components/positions-panel";
+import { PredictionPositions } from "@/features/prediction/components/prediction-positions";
 import { LocalPredictionView } from "@/features/prediction/components/local-prediction-view";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { usePolymarketAccess } from "@/features/prediction/hooks/use-polymarket-access";
-import {
-  usePolymarketPositions,
-  type PolymarketPosition,
-} from "@/features/prediction/hooks/use-polymarket-positions";
-import {
-  CashoutError,
-  usePolymarketCashout,
-} from "@/features/prediction/hooks/use-polymarket-cashout";
-import { useClaimedOnce } from "@/features/prediction/hooks/use-claimed-once";
-import { usePolymarketRedeem } from "@/features/prediction/hooks/use-polymarket-redeem";
-import { SettleError, useSettleToBase } from "@/features/prediction/hooks/use-settle";
+import { usePolymarketPositionsController } from "@/features/prediction/hooks/use-polymarket-positions-controller";
 import { PREDICTIONS } from "@/lib/data/dashboard";
-import { toast } from "@/lib/toast";
-import type { RawPosition } from "@/features/prediction/lib/positions";
 import type { Prediction } from "@/lib/types";
 
 export function PredictionView({ showAll = false }: { showAll?: boolean }) {
   const t = useTranslations("prediction");
-  const money = useMoney();
   const [desktop, setDesktop] = useState(false);
   // Which prediction system is shown: the live Polymarket markets or our own
   // on-chain CPMM markets ("Local"). Both coexist; the user picks.
   const [source, setSource] = useState<"polymarket" | "local">("polymarket");
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
-  const [slip, setSlip] = useState<PolymarketPosition | null>(null);
   const access = usePolymarketAccess();
-  const positions = usePolymarketPositions();
-  const redeem = usePolymarketRedeem();
-  const cashout = usePolymarketCashout();
-  // Conditions redeemed this session, so the list can retire their Claim
-  // buttons before the indexed positions feed catches up.
-  const { hasClaimed, markClaimed } = useClaimedOnce();
-  const settle = useSettleToBase();
+  // The Polymarket positions flow (claim, sell, cash-out) lives in a shared
+  // hook so this page and the phone Market prediction tab run the same code.
+  const positionsCtl = usePolymarketPositionsController();
   const { data: live } = usePredictions();
-
-  const onRedeem = async (conditionId: string) => {
-    const toastId = toast.loading(t("toastClaiming"));
-    // 1) Claim: convert the winning shares to pUSD in the prediction account.
-    try {
-      await redeem.redeem(conditionId);
-      // Retire this position's Claim button immediately. The positions feed is
-      // indexed and still reports it as redeemable for a while, which used to
-      // re-arm the button on winnings that were already paid out.
-      markClaimed(conditionId);
-    } catch {
-      toast.error(redeem.error ?? t("toastClaimFailed"), { id: toastId });
-      return;
-    }
-    // 2) Move the winnings out to USDC on Base. If this leg fails, the claim
-    // still succeeded and the funds are safe as pUSD, recoverable via Cash out.
-    try {
-      await settle.settleToBase();
-      toast.success(t("toastClaimSuccess"), { id: toastId });
-    } catch {
-      toast.error(t("toastClaimSettleFailed"), {
-        id: toastId,
-      });
-    }
-    setSlip(null);
-    positions.refresh();
-  };
-
-  // Sells an open position back into the market before resolution. Proceeds
-  // land as pUSD in the prediction balance, where the existing cash-out flow
-  // can move them to Base.
-  const onSellPosition = async (position: RawPosition) => {
-    const tokenId = position.tokenId ?? null;
-    const shares = Number(position.size ?? 0);
-    if (!tokenId || !(shares > 0)) return;
-    const toastId = toast.loading(t("toastSellingPosition"));
-    try {
-      const result = await cashout.cashOut({ tokenId, shares });
-      if (result.settlementPending) {
-        toast.success(t("toastSoldPosition", { amount: money.formatExact(result.proceedsUsd) }), {
-          id: toastId,
-          sensitive: true,
-        });
-      } else {
-        try {
-          await settle.settleToBase();
-          toast.success(t("toastCashOutSuccess"), { id: toastId, sensitive: true });
-        } catch {
-          // The CLOB sale already succeeded. Keep that outcome explicit so a
-          // failed bridge never invites the user to sell the position twice.
-          toast.error(t("toastClaimSettleFailed"), { id: toastId });
-        }
-      }
-      setSlip(null);
-      positions.refresh();
-    } catch (e) {
-      // The reason comes off the thrown error, not cashout.error: this catch
-      // runs before the hook's state update has re-rendered, so reading state
-      // here would always show the generic fallback.
-      toast.error(e instanceof CashoutError ? e.message : t("toastSellFailed"), { id: toastId });
-    }
-  };
-
-  const onCashOut = async () => {
-    if (positions.cashable == null || positions.cashable <= 0) return;
-    const toastId = toast.loading(t("toastCashingOut"));
-    try {
-      await settle.settleToBase();
-      toast.success(t("toastCashOutSuccess"), { id: toastId });
-      positions.refresh();
-    } catch (e) {
-      toast.error(e instanceof SettleError ? e.message : t("toastCashOutFailed"), { id: toastId });
-    }
-  };
 
   // Live Polymarket markets, with the static set as a fallback so the section
   // never blanks if the feed is briefly unavailable.
@@ -189,23 +94,7 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             </div>
           )}
 
-          <PositionsPanel
-            positions={positions.positions}
-            available={positions.available}
-            cashable={positions.cashable}
-            loading={positions.loading}
-            loaded={positions.loaded}
-            error={positions.error}
-            onRefresh={positions.refresh}
-            onOpenSlip={setSlip}
-            onRedeem={onRedeem}
-            redeemingId={redeem.redeeming}
-            claimedConditionIds={positions.positions
-              .map((p) => (p as { conditionId?: string }).conditionId)
-              .filter((id): id is string => !!id && hasClaimed(id))}
-            onCashOut={onCashOut}
-            cashingOut={settle.phase !== "idle"}
-          />
+          <PredictionPositions controller={positionsCtl} />
         </div>
       )}
 
@@ -213,20 +102,8 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
         prediction={bet?.p ?? null}
         side={bet?.side ?? "yes"}
         onClose={() => setBet(null)}
-        onPlaced={positions.refresh}
+        onPlaced={positionsCtl.positions.refresh}
       />
-
-      <ModalShell open={slip !== null} onClose={() => setSlip(null)}>
-        {slip ? (
-          <BetSlipSheet
-            position={slip}
-            onClaim={onRedeem}
-            claiming={redeem.redeeming != null || settle.phase !== "idle"}
-            onSell={onSellPosition}
-            selling={cashout.phase !== "idle"}
-          />
-        ) : null}
-      </ModalShell>
     </div>
   );
 }

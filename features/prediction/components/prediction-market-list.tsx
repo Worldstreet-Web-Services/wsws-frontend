@@ -6,10 +6,14 @@ import { useFormatter, useTranslations } from "next-intl";
 import { BRAND } from "@/lib/brand";
 import { useMoney } from "@/components/ui/currency-select";
 import { SearchField } from "@/components/ui/search-field";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import { BetModal } from "@/features/prediction/components/bet-modal";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { usePolymarketAccess } from "@/features/prediction/hooks/use-polymarket-access";
+import { usePolymarketPositionsController } from "@/features/prediction/hooks/use-polymarket-positions-controller";
+import { PredictionPositions } from "@/features/prediction/components/prediction-positions";
+import { LocalPredictionView } from "@/features/prediction/components/local-prediction-view";
 import type { Prediction } from "@/lib/types";
 
 // The Market design's phone Prediction tab (Figma 1:16194): the market cards
@@ -282,19 +286,19 @@ export function PredictionMarketList() {
   const { data, isPending, isError, refetch } = usePredictions();
   const [bet, setBet] = useState<{ p: Prediction; side: "yes" | "no" } | null>(null);
   const [query, setQuery] = useState("");
-
-  // The region gate is the one state with no list behind it at all, so it
-  // replaces the whole panel, search field included: there is nothing to search.
-  if (!access.allowed) {
-    return (
-      <Notice>
-        <span className="ws-display text-[18px] text-white">{t("regionBlockedTitle")}</span>
-        <p className="max-w-[300px] text-[13px] font-normal text-white/55">
-          {t("regionBlockedBody", { brand: BRAND })}
-        </p>
-      </Notice>
-    );
-  }
+  // Global = live Polymarket markets, Local = our on-chain CPMM markets, the
+  // same two sources the desktop prediction view switches between.
+  const [source, setSource] = useState<"polymarket" | "local">("polymarket");
+  // The positions flow (claim, sell, cash-out), shared with the desktop view
+  // through one hook. Nothing fetches until the reader opens the sheet.
+  const positionsCtl = usePolymarketPositionsController();
+  // On the phone the positions live behind a button in a sheet, not inline: the
+  // tab stays the market list, and "Load positions" opens the sheet and loads.
+  const [positionsOpen, setPositionsOpen] = useState(false);
+  const openPositions = () => {
+    setPositionsOpen(true);
+    positionsCtl.positions.refresh();
+  };
 
   const markets = data ?? [];
   // Trimmed and lower-cased once here, not once per market: a query of spaces
@@ -303,7 +307,19 @@ export function PredictionMarketList() {
   const visible = needle ? markets.filter((p) => matchesQuery(p, needle)) : markets;
 
   let content: ReactNode;
-  if (isPending) {
+  if (!access.allowed) {
+    // Region-blocked: the global (Polymarket) list has nothing behind it here.
+    // Local stays reachable through the toggle above, so this is a content
+    // state rather than replacing the whole tab.
+    content = (
+      <Notice>
+        <span className="ws-display text-[18px] text-white">{t("regionBlockedTitle")}</span>
+        <p className="max-w-[300px] text-[13px] font-normal text-white/55">
+          {t("regionBlockedBody", { brand: BRAND })}
+        </p>
+      </Notice>
+    );
+  } else if (isPending) {
     content = Array.from({ length: SKELETON_COUNT }, (_, i) => <CardSkeleton key={i} />);
   } else if (isError) {
     content = (
@@ -393,19 +409,55 @@ export function PredictionMarketList() {
           onChange={setQuery}
           label={t("searchEventMarketsLabel")}
           placeholder={t("searchEventMarketsLabel")}
-          // Off only while there is no list behind it to search: the feed is
-          // still arriving, or it failed. It comes back the moment markets land,
-          // unlike the page-level field it replaces, which was disabled on this
-          // tab for good.
-          disabled={isPending || isError}
+          // Off on the Local tab (it browses its own way) and while the global
+          // feed is arriving, failed, or region-blocked. Back the moment global
+          // markets land.
+          disabled={source === "local" || isPending || isError || !access.allowed}
         />
-        {content}
+
+        {/* One row under the search: the Global/Local toggle on the left, the
+            Load-positions button on the right, spaced apart. Tapping Load opens
+            the positions sheet; the open bets never sit inline on the phone. */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex gap-1 rounded-xl bg-white/5 p-1">
+            {(["polymarket", "local"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSource(s)}
+                className={`flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg px-4 text-[13px] font-semibold transition-colors ${
+                  source === s ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
+                }`}
+              >
+                {t(`sourceTab_${s}`)}
+              </button>
+            ))}
+          </div>
+          {source === "polymarket" && access.allowed ? (
+            <button
+              type="button"
+              onClick={openPositions}
+              className="ws-pressable flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/12 bg-white/6 px-4 text-[13px] font-semibold text-white"
+            >
+              {t("loadPositions")}
+            </button>
+          ) : null}
+        </div>
+
+        {source === "local" ? <LocalPredictionView /> : content}
       </div>
+
+      {/* The positions sheet: the same panel the desktop shows, opened from the
+          button above rather than sitting inline. */}
+      <ModalShell open={positionsOpen} onClose={() => setPositionsOpen(false)}>
+        <PredictionPositions controller={positionsCtl} />
+      </ModalShell>
 
       <BetModal
         prediction={bet?.p ?? null}
         side={bet?.side ?? "yes"}
         onClose={() => setBet(null)}
+        onPlaced={positionsCtl.positions.refresh}
       />
     </>
   );

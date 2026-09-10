@@ -421,7 +421,9 @@
     "tagline": "Connectez-vous pour détenir actions, or, crypto et actifs réels depuis un seul compte en auto-conservation.",
     "signingIn": "Connexion en cours et création de votre portefeuille…",
     "or": "OU",
-    "agree": "En continuant, vous acceptez les <terms>Conditions</terms> et la <privacy>Politique de confidentialité</privacy> de {brand}",
+    "agreeCheckbox": "J'accepte les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy> de {brand}",
+    "marketingOptIn": "Envoyez-moi les nouveautés et offres de {brand} par e-mail. Désabonnement possible à tout moment.",
+    "agreeToContinue": "Acceptez les conditions pour continuer.",
     "continueGoogle": "Continuer avec Google",
     "continueX": "Continuer avec X",
     "oauthError": "La connexion n'a pas abouti. Réessayez.",
@@ -1860,7 +1862,14 @@
       "startBlockedLiveBody": "Une salle à la fois. Rejoignez la partie en cours ci-dessous. On pourra en ouvrir une autre quand elle se terminera.",
       "toastStartBlockedLive": "Quelqu'un a ouvert une partie avant vous. Une salle à la fois, rejoignez donc celle en cours.",
       "shareEarnTag": "Vous gagnez 10%",
-      "shareCopyLink": "Copier le lien"
+      "shareCopyLink": "Copier le lien",
+      "gameLoadFailedTitle": "Impossible de charger cette manche",
+      "gameLoadFailedBody": "Vérifiez votre connexion et réessayez. Votre argent est en sécurité dans tous les cas : chaque mise est dans le contrat, pas sur cette page.",
+      "gameNotFoundTitle": "Aucune manche ici",
+      "gameNotFoundBody": "Ce lien ne mène à aucune partie. Il a peut-être été mal saisi, ou la manche n'a jamais commencé.",
+      "backToLobby": "Retour au lobby",
+      "balanceUpdating": "Mise à jour…",
+      "lobbyStale": "Le serveur est injoignable pour le moment. Voici la dernière liste reçue ; elle se met à jour toute seule."
     },
     "fund": {
       "title": "Ajouter de l'argent",

@@ -295,6 +295,54 @@ describe("fetchActivity", () => {
     expect(isActivityRateLimited(error)).toBe(true);
   });
 
+  // Found on staging on 2026-09-10: every load of the activity page said the
+  // history was incomplete and named Arbitrum and Optimism. Alchemy's transfer
+  // index refuses the "internal" category on those two networks ("The
+  // 'internal' category is not supported for this network"), and the sweep
+  // asked for it anyway. The refusal is Alchemy's answer to a question it
+  // should never be asked there, not an outage, so the sweep must not ask.
+  it("asks only the networks that index internal transfers for them", async () => {
+    const asked: { network: string; category: string[] }[] = [];
+    alchemyStub.mockImplementation(async (buildUrl, init) => {
+      const network = networkOf(buildUrl);
+      const category = (JSON.parse(String(init?.body)) as { params: { category: string[] }[] })
+        .params[0].category;
+      asked.push({ network, category });
+      if (
+        category.includes("internal") &&
+        (network === "arb-mainnet" || network === "opt-mainnet")
+      ) {
+        return jsonResponse({
+          jsonrpc: "2.0",
+          id: 1,
+          result: null,
+          error: {
+            code: -32602,
+            message: "The 'internal' category is not supported for this network.",
+          },
+        });
+      }
+      return transfersFor(network);
+    });
+
+    const { fetchActivity } = await import("@/lib/server/activity");
+    const read = await fetchActivity(WALLET);
+    expect(read.unavailable).toEqual([]);
+    expect(
+      asked
+        .filter((q) => q.category.includes("internal"))
+        .map((q) => q.network)
+        .sort()
+    ).toEqual([
+      "base-mainnet",
+      "base-mainnet",
+      "eth-mainnet",
+      "eth-mainnet",
+      "polygon-mainnet",
+      "polygon-mainnet",
+    ]);
+  });
+
   it("reports a genuinely empty history as empty, with nothing unavailable", async () => {
     alchemyStub.mockImplementation(async () =>
       jsonResponse({ jsonrpc: "2.0", id: 1, result: { transfers: [] } })

@@ -10,7 +10,7 @@ import { useSessionWallet } from "@/components/providers/server-session";
 import type { Portfolio } from "@/lib/server/alchemy";
 import type { TokenBalance } from "@/lib/server/alchemy";
 import { freshParam, type FreshScope } from "@/lib/portfolio/fresh-scope";
-import { applyTransfers } from "@/lib/portfolio/apply-transfers";
+import { applyNativeDelta as moveNative, applyTransfers } from "@/lib/portfolio/apply-transfers";
 import type { ReceiptLog } from "@/lib/meme/delivery";
 
 export type { Portfolio, TokenBalance } from "@/lib/server/alchemy";
@@ -204,6 +204,17 @@ export function usePortfolio() {
     [queryClient, evm, solana]
   );
 
+  // Native value has no log to apply from: a stake is the value the
+  // transaction sent and a payout is what the settlement row says.
+  const applyNativeDelta = useCallback(
+    (network: string, deltaWei: bigint) => {
+      queryClient.setQueryData<Portfolio>(["portfolio", evm, solana], (current) =>
+        current ? moveNative(current, network, deltaWei) : current
+      );
+    },
+    [queryClient, evm, solana]
+  );
+
   return {
     totalUsd: query.data?.totalUsd ?? 0,
     tokens: query.data?.tokens ?? EMPTY_TOKENS,
@@ -222,5 +233,6 @@ export function usePortfolio() {
     refetchUntilChanged,
     waitForTokenBalance,
     applyReceipt,
+    applyNativeDelta,
   };
 }

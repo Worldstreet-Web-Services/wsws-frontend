@@ -45,27 +45,13 @@ export interface CasinoGame {
 }
 
 export const CASINO_GAMES: CasinoGame[] = [
-  {
-    id: "chess",
-    name: "Chess",
-    category: "Skill",
-    size: "hero",
-    glyph: "♞",
-    image:
-      "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=1600&q=80&auto=format&fit=crop",
-    tintRgb: "52 211 153",
-    isNew: true,
-    href: "/casino/chess",
-    note: "Staked head-to-head, invite or quick match",
-    comingSoon: false,
-  },
-  // Sits beside Chess in the first row: the hero spans four of the six
-  // columns, and "tall" is the two-column slot that pairs with it.
+  // The order the team set on 2026-09-11: Last Man, Chess, ArkBall, Checkers.
+  // Last Man takes the hero slot, four of the six columns.
   {
     id: "last-standing",
     name: "The Last Man",
     category: "New",
-    size: "tall",
+    size: "hero",
     glyph: "⌛",
     image:
       "https://images.unsplash.com/photo-1518281420975-50db6e5d0a97?w=900&q=80&auto=format&fit=crop",
@@ -74,17 +60,20 @@ export const CASINO_GAMES: CasinoGame[] = [
     note: "Outlast everyone, winner takes the pot",
     comingSoon: false,
   },
+  // Beside Last Man in the first row: "tall" is the two-column slot that
+  // pairs with the hero.
   {
-    id: "checkers",
-    name: "Checkers",
+    id: "chess",
+    name: "Chess",
     category: "Skill",
     size: "tall",
-    glyph: "⛃",
-    image: "https://upload.wikimedia.org/wikipedia/commons/3/30/International_draughts.jpg",
-    tintRgb: "148 163 184",
-    href: "/casino/checkers",
+    glyph: "♞",
+    image:
+      "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=1600&q=80&auto=format&fit=crop",
+    tintRgb: "52 211 153",
     isNew: true,
-    note: "Fast staked matches",
+    href: "/casino/chess",
+    note: "Staked head-to-head, invite or quick match",
     comingSoon: false,
   },
   {
@@ -98,6 +87,19 @@ export const CASINO_GAMES: CasinoGame[] = [
     isNew: true,
     href: "/casino/arkball",
     note: "Pick 5 white balls and 1 ArkBall",
+    comingSoon: false,
+  },
+  {
+    id: "checkers",
+    name: "Checkers",
+    category: "Skill",
+    size: "tall",
+    glyph: "⛃",
+    image: "https://upload.wikimedia.org/wikipedia/commons/3/30/International_draughts.jpg",
+    tintRgb: "148 163 184",
+    href: "/casino/checkers",
+    isNew: true,
+    note: "Fast staked matches",
     comingSoon: false,
   },
   {

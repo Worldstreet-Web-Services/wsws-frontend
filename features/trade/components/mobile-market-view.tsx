@@ -538,6 +538,13 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
           type="button"
           // Inside either ticket, Back is the way out of the ticket. Only
           // from a list does it leave the page.
+          //
+          // The Real assets tab is not handled here on purpose. Its ticket
+          // lives inside the opaque rwaSlot, and this view cannot reach into
+          // it: features never import each other, and the slot is a ReactNode
+          // the route builds, so there is no handle to call. That ticket's own
+          // asset pill is the way back to its list. A tab change still clears
+          // it, because the slot is unmounted when its tab is not selected.
           onClick={() => {
             if (ticketSymbol !== null) {
               closeTicket();
@@ -583,10 +590,11 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
           className="flex min-h-0 flex-1 flex-col"
         >
           {activeTab === "rwa" ? (
-            // The real assets slot is the desk's own section: category tabs,
-            // search and the asset table, with its detail and trade sheets.
-            // Mounted only while this tab is selected, so its registry read is
-            // not made for someone who never opens it.
+            // The real assets slot is that feature's own phone tab: its list,
+            // its search field, and the order ticket a tapped row swaps the
+            // list for, all inside the slot. Mounted only while this tab is
+            // selected, so its registry read is not made for someone who never
+            // opens it, and so leaving the tab puts its ticket away.
             <div data-testid="rwa-panel-scroll" className="flex min-h-0 flex-1 flex-col">
               {rwaSlot}
             </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
 import type { RwaAssetView } from "@/features/rwa/lib/presenter";
@@ -39,27 +39,48 @@ vi.mock("@/hooks/use-trade-prefill", () => ({
   useTradePrefill: () => null,
 }));
 
-function renderSection(phone: boolean) {
+// Standing in for the order ticket, whose real body is the trade panel with its
+// wallets, quotes and settlement legs. What this file checks is which surface
+// the section hands the reader, not what the ticket does once it has them.
+vi.mock("@/features/rwa/components/rwa-ticket", () => ({
+  RwaTicket: ({ asset }: { asset: RwaAssetView }) => (
+    <div data-testid="rwa-ticket">ticket:{asset.symbol}</div>
+  ),
+}));
+
+function renderSection() {
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <RwaSection onOpenDetail={vi.fn()} onOpenConfirm={vi.fn()} phone={phone} />
+      <RwaSection />
     </NextIntlClientProvider>
   );
 }
 
 describe("RwaSection", () => {
   it("gives the phone list exactly one search field of its own", () => {
-    renderSection(true);
+    renderSection();
     expect(
       screen.getAllByRole("searchbox", { name: enMessages.rwa.searchPlaceholder })
     ).toHaveLength(1);
   });
 
-  it("leaves the desktop table's own search alone, adding no second field", () => {
-    renderSection(false);
-    // The desktop branch draws RwaAssetList, which already carries its own
-    // search input. The phone list's SearchField must not appear alongside it.
-    expect(screen.queryByRole("searchbox")).toBeNull();
-    expect(screen.getAllByPlaceholderText(enMessages.rwa.searchPlaceholder)).toHaveLength(1);
+  // The phone tab trades in place now: no modal, no second step. The list is
+  // hidden rather than unmounted so the reader's scroll offset survives.
+  it("swaps the phone list for the inline ticket, opening no modal", () => {
+    renderSection();
+    fireEvent.click(screen.getByText("GLDx"));
+
+    expect(screen.getByText("ticket:GLDx")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("rwa-market-list")).not.toBeVisible();
+  });
+
+  // The section no longer has a desktop branch to test. The desk at /rwa
+  // composes RwaDeskView directly, and its own suite covers that surface. What
+  // is left here is the one job this file still has: feed the phone list.
+  it("hands the phone list the enriched catalogue", () => {
+    renderSection();
+    expect(screen.getByText("GLDx")).toBeInTheDocument();
+    expect(screen.getByText("$403.83")).toBeInTheDocument();
   });
 });

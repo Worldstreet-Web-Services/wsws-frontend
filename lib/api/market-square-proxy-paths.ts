@@ -29,6 +29,10 @@ const GET_PATHS = [
   /^hashtags\/trending$/u,
   // The people directory, for the dashboard's "suggested creators" rail.
   /^profiles$/u,
+  // The house directory, for the Square page's "Popular houses". The same
+  // read the Square's own Home makes. Joining a house is not relayed: that
+  // stays in the Square, which is what the page's "Join house" opens.
+  /^conversations\/discover$/u,
   // A post's comment thread, read in place on the dashboard.
   /^posts\/[^/]+\/comments$/u,
   // The reader's own square identity and inbox, for the compose sheet's
@@ -117,6 +121,7 @@ const PUBLIC_GET_PATHS = [
   /^topics$/u,
   /^hashtags\/trending$/u,
   /^profiles$/u,
+  /^conversations\/discover$/u,
   /^posts\/[^/]+\/comments$/u,
 ];
 

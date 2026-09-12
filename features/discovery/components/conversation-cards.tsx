@@ -17,8 +17,10 @@ import {
 // Each wears the shared frame in its own hue, with a motif drawn in CSS where
 // the room cards scatter the faces of the people in them.
 //
-// Every link here leaves for Square's own deployment, so each opens in a new
-// tab and the caller passes the address rather than the card assuming it.
+// A pill that DOES something on the Square, joining a room or starting one,
+// leaves for the Square's deployment in a new tab, and the caller passes the
+// address rather than the card assuming it. A pill that only OPENS the Square
+// opens its page in this app, /square, in the same tab.
 
 function Chevron() {
   return (
@@ -51,20 +53,22 @@ function ArrowOut() {
 /** The gold-to-bark fill the Marathon wordmark is lettered in. */
 const WORDMARK_INK = "bg-gradient-to-r from-[#ac6900] to-[#462b00] bg-clip-text text-transparent";
 
+/** The Square page in this app, where a pill that only opens the Square goes. */
+const SQUARE_PAGE = "/square";
+
 export interface SquareCardProps {
   /** The room on show, or null when nothing is live. */
   room: LiveConversation | null;
   /** Hosts' faces across every live room, for the scatter. */
   avatars: readonly string[];
-  /** The square's front door. */
-  homeHref: string;
   onHold?: (held: boolean) => void;
 }
 
 // Ink to teal. The motif is the chess card's own: the faces of the people in
-// the rooms, live on Market Square. Every link on it leaves for the square's
-// deployment in a new tab.
-export function SquareCard({ room, avatars, homeHref, onHold }: SquareCardProps) {
+// the rooms, live on Market Square. Joining a live room leaves for the
+// square's deployment in a new tab; with nothing live the pill opens the
+// Square page here.
+export function SquareCard({ room, avatars, onHold }: SquareCardProps) {
   const t = useTranslations("discovery");
   const live = room !== null && room.href !== null;
 
@@ -95,7 +99,7 @@ export function SquareCard({ room, avatars, homeHref, onHold }: SquareCardProps)
               icon: <ArrowOut />,
               external: true,
             }
-          : { href: homeHref, label: t("squareOpen"), icon: <ArrowOut />, external: true }
+          : { href: SQUARE_PAGE, label: t("squareOpen"), icon: <Chevron /> }
       }
       onHold={onHold}
     />
@@ -161,13 +165,7 @@ const POSTS = [
   { top: 62, width: 118, opacity: 0.55 },
 ];
 
-export function FeedCard({
-  homeHref,
-  onHold,
-}: {
-  homeHref: string;
-  onHold?: (held: boolean) => void;
-}) {
+export function FeedCard({ onHold }: { onHold?: (held: boolean) => void }) {
   const t = useTranslations("discovery");
 
   return (
@@ -198,7 +196,7 @@ export function FeedCard({
       }
       kicker={{ icon: <KickerGlyph glyph="✦" />, label: t("feedKicker") }}
       headline={t("feedHeadline")}
-      action={{ href: homeHref, label: t("feedOpen"), icon: <ArrowOut />, external: true }}
+      action={{ href: SQUARE_PAGE, label: t("feedOpen"), icon: <Chevron /> }}
       onHold={onHold}
     />
   );

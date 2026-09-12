@@ -747,3 +747,147 @@ export async function fetchSuggestedProfiles(limit = 8): Promise<SuggestedProfil
   );
   return Array.isArray(page?.items) ? page.items : [];
 }
+
+// ── The Square page's reads ──────────────────────────────────────────────────
+//
+// The Square's own Home is a column of sections: live rooms, people, rooms
+// coming soon, popular houses, posts. The page at /square reads the same
+// routes Home reads and shows the same lists, so the two cannot drift on what
+// they show, only on how they draw it.
+
+/** Who hosts a room, as the stream list hydrates them. */
+export interface MarketSquareHost {
+  id: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+/** A room as the Square page's card shows it: live now, or opening later. */
+export interface MarketSquareRoom {
+  id: string;
+  title: string;
+  description: string | null;
+  status: StreamStatus;
+  /** When a scheduled room opens. Null once it is live. */
+  scheduledAt: string | null;
+  startedAt: string | null;
+  peakViewers: number;
+  likeCount: number;
+  topics: string[];
+  owner: MarketSquareHost | null;
+}
+
+interface RoomWire extends StreamWire {
+  scheduledAt?: string | null;
+  peakViewers?: number;
+  likeCount?: number;
+  topics?: string[];
+  owner?: {
+    id: string;
+    username?: string | null;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+}
+
+function toRoom(wire: RoomWire): MarketSquareRoom {
+  return {
+    id: wire.id,
+    title: wire.title,
+    description: wire.description ?? null,
+    status: wire.status,
+    scheduledAt: wire.scheduledAt ?? null,
+    startedAt: wire.startedAt ?? null,
+    peakViewers: wire.peakViewers ?? 0,
+    likeCount: wire.likeCount ?? 0,
+    topics: Array.isArray(wire.topics) ? wire.topics : [],
+    owner: wire.owner
+      ? {
+          id: wire.owner.id,
+          username: wire.owner.username ?? null,
+          displayName: wire.owner.displayName ?? null,
+          avatarUrl: wire.owner.avatarUrl ?? null,
+        }
+      : null,
+  };
+}
+
+// Read with the session: the relay demands one on `streams`, and the page
+// sits under the auth guard, so the token is always there to send. The status
+// is matched again on what came back, the way findLiveStreamsForRef does, so a
+// deployment that ignored the filter shows an ended room as nothing rather
+// than as live.
+async function fetchRooms(status: "live" | "scheduled", limit: number) {
+  const page = await marketSquare.authedGet<{ items?: RoomWire[] }>("/streams", {
+    status,
+    limit,
+  });
+  return (page.items ?? []).map(toRoom).filter((room) => room.status === status);
+}
+
+/** The rooms live right now, for "Live now". */
+export function fetchLiveStreams(limit = 8): Promise<MarketSquareRoom[]> {
+  return fetchRooms("live", limit);
+}
+
+/** The rooms that have not opened yet, for "Coming soon". */
+export function fetchScheduledStreams(limit = 8): Promise<MarketSquareRoom[]> {
+  return fetchRooms("scheduled", limit);
+}
+
+/** A house, as the directory lists it and the "Popular houses" card shows it. */
+export interface MarketSquareHouse {
+  id: string;
+  /** Null for a house without one; the card names it "House". */
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  /** Null when the payload does not count members, which is not zero. */
+  memberCount: number | null;
+  members: MarketSquareHost[];
+}
+
+interface HouseWire {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  memberCount?: number | null;
+  members?: {
+    id: string;
+    username?: string | null;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  }[];
+}
+
+function toHouse(wire: HouseWire): MarketSquareHouse {
+  return {
+    id: wire.id,
+    title: wire.title ?? null,
+    description: wire.description ?? null,
+    imageUrl: wire.imageUrl ?? null,
+    memberCount: typeof wire.memberCount === "number" ? wire.memberCount : null,
+    members: (wire.members ?? []).map((member) => ({
+      id: member.id,
+      username: member.username ?? null,
+      displayName: member.displayName ?? null,
+      avatarUrl: member.avatarUrl ?? null,
+    })),
+  };
+}
+
+/**
+ * The house directory, busiest first, for "Popular houses".
+ *
+ * Public, like the rest of discovery, and the same read the Square's own Home
+ * makes. Joining is not read or written here: "Join house" opens the house in
+ * the Square.
+ */
+export async function fetchDiscoverHouses(limit = 8): Promise<MarketSquareHouse[]> {
+  const page = await marketSquare.get<{ items?: HouseWire[] }>("/conversations/discover", {
+    limit,
+  });
+  return (page?.items ?? []).map(toHouse);
+}

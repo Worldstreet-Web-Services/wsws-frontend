@@ -6,13 +6,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
+  get: vi.fn(),
   authedGet: vi.fn(),
   post: vi.fn(),
 }));
 
 vi.mock("@/lib/api/service", () => ({
   createServiceClient: () => ({
-    get: vi.fn(),
+    get: calls.get,
     authedGet: calls.authedGet,
     post: calls.post,
     put: vi.fn(),
@@ -20,8 +21,15 @@ vi.mock("@/lib/api/service", () => ({
   }),
 }));
 
-const { fetchSpeakerToken, findLiveStreamsForRef, resolveSpeakerRequest, fetchMySpeakerRequest } =
-  await import("./market-square");
+const {
+  fetchDiscoverHouses,
+  fetchLiveStreams,
+  fetchScheduledStreams,
+  fetchSpeakerToken,
+  findLiveStreamsForRef,
+  resolveSpeakerRequest,
+  fetchMySpeakerRequest,
+} = await import("./market-square");
 
 function wireStream(overrides: Record<string, unknown>) {
   return {
@@ -106,5 +114,117 @@ describe("speaker requests", () => {
   it("refuses a speaker token that cannot be published with, rather than connecting to nothing", async () => {
     calls.post.mockResolvedValue({ url: null, token: null });
     await expect(fetchSpeakerToken("s-1")).rejects.toThrow(/no publishing token/i);
+  });
+});
+
+// ── The Square page's reads ──────────────────────────────────────────────────
+//
+// Home's live rooms, coming-soon rooms and popular houses. Each is asked for
+// exactly what the Square's own Home asks for, and each treats an absent list
+// as "nothing to show" so an empty section is omitted rather than an error.
+
+function wireRoom(overrides: Record<string, unknown>) {
+  return {
+    id: "st-1",
+    ownerId: "u-1",
+    title: "testing coming soon",
+    description: null,
+    category: "house",
+    topics: ["business"],
+    status: "scheduled",
+    scheduledAt: "2026-09-14T08:00:00.000Z",
+    startedAt: null,
+    peakViewers: 0,
+    likeCount: 0,
+    owner: {
+      id: "u-1",
+      username: "prince",
+      displayName: null,
+      avatarUrl: null,
+      verification: "verified",
+    },
+    ...overrides,
+  };
+}
+
+describe("fetchLiveStreams", () => {
+  it("asks for the live rooms with the session, and keeps only the live ones", async () => {
+    calls.authedGet.mockResolvedValue({
+      items: [
+        wireRoom({ status: "live", startedAt: "2026-09-12T10:00:00.000Z", peakViewers: 12 }),
+        wireRoom({ id: "st-2", status: "ended" }),
+      ],
+    });
+    const rooms = await fetchLiveStreams(8);
+    expect(calls.authedGet).toHaveBeenCalledWith("/streams", { status: "live", limit: 8 });
+    expect(rooms.map((room) => room.id)).toEqual(["st-1"]);
+    expect(rooms[0]).toMatchObject({
+      status: "live",
+      peakViewers: 12,
+      owner: { id: "u-1", username: "prince", displayName: null, avatarUrl: null },
+    });
+  });
+
+  it("treats an absent list as nobody live", async () => {
+    calls.authedGet.mockResolvedValue({});
+    expect(await fetchLiveStreams()).toEqual([]);
+  });
+});
+
+describe("fetchScheduledStreams", () => {
+  it("asks for the scheduled rooms and carries when each starts", async () => {
+    calls.authedGet.mockResolvedValue({ items: [wireRoom({})] });
+    const rooms = await fetchScheduledStreams(8);
+    expect(calls.authedGet).toHaveBeenCalledWith("/streams", { status: "scheduled", limit: 8 });
+    expect(rooms[0]).toMatchObject({
+      status: "scheduled",
+      scheduledAt: "2026-09-14T08:00:00.000Z",
+    });
+  });
+
+  it("carries a null owner rather than inventing one", async () => {
+    calls.authedGet.mockResolvedValue({ items: [wireRoom({ owner: undefined })] });
+    expect((await fetchScheduledStreams())[0].owner).toBeNull();
+  });
+});
+
+describe("fetchDiscoverHouses", () => {
+  it("reads the public directory and maps a house to what the card shows", async () => {
+    calls.get.mockResolvedValue({
+      items: [
+        {
+          id: "h-1",
+          kind: "group",
+          title: "Entitle Men",
+          description: "let get started",
+          imageUrl: "https://cdn.example/h.jpg",
+          visibility: "public",
+          members: [{ id: "u-1", username: "ogazboiz", displayName: "ogazboiz", avatarUrl: null }],
+          memberCount: 1,
+          lastActiveAt: null,
+        },
+        { id: "h-2", kind: "group", title: null, members: [] },
+      ],
+      nextCursor: null,
+    });
+    const houses = await fetchDiscoverHouses(8);
+    expect(calls.get).toHaveBeenCalledWith("/conversations/discover", { limit: 8 });
+    expect(houses).toEqual([
+      {
+        id: "h-1",
+        title: "Entitle Men",
+        description: "let get started",
+        imageUrl: "https://cdn.example/h.jpg",
+        memberCount: 1,
+        members: [{ id: "u-1", username: "ogazboiz", displayName: "ogazboiz", avatarUrl: null }],
+      },
+      // A nameless house keeps its id: the card names it, the link still works.
+      { id: "h-2", title: null, description: null, imageUrl: null, memberCount: null, members: [] },
+    ]);
+  });
+
+  it("treats an absent list as no houses", async () => {
+    calls.get.mockResolvedValue({});
+    expect(await fetchDiscoverHouses()).toEqual([]);
   });
 });

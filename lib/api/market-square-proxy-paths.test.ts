@@ -109,6 +109,18 @@ describe("market square proxy allowlist", () => {
     }
   });
 
+  // The Square page's "Popular houses" reads the same directory the Square's
+  // own Home reads. Public upstream, like profiles and the feed; nothing that
+  // joins, winks or reminds is relayed, because those stay in the Square.
+  it("relays the house directory as a public read, and nothing that writes to it", () => {
+    expect(marketSquareProxyPaths.allows("GET", "conversations/discover")).toBe(true);
+    expect(marketSquareProxyPaths.isPublicGet("conversations/discover")).toBe(true);
+    expect(marketSquareProxyPaths.allows("POST", "conversations/discover")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "conversations/discover/extra")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "conversations/abc")).toBe(false);
+    expect(marketSquareProxyPaths.allows("POST", "conversations/abc/join")).toBe(false);
+  });
+
   it("matches whole paths, so a lookalike prefix is not relayed", () => {
     expect(marketSquareProxyPaths.allows("POST", "posts/abc")).toBe(false);
     expect(marketSquareProxyPaths.allows("POST", "streams/abc/go-live/extra")).toBe(false);

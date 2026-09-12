@@ -2,14 +2,17 @@
 
 import { useTranslations } from "next-intl";
 
-// The preset pay amounts under the spot ticket's amount card. Each chip sets
-// the amount to its own value, exactly as written: the values are decimal
-// strings, so nothing is parsed on the way through.
+import { TradeQuickAmounts } from "@/components/ui/trade-quick-amounts";
+
+// The spot desk's binding to the shared quick-amount chips. The chips live in
+// components/ui; what stays here is the spot wording and the spot set of
+// amounts.
 
 // The design's chip row is $10, $20, $50, $100, $100, $200 (Figma nodes
 // 173:42208 through 173:42213). The fifth chip repeats the fourth, which is a
 // defect in the file rather than a second $100 button, so the default set
-// carries five distinct amounts.
+// carries five distinct amounts. Which amounts to offer is a spot decision, so
+// the list stays on this side of the line.
 export const SPOT_QUICK_AMOUNTS = ["10", "20", "50", "100", "200"] as const;
 
 export interface SpotQuickAmountsProps {
@@ -34,34 +37,17 @@ export function SpotQuickAmounts({
   prefix = "$",
 }: SpotQuickAmountsProps) {
   const t = useTranslations("spot");
-  const distinct = Array.from(new Set(values));
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-[11px]">
-      {distinct.map((value) => {
-        const label = `${prefix}${value}`;
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onSelect(value)}
-            disabled={disabled}
-            aria-pressed={value === selected}
-            aria-label={t("quickAmountLabel", { amount: label })}
-            // The leading is set rather than left at the Tailwind default of
-            // 1.5: at 17px that is a 25.5px line box and a 47.5px chip against
-            // the design's 43.6px, and the row wraps, so the panel pays it
-            // twice. 21.6px is the design's own line box. The height still
-            // comes from the content, so a longer label in another locale
-            // grows the chip instead of being cut.
-            className={`flex items-center justify-center rounded-[50px] px-[22px] py-[11px] text-[17px] leading-[21.6px] font-semibold tracking-[-0.17px] text-white transition-colors disabled:opacity-50 ${
-              value === selected ? "bg-surface-strong" : "bg-surface hover:bg-surface-strong"
-            }`}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <TradeQuickAmounts
+      values={values}
+      onSelect={onSelect}
+      selected={selected}
+      disabled={disabled}
+      prefix={prefix}
+      // The accessible name interpolates the chip's label, so the catalogue
+      // lookup is handed down as a closure rather than as a finished string.
+      amountLabel={(amount) => t("quickAmountLabel", { amount })}
+    />
   );
 }

@@ -176,3 +176,36 @@ describe("isDustHolding", () => {
     expect(isDustHolding(barelyThere)).toBe(true);
   });
 });
+
+/**
+ * Gas is meant to be invisible on this platform. Where it cannot be sponsored,
+ * a holding the wallet cannot pay the fee to move is not offered for sale at
+ * all, rather than failing halfway through one. Reported from staging on
+ * 2026-09-12: a USD₮0 sale on HyperEVM.
+ */
+describe("selectHoldings on unsponsored chains", () => {
+  const usdt0 = token({
+    symbol: "USD₮0",
+    network: "hyperliquid-mainnet",
+    address: "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb",
+  });
+  const hype = token({ symbol: "HYPE", network: "hyperliquid-mainnet", address: null });
+
+  it("hides a token on an unsponsored chain when the wallet holds no gas coin", () => {
+    expect(selectHoldings([usdt0, { ...hype, balance: 0, rawBalance: "0" }])).toEqual([]);
+  });
+
+  it("keeps it once the wallet holds the chain's own coin", () => {
+    expect(selectHoldings([usdt0, hype])).toEqual([usdt0, hype]);
+  });
+
+  it("keeps sponsored-chain holdings with no native balance", () => {
+    const usdt = token({ symbol: "USDT", network: "base-mainnet" });
+    expect(selectHoldings([usdt])).toEqual([usdt]);
+  });
+
+  it("keeps Solana holdings with no SOL, since its sends are sponsored too", () => {
+    const bonk = token({ symbol: "BONK", network: "solana-mainnet", address: "Bonk111" });
+    expect(selectHoldings([bonk])).toEqual([bonk]);
+  });
+});

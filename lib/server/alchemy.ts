@@ -58,8 +58,6 @@ export const EVM_NETWORKS = [
   "mythos-mainnet",
 ];
 export const SOLANA_NETWORK = "solana-mainnet";
-const BASE_PORTFOLIO_NETWORKS = ["base-mainnet"] as const;
-export type PortfolioScope = "all" | "base";
 
 // How a holding is classified for display: a native coin (ETH/POL/SOL), a
 // stablecoin (USDC/USDT), a real-world asset (from the RWA registry), or any
@@ -348,18 +346,10 @@ function normalize(
 // chain order.
 async function withTrackedBaseline(
   held: TokenBalance[],
-  networks: readonly string[]
+  networks: string[]
 ): Promise<TokenBalance[]> {
   const present = new Set(held.map((t) => `${t.network}:${(t.address ?? "native").toLowerCase()}`));
-  const nativeSymbols = [
-    ...new Set(
-      networks.flatMap((network) => {
-        const native = NATIVE_TOKEN[network];
-        return native ? [native.symbol] : [];
-      })
-    ),
-  ];
-  const nativePrices = await fetchPrices(nativeSymbols).catch(() => [] as SymbolPrice[]);
+  const nativePrices = await fetchPrices(NATIVE_PRICE_SYMBOLS).catch(() => [] as SymbolPrice[]);
   const priceOf = (symbol: string) => nativePrices.find((p) => p.symbol === symbol)?.priceUsd ?? 0;
 
   const baseline: TokenBalance[] = [];
@@ -539,29 +529,17 @@ async function fetchTokensByAddress(
 export async function fetchPortfolio(
   evm?: string,
   solana?: string,
-  fresh: FreshScope | null = null,
-  scope: PortfolioScope = "all"
+  fresh: FreshScope | null = null
 ): Promise<Portfolio> {
-  const includeSolana = scope === "all" && Boolean(solana);
-  if (!evm && !includeSolana) return { totalUsd: 0, tokens: [] };
-  const evmNetworks = scope === "base" ? BASE_PORTFOLIO_NETWORKS : EVM_NETWORKS;
-  const cacheKey =
-    scope === "base" ? `portfolio:base:${evm ?? ""}` : `portfolio:${evm ?? ""}:${solana ?? ""}`;
+  if (!evm && !solana) return { totalUsd: 0, tokens: [] };
+  const cacheKey = `portfolio:${evm ?? ""}:${solana ?? ""}`;
   const skipCache = fresh !== null;
   return cached(
     cacheKey,
     async (): Promise<Portfolio> => {
-      let rwa: RwaRegistry = {};
-      let registries: { buyable: BuyableRegistry; meme: MemeRegistry } = {
-        buyable: {},
-        meme: {},
-      };
-      if (scope === "all") {
-        // Dynamic catalogs are part of the complete portfolio. Chess only
-        // needs Base gas and its fixed funding assets, so its fast path does
-        // not wait on these unrelated services.
-        [rwa, registries] = await Promise.all([fetchRwaRegistry(), fetchBuyableRegistry()]);
-      }
+      // The registries name the contracts the on-chain read asks for, so they
+      // come first; both are cached on their own.
+      const [rwa, registries] = await Promise.all([fetchRwaRegistry(), fetchBuyableRegistry()]);
 
       // EVM balances come from the chain through the read pool (see
       // lib/server/portfolio-holdings); Solana still uses the Portfolio API
@@ -572,7 +550,7 @@ export async function fetchPortfolio(
         requests.push(
           readEvmPortfolioTokens(
             evm,
-            evmNetworks,
+            EVM_NETWORKS,
             (network) => allowedContracts(network, rwa, registries.buyable),
             fresh
           ).then((sweep) => {
@@ -581,7 +559,7 @@ export async function fetchPortfolio(
           })
         );
       }
-      if (includeSolana && solana) {
+      if (solana) {
         // The Portfolio API pages through every spam token the wallet has
         // ever received; a Base trade must not pay for that again.
         requests.push(
@@ -614,7 +592,7 @@ export async function fetchPortfolio(
         .flatMap((r) => r.value);
       const held = normalize(tokensFromBatches, rwa, registries.buyable, registries.meme);
       // Only baseline the chains the user actually has a wallet on.
-      const networks = [...(evm ? evmNetworks : []), ...(includeSolana ? [SOLANA_NETWORK] : [])];
+      const networks = [...(evm ? EVM_NETWORKS : []), ...(solana ? [SOLANA_NETWORK] : [])];
       const tokens = await withTrackedBaseline(held, networks);
       const totalUsd = tokens.reduce((sum, t) => sum + t.valueUsd, 0);
       return missing.length > 0 ? { totalUsd, tokens, missing } : { totalUsd, tokens };

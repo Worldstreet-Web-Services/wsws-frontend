@@ -17,13 +17,8 @@ const eslintConfig = defineConfig([
     "design_handoff_*/**",
     // Upstream source snapshots are documentation, not application code.
     "reference/**",
-    // Lila is an independent pnpm workspace with its own build and lint rules.
-    "features/casino/components/chess/**",
-    "ui/**",
-    // Preserved pre-Lila chess frontend retained as migration reference.
-    "features/casino/components/chess-app/**",
-    // Static and generated browser assets are immutable vendor output.
-    "public/**",
+    // Vendored Stockfish worker build (GPLv3, shipped as a static asset).
+    "public/stockfish/**",
     // Sibling worktrees under .worktrees/ are whole checkouts of this repo,
     // build output included. Linting from the root otherwise walks into each
     // one's .next and lints megabytes of bundled vendor code, which is slow

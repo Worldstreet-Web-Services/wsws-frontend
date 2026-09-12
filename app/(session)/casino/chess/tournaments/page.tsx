@@ -1,5 +1,11 @@
-import { ChessLobbyFrame } from "@/features/casino/components/chess-app/chess-lobby-frame";
+"use client";
+
+import { CasinoPage, SwissListSection } from "@/features/casino";
 
 export default function ChessTournamentsPage() {
-  return <ChessLobbyFrame source="/api/chess/competition/arenas" />;
+  return (
+    <CasinoPage hideBackLink>
+      <SwissListSection game="chess" format="champions" />
+    </CasinoPage>
+  );
 }

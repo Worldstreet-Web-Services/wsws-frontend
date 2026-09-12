@@ -1,5 +1,4 @@
-import { CasinoPage } from "@/features/casino/components/casino-page";
-import { PuzzleSection } from "@/features/casino/components/chess-app/puzzle/puzzle-section";
+import { CasinoPage, PuzzleSection } from "@/features/casino";
 
 export default function ChessPuzzlesPage() {
   return (

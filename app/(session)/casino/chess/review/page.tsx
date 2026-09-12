@@ -2,15 +2,15 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChessRoundPageShell, LichessAnalysis } from "@/features/casino";
+import { ChessRoundPageShell, ReviewSection } from "@/features/casino";
 
 function ReviewFromParams() {
-  return <LichessAnalysis matchId={useSearchParams()?.get("match") ?? null} />;
+  return <ReviewSection matchId={useSearchParams()?.get("match") ?? null} />;
 }
 
 export default function ChessReviewPage() {
   return (
-    <ChessRoundPageShell fixedViewport={false}>
+    <ChessRoundPageShell>
       <Suspense fallback={null}>
         <ReviewFromParams />
       </Suspense>

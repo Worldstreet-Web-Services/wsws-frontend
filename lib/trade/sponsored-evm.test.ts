@@ -91,12 +91,13 @@ describe("gas policy coverage", () => {
 });
 
 describe("sponsorship mode per network", () => {
-  it("uses the BSO path for Base and the paymaster path elsewhere", () => {
+  // The policy is a paymaster-type policy; the bundler header path answers
+  // "does not support bundler sponsorship" for it on every network. See
+  // ADR-2026-09-06-base-sponsorship-via-paymaster.
+  it("runs every sponsored chain through the paymaster path", () => {
     for (const config of SPONSORED_EVM_CHAINS) {
       if (!config.gasPolicy) continue;
-      expect(config.sponsorshipMode, config.network).toBe(
-        config.network === "base-mainnet" ? "bso" : "paymaster"
-      );
+      expect(config.sponsorshipMode, config.network).toBe("paymaster");
     }
   });
 

@@ -21,8 +21,8 @@ function tierFor(totalUsd: number): UserTier {
   return "new";
 }
 
-function isFullPortfolioQuery(query: Query): boolean {
-  return query.queryKey[0] === "portfolio" && query.queryKey[1] !== "base";
+function isPortfolioQuery(query: Query): boolean {
+  return query.queryKey[0] === "portfolio";
 }
 
 function register(totalUsd: number): void {
@@ -71,14 +71,13 @@ export function AnalyticsSegments(): null {
     // carries the wallet addresses after the prefix.
     const known = cache
       .findAll({ queryKey: ["portfolio"] })
-      .filter(isFullPortfolioQuery)
       .map((query) => query.state.data as Portfolio | undefined)
       .find((data) => data !== undefined);
     if (known) register(known.totalUsd);
 
     return cache.subscribe((event) => {
       if (event.type !== "updated" || event.action.type !== "success") return;
-      if (!isFullPortfolioQuery(event.query)) return;
+      if (!isPortfolioQuery(event.query)) return;
       const data = event.query.state.data as Portfolio | undefined;
       if (data) register(data.totalUsd);
     });

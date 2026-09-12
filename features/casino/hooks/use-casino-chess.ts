@@ -137,7 +137,7 @@ function incrementSeconds(timeControl: string): number {
 
 export function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
   if (base.state !== "in_progress") return null;
-  const nextPosition = applyUciToFen(base.fen, uci, base.variant);
+  const nextPosition = applyUciToFen(base.fen, uci);
   if (!nextPosition) {
     return null;
   }
@@ -175,14 +175,10 @@ function requireWallet(address: string | null): string {
 
 export function chessMatchRefetchMs(
   state: ChessMatchState | undefined,
-  socketLive: boolean,
-  computerGame = false
+  socketLive: boolean
 ): number | false {
   if (state === "settled" || state === "cancelled") return false;
   if (state === "awaiting_opponent") return MATCH_WAITING_POLL_MS;
-  // Computer moves are returned in the authoritative write response, so a
-  // background repair poll only re-downloads an unchanged match every second.
-  if (computerGame) return false;
   return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
 }
 
@@ -317,8 +313,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchOnWindowFocus: "always",
-    refetchInterval: (q) =>
-      chessMatchRefetchMs(q.state.data?.state, socketLive, !!q.state.data?.computer),
+    refetchInterval: (q) => chessMatchRefetchMs(q.state.data?.state, socketLive),
     // A second browser/tab on the same game must keep moving even when it is
     // backgrounded. If the live socket is absent or silent (local backend with
     // no broker fanout, dropped relay, etc.), window-focus refetch is too late:
@@ -490,17 +485,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
   const applyMatch = useCallback(
     (next: ChessMatch) => {
       setOptimistic(null);
-      queryClient.setQueryData<ChessMatch>(CHESS_KEYS.match(next.id), (previous) => {
-        if (!previous || previous.id !== next.id) return next;
-        const previousStep = previous.round?.steps.at(-1);
-        const canKeepRound =
-          !next.round &&
-          !!previous.round &&
-          previousStep?.ply === next.moves.length &&
-          previousStep.fen === next.fen;
-        const candidate = canKeepRound ? { ...next, round: previous.round } : next;
-        return mergeChessMatchSnapshot(previous, candidate);
-      });
+      queryClient.setQueryData(CHESS_KEYS.match(next.id), next);
       if (next.state === "settled" && next.rating?.rated) {
         void queryClient.invalidateQueries({
           queryKey: ["casino", "chess", "ratings"],
@@ -558,10 +543,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
       }
     },
     onError: () => setOptimistic(null),
-    onSuccess: (next) => {
-      applyMatch(next);
-      void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.match(next.id) });
-    },
+    onSuccess: applyMatch,
   });
 
   const coachedMove = useMutation({
@@ -800,7 +782,6 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
     requestingHint: hint.isPending,
     extendTime: timeExtension.mutateAsync,
     extendingTime: timeExtension.isPending,
-    claimTimeout: flag.mutateAsync,
     claimingTimeout: flag.isPending,
   };
 }
@@ -976,9 +957,7 @@ export function useCreateComputerMatch() {
       createComputerMatch({
         ...input,
         player: requireWallet(wallet.address),
-        ...(input.stakeUsdc
-          ? { idempotencyKey: input.idempotencyKey ?? newChessIdempotencyKey() }
-          : {}),
+        ...(input.stakeUsdc ? { idempotencyKey: newChessIdempotencyKey() } : {}),
       }),
     onSuccess: (match) => {
       queryClient.setQueryData(CHESS_KEYS.match(match.id), match);

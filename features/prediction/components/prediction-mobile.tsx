@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Artboard } from "@/components/ui/artboard";
 import { useMoney } from "@/components/ui/currency-select";
+import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
 import { formatCountdown, parseCloseTime, useCountdown } from "@/hooks/use-countdown";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
@@ -189,9 +190,8 @@ function PredictionBanner({
 }: PredictionBannerProps) {
   const t = useTranslations("prediction");
   const [artworkFailed, setArtworkFailed] = useState(false);
-  // A Polymarket card has no page of its own on this build; the banner opens
-  // the prediction desk, where the same market can be bet on.
-  const href = "/prediction";
+  // Live markets open their page in the Explore market; the rest open the desk.
+  const href = predictionDetailHref(p) ?? "/prediction";
 
   return (
     <BannerFrame>

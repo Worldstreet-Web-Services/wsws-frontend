@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
+import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { parseCloseTime } from "@/hooks/use-countdown";
 import type { Prediction } from "@/lib/types";
 import type { PredictionSpot } from "@/features/discovery/types";
@@ -49,13 +50,11 @@ function toSpot(prediction: Prediction): PredictionSpot | null {
     // draws what there is. An absent image yields no tile rather than a
     // placeholder standing in for artwork that does not exist.
     images: prediction.image ? [prediction.image] : [],
-    // A Polymarket market has no page of its own on this build, so the card
-    // opens the prediction desk, where it can be bet on.
-    // On mobile the prediction desk is a tab inside /market, not a standalone
-    // route; /market?tab=prediction opens that tab there and hands off to the
-    // /prediction screen from md up. So a card resolves to the right surface
-    // either way instead of pointing at a route the phone does not have.
-    href: "/market?tab=prediction",
+    // The market's own page in the Explore market, the same destination the
+    // prediction desk's cards use. A market the feed gives no category for
+    // has no page there, so it opens the desk: /market?tab=prediction is the
+    // prediction tab on a phone and hands off to /prediction from md up.
+    href: predictionDetailHref(prediction) ?? "/market?tab=prediction",
   };
 }
 

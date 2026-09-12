@@ -73,11 +73,13 @@ function renderSlider(predictions: Prediction[]) {
 }
 
 describe("prediction slider", () => {
-  it("draws every card unlinked, since no market has a page of its own here", () => {
+  it("gives each card the market's own detail route", () => {
     renderSlider([mapped]);
 
-    expect(screen.queryByRole("link", { name: mapped.q })).toBeNull();
-    expect(screen.getByText(mapped.q)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: mapped.q })).toHaveAttribute(
+      "href",
+      "/prediction/markets/481717?category=politics&source=markets"
+    );
   });
 
   it("leaves a market this app has no category for as an unlinked card", () => {

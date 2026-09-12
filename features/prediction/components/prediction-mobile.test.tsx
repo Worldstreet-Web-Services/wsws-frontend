@@ -134,7 +134,10 @@ describe("PredictionMobile", () => {
     expect(screen.getByText(/68¢/)).toBeInTheDocument();
     expect(screen.getByText("Politics")).toBeInTheDocument();
     // No page of its own on this build: the card opens the prediction desk.
-    expect(screen.getByRole("link", { name: rates.q })).toHaveAttribute("href", "/prediction");
+    expect(screen.getByRole("link", { name: rates.q })).toHaveAttribute(
+      "href",
+      "/prediction/markets/481717?category=politics&source=markets"
+    );
 
     const artwork = document.querySelector(`img[src="${rates.image}"]`);
     expect(artwork).not.toBeNull();
@@ -200,7 +203,7 @@ describe("PredictionMobile", () => {
     // Exact, because the promo card beside it is labelled "… — Predict Now".
     expect(screen.getByRole("link", { name: "Predict Now" })).toHaveAttribute(
       "href",
-      "/prediction"
+      "/prediction/markets/481717?category=politics&source=markets"
     );
   });
 

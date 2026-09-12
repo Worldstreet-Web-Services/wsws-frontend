@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "{symbol} insuficiente",
     "priceUnavailable": "Preço indisponível",
     "loadingBalance": "Carregando seu saldo…",
-    "balanceSubject": "seu saldo de USDC"
+    "balanceSubject": "seu saldo de USDC",
+    "sideLabel": "Comprar ou vender",
+    "youAreSelling": "Você está vendendo",
+    "amountLabelSell": "Quantia a vender",
+    "sellShortcutsLabel": "Vender uma parte do seu saldo"
   },
   "topbar": {
     "support": "suporte",

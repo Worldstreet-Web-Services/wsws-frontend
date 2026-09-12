@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isDepositSettlementToken,
+  isDustHolding,
   isZeroValueHolding,
   selectHoldings,
 } from "@/features/portfolio/lib/holdings";
@@ -124,5 +125,54 @@ describe("isZeroValueHolding", () => {
 
   it("keeps an ordinary priced holding", () => {
     expect(isZeroValueHolding(token({}))).toBe(false);
+  });
+});
+
+/**
+ * The rule that keeps "<$0.01" out of the holdings list.
+ *
+ * It mirrors formatMoney's own condition for printing "<$0.01" in place of a
+ * figure, so what it hides is exactly what could not be shown as a number.
+ */
+describe("isDustHolding", () => {
+  it("hides a position that can only render as a sub-cent figure", () => {
+    // The reported case: a full exit that left a remainder behind.
+    expect(isDustHolding(token({ balance: 0.0042, priceUsd: 1, valueUsd: 0.0042 }))).toBe(true);
+    expect(isDustHolding(token({ balance: 0.5, priceUsd: 0.001, valueUsd: 0.0005 }))).toBe(true);
+  });
+
+  it("keeps anything from a cent upward, including exactly a cent", () => {
+    expect(isDustHolding(token({ valueUsd: 0.01 }))).toBe(false);
+    expect(isDustHolding(token({ valueUsd: 0.05 }))).toBe(false);
+    expect(isDustHolding(token({ valueUsd: 240 }))).toBe(false);
+  });
+
+  /**
+   * valueUsd is balance x price, so a real balance we could not price is $0
+   * through no fault of the owner. It renders "$0.00", which is a figure, and
+   * hiding it would say they do not hold something they do.
+   */
+  it("keeps a real balance we could not price", () => {
+    expect(isDustHolding(token({ balance: 4, priceUsd: 0, valueUsd: 0 }))).toBe(false);
+  });
+
+  /**
+   * One wei of ETH is genuinely held however the float rounds it, and the
+   * holdings modal has its own test saying so. Zero is not dust.
+   */
+  it("keeps a balance too small for the float to carry", () => {
+    expect(isDustHolding(token({ balance: 1e-18, rawBalance: "1", valueUsd: 0 }))).toBe(false);
+  });
+
+  /**
+   * The distinction from isZeroValueHolding, which the holdings table's toggle
+   * uses. That one asks "does this round to $0.00"; this one asks "can this be
+   * shown as a figure at all". A $0.007 position rounds up to a cent, so the
+   * table keeps it, while the list still could not print it.
+   */
+  it("is stricter than the table's zero-value rule", () => {
+    const barelyThere = token({ balance: 0.007, priceUsd: 1, valueUsd: 0.007 });
+    expect(isZeroValueHolding(barelyThere)).toBe(false);
+    expect(isDustHolding(barelyThere)).toBe(true);
   });
 });

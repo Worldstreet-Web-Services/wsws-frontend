@@ -154,7 +154,8 @@
     "marketCap": "Cap. boursière",
     "volume24h": "Volume (24h)",
     "liquidity": "Liquidité",
-    "fdv": "FDV"
+    "fdv": "FDV",
+    "topUp": "Top Up"
   },
   "spot": {
     "balance": "Solde {amount} {symbol}",

@@ -154,7 +154,8 @@
     "marketCap": "Marktkap.",
     "volume24h": "Volumen (24h)",
     "liquidity": "Liquidität",
-    "fdv": "FDV"
+    "fdv": "FDV",
+    "topUp": "Top Up"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",

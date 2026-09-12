@@ -154,7 +154,8 @@
     "marketCap": "Cap. de mercado",
     "volume24h": "Volume (24h)",
     "liquidity": "Liquidez",
-    "fdv": "FDV"
+    "fdv": "FDV",
+    "topUp": "Top Up"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",

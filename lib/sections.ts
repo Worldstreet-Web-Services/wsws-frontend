@@ -1,10 +1,12 @@
-// Spot carries its own simple/pro interface switch inside.
+// Spot and perpetuals are separate sections with their own sidebar entries;
+// each carries its own simple/pro interface switch inside.
 export type SectionId =
-  "portfolio" | "spot" | "meme" | "rwa" | "prediction" | "earn" | "casino" | "activity";
+  "portfolio" | "spot" | "perps" | "meme" | "rwa" | "prediction" | "earn" | "casino" | "activity";
 
 export const SECTION_LABEL: Record<SectionId, string> = {
   portfolio: "Portfolio",
   spot: "Spot",
+  perps: "Perpetuals",
   meme: "Memecoins",
   rwa: "Real assets",
   prediction: "Prediction",
@@ -22,6 +24,9 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 const PINNED: SectionId = "portfolio";
 const REORDERABLE: SectionId[] = [
   "spot",
+  // Perpetuals are hidden on production for now (#382). Staging is where the
+  // perps desk is exercised, so it stays in the nav here.
+  "perps",
   "meme",
   "rwa",
   "prediction",
@@ -53,6 +58,7 @@ export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = [];
 export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
   portfolio: "/portfolio",
   spot: "/spot",
+  perps: "/perps",
   meme: "/meme",
   rwa: "/rwa",
   casino: "/casino",
@@ -79,7 +85,7 @@ const INTEREST_TO_SECTION: Record<string, SectionId> = {
   stocks: "rwa",
   gold: "rwa",
   crypto: "spot",
-  // Perpetuals are not on this build; the interest falls back to the default order.
+  perps: "perps",
   meme: "meme",
   prediction: "prediction",
   casino: "casino",

@@ -7,7 +7,10 @@
 // its unavailable state, and no browser ever asks that upstream itself, which
 // is the point: a dead game gateway used to be polled by every open tab.
 
+import type { PerpBriefRow } from "@/lib/perp/brief";
 import type { RwaChain } from "@/lib/rwa/catalog";
+
+export type { PerpBriefRow } from "@/lib/perp/brief";
 
 export interface SpotBriefRow {
   symbol: string;
@@ -74,6 +77,7 @@ export interface DashboardFeed {
   /** Epoch ms when the server composed this. */
   asOf: number;
   spot: SpotBriefRow[] | null;
+  perps: PerpBriefRow[] | null;
   memes: MemeBriefRow[] | null;
   rwa: RwaBriefRow[] | null;
   live: DashboardLive | null;

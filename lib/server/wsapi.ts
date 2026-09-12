@@ -2,7 +2,7 @@ import "server-only";
 import { WSAPI_BASE } from "@/lib/wsapi-base";
 
 // World Street backend gateway. Public API, standard { success, data | error }
-// envelope. RWA endpoints live under /v1/rwa/*.
+// envelope. RWA endpoints live under /v1/rwa/*, perp endpoints under /v1/perp/*.
 const BASE = WSAPI_BASE;
 
 const ALLOWED = /^(health|categories|assets|assets\/[^/]+|quote|build)$/;
@@ -102,4 +102,8 @@ async function gatewayRequest(url: URL, init: GatewayInit): Promise<Response> {
 
 export async function wsapiRwaRequest(path: string, init: GatewayInit): Promise<Response> {
   return gatewayRequest(new URL(`${BASE}/v1/rwa/${path}`), init);
+}
+
+export async function wsapiPerpRequest(path: string, init: GatewayInit): Promise<Response> {
+  return gatewayRequest(new URL(`${BASE}/v1/perp/${path}`), init);
 }

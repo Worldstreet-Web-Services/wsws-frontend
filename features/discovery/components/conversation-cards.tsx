@@ -123,16 +123,18 @@ export function LastManCard({ round, remainingMs, onHold }: LastManCardProps) {
 
       {/* The wordmark is one name broken over two lines, so it is one heading
           with two lines in it rather than two headings: a reader hears "Last
-          Man Marathon" rather than a fragment and then another. */}
+          Man Marathon" rather than a fragment and then another.
+          A phone's card is narrower than the desk's, and the design's type ran
+          the name into the hourglass there, so it steps down below md. */}
       <div className="relative z-[1] flex h-full flex-col items-start justify-center pl-[32px]">
         <h3>
           <span
-            className={`block -rotate-[1.72deg] font-serif text-[26px] leading-[1.1] font-semibold tracking-[-2.72px] md:text-[34px] ${WORDMARK_INK}`}
+            className={`block -rotate-[1.72deg] font-serif text-[21px] leading-[1.1] font-semibold tracking-[-2.2px] md:text-[34px] md:tracking-[-2.72px] ${WORDMARK_INK}`}
           >
             {t("lastManMarathonLead")}
           </span>{" "}
           <span
-            className={`ws-chewy mt-[2px] block text-[40px] leading-[1.1] tracking-[-0.53px] md:text-[53px] ${WORDMARK_INK}`}
+            className={`ws-chewy mt-[2px] block text-[32px] leading-[1.1] tracking-[-0.53px] md:text-[53px] ${WORDMARK_INK}`}
           >
             {t("lastManMarathonTitle")}
           </span>

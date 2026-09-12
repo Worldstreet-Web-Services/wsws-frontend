@@ -6,7 +6,7 @@ import { fetchMarketTokens } from "@/lib/server/market-tokens";
 import { cached } from "@/lib/server/response-cache";
 import { fetchRwaMarket } from "@/lib/server/rwa-prices";
 import { CHESS_BASE, TRADE_BASE, VAULT_BASE } from "@/lib/server/upstreams";
-import { wsapiRwaRequest } from "@/lib/server/wsapi";
+import { wsapiPerpRequest, wsapiRwaRequest } from "@/lib/server/wsapi";
 import { BUY_ORIGIN, toBuyRoutes } from "@/lib/buy";
 import { isPlausiblyActiveMatch, type LiveMatchClock } from "@/lib/chess/live-match";
 import {
@@ -20,6 +20,14 @@ import {
 } from "@/lib/dashboard-feed";
 import { tradableHere, type Paged } from "@/lib/meme/catalog";
 import type { MemeToken } from "@/lib/meme/types";
+import {
+  composePerpBrief,
+  parsePerpBriefAssets,
+  parsePerpBriefContexts,
+  perpBriefFallbackSymbols,
+  type PerpBriefContext,
+  type PerpBriefRow,
+} from "@/lib/perp/brief";
 import { assetPriceUsd, listedRwaAssets, rwaLogoPath, type RwaApiAsset } from "@/lib/rwa/catalog";
 import { composeSpotMarkets } from "@/lib/spot-markets";
 
@@ -106,6 +114,29 @@ async function spotSection(): Promise<SpotBriefRow[]> {
       priceUsd,
       change24h,
     }));
+}
+
+// The same two reads the perps desk makes: the listing, which decides which
+// majors are tradable and how far, and the live marks.
+async function perpsSection(): Promise<PerpBriefRow[]> {
+  const assets = parsePerpBriefAssets(
+    await envelopeData<unknown>(
+      await wsapiPerpRequest("ark/assets", { method: "GET", revalidate: 300 })
+    )
+  );
+  // The marks are a bonus over the app's own prices, not a requirement: a
+  // service that lists assets but cannot mark them still gives a priced brief.
+  const [contexts, fallback] = await Promise.all([
+    wsapiPerpRequest("ark/market-contexts", { method: "GET", revalidate: 5 })
+      .then((res) => envelopeData<unknown>(res))
+      .then(parsePerpBriefContexts)
+      .catch((error): PerpBriefContext[] => {
+        console.warn("[dashboard-feed] perps: marks unavailable:", error);
+        return [];
+      }),
+    priceMap(perpBriefFallbackSymbols()),
+  ]);
+  return composePerpBrief(assets, contexts, fallback, DASHBOARD_FEED_ROWS);
 }
 
 async function memesSection(): Promise<MemeBriefRow[]> {
@@ -259,13 +290,14 @@ async function section<T>(name: keyof DashboardFeed, load: () => Promise<T>): Pr
 }
 
 async function compose(): Promise<DashboardFeed> {
-  const [spot, memes, rwa, live] = await Promise.all([
+  const [spot, perps, memes, rwa, live] = await Promise.all([
     section("spot", spotSection),
+    section("perps", perpsSection),
     section("memes", memesSection),
     section("rwa", rwaSection),
     section("live", liveSection),
   ]);
-  return { asOf: Date.now(), spot, memes, rwa, live };
+  return { asOf: Date.now(), spot, perps, memes, rwa, live };
 }
 
 /** The feed, composed at most once per window for every caller. */

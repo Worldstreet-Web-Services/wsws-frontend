@@ -23,10 +23,13 @@ git.txt
 /build
 /features/casino/components/chess/.build/build/
 /features/casino/components/chess/*/dist/
-/public/compiled/
-/public/css/
+# Lichess runtime bundles are deployable assets, not disposable local output.
+# Keep source maps and the Ark puzzle bundle ignored; CI builds the latter.
+/public/compiled/*.map
+/public/compiled/ark-puzzle.js
+/public/css/*.map
+/public/css/ark-puzzle.css
 /public/hashed/
-/public/npm/
 
 # misc
 .DS_Store

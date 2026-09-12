@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { apiError } from "@/lib/api/envelope";
-import { friendlyError, isAlreadySettledError, supportDetail } from "@/lib/errors";
+import { friendlyError, isGasFeeError, isAlreadySettledError, supportDetail } from "@/lib/errors";
 
 describe("friendlyError", () => {
   it("preserves the actionable confirmed-balance message", () => {
@@ -25,6 +25,21 @@ describe("friendlyError", () => {
       /network's coin/i
     );
     expect(friendlyError("cannot estimate gas")).toMatch(/network's coin/i);
+  });
+
+  // Reported from staging on 2026-09-12: selling USD₮0 on HyperEVM, a chain
+  // with no sponsorship policy, failed with "gas required exceeds allowance"
+  // and the sheet said the asset balance was short. The wallet held the asset;
+  // what it lacked was HYPE for the fee, and the reader was sent to try a
+  // smaller amount, which can never work.
+  it("reads a gas shortfall as a fee problem, not a balance problem", () => {
+    const reverted = new Error(
+      "Execution reverted with reason: gas required exceeds allowance (15321)."
+    );
+    expect(friendlyError(reverted)).toMatch(/network's coin/i);
+    expect(friendlyError(reverted)).not.toMatch(/enough of this asset/i);
+    expect(isGasFeeError(reverted)).toBe(true);
+    expect(isGasFeeError(new Error("Dai/insufficient-balance"))).toBe(false);
   });
 
   it("does not tell someone to retry when sponsorship is out of monthly capacity", () => {

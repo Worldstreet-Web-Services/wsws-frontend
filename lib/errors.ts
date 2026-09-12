@@ -107,6 +107,22 @@ function customErrorMessage(raw: string): string | null {
 // Map an error to a friendly message. Pass a `fallback` tailored to the action
 // (e.g. "We couldn't complete your purchase.") — it is used only when the error
 // isn't one of the known cases.
+// The phrasings that mean the account cannot pay the network fee, as opposed
+// to being short of the asset it is moving. Kept in one place because the
+// message and the predicate below must agree about what a fee failure is.
+const GAS_SHORTFALL =
+  /gas required exceeds allowance|insufficient funds for gas|out of gas|intrinsic gas|insufficient lamports/;
+
+/**
+ * Whether this failure is the wallet being unable to pay the network fee.
+ *
+ * A screen that knows which chain it is on can then name the coin to top up,
+ * which the generic message cannot: it is shared by every chain.
+ */
+export function isGasFeeError(e: unknown): boolean {
+  return GAS_SHORTFALL.test(text(e).toLowerCase());
+}
+
 export function friendlyError(
   e: unknown,
   fallback = "Something went wrong. Please try again."
@@ -155,6 +171,14 @@ export function friendlyError(
   }
   if (/unsupported policy type|gas sponsorship policy .* missing/.test(m)) {
     return "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
+  }
+  // Read the fee first. "gas required exceeds allowance" is the node saying the
+  // account cannot pay for the gas, not that a token balance or an ERC-20
+  // allowance is short, and the balance rule below would otherwise claim it
+  // through "exceeds allowance" and send the reader off to try a smaller
+  // amount, which can never work.
+  if (GAS_SHORTFALL.test(m)) {
+    return "You need a little more of the network's coin to cover the fee.";
   }
   // Not enough of the specific asset being moved (e.g. an ERC-20 balance revert).
   if (/insufficient[- ]?balance|amount exceeds balance|exceeds allowance/.test(m)) {

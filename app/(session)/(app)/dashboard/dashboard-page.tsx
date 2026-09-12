@@ -10,9 +10,7 @@ import { SectionOverview } from "@/components/ui/section-overview";
 import { SpotOverview } from "@/features/trade/components/spot-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
-import { TokenMovesSection } from "@/features/trade/components/token-moves-section";
 import { ExploreBanners } from "@/components/layout/explore-banners";
-import { PredictionMobile } from "@/features/prediction";
 // Deep imports for activity and remit, not their barrels. The activity barrel
 // also exports the full ActivityView and the remit barrel the CrossBorderModal;
 // neither renders here, and through the barrels both shipped in the dashboard's
@@ -327,10 +325,20 @@ export function DashboardPage() {
         <div className="px-4">
           <ConversationRow />
         </div>
-        <PredictionMobile />
-        {/* "Stay Ahead of Token Moves" — the biggest-movers insight carousel,
-            the phone's stand-in for the desktop token-moves shelf. */}
-        <TokenMovesSection onOpenBuy={modals.openBuy} />
+        {/* "Your Next Prediction Starts Here" — the same discovery card the
+            desktop shows, on the phone with its horizontal gutter. */}
+        <div className="px-4">
+          <PredictionStartsRow markets={predictionSpots} />
+        </div>
+        {/* "Stay Ahead of Token Moves" — the desktop token-moves discovery
+            card, now on the phone too, in the phone's gutter. */}
+        <div className="px-4">
+          <TokenMovesRow
+            tokens={tokenSpots}
+            loading={tokenSpotsLoading}
+            onBuy={discoveryTrade.onBuyToken}
+          />
+        </div>
         {/* "Find the next 100X" — the same discovery carousel the desktop shows
             (the Pepe card, a rotating live memecoin, then Pepe again), now on
             the phone. The row brings its own header and carousel; it just needs

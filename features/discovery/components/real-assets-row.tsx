@@ -55,7 +55,7 @@ export function RealAssetsRow({ spots, onBuy }: RealAssetsRowProps) {
       title={t.rich("realAssetsTitle", {
         accent: (chunks) => <span className="text-[#f6d37a]">{chunks}</span>,
       })}
-      href="/rwa"
+      href="/market?tab=rwa"
     >
       <Carousel label={t("realAssetsCarousel")} trimPx={50}>
         <GoldCard spots={spots.gold} onBuy={onBuy} />

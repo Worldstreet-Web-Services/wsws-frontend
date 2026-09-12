@@ -471,14 +471,14 @@ export function TokenMovesRow({
           <SeeMoreCard
             key="see-more"
             headline={t("tokenMovesSeeMore")}
-            href="/spot"
+            href="/market?tab=spot"
             className={CARD_BOX}
           />,
         ]
       : [<TokenCallCardSkeleton key="first" />, <TokenCallCardSkeleton key="second" />];
 
   return (
-    <DiscoveryRow title={t("tokenMovesTitle")} href="/spot">
+    <DiscoveryRow title={t("tokenMovesTitle")} href="/market?tab=spot">
       {cards.length > 1 ? (
         <Carousel label={t("tokenMovesCarousel")} trimPx={50}>
           {cards}

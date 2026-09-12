@@ -48,7 +48,7 @@ describe("useMemeSpots", () => {
         change: "+40.85%",
         up: true,
         image: "https://cdn.example/basecat.png",
-        href: "/meme",
+        href: "/market?tab=memecoins",
         token,
       },
     ]);

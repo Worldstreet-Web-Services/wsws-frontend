@@ -49,6 +49,39 @@ vi.mock("@/features/prediction/components/bet-modal", () => ({
   },
 }));
 
+// The positions flow reaches the wallet layer, which has its own suites. Stubbed
+// so this suite tests the market list, not the money path. loaded stays false,
+// so the sheet has nothing to draw until a real controller loads it.
+vi.mock("@/features/prediction/hooks/use-polymarket-positions-controller", () => ({
+  usePolymarketPositionsController: () => ({
+    positions: {
+      positions: [],
+      available: null,
+      cashable: null,
+      loading: false,
+      loaded: false,
+      error: null,
+      refresh: vi.fn(),
+    },
+    slip: null,
+    setSlip: vi.fn(),
+    onRedeem: vi.fn(),
+    onSellPosition: vi.fn(),
+    onCashOut: vi.fn(),
+    redeemingId: null,
+    claiming: false,
+    selling: false,
+    cashingOut: false,
+    claimedConditionIds: [],
+  }),
+}));
+
+// The Local browse is its own view with its own suite. Stubbed so this suite
+// only proves the toggle swaps to it.
+vi.mock("@/features/prediction/components/local-prediction-view", () => ({
+  LocalPredictionView: () => <div data-testid="local-prediction-view" />,
+}));
+
 import { PredictionMarketList } from "@/features/prediction/components/prediction-market-list";
 
 function market(over: Partial<Prediction> = {}): Prediction {
@@ -327,12 +360,15 @@ describe("PredictionMarketList, its own search field", () => {
     expect(searchBox()).toBeDisabled();
   });
 
-  // Prediction is not offered at all there, so there is no list to search.
-  it("shows no field where the region gate has replaced the list", () => {
+  // The global list is region-blocked, but Local is still reachable, so the
+  // field and the toggle stay; the field is just disabled, since there is no
+  // global list to search.
+  it("keeps the field disabled, with the source toggle, where the region blocks the global list", () => {
     access.allowed = false;
     renderList();
 
-    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Local" })).toBeInTheDocument();
   });
 });
 

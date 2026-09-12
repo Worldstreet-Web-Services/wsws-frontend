@@ -50,6 +50,20 @@ describe("alchemyKeys", () => {
     vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "");
     expect(hasAlchemyKey()).toBe(false);
   });
+
+  it("expands a comma-separated list in one variable into an ordered pool", () => {
+    // The whole point of the fix: a rotate-in-place ops convention where extra
+    // keys live inside ALCHEMY_API_KEY, not the code sending "a,b,c" as one key.
+    vi.stubEnv("ALCHEMY_API_KEY", "keyA, keyB ,keyC");
+    vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "");
+    expect(alchemyKeys()).toEqual(["keyA", "keyB", "keyC"]);
+  });
+
+  it("flattens comma-lists across both variables and drops duplicates", () => {
+    vi.stubEnv("ALCHEMY_API_KEY", "keyA,keyB");
+    vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "keyB,keyC");
+    expect(alchemyKeys()).toEqual(["keyA", "keyB", "keyC"]);
+  });
 });
 
 describe("alchemyFetch key rotation", () => {
@@ -106,6 +120,17 @@ describe("alchemyFetch key rotation", () => {
     const { used } = scriptedFetch([429, 429]);
     await expect(alchemyFetch(url)).rejects.toThrow("Alchemy request failed: 429");
     expect(used).toHaveLength(2);
+  });
+
+  it("rotates through a comma-separated pool in one variable, skipping a rate-limited key", async () => {
+    // Reproduces the live incident: several keys packed into ALCHEMY_API_KEY,
+    // one of them capacity-exhausted. Splitting lets the walk skip it.
+    vi.stubEnv("ALCHEMY_API_KEY", "keyA,keyB,keyC");
+    vi.stubEnv("ALCHEMY_API_KEY_FALLBACK", "");
+    const { used } = scriptedFetch([429, 200]);
+    const res = await alchemyFetch(url);
+    expect(res.ok).toBe(true);
+    expect(used).toEqual(["keyA", "keyB"]);
   });
 
   it("still works with only one key configured", async () => {

@@ -31,12 +31,21 @@ const DECIMAL = /^\d*\.?\d*$/;
 interface SellSheetProps {
   payload: SellPayload;
   onClose: () => void;
+  /**
+   * Opening amount, in the asset being sold.
+   *
+   * The spot ticket's field is already denominated in the coin on the sell leg,
+   * so whatever was typed there is a valid sell amount and the sheet starts on
+   * it. Omitted everywhere else, where the sheet is the first place an amount
+   * is asked for.
+   */
+  initialAmount?: string;
 }
 
-export function SellSheet({ payload, onClose }: SellSheetProps) {
+export function SellSheet({ payload, onClose, initialAmount = "" }: SellSheetProps) {
   const t = useTranslations("buySell");
   const portfolio = usePortfolio();
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(initialAmount);
   const [maxRequested, setMaxRequested] = useState(false);
   const sell = useSell();
 

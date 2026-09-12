@@ -26,13 +26,15 @@ import {
   SpotQuickAmounts,
   SPOT_QUICK_AMOUNTS,
 } from "@/features/trade/components/spot-quick-amounts";
+import { SpotSellShortcuts } from "@/features/trade/components/spot-sell-shortcuts";
+import { useSpotSell } from "@/features/trade/hooks/use-spot-sell";
+import { SpotSideSwitch, type SpotSide } from "@/features/trade/components/spot-side-switch";
 import { SpotTradeActions } from "@/features/trade/components/spot-trade-actions";
 import { useSpotBuy } from "@/features/trade/hooks/use-spot-buy";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { useFittedRowCount } from "@/hooks/use-fitted-row-count";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { formatCompactUsd, formatUsd, fromBaseUnits, toBaseUnits } from "@/lib/trade/math";
-import { toast } from "@/lib/toast";
 import type { SellPayload } from "@/lib/modal-types";
 
 // Dynamic: the chart pulls lightweight-charts (~168KB) and the panel starts
@@ -147,6 +149,13 @@ function changeDirection(change24h: number): SpotChangeDirection {
 // A USDC figure from its own base units, grouped in threes and always carrying
 // both cents. The digits come from the string form, so no float ever holds an
 // amount of money on the way to the screen.
+// A price-feed estimate with the dollar sign dropped, because the summary names
+// USDC beside the number. Safe at zero, which is an empty field rather than a
+// missing price, and a non-finite estimate reads as nothing rather than "NaN".
+function usdEstimateLabel(value: number): string {
+  return formatUsd(Number.isFinite(value) && value > 0 ? value : 0).slice(1);
+}
+
 function usdcLabel(units: bigint): string {
   const [whole = "0", frac = ""] = fromBaseUnits(units, PAY_DECIMALS).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -166,13 +175,6 @@ function toRowView(market: SpotMarket): SpotAssetRowView {
   };
 }
 
-export interface SpotDesktopViewProps {
-  // Selling is the sheet's job: it needs the origin network, the gas check and
-  // the exact held balance, none of which belong on a buy ticket. The page
-  // above owns the modal host, so the request goes up.
-  onSell: (payload: SellPayload) => void;
-}
-
 // The desktop Spot desk: the market list on the left, the order ticket on the
 // right with the chart folded into it, one search field over both. This is the
 // composition layer, so it is the only file here that holds hooks: the children
@@ -180,7 +182,7 @@ export interface SpotDesktopViewProps {
 // anything themselves.
 //
 // Phones keep the existing SpotSection. The page picks between them.
-export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
+export function SpotDesktopView() {
   const t = useTranslations("spot");
   const { markets, destinations, loading, error } = useSpotMarkets();
   const portfolio = usePortfolio();
@@ -190,6 +192,13 @@ export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
   const [requestedPage, setRequestedPage] = useState(1);
   const [chartExpanded, setChartExpanded] = useState(false);
   const [amount, setAmount] = useState("");
+  const [side, setSide] = useState<SpotSide>("buy");
+  // Clearing on a side change is not cosmetic: the legs are denominated in
+  // different assets, so a figure left behind would silently change meaning.
+  const [enteredSide, setEnteredSide] = useState<SpotSide>("buy");
+  // True when the amount came from the Max shortcut, so a chain that has moved
+  // under us can preserve that intent while still asking for another look.
+  const [maxRequested, setMaxRequested] = useState(false);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -291,24 +300,57 @@ export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
     );
   }, [portfolio.tokens, selected]);
 
-  const requestSell = () => {
-    if (!selected) return;
-    if (!held) {
-      toast.error(t("noSellBalance", { symbol: selected.symbol }));
-      return;
-    }
-    onSell({
-      symbol: held.symbol,
-      name: held.name,
-      network: held.network,
-      address: held.address,
-      decimals: held.decimals,
-      balance: held.balance,
-      rawBalance: held.rawBalance,
-      priceUsd: held.priceUsd > 0 ? held.priceUsd : selected.priceUsd,
-      logo: held.logo ?? selected.logo,
-    });
-  };
+  // What the amount field is denominated in. Buying spends USDC; selling draws
+  // down the holding, so the field counts the coin and measures against what
+  // the wallet actually holds.
+  const selling = side === "sell";
+  const fieldSymbol = selling ? (selected?.symbol ?? PAY_SYMBOL) : PAY_SYMBOL;
+  const fieldDecimals = selling ? (held?.decimals ?? PAY_DECIMALS) : PAY_DECIMALS;
+  const fieldBalance = selling ? (held ? BigInt(held.rawBalance) : 0n) : payBalance;
+  const fieldLogo = selling ? (held?.logo ?? selected?.logo) : undefined;
+  const heldUnits = held ? BigInt(held.rawBalance) : null;
+
+  /**
+   * What a sale of the entered amount is worth, for the summary rows. A
+   * price-feed estimate, shown and never used to build a transaction: the sell
+   * sheet quotes the real figure at fill, which is why the rows read "You
+   * receive" and "Est. fee" rather than stating a number as fact.
+   */
+  const sellProceeds = selling && amount ? Number(amount) * (selected?.priceUsd ?? 0) : 0;
+  const sellFee = (sellProceeds * Number(FEE_BPS)) / Number(BPS);
+
+  if (side !== enteredSide) {
+    setEnteredSide(side);
+    setAmount("");
+  }
+
+  // The holding as the sell flow wants it. Null when the wallet holds none,
+  // which leaves every sell control inert rather than offering a sale of
+  // nothing.
+  const holding: SellPayload | null =
+    held && selected
+      ? {
+          symbol: held.symbol,
+          name: held.name,
+          network: held.network,
+          address: held.address,
+          decimals: held.decimals,
+          balance: held.balance,
+          rawBalance: held.rawBalance,
+          priceUsd: held.priceUsd > 0 ? held.priceUsd : selected.priceUsd,
+          logo: held.logo ?? selected.logo,
+        }
+      : null;
+
+  const sell = useSpotSell({
+    holding,
+    maxRequested,
+    onSold: () => {
+      setAmount("");
+      setMaxRequested(false);
+    },
+    onAmountCorrected: (corrected) => setAmount(corrected),
+  });
 
   // The desk is a screen tall from xl up, which is what lets the market list
   // reach the bottom of the window instead of stopping under its ninth row.
@@ -418,29 +460,64 @@ export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
                   </Disclosure>
 
                   <div className="flex flex-col gap-[13.5px]">
+                    <SpotSideSwitch side={side} onChange={setSide} disabled={buy.pending} />
                     <SpotAmountCard
                       amount={amount}
                       onAmountChange={setAmount}
-                      balance={payBalance}
-                      payDecimals={PAY_DECIMALS}
-                      paySymbol={PAY_SYMBOL}
-                      disabled={buy.pending}
+                      balance={fieldBalance}
+                      payDecimals={fieldDecimals}
+                      paySymbol={fieldSymbol}
+                      payLogo={fieldLogo}
+                      side={side}
+                      // The share shortcuts belong inside the field's own
+                      // border, under the input, as the meme desk draws them.
+                      footer={
+                        selling ? (
+                          <SpotSellShortcuts
+                            held={heldUnits}
+                            decimals={fieldDecimals}
+                            onSelect={(next) => {
+                              setAmount(next);
+                              setMaxRequested(next === sell.maxAmount);
+                            }}
+                            disabled={buy.pending || sell.pending}
+                          />
+                        ) : null
+                      }
+                      // Nothing to sell means nothing to type. The action below
+                      // says so in words; a live field over a zero balance
+                      // would only invite an amount that can never execute.
+                      disabled={buy.pending || (selling && !held)}
                     />
-                    <SpotQuickAmounts
-                      values={SPOT_QUICK_AMOUNTS}
-                      onSelect={setAmount}
-                      selected={amount}
-                      disabled={buy.pending}
-                    />
+                    {/* The presets are USD figures (10, 20, 50...). On the sell
+                        leg the field counts the coin, so the same buttons would
+                        be offering to sell 10 or 200 of it: the very mix-up
+                        this switch was added to remove. */}
+                    {selling ? null : (
+                      <SpotQuickAmounts
+                        values={SPOT_QUICK_AMOUNTS}
+                        onSelect={setAmount}
+                        selected={amount}
+                        disabled={buy.pending}
+                      />
+                    )}
                   </div>
 
                   <div className="mt-auto flex flex-col gap-6 pt-6">
+                    {/* Both legs carry a summary, so the panel keeps its shape
+                        when the switch moves. The buy leg prices the purchase
+                        from the exact base units the field produced; the sell
+                        leg estimates the payout from the price feed. */}
                     <SpotOrderSummary
-                      purchaseValue={usdcLabel(amountUnits)}
-                      fee={usdcLabel(feeUnits)}
+                      side={side}
+                      purchaseValue={
+                        selling ? usdEstimateLabel(sellProceeds) : usdcLabel(amountUnits)
+                      }
+                      fee={selling ? usdEstimateLabel(sellFee) : usdcLabel(feeUnits)}
                       symbol={PAY_SYMBOL}
                     />
                     <SpotTradeActions
+                      side={side}
                       amount={amount}
                       pay={{
                         balance: payBalance,
@@ -461,8 +538,11 @@ export function SpotDesktopView({ onSell }: SpotDesktopViewProps) {
                           : { balance: null, symbol: selected.symbol }
                       }
                       onBuy={() => void buy.submit()}
-                      onSell={requestSell}
-                      pending={buy.pending ? "buy" : null}
+                      // Sells in place, rather than handing the route a payload
+                      // to open a modal with: the amount is already entered, in
+                      // the coin, on the leg the reader chose.
+                      onSell={(entered) => void sell.submit(entered)}
+                      pending={buy.pending ? "buy" : sell.pending ? "sell" : null}
                     />
                   </div>
                 </>

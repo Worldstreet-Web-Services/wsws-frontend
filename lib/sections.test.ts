@@ -34,6 +34,14 @@ describe("orderedSections", () => {
     expect(order[1]).toBe("meme");
     expect(new Set(order).size).toBe(order.length);
   });
+
+  // Production hides perpetuals (#382). Staging is where the desk is
+  // exercised, so here it is in the nav and the perps interest leads with it.
+  it("offers perpetuals in the navigation on staging", () => {
+    expect(orderedSections(null)).toContain("perps");
+    expect(orderedSections("perps")[1]).toBe("perps");
+    expect(sectionForPathname("/perps")).toBe("perps");
+  });
 });
 
 // Production hides real assets for now; staging shows them, and the

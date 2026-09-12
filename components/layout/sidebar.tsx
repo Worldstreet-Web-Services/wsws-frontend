@@ -11,7 +11,7 @@ import type { DashboardSection } from "@/lib/modal-types";
 import { truncateAddress } from "@/lib/format";
 import { deriveProfile, getWalletAddress } from "@/lib/user";
 import { GoLiveControl } from "@/components/broadcast/go-live-control";
-import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
+import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import { AccountPopover } from "@/components/layout/account-popover";
 
 interface SidebarProps {
@@ -37,17 +37,15 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
   const address = getWalletAddress(user, "ethereum");
   const t = useTranslations("topbar");
   // The square is a product with its own catalog namespace, so the rail reads
-  // its name from there rather than repeating the string.
+  // its name from there rather than repeating the string. The rail's word is
+  // "Square" (asked for 2026-09-12); the page keeps the fuller title.
   const tSquare = useTranslations("square");
-  // Null while the square is hidden, which is the same state a deployment
-  // without the URL is in, so the entry below needs no second condition.
-  //
-  // This reads MARKET_SQUARE_HIDDEN, the way-in switch, and nothing else. The
-  // rail's job is to link out to the square's own deployment, so it follows
-  // whether that deployment is configured and open. What the app renders of
-  // the square inside its own pages is SQUARE_SECTIONS_HIDDEN's question, and
-  // the rail must not read it: the entry stands while those sections are off.
-  const squareHref = MARKET_SQUARE_HIDDEN ? null : marketSquareHref();
+  // This reads MARKET_SQUARE_HIDDEN, the way-in switch, and nothing else. A
+  // hidden square (no URL, or an operator takedown) has no page to open, so
+  // the entry goes with it. What the portfolio renders of the square is
+  // SQUARE_SECTIONS_HIDDEN's question, and the rail must not read it: the
+  // entry stands while those sections are off.
+  const squareShown = !MARKET_SQUARE_HIDDEN;
 
   const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
@@ -155,19 +153,26 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
         <nav className="flex min-h-0 flex-col gap-[3px] overflow-x-hidden overflow-y-auto">
           {items.slice(0, squareIndex).map(renderItem)}
 
-          {/* Market Square is a sibling deployment, so it is a link rather than
-              a section, but the design gives it an ordinary rail row between
-              Prediction and Arkade instead of a promoted block of its own.
-              With the URL unset it renders nothing rather than a dead entry,
-              and MARKET_SQUARE_HIDDEN in lib/market-square.ts is the off
-              switch. It is not affected by SQUARE_SECTIONS_HIDDEN, which only
-              governs the square's own sections inside the app. */}
-          {squareHref !== null ? (
-            <a
-              href={squareHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium text-white/60 transition-colors hover:bg-white/6 hover:text-white"
+          {/* Market Square has a page of its own at /square (ADR-2026-09-12
+              square-page-in-app), and the design gives it an ordinary rail row
+              between Prediction and Arkade. It is a next/link like the logo
+              above rather than a nav button: the square is not in the
+              reorderable section list, so it is seated here by hand. The
+              outbound "Open the Square" sits on the page's header. With the
+              square hidden it renders nothing rather than a dead entry, and
+              MARKET_SQUARE_HIDDEN in lib/market-square.ts is the off switch.
+              It is not affected by SQUARE_SECTIONS_HIDDEN, which only governs
+              the square's sections on the portfolio. */}
+          {squareShown ? (
+            <Link
+              href="/square"
+              onClick={onClose}
+              data-tour-nav="square"
+              className={`flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-[11px] text-left font-sans text-[14.5px] font-medium transition-colors ${
+                activeSection === "square"
+                  ? "bg-accent/14 text-white"
+                  : "text-white/60 hover:bg-white/6 hover:text-white"
+              }`}
             >
               <span className="grid h-5 w-5 place-items-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -179,8 +184,8 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
                   className="h-[12.74px] w-[17.12px]"
                 />
               </span>
-              <span className="flex-1">{tSquare("title")}</span>
-            </a>
+              <span className="flex-1">{tSquare("navLabel")}</span>
+            </Link>
           ) : null}
 
           {items.slice(squareIndex).map(renderItem)}

@@ -15,7 +15,9 @@ import type { DashboardSection } from "@/lib/modal-types";
 // reads. An unknown key still surfaces as its path, so a typo fails loudly.
 const MESSAGES: Record<string, Record<string, string>> = {
   topbar: { menu: "Menu", closeMenu: "Close menu" },
-  square: { title: "Market Square" },
+  // The rail names the product "Square" (asked for 2026-09-12); the fuller
+  // "Market Square" stays the page's own title.
+  square: { title: "Market Square", navLabel: "Square" },
 };
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
@@ -44,9 +46,20 @@ vi.mock("@/components/layout/account-popover", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+// The stub keeps the class so the square entry's highlight can be read off it.
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({
+    children,
+    href,
+    className,
+  }: {
+    children: React.ReactNode;
+    href: string;
+    className?: string;
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
   ),
 }));
 // Both switches are stubbed even though the rail reads only the first: the
@@ -100,7 +113,7 @@ describe("Sidebar", () => {
    */
   it("offers no Market Square entry while the square is hidden", () => {
     renderSidebar();
-    expect(screen.queryByRole("link", { name: /market square/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^square$/i })).toBeNull();
     // The rest of the rail is untouched by the hide.
     expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
   });
@@ -121,10 +134,36 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toHaveAttribute(
-      "href",
-      "https://square.test"
+    expect(screen.getByRole("link", { name: /^square$/i })).toHaveAttribute("href", "/square");
+  });
+
+  /**
+   * The entry is a page in this app now, not a link out. It opens /square in
+   * the same tab like every other rail row; the outbound "Open the Square"
+   * lives on that page's header. And it lights up on its route the way the
+   * other rows do on theirs.
+   */
+  it("opens the Square page in the same tab, and lights up on it", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/market-square", () => ({
+      MARKET_SQUARE_HIDDEN: false,
+      marketSquareHref: () => "https://square.test",
+    }));
+    const { Sidebar: Shown } = await import("./sidebar");
+    render(
+      <Shown
+        items={[{ id: "portfolio", label: "Portfolio", icon: () => null }]}
+        activeSection="square"
+        onNavigate={() => {}}
+        open={false}
+        onClose={() => {}}
+      />
     );
+    const entry = screen.getByRole("link", { name: /^square$/i });
+    expect(entry).toHaveAttribute("href", "/square");
+    expect(entry).not.toHaveAttribute("target");
+    expect(entry.className).toContain("bg-accent/14");
+    expect(screen.queryByRole("link", { name: /square\.test/ })).toBeNull();
   });
 
   /**
@@ -151,10 +190,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toHaveAttribute(
-      "href",
-      "https://square.test"
-    );
+    expect(screen.getByRole("link", { name: /^square$/i })).toHaveAttribute("href", "/square");
   });
 
   /**
@@ -186,7 +222,7 @@ describe("Sidebar", () => {
     const rail = container.querySelector("nav");
     if (rail === null) throw new Error("the rail rendered no nav element");
     const rows = [...rail.children].map((el) => el.textContent);
-    expect(rows).toEqual(["Prediction", "Market Square", "Arkade", "Arktivity"]);
+    expect(rows).toEqual(["Prediction", "Square", "Arkade", "Arktivity"]);
   });
 
   // With no Arkade entry to sit above, the square must still appear rather
@@ -207,7 +243,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^square$/i })).toBeInTheDocument();
   });
 
   /**

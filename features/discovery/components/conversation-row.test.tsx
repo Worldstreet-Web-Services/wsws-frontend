@@ -106,6 +106,20 @@ describe("conversation row", () => {
     expect(heading).toHaveAttribute("target", "_blank");
   });
 
+  // Two of the square's cards only OPEN the square, so they open its page in
+  // this app. The one that does something, starting a room, still leaves.
+  it("sends the feed and the idle rooms card to the Square page, and Go live out", () => {
+    render(<ConversationRow />, { wrapper });
+    for (const name of [/Open the feed/, /Open Square/]) {
+      const pill = screen.getAllByRole("link", { name })[0];
+      expect(pill).toHaveAttribute("href", "/square");
+      expect(pill).not.toHaveAttribute("target");
+    }
+    const start = screen.getAllByRole("link", { name: /Start a room/ })[0];
+    expect(start).toHaveAttribute("href", "https://square.example");
+    expect(start).toHaveAttribute("target", "_blank");
+  });
+
   it("puts the live room on the square card", () => {
     useLiveConversations.mockReturnValue([
       {

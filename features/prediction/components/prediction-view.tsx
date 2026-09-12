@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { ArrowRightIcon } from "@/components/ui/icons";
 import { PredictionCard } from "@/features/prediction/components/prediction-card";
 import { BetModal } from "@/features/prediction/components/bet-modal";
+import { predictionDetailHref } from "@/features/prediction/gamma-category";
 import { PredictionPositions } from "@/features/prediction/components/prediction-positions";
 import { LocalPredictionView } from "@/features/prediction/components/local-prediction-view";
 import { usePredictions } from "@/features/prediction/hooks/use-predictions";
@@ -43,19 +46,33 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
 
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      {/* Source switch: live Polymarket markets vs our on-chain CPMM markets. */}
-      <div className="inline-flex gap-1 rounded-xl bg-white/5 p-1">
-        {(["polymarket", "local"] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setSource(s)}
-            className={`cursor-pointer rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-colors ${
-              source === s ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
-            }`}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Source switch: live Polymarket markets vs our on-chain CPMM markets. */}
+        <div className="inline-flex gap-1 rounded-xl bg-white/5 p-1">
+          {(["polymarket", "local"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSource(s)}
+              className={`cursor-pointer rounded-lg px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+                source === s ? "bg-white/12 text-white" : "text-white/50 hover:text-white/75"
+              }`}
+            >
+              {t(`sourceTab_${s}`)}
+            </button>
+          ))}
+        </div>
+
+        {/* The way into the full Explore market: every category, the sportsbook
+          and the combos desk, at /prediction/markets. */}
+        {!showAll && source === "polymarket" ? (
+          <Link
+            href="/prediction/markets"
+            className="group inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.055))] px-4 text-[13px] font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-[border-color,color,transform] hover:-translate-y-px hover:border-white/20 hover:text-white"
           >
-            {t(`sourceTab_${s}`)}
-          </button>
-        ))}
+            {t("exploreAllMarkets")}
+            <ArrowRightIcon className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ) : null}
       </div>
 
       {source === "local" ? (
@@ -80,7 +97,12 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             <div className="@container">
               <div className="grid grid-cols-2 gap-4 @min-[900px]:grid-cols-3 @min-[900px]:gap-6 @min-[1240px]:grid-cols-4 @min-[1240px]:gap-7">
                 {visiblePredictions.map((p) => (
-                  <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
+                  <PredictionCard
+                    key={p.q}
+                    prediction={p}
+                    onBuy={(yes) => openBet(p, yes)}
+                    href={predictionDetailHref(p)}
+                  />
                 ))}
               </div>
             </div>
@@ -89,7 +111,12 @@ export function PredictionView({ showAll = false }: { showAll?: boolean }) {
             // a horizontal slider, so the whole set reads on one scroll.
             <div className="flex flex-col gap-3">
               {visiblePredictions.map((p) => (
-                <PredictionCard key={p.q} prediction={p} onBuy={(yes) => openBet(p, yes)} />
+                <PredictionCard
+                  key={p.q}
+                  prediction={p}
+                  onBuy={(yes) => openBet(p, yes)}
+                  href={predictionDetailHref(p)}
+                />
               ))}
             </div>
           )}

@@ -8,6 +8,7 @@ import { useAppChrome, useReportActiveSection } from "@/components/layout/app-ch
 import { PortfolioView } from "@/features/portfolio";
 import { SectionOverview } from "@/components/ui/section-overview";
 import { SpotOverview } from "@/features/trade/components/spot-overview";
+import { PerpsOverview } from "@/features/trade/components/perps-overview";
 import { MemeOverview } from "@/features/trade/components/meme-overview";
 import { RwaOverview } from "@/features/rwa/components/rwa-overview";
 import { ExploreBanners } from "@/components/layout/explore-banners";
@@ -27,6 +28,7 @@ import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features
 // The desktop discovery shelves. Each falls back to a static editorial card
 // when the route has nothing live to feed it.
 import { ConversationRow } from "@/features/discovery/components/conversation-row";
+import { OwnMarketRow } from "@/features/discovery/components/own-market-row";
 import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { Next100xRow } from "@/features/discovery/components/next-100x-row";
 import { PredictionStartsRow } from "@/features/discovery/components/prediction-starts-row";
@@ -63,13 +65,13 @@ const PREVIEW_ROWS = 4;
  * service is, four live rows, and the way in. The order is not fixed here: the
  * nav decides it, so the section a user chose at onboarding still leads.
  */
-const BRIEFED_SECTIONS = ["spot", "meme", "rwa"] as const;
+const BRIEFED_SECTIONS = ["spot", "perps", "meme", "rwa"] as const;
 type BriefedSectionId = (typeof BRIEFED_SECTIONS)[number];
 
-// Briefs hidden from the dashboard at request. All three stay full routes of
+// Briefs hidden from the dashboard at request. All four stay full routes of
 // their own; they just do not get a brief here, so the dashboard shows no
 // service brief at all. Remove an id to bring its brief back.
-const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme"];
+const HIDDEN_BRIEFS: readonly SectionId[] = ["spot", "rwa", "meme", "perps"];
 
 function isBriefed(id: SectionId): id is BriefedSectionId {
   return (BRIEFED_SECTIONS as readonly SectionId[]).includes(id);
@@ -77,6 +79,7 @@ function isBriefed(id: SectionId): id is BriefedSectionId {
 
 const BRIEF_HREF: Record<BriefedSectionId, string> = {
   spot: "/spot",
+  perps: "/perps",
   meme: "/meme",
   rwa: "/rwa",
 };
@@ -122,11 +125,13 @@ const SCROLL_SECTIONS: readonly SectionId[] = ["portfolio"];
 // still re-renders on its own data.
 const Portfolio = memo(PortfolioView);
 const Spot = memo(SpotOverview);
+const Perps = memo(PerpsOverview);
 const Meme = memo(MemeOverview);
 const Rwa = memo(RwaOverview);
 
 const BRIEF_BODY: Record<BriefedSectionId, (props: { rows: number }) => React.ReactNode> = {
   spot: Spot,
+  perps: Perps,
   meme: Meme,
   rwa: Rwa,
 };
@@ -346,6 +351,11 @@ export function DashboardPage() {
         <div className="px-4">
           <Next100xRow memecoins={memeSpots} onBuy={discoveryTrade.onBuyMeme} />
         </div>
+        {/* "Own the market": the perps desk's shelf, the same one the desktop
+            band carries, in the phone's gutter. */}
+        <div className="px-4">
+          <OwnMarketRow />
+        </div>
         {rwaLeads ? null : <div className="px-4">{realAssets}</div>}
       </div>
 
@@ -360,6 +370,9 @@ export function DashboardPage() {
           onBuy={discoveryTrade.onBuyToken}
         />
         <ConversationRow />
+        {/* "Own The Market.": the perps desk's shelf, as the design draws it
+            beside the conversation band. */}
+        <OwnMarketRow />
         <Next100xRow memecoins={memeSpots} onBuy={discoveryTrade.onBuyMeme} />
         <PredictionStartsRow markets={predictionSpots} />
         {rwaLeads ? null : realAssets}

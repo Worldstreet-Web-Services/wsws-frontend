@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "{symbol} insuffisant",
     "priceUnavailable": "Prix indisponible",
     "loadingBalance": "Chargement de votre solde…",
-    "balanceSubject": "votre solde USDC"
+    "balanceSubject": "votre solde USDC",
+    "sideLabel": "Acheter ou vendre",
+    "youAreSelling": "Vous vendez",
+    "amountLabelSell": "Montant à vendre",
+    "sellShortcutsLabel": "Vendre une partie de votre solde"
   },
   "topbar": {
     "support": "support",
@@ -737,6 +741,7 @@
     "tokenMoveFlat": "<b>{symbol} est stable</b> ces 24 dernières heures.",
     "tokenMoveUnknown": "<b>{symbol}</b> n'a pas de variation sur 24 heures pour le moment.",
     "tabSpot": "Spot",
+    "tabLeverage": "Levier",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Prédictions",
     "tabsAria": "Catégories de marché",
@@ -1611,6 +1616,14 @@
         "checkers": {
           "name": "Dames",
           "note": "Parties rapides avec mise"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Encaissez avant la chute du multiplicateur"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Traversez chaque voie et encaissez avant le crash"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2807,7 +2820,7 @@
     "conversationHeadline": "Penser comme un grand maître d'échecs",
     "conversationJoin": "Rejoindre l'espace",
     "conversationPlay": "Jouer aux échecs",
-    "ownMarketTitle": "Dominez le marché.",
+    "ownMarketTitle": "Dominez le marché avec le <accent>trading à effet de levier</accent>.",
     "arenaTitle": "Entrez dans l'arène",
     "arenaBody": "Jouez votre coup. Gérez votre risque. Dominez le marché.",
     "arenaCta": "Trader",

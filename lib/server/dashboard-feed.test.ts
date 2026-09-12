@@ -9,6 +9,7 @@ const upstream = vi.hoisted(() => ({
   fetchMarketTokens: vi.fn(),
   fetchRwaMarket: vi.fn(),
   wsapiRwaRequest: vi.fn(),
+  wsapiPerpRequest: vi.fn(),
   fetch: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock("@/lib/server/market-tokens", () => ({ fetchMarketTokens: upstream.fetch
 vi.mock("@/lib/server/rwa-prices", () => ({ fetchRwaMarket: upstream.fetchRwaMarket }));
 vi.mock("@/lib/server/wsapi", () => ({
   wsapiRwaRequest: upstream.wsapiRwaRequest,
+  wsapiPerpRequest: upstream.wsapiPerpRequest,
 }));
 vi.mock("@/lib/server/upstreams", () => ({
   TRADE_BASE: "https://trade.test",
@@ -68,6 +70,32 @@ function healthyUpstreams() {
       marketCap: 9,
     },
   ]);
+  upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
+    path === "ark/assets"
+      ? ok([
+          {
+            id: "btc",
+            assetIndex: 0,
+            dex: "",
+            symbol: "BTC",
+            category: "crypto",
+            szDecimals: 5,
+            maxLeverage: 40,
+            isActive: true,
+          },
+        ])
+      : ok([
+          {
+            symbol: "BTC",
+            markPrice: "65000",
+            oraclePrice: "65010",
+            prevDayPrice: "64000",
+            dayVolumeUsd: "1",
+            openInterest: "1",
+            fundingRate: "0.0000125",
+          },
+        ])
+  );
   upstream.wsapiRwaRequest.mockResolvedValue(
     ok([
       {
@@ -228,6 +256,13 @@ describe("buildDashboardFeed", () => {
       priceUsd: 3000,
       change24h: 1.5,
     });
+    expect(feed.perps).toEqual([
+      { symbol: "BTC/USD", base: "BTC", priceUsd: 65000, maxLeverage: 40 },
+    ]);
+    expect(upstream.wsapiPerpRequest.mock.calls.map(([path]) => path).sort()).toEqual([
+      "ark/assets",
+      "ark/market-contexts",
+    ]);
     expect(feed.memes).toEqual([
       {
         address: "0xMeme",
@@ -259,10 +294,14 @@ describe("buildDashboardFeed", () => {
   it("marks a section unavailable when its upstream is down, and keeps the rest", async () => {
     healthyUpstreams();
     upstream.wsapiRwaRequest.mockResolvedValue(down());
+    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
+      path === "ark/assets" ? down() : ok([])
+    );
 
     const feed = await buildDashboardFeed();
 
     expect(feed.rwa).toBeNull();
+    expect(feed.perps).toBeNull();
     expect(feed.spot).not.toBeNull();
     expect(feed.memes).not.toBeNull();
   });
@@ -344,6 +383,31 @@ describe("buildDashboardFeed", () => {
     });
     const feed = await buildDashboardFeed();
     expect(feed.memes?.map((m) => m.symbol)).toEqual(["BASECAT"]);
+  });
+
+  it("prices the perps brief from the app's own feed when only the marks are down", async () => {
+    healthyUpstreams();
+    const assets = upstream.wsapiPerpRequest.getMockImplementation()!;
+    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
+      path === "ark/assets" ? assets(path) : down()
+    );
+    upstream.fetchPrices.mockImplementation(async (symbols: string[]) =>
+      symbols.map((symbol) => ({ symbol, priceUsd: symbol === "BTC" ? 64000 : 1 }))
+    );
+
+    const feed = await buildDashboardFeed();
+    expect(feed.perps?.[0]).toMatchObject({ symbol: "BTC/USD", priceUsd: 64000 });
+  });
+
+  it("marks the perps brief unavailable when the asset list breaks its contract", async () => {
+    healthyUpstreams();
+    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
+      path === "ark/assets" ? ok([{ symbol: "BTC" }]) : ok([])
+    );
+
+    const feed = await buildDashboardFeed();
+    expect(feed.perps).toBeNull();
+    expect(feed.spot).not.toBeNull();
   });
 
   it("keeps the live chips from the sources that answered", async () => {

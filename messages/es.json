@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "{symbol} insuficiente",
     "priceUnavailable": "Precio no disponible",
     "loadingBalance": "Cargando tu saldo…",
-    "balanceSubject": "tu saldo de USDC"
+    "balanceSubject": "tu saldo de USDC",
+    "sideLabel": "Comprar o vender",
+    "youAreSelling": "Estás vendiendo",
+    "amountLabelSell": "Cantidad a vender",
+    "sellShortcutsLabel": "Vender una parte de tu saldo"
   },
   "topbar": {
     "support": "soporte",
@@ -737,6 +741,7 @@
     "tokenMoveFlat": "<b>{symbol} se mantiene estable</b> en las últimas 24 horas.",
     "tokenMoveUnknown": "<b>{symbol}</b> no tiene movimiento de 24 horas por ahora.",
     "tabSpot": "Spot",
+    "tabLeverage": "Apalancamiento",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Predicción",
     "tabsAria": "Categorías de mercado",
@@ -1611,6 +1616,14 @@
         "checkers": {
           "name": "Damas",
           "note": "Partidas rápidas con apuesta"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Retira antes de que caiga el multiplicador"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cruza cada carril y retira antes del choque"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2807,7 +2820,7 @@
     "conversationHeadline": "Cómo pensar como un gran maestro del ajedrez",
     "conversationJoin": "Unirse al espacio",
     "conversationPlay": "Jugar al ajedrez",
-    "ownMarketTitle": "Domina el mercado.",
+    "ownMarketTitle": "Domina el mercado con <accent>trading apalancado</accent>.",
     "arenaTitle": "Entra en la arena",
     "arenaBody": "Haz tu jugada. Gestiona tu riesgo. Domina el mercado.",
     "arenaCta": "Operar ahora",

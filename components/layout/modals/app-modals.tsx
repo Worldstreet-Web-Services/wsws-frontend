@@ -145,7 +145,9 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
         />
       ) : null}
       {active?.type === "buy" ? <BuySheet payload={active.buy} onClose={onClose} /> : null}
-      {active?.type === "sell" ? <SellSheet payload={active.sell} onClose={onClose} /> : null}
+      {active?.type === "sell" ? (
+        <SellSheet payload={active.sell} initialAmount={active.sell.amount} onClose={onClose} />
+      ) : null}
       {active?.type === "memeSell" ? (
         <MemeTradeSheet
           token={active.memeSell}

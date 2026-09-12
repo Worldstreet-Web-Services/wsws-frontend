@@ -31,13 +31,18 @@ vi.mock("@/features/trade/hooks/use-meme-tokens", () => ({
 }));
 
 const router = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
+const search = vi.hoisted(() => ({ query: "" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(search.query),
 }));
 // This suite mounts the phone view directly, so it always renders as mobile; the
 // md handoff to /spot etc. is exercised by the route pages, not here.
 vi.mock("@/hooks/use-is-mobile", () => ({ useIsMobile: () => true }));
+
+vi.mock("@/features/trade/components/perps-section", () => ({
+  PerpsSection: () => <div data-testid="perps-desk" />,
+}));
 
 // The hosted panels are other agents' components. They are stubbed so this
 // suite tests the chrome, and so a change inside them cannot fail it.
@@ -168,7 +173,8 @@ function renderView() {
   return { onOpenDetail, onOpenBuy };
 }
 
-const tabNames = ["Spot", "Memecoins", "Real assets", "Prediction"];
+const tabNames = ["Spot", "Leverage", "Memecoins", "Real assets", "Prediction"];
+const [SPOT, PERPS, MEMES, RWA, PREDICTION] = [0, 1, 2, 3, 4];
 
 // Each tab names its own field, so a test says which list it is searching.
 // The Real assets and Prediction fields belong to those panels, not to this
@@ -216,7 +222,7 @@ beforeEach(() => {
 
 describe("MobileMarketView chrome", () => {
   // Gap 3: the strip is a real tab control, not a row of buttons.
-  it("renders a labelled tablist of the four market categories", () => {
+  it("renders a labelled tablist of the five market categories", () => {
     renderView();
     const strip = screen.getByRole("tablist", { name: "Market categories" });
     const found = within(strip)
@@ -227,16 +233,44 @@ describe("MobileMarketView chrome", () => {
 
   it("marks only the active tab selected and keeps it the sole tab stop", () => {
     renderView();
-    const [spotTab, memeTab] = tabs();
+    const spotTab = tabs()[SPOT];
+    const memeTab = tabs()[MEMES];
     expect(spotTab).toHaveAttribute("aria-selected", "true");
     expect(spotTab).toHaveAttribute("tabindex", "0");
     expect(memeTab).toHaveAttribute("aria-selected", "false");
     expect(memeTab).toHaveAttribute("tabindex", "-1");
 
     fireEvent.click(memeTab);
-    expect(tabs()[1]).toHaveAttribute("aria-selected", "true");
-    expect(tabs()[1]).toHaveAttribute("tabindex", "0");
-    expect(tabs()[0]).toHaveAttribute("tabindex", "-1");
+    expect(tabs()[MEMES]).toHaveAttribute("aria-selected", "true");
+    expect(tabs()[MEMES]).toHaveAttribute("tabindex", "0");
+    expect(tabs()[SPOT]).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("mounts the perps desk only on the Leverage tab, in a scroll box", () => {
+    renderView();
+    expect(screen.queryByTestId("perps-desk")).toBeNull();
+
+    fireEvent.click(tabs()[PERPS]);
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Leverage");
+    expect(screen.getByTestId("perps-panel-scroll")).toContainElement(
+      screen.getByTestId("perps-desk")
+    );
+    expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
+
+    fireEvent.click(tabs()[SPOT]);
+    expect(screen.queryByTestId("perps-desk")).toBeNull();
+  });
+
+  // The home page's "Own the Market" banner links here with ?tab=perps.
+  it("opens on the Leverage tab when the link names it", () => {
+    search.query = "tab=perps";
+    try {
+      renderView();
+      expect(tabs()[PERPS]).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByTestId("perps-desk")).toBeInTheDocument();
+    } finally {
+      search.query = "";
+    }
   });
 
   it("exposes the active panel as a tabpanel named by its tab", () => {
@@ -244,34 +278,34 @@ describe("MobileMarketView chrome", () => {
     const panel = screen.getByRole("tabpanel");
     expect(panel).toHaveAccessibleName("Spot");
 
-    fireEvent.click(tabs()[3]);
+    fireEvent.click(tabs()[PREDICTION]);
     expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Prediction");
     expect(screen.getByTestId("prediction-panel")).toBeInTheDocument();
   });
 
   it("moves selection with arrow keys and Home/End, not with Tab", () => {
     renderView();
-    fireEvent.keyDown(tabs()[0], { key: "ArrowRight" });
-    expect(tabs()[1]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tabs()[SPOT], { key: "ArrowRight" });
+    expect(tabs()[PERPS]).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.keyDown(tabs()[1], { key: "End" });
-    expect(tabs()[3]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tabs()[PERPS], { key: "End" });
+    expect(tabs()[PREDICTION]).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.keyDown(tabs()[3], { key: "Home" });
-    expect(tabs()[0]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tabs()[PREDICTION], { key: "Home" });
+    expect(tabs()[SPOT]).toHaveAttribute("aria-selected", "true");
 
     // Wraps backwards from the first tab to the last.
-    fireEvent.keyDown(tabs()[0], { key: "ArrowLeft" });
-    expect(tabs()[3]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tabs()[SPOT], { key: "ArrowLeft" });
+    expect(tabs()[PREDICTION]).toHaveAttribute("aria-selected", "true");
   });
 
   // Gap 5: the strip scrolls, so a selected tab off-screen must be brought in.
   it("scrolls the newly selected tab into view", () => {
     renderView();
     const scrollIntoView = vi.fn();
-    const target = tabs()[3];
+    const target = tabs()[PREDICTION];
     target.scrollIntoView = scrollIntoView;
-    fireEvent.keyDown(tabs()[0], { key: "End" });
+    fireEvent.keyDown(tabs()[SPOT], { key: "End" });
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
@@ -283,7 +317,7 @@ describe("MobileMarketView chrome", () => {
     expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toBeEnabled();
     expect(screen.queryByRole("searchbox", { name: MEME_SEARCH })).toBeNull();
 
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toBeEnabled();
     expect(screen.queryByRole("searchbox", { name: SPOT_SEARCH })).toBeNull();
   });
@@ -294,7 +328,7 @@ describe("MobileMarketView chrome", () => {
     renderView();
     expect(marketList()).toContainElement(screen.getByRole("searchbox", { name: SPOT_SEARCH }));
 
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     expect(memeMarketList()).toContainElement(screen.getByRole("searchbox", { name: MEME_SEARCH }));
   });
 
@@ -302,10 +336,10 @@ describe("MobileMarketView chrome", () => {
   // them. A disabled field that swallowed what the reader typed is gone.
   it("draws no field of its own for the panels that search themselves", () => {
     renderView();
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[RWA]);
     expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
 
-    fireEvent.click(tabs()[3]);
+    fireEvent.click(tabs()[PREDICTION]);
     expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
   });
 
@@ -327,7 +361,7 @@ describe("MobileMarketView chrome", () => {
   it("shows the catalogue's empty and error copy for the memecoin list", () => {
     memes.error = new Error("down");
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     expect(screen.getByText("Memecoin markets are unavailable right now.")).toBeInTheDocument();
   });
 
@@ -342,10 +376,10 @@ describe("MobileMarketView chrome", () => {
     });
     expect(screen.queryByText("BTC")).toBeNull();
 
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toHaveValue("");
 
-    fireEvent.click(tabs()[0]);
+    fireEvent.click(tabs()[SPOT]);
     expect(screen.getByRole("searchbox", { name: SPOT_SEARCH })).toHaveValue("eth");
     expect(screen.queryByText("BTC")).toBeNull();
   });
@@ -421,8 +455,8 @@ describe("MobileMarketView chrome", () => {
   it("puts the ticket away when the category changes", () => {
     renderView();
     fireEvent.click(screen.getByText("BTC"));
-    fireEvent.click(tabs()[1]);
-    fireEvent.click(tabs()[0]);
+    fireEvent.click(tabs()[MEMES]);
+    fireEvent.click(tabs()[SPOT]);
 
     expect(screen.queryByTestId("spot-ticket")).not.toBeInTheDocument();
     expect(marketList()).toBeVisible();
@@ -434,11 +468,11 @@ describe("MobileMarketView chrome", () => {
     renderView();
     expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();
 
-    fireEvent.click(tabs()[2]);
+    fireEvent.click(tabs()[RWA]);
     const panel = screen.getByTestId("rwa-panel-scroll");
     expect(panel).toContainElement(screen.getByTestId("rwa-panel"));
 
-    fireEvent.click(tabs()[0]);
+    fireEvent.click(tabs()[SPOT]);
     expect(screen.queryByTestId("rwa-panel")).not.toBeInTheDocument();
   });
 });
@@ -452,12 +486,12 @@ describe("MobileMarketView, hosting the prediction list", () => {
     renderView();
     expect(screen.queryByTestId("prediction-panel")).not.toBeInTheDocument();
 
-    fireEvent.click(tabs()[3]);
+    fireEvent.click(tabs()[PREDICTION]);
     expect(screen.getByTestId("prediction-panel")).toBeInTheDocument();
 
     // Leaving the tab takes it back down, so a reader who never opens
     // Prediction never pays for its feed.
-    fireEvent.click(tabs()[0]);
+    fireEvent.click(tabs()[SPOT]);
     expect(screen.queryByTestId("prediction-panel")).not.toBeInTheDocument();
   });
 
@@ -466,7 +500,7 @@ describe("MobileMarketView, hosting the prediction list", () => {
   // unreachable.
   it("gives the prediction list a scroll container of its own", () => {
     renderView();
-    fireEvent.click(tabs()[3]);
+    fireEvent.click(tabs()[PREDICTION]);
 
     const panel = screen.getByTestId("prediction-panel-scroll");
     expect(panel).toContainElement(screen.getByTestId("prediction-panel"));
@@ -562,7 +596,7 @@ describe("MobileMarketView, list pagination", () => {
   it("shows only the first page of the memecoin list, and pages it the same way", () => {
     memes.tokens = memeTokens(9);
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
 
     expect(screen.getByText("MEME0")).toBeInTheDocument();
     expect(screen.queryByText("MEME8")).not.toBeInTheDocument();
@@ -576,7 +610,7 @@ describe("MobileMarketView, list pagination", () => {
   it("resets the memecoin list to page 1 when a search narrows it", () => {
     memes.tokens = memeTokens(9);
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(liveStatus()).toHaveTextContent("Page 2 of 2");
 
@@ -594,7 +628,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("opens a full-screen ticket for the tapped memecoin and puts the list away", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("PEPE"));
 
     expect(screen.getByTestId("meme-trade-ticket")).toBeInTheDocument();
@@ -605,7 +639,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("comes back to the memecoin list from the ticket without leaving the page", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("PEPE"));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -620,7 +654,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("keeps the memecoin list's scroll position across a trip into the ticket", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     const list = memeMarketList();
     let scrollTop = 0;
     Object.defineProperty(list, "scrollTop", {
@@ -645,7 +679,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("does not open the trade sheet from the row tap alone", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("PEPE"));
 
     expect(screen.queryByTestId("meme-sheet")).not.toBeInTheDocument();
@@ -656,7 +690,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("executes a Base memecoin order inline on submit, without opening the sheet", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe", chainId: 8453 })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("PEPE"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
 
@@ -672,7 +706,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("hands a Solana memecoin order to the trade sheet on submit, instead of running it inline", () => {
     memes.tokens = [memeToken({ symbol: "WIF", name: "dogwifhat", chainId: SOLANA_CHAIN_ID })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("WIF"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
 
@@ -687,7 +721,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("closes the trade sheet back to the ticket, not out to the list", () => {
     memes.tokens = [memeToken({ symbol: "WIF", name: "dogwifhat", chainId: SOLANA_CHAIN_ID })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("WIF"));
     fireEvent.click(screen.getByRole("button", { name: "submit trade" }));
     fireEvent.click(screen.getByRole("button", { name: "close sheet" }));
@@ -700,10 +734,10 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("puts the memecoin ticket away when the category changes", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     fireEvent.click(screen.getByText("PEPE"));
-    fireEvent.click(tabs()[0]);
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[SPOT]);
+    fireEvent.click(tabs()[MEMES]);
 
     expect(screen.queryByTestId("meme-trade-ticket")).not.toBeInTheDocument();
     expect(memeMarketList()).toBeVisible();
@@ -712,7 +746,7 @@ describe("MobileMarketView, the memecoin tap-to-screen ticket", () => {
   it("takes the search field away while the memecoin ticket is open", () => {
     memes.tokens = [memeToken({ symbol: "PEPE", name: "Pepe" })];
     renderView();
-    fireEvent.click(tabs()[1]);
+    fireEvent.click(tabs()[MEMES]);
     expect(screen.getByRole("searchbox", { name: MEME_SEARCH })).toBeEnabled();
 
     fireEvent.click(screen.getByText("PEPE"));

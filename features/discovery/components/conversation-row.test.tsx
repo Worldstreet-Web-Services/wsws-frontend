@@ -56,6 +56,7 @@ function wrapper({ children }: { children: ReactNode }) {
 const feed = (live: DashboardFeed["live"]): DashboardFeed => ({
   asOf: Date.now(),
   spot: null,
+  perps: null,
   memes: null,
   rwa: null,
   live,

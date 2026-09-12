@@ -14,8 +14,11 @@ import {
   SpotChartDisclosure,
   type SpotChangeDirection,
 } from "@/features/trade/components/spot-pair-header";
+import { SpotSellShortcuts } from "@/features/trade/components/spot-sell-shortcuts";
+import { SpotSideSwitch, type SpotSide } from "@/features/trade/components/spot-side-switch";
 import { SpotTradeActions } from "@/features/trade/components/spot-trade-actions";
 import { useSpotBuy } from "@/features/trade/hooks/use-spot-buy";
+import { useSpotSell } from "@/features/trade/hooks/use-spot-sell";
 import type { SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { tokenBg } from "@/lib/trade/assets";
@@ -28,13 +31,6 @@ import type { SellPayload } from "@/lib/modal-types";
 const AssetChart = dynamic(() => import("@/components/ui/asset-chart").then((m) => m.AssetChart), {
   ssr: false,
 });
-
-// Dynamic for the same reason: the sell sheet carries the whole sell flow, and
-// only mounts once Sell is pressed.
-const SellSheet = dynamic(
-  () => import("@/features/trade/components/sell-sheet").then((m) => m.SellSheet),
-  { ssr: false }
-);
 
 // Every spot order is paid for in USDC on Base, the same rail the buy sheet and
 // the desktop desk use. There is no other pay token, so the ticket names one.
@@ -91,6 +87,14 @@ function priceLabel(priceUsd: number): string {
   return formatUsd(priceUsd).slice(1);
 }
 
+// A price-feed estimate with the dollar sign dropped, for the same reason: the
+// summary names USDC beside the number. Separate from priceLabel because this
+// one is called at zero, which is an empty field rather than a missing price,
+// and a non-finite estimate reads as nothing rather than as "NaN".
+function usdEstimateLabel(value: number): string {
+  return formatUsd(Number.isFinite(value) && value > 0 ? value : 0).slice(1);
+}
+
 export interface SpotTicketProps {
   // The market this ticket is pointed at. The list above chose it.
   market: SpotMarket;
@@ -124,14 +128,27 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
   const portfolio = usePortfolio();
 
   const [amount, setAmount] = useState("");
+  const [side, setSide] = useState<SpotSide>("buy");
   const [chartExpanded, setChartExpanded] = useState(false);
-  const [sellPayload, setSellPayload] = useState<SellPayload | null>(null);
+  // True when the amount came from the Max shortcut, so a chain that has moved
+  // under us can preserve that intent while still asking for another look.
+  const [maxRequested, setMaxRequested] = useState(false);
 
   // Clear the amount when the market changes, so a figure meant for one asset
   // never carries into another. The same guard the desktop desk runs.
   const [pricedMarket, setPricedMarket] = useState(market.symbol);
   if (market.symbol !== pricedMarket) {
     setPricedMarket(market.symbol);
+    setAmount("");
+  }
+
+  // And clear it when the side flips, for the same reason: the two legs are
+  // denominated in different assets, so carrying "100" from a USDC buy into a
+  // sell would mean 100 of the coin. That silent reinterpretation is the whole
+  // bug this switch exists to remove; leaving the figure behind would keep it.
+  const [enteredSide, setEnteredSide] = useState<SpotSide>(side);
+  if (side !== enteredSide) {
+    setEnteredSide(side);
     setAmount("");
   }
 
@@ -166,22 +183,56 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
   // all of which the sell sheet already asks for. The route above mounts a
   // modal host of its own but hands this view no sell opener, so the ticket
   // carries the sheet itself.
-  const requestSell = () => {
-    if (!held) return;
-    setSellPayload({
-      symbol: held.symbol,
-      name: held.name,
-      network: held.network,
-      address: held.address,
-      decimals: held.decimals,
-      balance: held.balance,
-      rawBalance: held.rawBalance,
-      priceUsd: held.priceUsd > 0 ? held.priceUsd : market.priceUsd,
-      logo: held.logo ?? market.logo,
-    });
-  };
+  // The holding as the sell flow wants it. Null when the wallet holds none,
+  // which leaves every sell control inert rather than offering a sale of
+  // nothing.
+  const holding: SellPayload | null = held
+    ? {
+        symbol: held.symbol,
+        name: held.name,
+        network: held.network,
+        address: held.address,
+        decimals: held.decimals,
+        balance: held.balance,
+        rawBalance: held.rawBalance,
+        priceUsd: held.priceUsd > 0 ? held.priceUsd : market.priceUsd,
+        logo: held.logo ?? market.logo,
+      }
+    : null;
+
+  const sell = useSpotSell({
+    holding,
+    maxRequested,
+    onSold: () => {
+      setAmount("");
+      setMaxRequested(false);
+    },
+    onAmountCorrected: (corrected) => setAmount(corrected),
+  });
 
   const direction = changeDirection(market.change24h);
+
+  // What the amount field is denominated in. Buying spends USDC; selling draws
+  // down the holding, so the field counts the coin and measures against what
+  // the wallet actually holds.
+  const selling = side === "sell";
+  const fieldSymbol = selling ? market.symbol : PAY_SYMBOL;
+  const fieldDecimals = selling ? (held?.decimals ?? PAY_DECIMALS) : PAY_DECIMALS;
+  const fieldBalance = selling ? (held ? BigInt(held.rawBalance) : 0n) : payBalance;
+  const fieldLogo = selling ? (held?.logo ?? market.logo) : undefined;
+  const heldUnits = held ? BigInt(held.rawBalance) : null;
+
+  /**
+   * What a sale of the entered amount is worth, for the summary rows.
+   *
+   * A price-feed estimate, shown and never used to build a transaction: the
+   * sell sheet quotes the real figure at fill, which is why these rows are
+   * labelled "You receive" and "Est. fee" rather than stated as facts. The
+   * price arrives from the feed as a float, so the multiplication is done in
+   * floats too; nothing here reaches a signature.
+   */
+  const sellProceeds = selling && amount ? Number(amount) * market.priceUsd : 0;
+  const sellFee = (sellProceeds * Number(FEE_BPS)) / Number(BPS);
 
   return (
     <div className="flex flex-col gap-6 pt-4 pb-8">
@@ -238,6 +289,8 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
         </Disclosure>
       </div>
 
+      <SpotSideSwitch side={side} onChange={setSide} disabled={buy.pending} />
+
       <div className="flex flex-col gap-3">
         <div
           data-testid="spot-price-row"
@@ -273,18 +326,46 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
           <SpotAmountCard
             amount={amount}
             onAmountChange={setAmount}
-            balance={payBalance}
-            payDecimals={PAY_DECIMALS}
-            paySymbol={PAY_SYMBOL}
-            disabled={buy.pending}
+            balance={fieldBalance}
+            payDecimals={fieldDecimals}
+            paySymbol={fieldSymbol}
+            payLogo={fieldLogo}
+            side={side}
+            // The share shortcuts belong inside the field's own border, under
+            // the input, the way the meme desk draws them.
+            footer={
+              selling ? (
+                <SpotSellShortcuts
+                  held={heldUnits}
+                  decimals={fieldDecimals}
+                  onSelect={(next) => {
+                    setAmount(next);
+                    setMaxRequested(next === sell.maxAmount);
+                  }}
+                  disabled={buy.pending || sell.pending}
+                />
+              ) : null
+            }
+            // Nothing to sell means nothing to type. The action below says so
+            // in words; a live field over a zero balance would only invite an
+            // amount that can never execute.
+            disabled={buy.pending || (selling && !held)}
           />
         )}
 
         {/* Order value and the fee on it, both from the exact base units the
-            amount field produced. */}
+            amount field produced. Buy only: these rows price a purchase in
+            USDC, and on the sell leg the field is counting the coin, so the
+            same numbers would describe a trade nobody asked for. The sell
+            sheet carries the sell's own summary. */}
+        {/* Both legs carry a summary, so the panel keeps its shape when the
+            switch moves. The buy leg prices the purchase from the exact base
+            units the field produced; the sell leg estimates the payout from the
+            price feed, which is why its rows say "You receive" and "Est. fee". */}
         <SpotOrderSummary
-          purchaseValue={usdcLabel(amountUnits)}
-          fee={usdcLabel(feeUnits)}
+          side={side}
+          purchaseValue={selling ? usdEstimateLabel(sellProceeds) : usdcLabel(amountUnits)}
+          fee={selling ? usdEstimateLabel(sellFee) : usdcLabel(feeUnits)}
           symbol={PAY_SYMBOL}
           loading={portfolio.loading}
         />
@@ -298,6 +379,7 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
         />
       ) : portfolio.loading ? null : (
         <SpotTradeActions
+          side={side}
           amount={amount}
           pay={{ balance: payBalance, decimals: PAY_DECIMALS, symbol: PAY_SYMBOL }}
           // Buy spends USDC, Sell draws down this market's asset, so each side
@@ -314,8 +396,11 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
               : { balance: null, symbol: market.symbol }
           }
           onBuy={() => void buy.submit()}
-          onSell={requestSell}
-          pending={buy.pending ? "buy" : null}
+          // Sells in place. The amount is already entered, in the coin, on the
+          // leg the reader chose, so a second screen asking for it again was
+          // the ticket refusing to do what its button says.
+          onSell={(entered) => void sell.submit(entered)}
+          pending={buy.pending ? "buy" : sell.pending ? "sell" : null}
         />
       )}
 
@@ -367,10 +452,6 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
           </p>
         )}
       </div>
-
-      {sellPayload ? (
-        <SellSheet payload={sellPayload} onClose={() => setSellPayload(null)} />
-      ) : null}
     </div>
   );
 }

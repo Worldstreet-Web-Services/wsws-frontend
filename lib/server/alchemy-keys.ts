@@ -13,12 +13,22 @@ import "server-only";
  * impossible to stub in a test and impossible to change without a redeploy.
  */
 
-/** Configured keys, primary first. Blanks and duplicates are dropped. */
+/**
+ * Configured keys, primary first, blanks and duplicates dropped.
+ *
+ * Each variable may hold a SINGLE key or a comma-separated list of them, so a
+ * pool can be given either as one key per variable (ALCHEMY_API_KEY plus
+ * ALCHEMY_API_KEY_FALLBACK) or as several inside one variable
+ * (ALCHEMY_API_KEY="keyA,keyB,keyC") — the comma form is what lets ops rotate
+ * in a replacement without a code change. Both forms flatten into the same
+ * ordered pool `rotate` walks.
+ */
 export function alchemyKeys(): string[] {
   const configured = [process.env.ALCHEMY_API_KEY, process.env.ALCHEMY_API_KEY_FALLBACK];
   return configured
-    .map((key) => key?.trim())
-    .filter((key, index, all): key is string => Boolean(key) && all.indexOf(key) === index);
+    .flatMap((value) => (value ?? "").split(","))
+    .map((key) => key.trim())
+    .filter((key, index, all) => Boolean(key) && all.indexOf(key) === index);
 }
 
 /** True when at least one key is configured. Routes use it to answer 503. */

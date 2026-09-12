@@ -10,6 +10,11 @@ const lobbyFrame = readFileSync(
   "features/casino/components/chess-app/chess-lobby-frame.tsx",
   "utf8"
 );
+const chessLayout = readFileSync("app/(session)/casino/chess/layout.tsx", "utf8");
+const headerActionsCss = readFileSync(
+  "features/casino/components/chess-app/chess-profile-balance.module.css",
+  "utf8"
+);
 const siteCss = readFileSync("public/chess/lichess/css/site.css", "utf8");
 const themeCss = readFileSync("public/chess/lichess/css/theme.css", "utf8");
 
@@ -31,22 +36,32 @@ describe("chess dark canvas", () => {
     expect(shell).not.toContain("usePortfolio");
     expect(shell).toContain("Back to Arkade");
     expect(shell).toContain('className="arkade-mobile"');
-    expect(shell).toContain("import { ChessProfileBalance }");
-    expect(shell).toContain("<ChessProfileBalance />");
+    expect(shell).toContain("data-chess-header-actions-space");
+    expect(shell).not.toContain("<ChessProfileBalance />");
     expect(profileBalance).toContain('style={{ marginInlineEnd: "16px" }}');
     expect(profileBalance).toContain('href="/casino"');
     expect(profileBalance).toContain(">\n        Arkade\n      </Link>");
-    expect(lobbyFrame).toContain("<ChessProfileBalance />");
+    expect(lobbyFrame).not.toContain("<ChessProfileBalance />");
+    expect(chessLayout).toContain("<ChessHeaderActions />");
+    expect(profileBalance).toContain("data-chess-header-actions");
+    expect(profileBalance).toContain("w-[232px]");
+    expect(profileBalance).toContain("min-[1020px]:w-[304px]");
     expect(profileBalance).toContain('import { usePortfolio } from "@/hooks/use-portfolio"');
     expect(profileBalance).toContain("usePortfolio()");
     expect(profileBalance).not.toContain("useCasinoWallet");
     expect(profileBalance).not.toContain("fetch(");
+    expect(headerActionsCss).toContain(".arkadeAction");
+    expect(headerActionsCss).toContain(".profileAction");
+    expect(headerActionsCss).toContain(".legacyAction");
+    expect(headerActionsCss).toContain("padding-inline: 0.75rem");
   });
 
   it("uses the Twitter/X black canvas across React and Lichess pages", () => {
     expect(shell).toContain('"relative bg-black text-white"');
     expect(shell).not.toContain("linear-gradient(180deg, #0d1012");
-    expect(lobbyFrame).toContain('className="fixed inset-0 h-dvh w-full border-0 bg-black"');
+    expect(lobbyFrame).toContain(
+      "fixed inset-0 h-dvh w-full border-0 bg-black transition-opacity duration-150"
+    );
     expect(siteCss).toMatch(/body \{\s+background: #000;/);
   });
 

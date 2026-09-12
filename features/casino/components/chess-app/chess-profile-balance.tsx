@@ -1,10 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { useMoney } from "@/components/ui/currency-select";
 import { LegacyChessBalance } from "@/features/casino/components/chess-app/legacy-chess-balance";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import styles from "./chess-profile-balance.module.css";
+
+export function ChessHeaderActions() {
+  const pathname = usePathname();
+  const { ready, authenticated } = usePrivy();
+
+  if (!ready || !authenticated || pathname === "/casino/chess/embed") return null;
+
+  return (
+    <div
+      className="pointer-events-none fixed top-0 right-0 z-[120] flex h-[60px] w-[232px] items-center justify-end min-[1020px]:w-[304px]"
+      data-chess-header-actions
+    >
+      <span className="pointer-events-auto">
+        <ChessProfileBalance />
+      </span>
+    </div>
+  );
+}
 
 export function ChessProfileBalance() {
   const { totalUsd, loading, error } = usePortfolio();
@@ -19,7 +40,7 @@ export function ChessProfileBalance() {
     >
       <Link
         href="/casino"
-        className="hidden h-9 shrink-0 items-center rounded-[9px] border border-white/10 bg-white/[0.04] px-3 text-[11px] font-semibold tracking-[0.02em] text-white/60 no-underline transition-colors hover:border-white/20 hover:bg-white/[0.075] hover:text-white min-[1020px]:inline-flex"
+        className={`${styles.arkadeAction} hidden h-9 shrink-0 items-center rounded-[9px] border border-white/10 bg-white/[0.04] px-3 text-[11px] font-semibold tracking-[0.02em] text-white/60 no-underline transition-colors hover:border-white/20 hover:bg-white/[0.075] hover:text-white min-[1020px]:inline-flex`}
         aria-label="Back to Arkade"
       >
         Arkade
@@ -27,7 +48,7 @@ export function ChessProfileBalance() {
       <LegacyChessBalance />
       <Link
         href="/dashboard"
-        className="flex h-10 min-w-[104px] shrink-0 self-center items-center justify-end rounded-[10px] border border-white/10 bg-white/[0.045] px-3 text-right no-underline shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-colors hover:border-white/20 hover:bg-white/[0.075]"
+        className={`${styles.profileAction} flex h-10 min-w-[104px] shrink-0 self-center items-center justify-end rounded-[10px] border border-white/10 bg-white/[0.045] px-3 text-right no-underline shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-colors hover:border-white/20 hover:bg-white/[0.075]`}
         aria-label={error ? "Profile balance unavailable" : `Profile balance ${value}`}
         data-sensitive="balance"
       >

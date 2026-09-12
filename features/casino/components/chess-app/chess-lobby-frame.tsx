@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { ChessProfileBalance } from "@/features/casino/components/chess-app/chess-profile-balance";
 import {
   friendTimeControl,
   useFundedChessChallenge,
@@ -124,8 +124,11 @@ export function rewriteChessFrameLinks(
 
 export function ChessLobbyFrame({ source }: { source: string }) {
   const router = useRouter();
+  const { logout } = usePrivy();
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const authRedirectingRef = useRef(false);
   const [frameSource, setFrameSource] = useState(source);
+  const [frameReady, setFrameReady] = useState(false);
   const computer = useFundedChessComputer();
   const startComputer = computer.start;
   const baseUsdcBalance = computer.availableUsdc;
@@ -143,6 +146,7 @@ export function ChessLobbyFrame({ source }: { source: string }) {
   }, []);
 
   useEffect(() => {
+    setFrameReady(false);
     setFrameSource(source);
   }, [source]);
 
@@ -407,13 +411,33 @@ export function ChessLobbyFrame({ source }: { source: string }) {
           if (submitLabel) submitLabel.textContent = "▶ Join the game";
         });
     };
-    const attach = () => {
+    const attach = (reveal: boolean) => {
       frameDocument?.removeEventListener("click", onFrameClick, true);
       lobbyForm?.removeEventListener("submit", onLobbySubmit, true);
       computerForm?.removeEventListener("submit", onComputerSubmit, true);
       friendForm?.removeEventListener("submit", onFriendSubmit, true);
       fundedFriendAcceptForm?.removeEventListener("submit", onFundedFriendAccept, true);
       frameDocument = frame.contentDocument;
+      const frameText = frameDocument?.body?.textContent?.trim() ?? "";
+      let unauthorized = false;
+      if (frameText) {
+        try {
+          const payload = JSON.parse(frameText) as { error?: { code?: unknown } };
+          unauthorized = payload.error?.code === "UNAUTHORIZED";
+        } catch {
+          unauthorized = false;
+        }
+      }
+      if (unauthorized) {
+        setFrameReady(false);
+        if (!authRedirectingRef.current) {
+          authRedirectingRef.current = true;
+          void logout()
+            .catch(() => undefined)
+            .finally(() => router.replace("/auth"));
+        }
+        return;
+      }
       if (frameDocument) rewriteChessFrameLinks(frameDocument);
       frameDocument?.addEventListener("click", onFrameClick, true);
       lobbyForm = frameDocument?.querySelector<HTMLFormElement>("form[data-lobby-setup]") ?? null;
@@ -438,12 +462,14 @@ export function ChessLobbyFrame({ source }: { source: string }) {
       if (friendBalance) {
         friendBalance.textContent = friendBalanceLoading ? "loading" : friendUsdcBalance;
       }
+      if (reveal) setFrameReady(true);
     };
 
-    frame.addEventListener("load", attach);
-    attach();
+    const onFrameLoad = () => attach(true);
+    frame.addEventListener("load", onFrameLoad);
+    attach(false);
     return () => {
-      frame.removeEventListener("load", attach);
+      frame.removeEventListener("load", onFrameLoad);
       frameDocument?.removeEventListener("click", onFrameClick, true);
       lobbyForm?.removeEventListener("submit", onLobbySubmit, true);
       computerForm?.removeEventListener("submit", onComputerSubmit, true);
@@ -459,25 +485,21 @@ export function ChessLobbyFrame({ source }: { source: string }) {
     friendBalanceLoading,
     friendConfigured,
     friendUsdcBalance,
+    logout,
     router,
     startComputer,
   ]);
 
   return (
     <AuthGuard>
-      <>
-        <iframe
-          ref={frameRef}
-          src={frameSource}
-          title="Ark Chess"
-          className="fixed inset-0 h-dvh w-full border-0 bg-black"
-        />
-        <div className="pointer-events-none fixed top-0 right-0 z-[120] flex h-[60px] items-center">
-          <span className="pointer-events-auto">
-            <ChessProfileBalance />
-          </span>
-        </div>
-      </>
+      <iframe
+        ref={frameRef}
+        src={frameSource}
+        title="Ark Chess"
+        className={`fixed inset-0 h-dvh w-full border-0 bg-black transition-opacity duration-150 ${
+          frameReady ? "opacity-100" : "opacity-0"
+        }`}
+      />
     </AuthGuard>
   );
 }

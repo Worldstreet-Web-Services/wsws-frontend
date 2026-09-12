@@ -10,9 +10,18 @@ const fundedFriend = vi.hoisted(() => ({
   create: vi.fn(),
   accept: vi.fn(),
 }));
+const auth = vi.hoisted(() => ({
+  logout: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => navigation,
+}));
+
+vi.mock("@privy-io/react-auth", () => ({
+  getAccessToken: vi.fn(() => Promise.resolve("access-token")),
+  getIdentityToken: vi.fn(() => Promise.resolve("identity-token")),
+  usePrivy: () => auth,
 }));
 
 vi.mock("@/components/auth/auth-guard", () => ({
@@ -58,6 +67,7 @@ describe("ChessLobbyFrame", () => {
     navigation.replace.mockClear();
     fundedFriend.create.mockReset();
     fundedFriend.accept.mockReset();
+    auth.logout.mockClear();
   });
 
   it("loads the Lichess page through the application's shared auth guard", () => {
@@ -72,6 +82,25 @@ describe("ChessLobbyFrame", () => {
     screen.getByTitle("Ark Chess").dispatchEvent(new Event("load"));
 
     expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it("clears an expired session and opens the shared login page", async () => {
+    render(<ChessLobbyFrame source="/api/chess/play" />);
+
+    const frame = screen.getByTitle<HTMLIFrameElement>("Ark Chess");
+    const frameDocument = frame.contentDocument!;
+    frameDocument.open();
+    frameDocument.write(
+      '<body>{"success":false,"error":{"code":"UNAUTHORIZED","message":"Sign in to play."}}</body>'
+    );
+    frameDocument.close();
+    fireEvent.load(frame);
+
+    expect(frame).toHaveClass("opacity-0");
+    await waitFor(() => {
+      expect(auth.logout).toHaveBeenCalledOnce();
+      expect(navigation.replace).toHaveBeenCalledWith("/auth");
+    });
   });
 
   it("rewrites backend puzzle navigation to the top-level Ark puzzle route", () => {

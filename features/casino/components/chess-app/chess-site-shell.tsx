@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCasinoNavGuard } from "@/features/casino/components/casino-nav-guard";
-import { ChessProfileBalance } from "@/features/casino/components/chess-app/chess-profile-balance";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { markKnownUser } from "@/lib/known-user";
 import { cn } from "@/lib/utils";
@@ -121,7 +120,11 @@ export function ChessSiteHeader({ compact = false }: { compact?: boolean }) {
           ))}
         </nav>
       </div>
-      <ChessProfileBalance />
+      <div
+        className="h-[60px] w-[232px] shrink-0 min-[1020px]:w-[304px]"
+        data-chess-header-actions-space
+        aria-hidden="true"
+      />
     </header>
   );
 }

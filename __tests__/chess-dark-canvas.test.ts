@@ -11,6 +11,10 @@ const lobbyFrame = readFileSync(
   "utf8"
 );
 const chessLayout = readFileSync("app/(session)/casino/chess/layout.tsx", "utf8");
+const styleBoundary = readFileSync(
+  "features/casino/components/chess-app/chess-style-boundary.tsx",
+  "utf8"
+);
 const headerActionsCss = readFileSync(
   "features/casino/components/chess-app/chess-profile-balance.module.css",
   "utf8"
@@ -43,6 +47,10 @@ describe("chess dark canvas", () => {
     expect(profileBalance).toContain(">\n        Arkade\n      </Link>");
     expect(lobbyFrame).not.toContain("<ChessProfileBalance />");
     expect(chessLayout).toContain("<ChessHeaderActions />");
+    expect(chessLayout).toContain("<ChessStyleBoundary />");
+    expect(shell).not.toContain('<link rel="stylesheet"');
+    expect(styleBoundary).toContain('link.dataset.lichessRound === "true"');
+    expect(styleBoundary).toContain('href.startsWith("/css/")');
     expect(profileBalance).toContain("data-chess-header-actions");
     expect(profileBalance).toContain("w-[232px]");
     expect(profileBalance).toContain("min-[1020px]:w-[304px]");

@@ -146,12 +146,6 @@ export function ChessSiteShell({
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="/chess/lichess/css/theme.css"
-        precedence="ark-chess-theme"
-      />
-      <link rel="stylesheet" href="/chess/lichess/css/site.css" precedence="ark-chess-site" />
       <div
         className={cn(
           "relative bg-black text-white",

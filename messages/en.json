@@ -706,7 +706,10 @@
     "assetDetails": "Asset details",
     "goToCard": "Go to card {number}",
     "searchHoldings": "Search your holdings",
-    "noChart": "No price history yet."
+    "noChart": "No price history yet.",
+    "arkStorePitch": "Get our app",
+    "arkStoreTagline": "on ArkStore",
+    "arkStoreAria": "Get our app on ArkStore"
   },
   "markets": {
     "title": "Markets",

@@ -706,7 +706,10 @@
     "assetDetails": "Detalles del activo",
     "goToCard": "Ir a la tarjeta {number}",
     "searchHoldings": "Buscar en tus posiciones",
-    "noChart": "Aún no hay historial de precios."
+    "noChart": "Aún no hay historial de precios.",
+    "arkStorePitch": "Consigue nuestra app",
+    "arkStoreTagline": "en ArkStore",
+    "arkStoreAria": "Consigue nuestra app en ArkStore"
   },
   "markets": {
     "title": "Mercados",

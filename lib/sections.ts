@@ -29,7 +29,7 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   // called without a translate function, so it must not disagree with the
   // translated string it is standing in for.
   activity: "Arkivity",
-  square: "Market Square",
+  square: "Square",
 };
 
 // Portfolio is always the account home. The rest follow, led by whatever the

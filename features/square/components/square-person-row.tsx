@@ -34,7 +34,7 @@ export function SquarePersonRow({
 }) {
   const t = useTranslations("square");
   const isMe = meId !== undefined && meId === profile.id;
-  const name = profile.displayName || profile.username;
+  const name = profile.displayName?.trim() || profile.username;
   const href = squareLinks.profile(profile.username);
 
   const [following, setFollowing] = useState(profile.isFollowing ?? false);

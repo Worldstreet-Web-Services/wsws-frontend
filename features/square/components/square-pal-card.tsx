@@ -62,7 +62,7 @@ export function SquarePalCard({
 }) {
   const t = useTranslations("square");
   const c = HOME_DECK_CARD;
-  const name = person.displayName || person.username;
+  const name = person.displayName?.trim() || person.username;
   const href = squareLinks.profile(person.username);
 
   // Seeded from the directory's viewer state, owned locally afterwards so the

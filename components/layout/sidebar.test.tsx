@@ -15,7 +15,9 @@ import type { DashboardSection } from "@/lib/modal-types";
 // reads. An unknown key still surfaces as its path, so a typo fails loudly.
 const MESSAGES: Record<string, Record<string, string>> = {
   topbar: { menu: "Menu", closeMenu: "Close menu" },
-  square: { title: "Market Square" },
+  // The rail names the product "Square" (asked for 2026-09-12); the fuller
+  // "Market Square" stays the page's own title.
+  square: { title: "Market Square", navLabel: "Square" },
 };
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
@@ -111,7 +113,7 @@ describe("Sidebar", () => {
    */
   it("offers no Market Square entry while the square is hidden", () => {
     renderSidebar();
-    expect(screen.queryByRole("link", { name: /market square/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^square$/i })).toBeNull();
     // The rest of the rail is untouched by the hide.
     expect(screen.getByRole("button", { name: "Portfolio" })).toBeInTheDocument();
   });
@@ -132,7 +134,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toHaveAttribute("href", "/square");
+    expect(screen.getByRole("link", { name: /^square$/i })).toHaveAttribute("href", "/square");
   });
 
   /**
@@ -157,7 +159,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    const entry = screen.getByRole("link", { name: /market square/i });
+    const entry = screen.getByRole("link", { name: /^square$/i });
     expect(entry).toHaveAttribute("href", "/square");
     expect(entry).not.toHaveAttribute("target");
     expect(entry.className).toContain("bg-accent/14");
@@ -188,7 +190,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toHaveAttribute("href", "/square");
+    expect(screen.getByRole("link", { name: /^square$/i })).toHaveAttribute("href", "/square");
   });
 
   /**
@@ -220,7 +222,7 @@ describe("Sidebar", () => {
     const rail = container.querySelector("nav");
     if (rail === null) throw new Error("the rail rendered no nav element");
     const rows = [...rail.children].map((el) => el.textContent);
-    expect(rows).toEqual(["Prediction", "Market Square", "Arkade", "Arktivity"]);
+    expect(rows).toEqual(["Prediction", "Square", "Arkade", "Arktivity"]);
   });
 
   // With no Arkade entry to sit above, the square must still appear rather
@@ -241,7 +243,7 @@ describe("Sidebar", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("link", { name: /market square/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^square$/i })).toBeInTheDocument();
   });
 
   /**

@@ -292,7 +292,8 @@ describe("SquareHome", () => {
             id: "post-2",
             authorId: "u-prince",
             text: "gm",
-            author: { ...people[0], displayName: "" },
+            // Whitespace is what the live directory holds for some accounts.
+            author: { ...people[0], displayName: "  " },
           },
         },
       ],
@@ -384,14 +385,16 @@ describe("SquareHome", () => {
     render(<SquareHome markets={[]} />, { wrapper });
     await screen.findByText("monthly wrap up");
     expect(screen.getByRole("button", { name: "Skip Prince" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Next person" })).toBeEnabled();
+    // No right disc: going on is the pass or a swipe. The next card is in
+    // the fan, blurred and out of the accessibility tree.
+    expect(screen.queryByRole("button", { name: "Next person" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Skip Ada" })).toBeNull();
     expect(screen.getByRole("button", { name: "Previous person" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Skip Prince" }));
     expect(screen.getByRole("button", { name: "Skip Ada" })).toBeEnabled();
     // Prince's card is behind the front one now, and a card behind is hidden
     // from the accessibility tree as the file marks it.
     expect(screen.queryByRole("button", { name: "Skip Prince" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Next person" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Previous person" })).toBeEnabled();
   });
 });

@@ -260,7 +260,7 @@ function CommentRow({
             <>
               <AuthorLink username={author.username}>
                 <span className="font-bold text-[#fafafa]">
-                  {author.displayName || author.username}
+                  {author.displayName?.trim() || author.username}
                 </span>
               </AuthorLink>
               <VerifiedBadge verification={author.verification} className="h-3.5 w-3.5 shrink-0" />
@@ -465,7 +465,9 @@ export function SquareCommentsSheet({
                       threadId: threadOf(target),
                       username: target.author?.username ?? null,
                       displayName:
-                        target.author?.displayName || target.author?.username || t("thisComment"),
+                        target.author?.displayName?.trim() ||
+                        target.author?.username ||
+                        t("thisComment"),
                     })
                   }
                 />

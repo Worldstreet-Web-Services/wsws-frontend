@@ -2902,7 +2902,8 @@
     "sectionStore": "ARK Store",
     "aPost": "A post",
     "postNoWords": "A post with no words",
-    "showMoreResults": "Show more results"
+    "showMoreResults": "Show more results",
+    "navLabel": "Square"
   },
   "connection": {
     "offline": "Can't reach the server.",

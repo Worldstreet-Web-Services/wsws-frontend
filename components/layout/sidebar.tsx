@@ -37,7 +37,8 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
   const address = getWalletAddress(user, "ethereum");
   const t = useTranslations("topbar");
   // The square is a product with its own catalog namespace, so the rail reads
-  // its name from there rather than repeating the string.
+  // its name from there rather than repeating the string. The rail's word is
+  // "Square" (asked for 2026-09-12); the page keeps the fuller title.
   const tSquare = useTranslations("square");
   // This reads MARKET_SQUARE_HIDDEN, the way-in switch, and nothing else. A
   // hidden square (no URL, or an operator takedown) has no page to open, so
@@ -183,7 +184,7 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
                   className="h-[12.74px] w-[17.12px]"
                 />
               </span>
-              <span className="flex-1">{tSquare("title")}</span>
+              <span className="flex-1">{tSquare("navLabel")}</span>
             </Link>
           ) : null}
 

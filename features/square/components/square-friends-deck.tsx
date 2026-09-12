@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { HOME_DECK_NODE, deckLayout, type DeckLayout } from "@/lib/square/deck";
+import { SQUARE_DECK_NODE, deckLayout, type DeckLayout } from "@/lib/square/deck";
 import type { SuggestedProfile } from "@/lib/api/market-square";
 import { useSwipeCard } from "@/features/square/hooks/use-swipe-card";
 import { IconDeckArrow } from "@/features/square/components/square-deck-icons";
@@ -16,10 +16,12 @@ const HOME_DOTS = { dx: 5.61, width: 36.29 + 4 * 13.79 + 4 * 3.63 };
 /**
  * Home's people deck, the Square's own carried over
  * (market-square-frontend/components/layout/friends-deck.tsx, node
- * 647:16300): the front card with one fanned behind it on each side, the two
- * glass discs to page it, and the five pills under it. The whole fan is
- * drawn in the file's units and scaled by one `k` to the column it measures
- * for itself, so nothing is ever cut.
+ * 647:16300), with the maintainer's change of 2026-09-12: the front card
+ * with one fanned behind it on each side, the next one blurred so the next
+ * person cannot be made out and the previous one dim as Home draws it, the
+ * left glass disc to go back, no right disc, and the five pills under it. The fan is tighter than Home's, so the front card is
+ * larger. The whole fan is drawn in the file's units and scaled by one `k`
+ * to the column it measures for itself, so nothing is ever cut.
  *
  * On Home the swipe is navigation, as it is on the Square's Home: right goes
  * back, left goes on, and the ends spring back. Nothing a drag does touches
@@ -46,7 +48,7 @@ export function SquareFriendsDeck({ people }: { people: SuggestedProfile[] }) {
     observer.current = ro;
   }, []);
 
-  const node = HOME_DECK_NODE;
+  const node = SQUARE_DECK_NODE;
   const layout = deckLayout({ room: room || FALLBACK_ROOM, arrows: true, node });
   const items = people;
 
@@ -99,15 +101,7 @@ export function SquareFriendsDeck({ people }: { people: SuggestedProfile[] }) {
           left={layout.frontX + (node.arrow.leftDx - node.arrow.size / 2) * layout.k}
           top={layout.frontY + (node.arrow.dy - node.arrow.size / 2) * layout.k}
         />
-        <DeckArrow
-          direction="next"
-          label={t("nextPerson")}
-          disabled={!canStep(1)}
-          onClick={() => step(1)}
-          size={arrowSize}
-          left={layout.frontX + (node.arrow.rightDx - node.arrow.size / 2) * layout.k}
-          top={layout.frontY + (node.arrow.dy - node.arrow.size / 2) * layout.k}
-        />
+        {/* No right disc: going on is the card's pass, or a swipe left. */}
       </div>
 
       {items.length > 1 ? (
@@ -181,7 +175,7 @@ function DeckCard({
   canStep: (delta: number) => boolean;
   onStep: (delta: number) => void;
 }) {
-  const node = HOME_DECK_NODE;
+  const node = SQUARE_DECK_NODE;
   const front = slot === 0;
   const place = node.places[slot] ?? node.places[0];
   const { k } = layout;
@@ -205,7 +199,10 @@ function DeckCard({
         swipe.dragging
           ? "transition-none"
           : "transition-[transform,opacity] duration-300 motion-reduce:transition-none",
-        front ? "z-20" : "z-10"
+        // The next card is blurred so who is next stays a surprise; the
+        // previous one stays as Home draws it, dim and unblurred.
+        front ? "z-20" : "z-10",
+        slot === 1 && "blur-[7px]"
       )}
       style={{
         left: layout.frontX - node.card.width / 2,

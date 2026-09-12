@@ -169,7 +169,7 @@ export function SquareFeedPostCard({
   const authorHref = author ? squareLinks.profile(author.username) : null;
   // A profile without a display name still has its handle; a blank beside
   // the seal reads as a missing person, not a missing field.
-  const authorName = author ? author.displayName || author.username : "";
+  const authorName = author ? author.displayName?.trim() || author.username : "";
   const video = isVideoPost(post);
   const rail = postMediaList(post);
 

@@ -2902,7 +2902,8 @@
     "sectionStore": "ARK Store",
     "aPost": "Une publication",
     "postNoWords": "Une publication sans mots",
-    "showMoreResults": "Afficher plus de résultats"
+    "showMoreResults": "Afficher plus de résultats",
+    "navLabel": "Square"
   },
   "connection": {
     "offline": "Serveur injoignable.",

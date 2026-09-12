@@ -21,6 +21,8 @@ export interface DeckNode {
   arrow: { size: number; dy: number; leftDx: number; rightDx: number };
   places: Record<number, DeckPlace>;
   box?: { top: number; bottom: number };
+  /** No card behind the front one's right edge and no right disc. */
+  hideNext?: boolean;
 }
 
 /** Home's deck, node 647:16300: the front card with one behind on each side. */
@@ -36,6 +38,53 @@ export const HOME_DECK_NODE: DeckNode = {
   box: { top: -211.12, bottom: 229.7 },
 };
 
+/**
+ * The deck as the Square page draws it, after the maintainer's change of
+ * 2026-09-12: the cards behind the front one stay in the fan but are blurred
+ * so the next person cannot be made out, the right disc is hidden, and the
+ * fan is drawn tighter than Home's so the front card is larger. The reach on
+ * each side is the same, so the front card's centre is the column's centre.
+ *
+ * In Home's units: the previous card and the left disc reach 300 to the
+ * left, the next card 300 to the right, against Home's 389 and 445.
+ */
+/** The box a card of this size takes once turned by `deg`. */
+export function rotatedBox(
+  width: number,
+  height: number,
+  deg: number
+): { width: number; height: number } {
+  const t = Math.abs((deg * Math.PI) / 180);
+  const c = Math.cos(t);
+  const s = Math.sin(t);
+  return { width: width * c + height * s, height: width * s + height * c };
+}
+
+const REACH = 300;
+
+/** Where a back card sits so its rotated box ends exactly on the reach. */
+function sideDx(place: DeckPlace, side: -1 | 1): number {
+  const card = HOME_DECK_NODE.card;
+  const box = rotatedBox(card.width * place.scale, card.height * place.scale, place.rot);
+  return side * (REACH - box.width / 2);
+}
+
+export const SQUARE_DECK_NODE: DeckNode = {
+  ...HOME_DECK_NODE,
+  fan: { left: -REACH, right: REACH },
+  arrow: {
+    ...HOME_DECK_NODE.arrow,
+    leftDx: -REACH + HOME_DECK_NODE.arrow.size / 2,
+    rightDx: REACH - HOME_DECK_NODE.arrow.size / 2,
+  },
+  places: {
+    [-1]: { ...HOME_DECK_NODE.places[-1], dx: sideDx(HOME_DECK_NODE.places[-1], -1) },
+    0: HOME_DECK_NODE.places[0],
+    1: { ...HOME_DECK_NODE.places[1], dx: sideDx(HOME_DECK_NODE.places[1], 1) },
+  },
+  hideNext: true,
+};
+
 export interface DeckLayout {
   k: number;
   frontX: number;
@@ -48,7 +97,7 @@ export function deckExtent(arrows: boolean, node: DeckNode): { left: number; rig
   const discRight = node.arrow.rightDx + node.arrow.size / 2;
   return {
     left: arrows ? Math.min(node.fan.left, discLeft) : node.fan.left,
-    right: arrows ? Math.max(node.fan.right, discRight) : node.fan.right,
+    right: arrows && !node.hideNext ? Math.max(node.fan.right, discRight) : node.fan.right,
   };
 }
 

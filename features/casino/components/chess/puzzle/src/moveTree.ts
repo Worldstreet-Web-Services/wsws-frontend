@@ -29,6 +29,18 @@ export function pgnToTree(pgn: San[]): TreeNode {
   return root;
 }
 
+export function fenToTree(fen: FEN, setupUci: Uci, initialPly: Ply): TreeNode {
+  const pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap();
+  const root: TreeNode = completeNode('standard')({
+    ply: initialPly,
+    fen,
+  });
+  const move = normalizeMove(pos, parseUci(setupUci)!);
+  const san = makeSanAndPlay(pos, move);
+  root.children.push(makeNode(pos.clone(), move, initialPly + 1, san));
+  return root;
+}
+
 export function mergeSolution(root: TreeWrapper, initialPath: TreePath, solution: Uci[], pov: Color): void {
   const initialNode = root.nodeAtPath(initialPath);
   const pos = Chess.fromSetup(parseFen(initialNode.fen).unwrap()).unwrap();

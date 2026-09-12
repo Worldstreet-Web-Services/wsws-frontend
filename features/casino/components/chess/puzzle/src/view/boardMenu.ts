@@ -6,6 +6,7 @@ import { licon } from 'lib/licon';
 import { boardMenu as menuDropdown, boolPrefXhrToggle, hl } from 'lib/view';
 
 import type PuzzleCtrl from '../ctrl';
+import { currentPuzzleAppPath } from '../routes';
 
 export default function (ctrl: PuzzleCtrl) {
   return menuDropdown(ctrl.redraw, ctrl.menu, menu => [
@@ -38,7 +39,7 @@ export default function (ctrl: PuzzleCtrl) {
 const hiddenInput = (name: string, value: string) => h('input', { attrs: { type: 'hidden', name, value } });
 
 function renderPgnInput(ctrl: PuzzleCtrl): string {
-  const puzURL = `${location.origin}/training/${ctrl.data.puzzle.id}`;
+  const puzURL = `${location.origin}${currentPuzzleAppPath(ctrl, ctrl.data.puzzle.id)}`;
   const tags = [
     ['Site', puzURL],
     ['FEN', ctrl.initialNode.fen],

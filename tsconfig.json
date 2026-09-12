@@ -36,6 +36,7 @@
     "casino-service",
     "apps",
     "reference",
-    "features/casino/components/chess"
+    "features/casino/components/chess",
+    "ui"
   ]
 }

@@ -4,12 +4,10 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { useCreateComputerMatch } from "@/features/casino/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
-import { useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
+import { useFundedChessComputer } from "@/features/casino/hooks/use-funded-chess-computer";
 import { ComputerWagerSummary } from "@/features/casino/components/computer-wager-summary";
 import {
-  MIN_STAKED_CHESS_COMPUTER_LEVEL,
   chessComputerWagerBreakdown,
   exceedsUsdcBalance,
   normalizeUsdcAmount,
@@ -125,8 +123,7 @@ interface ChessComputerDialogProps {
 export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps) {
   const router = useRouter();
   const wallet = useCasinoWallet();
-  const cashier = useChessCashierStatus();
-  const create = useCreateComputerMatch();
+  const computer = useFundedChessComputer();
   const [setup, setSetup] = useState<StoredSetup>(DEFAULT_SETUP);
   const [restored, setRestored] = useState(false);
   const [stake, setStake] = useState("");
@@ -161,13 +158,13 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
   const minutes = MINUTES_PER_SIDE[setup.timeIndex];
   const increment = INCREMENTS[setup.incrementIndex];
   const realTimeValid = minutes > 0 || increment > 0;
-  const stakingAllowed = setup.level >= MIN_STAKED_CHESS_COMPUTER_LEVEL;
-  const stakeUsdc = cashier.configured && stakingAllowed ? normalizeUsdcAmount(stake) : null;
+  const stakeUsdc = computer.configured ? normalizeUsdcAmount(stake) : null;
   const wagerBreakdown = stakeUsdc
-    ? chessComputerWagerBreakdown(stakeUsdc, cashier.available, setup.level)
+    ? chessComputerWagerBreakdown(stakeUsdc, computer.availableUsdc, setup.level)
     : null;
-  const stakeInvalid = stake.trim().length > 0 && stakingAllowed && !wagerBreakdown;
-  const stakeOverBalance = !!stakeUsdc && exceedsUsdcBalance(stakeUsdc, cashier.available);
+  const stakeInvalid = stake.trim().length > 0 && !wagerBreakdown;
+  const stakeOverBalance =
+    !!stakeUsdc && exceedsUsdcBalance(stakeUsdc, computer.availableUsdc);
   const stakedGame = !!stakeUsdc;
 
   const onPlay = async () => {
@@ -177,8 +174,8 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
     }
     const id = toast.loading("Starting your computer game...");
     try {
-      const match = await create.mutateAsync({
-        level: setup.level,
+      const match = await computer.start({
+        level: stakedGame ? 8 : setup.level,
         color: stakedGame ? "random" : setup.color,
         timeMode: stakedGame ? "real_time" : setup.timeMode,
         ...(stakedGame
@@ -328,7 +325,6 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                 aria-pressed={setup.level === level}
                 onClick={() => {
                   setSetup((current) => ({ ...current, level }));
-                  if (level < MIN_STAKED_CHESS_COMPUTER_LEVEL) setStake("");
                 }}
                 className={`tnum flex h-11 cursor-pointer items-center justify-center rounded-[3px] border text-[13px] ${
                   setup.level === level
@@ -336,7 +332,7 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                     : "border-white/10 bg-[#262421] text-white/68 hover:border-white/22 hover:bg-white/8 hover:text-white"
                 }`}
               >
-                {level >= MIN_STAKED_CHESS_COMPUTER_LEVEL ? `Stockfish ${level}` : level}
+                {level}
               </button>
             ))}
           </div>
@@ -416,18 +412,17 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
           ) : null}
         </fieldset>
 
-        {cashier.configured ? (
+        {computer.configured ? (
           <fieldset>
             <legend className="mb-3 text-[14px] font-semibold text-white/86">
               Stake against Stockfish <span className="font-normal text-white/38">(optional)</span>
             </legend>
-            {stakingAllowed ? (
-              <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+            <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
                 <label className="block">
-                  <span className="sr-only">Computer stake in USD</span>
+                  <span className="sr-only">Computer stake in USDC</span>
                   <div className="flex h-11 items-center rounded-[3px] border border-white/10 bg-[#262421] px-3">
                     <input
-                      aria-label="Computer stake in USD"
+                      aria-label="Computer stake in USDC"
                       inputMode="decimal"
                       value={stake}
                       onChange={(event) => {
@@ -437,30 +432,31 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                       placeholder="0"
                       className="tnum min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-white/28"
                     />
-                    <span className="text-[11px] font-semibold text-white/44">USD</span>
+                    <span className="text-[11px] font-semibold text-white/44">USDC</span>
                   </div>
                   <span
                     className={`mt-1 block text-[10.5px] ${stakeOverBalance || stakeInvalid ? "text-down" : "text-white/36"}`}
                   >
                     {stakeInvalid
                       ? "Enter a stake greater than 0 USDC."
-                      : `Balance ${cashier.available} USD`}
+                      : computer.balanceLoading
+                        ? "Checking Base USDC balance..."
+                        : `Base balance ${computer.availableUsdc} USDC`}
                   </span>
                 </label>
                 {stakeUsdc && wagerBreakdown ? (
                   <div>
                     <ComputerWagerSummary
                       stakeUsdc={stakeUsdc}
-                      availableUsdc={cashier.available}
+                      availableUsdc={computer.availableUsdc}
                       level={setup.level}
                       showDrawPayout
                       chessLevelEightTerms
                     />
                     <p className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                      A reviewed win pays 2x your stake. A draw or loss forfeits your stake to the
-                      computer. An abort or system cancellation returns 100%. After engine analysis,
-                      every win stays held until a moderator clears it. An approved win is credited
-                      to your chess balance and waits there if the cashier wallet needs funding.
+                      A win pays exactly 2x your stake. A draw or loss pays 0 and the platform keeps
+                      the full stake. An abort or system cancellation returns 100%. The stake moves
+                      from your Base USDC wallet before the game is created.
                     </p>
                   </div>
                 ) : (
@@ -469,12 +465,6 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
                   </p>
                 )}
               </div>
-            ) : (
-              <p className="rounded-[3px] border border-white/10 bg-[#262421] px-4 py-3 text-[12px] leading-5 text-white/48">
-                Levels 1 to 4 are free-only. Levels 5 to 8 accept stakes, and every paid choice uses
-                the maximum-strength level-8 engine.
-              </p>
-            )}
           </fieldset>
         ) : null}
       </div>
@@ -487,14 +477,14 @@ export function ChessComputerDialog({ open, onClose }: ChessComputerDialogProps)
           type="button"
           onClick={() => void onPlay()}
           disabled={
-            create.isPending ||
+            computer.isStarting ||
             stakeOverBalance ||
             stakeInvalid ||
             (!stakedGame && setup.timeMode === "real_time" && !realTimeValid)
           }
           className="h-12 cursor-pointer rounded-[3px] border border-white/12 bg-[#3a3936] px-6 text-[15px] font-semibold text-white/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-colors hover:bg-[#454441] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {create.isPending ? "Starting..." : "Play against computer"}
+          {computer.isStarting ? "Funding and starting..." : "Play against computer"}
         </button>
       </div>
     </ModalShell>

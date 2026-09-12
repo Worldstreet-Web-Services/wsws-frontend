@@ -12,6 +12,7 @@ const shared = {
     "build",
     "casino-service",
     "reference",
+    "ui/**",
     "features/casino/components/chess/**",
     "features/casino/components/chess-app/**",
   ],

@@ -25,6 +25,9 @@ function liveMatch(id: string, videoEnabled = false): ChessMatch {
     timeControl: "5+3",
     clockMode: "real_time",
     computer: null,
+    variant: "standard",
+    initialFen: "",
+    chess960Position: null,
     fen: "",
     moves: [],
     clocks: { w: 300, b: 300 },
@@ -53,7 +56,8 @@ describe("LiveGameList", () => {
   it("links public video matches to the spectator board", () => {
     render(<LiveGameList matches={[liveMatch("public", true)]} ownedMatchIds={new Set()} />);
 
-    expect(screen.getByText("🇳🇬 Amina (1742)")).toBeInTheDocument();
+    expect(screen.getByText("Amina (1742)")).toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: "NG flag" })).toHaveLength(1);
     expect(screen.getByText("Player video")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Watch/u })).toHaveAttribute(
       "href",

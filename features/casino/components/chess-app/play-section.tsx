@@ -3,8 +3,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchMatchMoves } from "@/features/casino/lib/api/chess";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CHESS_KEYS,
   useChessMatch,
@@ -35,6 +34,10 @@ import {
 import { LiveChatFeed } from "@/features/casino/components/live-chat-feed";
 import { identifyOpening } from "@/features/casino/lib/chess/openings";
 import { formatEngineScore, uciToSan } from "@/features/casino/lib/chess/engine-analysis";
+import {
+  createStepwiseReplayScroll,
+  replayTargetForKey,
+} from "@/features/casino/lib/chess/round-navigation";
 import {
   CHESS_CARD_BG,
   CHESS_CARD_SHADOW,
@@ -97,6 +100,19 @@ const LiveVideoPlayer = dynamic(
 );
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+const VARIANT_LABELS: Record<ChessMatch["variant"], string> = {
+  standard: "Standard",
+  chess960: "Chess960",
+  fromPosition: "From Position",
+  kingOfTheHill: "King of the Hill",
+  threeCheck: "Three-check",
+  antichess: "Antichess",
+  atomic: "Atomic",
+  horde: "Horde",
+  racingKings: "Racing Kings",
+  crazyhouse: "Crazyhouse",
+};
 
 function initialClockSecondsFromTimeControl(tc: string): number {
   const [initialPart] = tc.split("+");
@@ -200,6 +216,18 @@ function FlameBadgeIcon() {
         fill="currentColor"
         d="M13.7 2.3c.4 2.1-.4 3.4-1.3 4.8-.9 1.4-1.9 2.9-1.8 5 0 1.1.3 2 .9 2.8-.1-1.4.5-2.3 1.2-3.1.9-1.1 2-2.2 2.2-4.5 2.7 1.8 5.1 4.9 5.1 8.6 0 3.8-2.9 6.9-7 6.9-4 0-7-2.8-7-6.8 0-4.7 3.3-7.5 5.1-10.1.9-1.3 1.6-2.5 1.7-4.1.3.1.6.2.9.5Z"
       />
+    </svg>
+  );
+}
+
+function VariantBadgeIcon({ variant }: { variant: ChessMatch["variant"] }) {
+  if (variant !== "chess960") return <FlameBadgeIcon />;
+  return (
+    <svg viewBox="0 0 48 48" className="h-12 w-12 opacity-70" aria-hidden>
+      <rect x="7" y="4" width="34" height="40" rx="6" fill="currentColor" />
+      {[14, 24, 34].flatMap((y) =>
+        [17, 31].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill="#262421" />)
+      )}
     </svg>
   );
 }
@@ -681,8 +709,9 @@ function PostGameActions({
     </div>
   );
 }
-// The platform takes 5% of winnings on the games.
-const CHESS_FEE_BPS = 500;
+// New human wagers snapshot a 10% platform share on the backend. The match's
+// stored fee remains authoritative for older games created under another rate.
+const CHESS_FEE_BPS = 1_000;
 
 export function PlaySection({
   matchId,
@@ -700,7 +729,6 @@ export function PlaySection({
   const wallet = useCasinoWallet();
   const products = useChessProducts();
   const cashier = useChessCashierStatus();
-  const { feePct } = cashier;
   const {
     match,
     clocks,
@@ -778,6 +806,34 @@ export function PlaySection({
   const rematchReadyId = match?.rematch?.nextMatchId ?? null;
   const currentPly = match ? match.moves.length : null;
   const [replayPly, setReplayPly] = useState<number | null>(null);
+  const replayNavigationRef = useRef({
+    boardReady: false,
+    currentPly: 0,
+    exactReplay: false,
+    terminal: false,
+    viewingPly: 0,
+  });
+  const [handleReplayWheel] = useState(() =>
+    createStepwiseReplayScroll(
+      (direction) => {
+        const replay = replayNavigationRef.current;
+        const target = Math.min(
+          replay.currentPly,
+          Math.max(0, replay.viewingPly + direction)
+        );
+        if (target !== replay.currentPly) {
+          setSelected(null);
+          setPendingPromotion(null);
+        }
+        setReplayPly(target === replay.currentPly ? null : target);
+      },
+      () => {
+        const replay = replayNavigationRef.current;
+        return !replay.terminal || !replay.exactReplay;
+      },
+      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+    )
+  );
   const canUsePlayerChat = you !== null && match?.computer == null;
   const preferredChatRoom: ChessChatRoom = canUsePlayerChat ? "player" : "spectator";
   const {
@@ -803,12 +859,6 @@ export function PlaySection({
     seatName,
     !!match && match.computer == null
   );
-  const movesQuery = useQuery({
-    queryKey: ["casino", "chess", "play-moves", matchId ?? "none", currentPly ?? 0],
-    queryFn: () => fetchMatchMoves(matchId as string),
-    enabled: !!matchId && (currentPly ?? 0) > 0,
-  });
-
   // Unlock the audio context on the first gesture so the opponent's very first
   // move is audible even before this player has moved.
   useEffect(() => {
@@ -908,7 +958,7 @@ export function PlaySection({
                 : "checkmate",
         ...(match?.computer?.wager
           ? computerGamePayout(match.computer.wager, outcome)
-          : gamePayout(match?.stakeUsdc, outcome, CHESS_FEE_BPS)),
+          : gamePayout(match?.stakeUsdc, outcome, match?.wagerFeeBps ?? CHESS_FEE_BPS)),
       });
     }
   }, [inProgress, match, queryClient, result, terminal, wallet.address, you]);
@@ -924,12 +974,29 @@ export function PlaySection({
   const livePosition = useMemo(() => {
     if (!match) return null;
     try {
-      return parseFen(match.fen);
+      return parseFen(match.fen, match.variant);
     } catch {
       return null;
     }
   }, [match]);
-  const detailedMoves = useMemo(() => movesQuery.data ?? [], [movesQuery.data]);
+  const detailedMoves = useMemo<ChessMoveWire[]>(
+    () =>
+      (match?.round?.steps ?? []).flatMap((step) => {
+        if (!step.uci || !step.san || !step.byPlayer || !step.createdAt) return [];
+        return [
+          {
+            ply: step.ply,
+            uci: step.uci,
+            san: step.san,
+            fenAfter: step.fen,
+            byPlayer: step.byPlayer,
+            clockMsRemaining: step.clockMsRemaining,
+            createdAt: step.createdAt,
+          },
+        ];
+      }),
+    [match?.round?.steps]
+  );
   const hasExactReplay = detailedMoves.length === (currentPly ?? 0);
   const replaySteps = useMemo<Array<Pick<ChessMoveWire, "ply" | "san" | "uci" | "fenAfter">>>(
     () =>
@@ -948,16 +1015,16 @@ export function PlaySection({
     replayPly === null ? currentReplayPly : Math.min(Math.max(replayPly, 0), currentReplayPly);
   const displayFen =
     replayPly !== null && replayPly !== currentReplayPly && hasExactReplay
-      ? (replaySteps[viewingPly - 1]?.fenAfter ?? START_FEN)
+      ? (replaySteps[viewingPly - 1]?.fenAfter ?? match?.initialFen ?? START_FEN)
       : (match?.fen ?? START_FEN);
   const displayPosition = useMemo(() => {
     try {
-      return parseFen(displayFen);
+      return parseFen(displayFen, match?.variant ?? "standard");
     } catch {
       return null;
     }
-  }, [displayFen]);
-  const engine = useChessEngine(displayFen);
+  }, [displayFen, match?.variant]);
+  const engine = useChessEngine(displayFen, match?.variant === "standard" && terminal);
   const coachEnabled = match?.computer?.coachEnabled === true && !match.stakeUsdc;
   const coachReview = coachState?.pendingReview ?? null;
   const coachSummary = coachState?.summary ?? null;
@@ -970,6 +1037,15 @@ export function PlaySection({
     const yourTurn = !!match && match.state === "in_progress" && you !== null && match.turn === you;
     const ownClock = yourTurn && you !== null ? (clocks?.[you] ?? 0) : 1;
     if (!livePosition || !selected || !yourTurn || ownClock <= 0 || replayPly !== null) return [];
+    const serverMoves = match.round?.legalMoves;
+    if (serverMoves) {
+      return serverMoves
+        .map(fromUci)
+        .filter(
+          (move): move is NonNullable<ReturnType<typeof fromUci>> =>
+            !!move && move.from.r === selected.r && move.from.c === selected.c
+        );
+    }
     return legalMovesForSquare(livePosition, selected.r, selected.c);
   }, [clocks, livePosition, match, replayPly, selected, you]);
 
@@ -989,6 +1065,48 @@ export function PlaySection({
   const boardTargets = boardGuidance ? [boardGuidance.to] : targetSquares;
   const activePendingPromotion =
     pendingPromotion && match && pendingPromotion.fen === match.fen ? pendingPromotion : null;
+
+  useEffect(() => {
+    replayNavigationRef.current = {
+      boardReady: !!match && !!displayPosition,
+      currentPly: currentReplayPly,
+      exactReplay: hasExactReplay,
+      terminal,
+      viewingPly,
+    };
+  }, [currentReplayPly, displayPosition, hasExactReplay, match, terminal, viewingPly]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.matches("input, textarea, select, button"))
+      ) {
+        return;
+      }
+
+      const replay = replayNavigationRef.current;
+      if (event.key === "f" && replay.boardReady) {
+        event.preventDefault();
+        setBoardFlipped((flipped) => !flipped);
+        return;
+      }
+      if (!replay.exactReplay) return;
+
+      const targetPly = replayTargetForKey(event.key, replay.viewingPly, replay.currentPly);
+      if (targetPly === null) return;
+      event.preventDefault();
+      if (targetPly !== replay.currentPly) {
+        setSelected(null);
+        setPendingPromotion(null);
+      }
+      setReplayPly(targetPly === replay.currentPly ? null : targetPly);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   if (!matchId) {
     return (
@@ -1443,6 +1561,10 @@ export function PlaySection({
   const wagerRefunded =
     match.state === "cancelled" || (match.wagerStatus ?? "").toLowerCase().includes("refund");
   const computerWager = match.computer?.wager ?? null;
+  const pvpDrawSettled =
+    computerWager === null && result?.kind === "draw" && match.wagerStatus === "draw_settled";
+  const humanWagerFeeBps = match.wagerFeeBps ?? CHESS_FEE_BPS;
+  const feePct = humanWagerFeeBps / 100;
   const wonComputerWager =
     result !== null && result.kind !== "draw" && you !== null && result.winner === you;
   const wagerLine = computerWager
@@ -1462,6 +1584,8 @@ export function PlaySection({
       ? null
       : !over
         ? tStake("wagerEach", { amount: match.stakeUsdc })
+        : pvpDrawSettled
+          ? tStake("wagerDrawHalfRefunded")
         : wagerRefunded
           ? tStake("wagerRefunded")
           : feePct !== null
@@ -1480,7 +1604,7 @@ export function PlaySection({
         creditedUsdc: wagerBreakdown(
           match.stakeUsdc as string,
           "0",
-          cashier.config?.platformFeeBps ?? CHESS_FEE_BPS
+          humanWagerFeeBps
         ).winnerReceives,
         balanceUsdc: cashier.available,
         withdrawalFeePct:
@@ -1591,6 +1715,12 @@ export function PlaySection({
   const bottomSeatLabel = selfColor === "w" ? t("infoWhite") : t("infoBlack");
   const matchAgeLabel = formatMatchAge(match.createdAt, relativeNowMs);
   const speedLabel = clockMode === "unlimited" ? null : timeControlCategory(match.timeControl);
+  const variantLabel =
+    match.variant === "chess960" && match.chess960Position !== null
+      ? `Chess960 #${match.chess960Position}`
+      : VARIANT_LABELS[match.variant];
+  const roundTimeLabel = clockMode === "unlimited" ? "∞" : match.timeControl;
+  const variantMetaLabel = VARIANT_LABELS[match.variant].toUpperCase();
   const boardMaxWidth = "100%";
   const initialClockSeconds = initialClockSecondsFromTimeControl(match.timeControl);
   const clockBarScale = (colour: ChessColor) =>
@@ -1604,21 +1734,27 @@ export function PlaySection({
   const goLivePanel = canBroadcastMatch ? <GoLivePanel matchOver={over} /> : null;
 
   const roundView = (
-    <div className="ws-chess-round-root relative mx-auto w-full px-4 pb-8 sm:px-6 lg:px-8">
-      <div className="ws-chess-round-shell grid gap-5">
-        <aside className="ws-chess-round-desktop-left order-1 hidden min-h-0 flex-col gap-[15px] overflow-hidden text-[#c9c6c0]">
+    <div className="round ws-chess-round-root relative mx-auto w-full px-4 pb-8 sm:px-6 lg:px-8">
+      <div className="round__layout ws-chess-round-shell grid gap-5">
+        <aside className="round__side ws-chess-round-desktop-left order-1 hidden min-h-0 flex-col gap-[15px] overflow-hidden text-[#c9c6c0]">
           <div
-            className="shrink-0 rounded-[7px] px-[27px] py-[25px]"
+            className="game__meta shrink-0 rounded-[7px] px-[27px] py-[25px]"
             style={{ background: "#262421", boxShadow: "0 2px 5px rgba(0,0,0,0.28)" }}
           >
             <div className="flex gap-5">
               <div className="grid h-12 w-12 shrink-0 place-items-center text-white/45">
-                <FlameBadgeIcon />
+                <VariantBadgeIcon variant={match.variant} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="ws-chess-lila-meta font-normal text-white/66">
-                  {match.timeControl} • {match.rating?.rated ? "Rated" : "Casual"}
+                  {roundTimeLabel} • {match.rating?.rated ? "Rated" : "Casual"}
                   {speedLabel ? ` • ${speedLabel}` : ""}
+                  {match.variant !== "standard" ? (
+                    <>
+                      {" • "}
+                      <span className="text-[#3d9be9]">{variantMetaLabel}</span>
+                    </>
+                  ) : null}
                 </div>
                 {matchAgeLabel ? (
                   <div className="mt-1 text-[0.82rem] text-white/36">{matchAgeLabel}</div>
@@ -1635,6 +1771,12 @@ export function PlaySection({
                 </div>
               </div>
             </div>
+            {match.variant === "chess960" && match.chess960Position !== null ? (
+              <div className="mt-4 border-t border-white/12 pt-4 text-[0.98em] text-white/58">
+                Chess960 start position:{" "}
+                <span className="text-[#3d9be9]">{match.chess960Position}</span>
+              </div>
+            ) : null}
             {over ? (
               <div className="mt-4 border-t border-white/12 pt-4 text-center text-[1.02em] text-white/62">
                 {resultLine(t, match, you)}
@@ -1777,7 +1919,7 @@ export function PlaySection({
         </aside>
 
         <section
-          className="ws-chess-round-board-section order-1 rounded-[8px] p-3 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
+          className="round__app__board main-board ws-chess-round-board-section order-1 rounded-[8px] p-3 shadow-[0_1px_1px_rgba(0,0,0,0.20)]"
           style={{ background: CHESS_SURFACE_BG }}
         >
           <div className="mx-auto w-full" style={{ maxWidth: boardMaxWidth }}>
@@ -1796,7 +1938,7 @@ export function PlaySection({
                 />
               }
             />
-            <div className="relative overflow-hidden rounded-[2px]">
+            <div className="relative overflow-hidden rounded-[2px]" onWheel={handleReplayWheel}>
               <ChessBoard
                 board={board}
                 selected={boardSelected}
@@ -1804,7 +1946,10 @@ export function PlaySection({
                 checkSquare={checkSquare}
                 lastMove={lastMove}
                 orientation={boardOrientation}
+                turn={replayPosition.turn}
+                playerColor={selfColor}
                 theme={theme}
+                pieceSet="cburnett"
                 onSquareClick={
                   canInteractWithBoard ? (r, c) => void onSquareClick(r, c) : undefined
                 }
@@ -1900,6 +2045,7 @@ export function PlaySection({
               >
                 <div className="mb-2 text-[13px] font-medium text-white/56">
                   {match.timeControl} • {match.rating?.rated ? "Rated" : "Casual"}
+                  {match.variant !== "standard" ? ` • ${variantLabel}` : ""}
                 </div>
                 <div className="text-[12px] text-white/46">{turnLabel}</div>
                 {wagerLine ? (
@@ -2074,7 +2220,7 @@ export function PlaySection({
           </div>
         </section>
 
-        <aside className="ws-chess-round-desktop-right order-3 hidden min-h-0 flex-col overflow-hidden text-[#c9c6c0]">
+        <aside className="round__app__table ws-chess-round-desktop-right order-3 hidden min-h-0 flex-col overflow-hidden text-[#c9c6c0]">
           {desktopRoundLayout && !wideRoundLayout && match.videoEnabled && !over ? (
             <LiveVideoPlayer
               matchId={match.id}
@@ -2105,7 +2251,7 @@ export function PlaySection({
               />
             </div>
 
-            <div className="ws-chess-round-rail-table relative grid min-h-0 bg-[#262421] shadow-[0_2px_5px_rgba(0,0,0,0.28)]">
+            <div className="rmoves ws-chess-round-rail-table relative grid min-h-0 bg-[#262421] shadow-[0_2px_5px_rgba(0,0,0,0.28)]">
               <RoundReplayControls
                 viewingPly={viewingPly}
                 currentPly={currentReplayPly}
@@ -2138,11 +2284,13 @@ export function PlaySection({
               <div className="border-t px-4 py-2" style={{ borderColor: "#3b3936" }}>
                 <div className="flex items-center justify-between gap-3 text-[0.82rem] text-white/48">
                   <span>{replayMode ? `Move ${viewingPly}` : turnLabel}</span>
-                  <span>
-                    {engine.depth !== null
-                      ? t("engineDepth", { depth: engine.depth })
-                      : engine.label}
-                  </span>
+                  {over ? (
+                    <span>
+                      {engine.depth !== null
+                        ? t("engineDepth", { depth: engine.depth })
+                        : engine.label}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -2168,7 +2316,7 @@ export function PlaySection({
 
             {you !== null && !over ? (
               <div
-                className="ws-chess-round-rail-controls shrink-0 overflow-y-auto border-t px-4 pt-3 pb-3"
+                className="rcontrols ws-chess-round-rail-controls shrink-0 overflow-y-auto border-t px-4 pt-3 pb-3"
                 style={{ borderColor: "#3b3936", background: "#262421" }}
               >
                 <div className="mb-2 text-[0.82rem] text-white/44">
@@ -2356,18 +2504,20 @@ export function PlaySection({
                 compact
               />
             </div>
-            <div className="rounded-[14px] border border-white/8 bg-black/12 px-4 py-3 text-[12.5px] text-white/62">
-              <span className="tnum text-white">
-                {formatEngineScore(engine.scoreCp, engine.scoreMate)}
-              </span>
-              <span className="mx-2 text-white/24">•</span>
-              <span>{t("engineBestMove")}</span>
-              <span className="tnum ml-1.5 text-white">{engineBestMoveSan ?? "…"}</span>
-              <span className="mx-2 text-white/24">•</span>
-              <span>
-                {engine.depth !== null ? t("engineDepth", { depth: engine.depth }) : engine.label}
-              </span>
-            </div>
+            {over ? (
+              <div className="rounded-[14px] border border-white/8 bg-black/12 px-4 py-3 text-[12.5px] text-white/62">
+                <span className="tnum text-white">
+                  {formatEngineScore(engine.scoreCp, engine.scoreMate)}
+                </span>
+                <span className="mx-2 text-white/24">•</span>
+                <span>{t("engineBestMove")}</span>
+                <span className="tnum ml-1.5 text-white">{engineBestMoveSan ?? "…"}</span>
+                <span className="mx-2 text-white/24">•</span>
+                <span>
+                  {engine.depth !== null ? t("engineDepth", { depth: engine.depth }) : engine.label}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : mobilePanel === "chat" ? (
           <div className="space-y-4">
@@ -2442,6 +2592,12 @@ export function PlaySection({
                 <span className="text-white/55">{t("infoTimeControl")}</span>
                 <span className="text-white">{match.timeControl}</span>
               </div>
+              {match.variant !== "standard" ? (
+                <div className="flex items-center justify-between gap-3 rounded-[10px] bg-black/10 px-3 py-2.5">
+                  <span className="text-white/55">Variant</span>
+                  <span className="text-right text-white">{variantLabel}</span>
+                </div>
+              ) : null}
               {opening ? (
                 <div className="rounded-[10px] bg-black/10 px-3 py-2.5 text-[12px] text-white/62">
                   <span className="tnum mr-1.5 text-white/36">{opening.eco}</span>

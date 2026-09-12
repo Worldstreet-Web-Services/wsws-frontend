@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useSwissList } from "@/features/casino/hooks/use-casino-swiss";
 import { CasinoEmpty, CasinoError, CasinoLoading } from "@/features/casino/components/casino-state";
-import { SwissCreateForm } from "@/features/casino/components/chess/swiss/create-form";
 import type {
   SwissFormat,
   SwissGameKind,
@@ -113,7 +111,6 @@ export function SwissListSection({
 }: { game?: SwissGameKind; format?: SwissFormat } = {}) {
   const t = useTranslations("casino.chess.swiss");
   const { tournaments, isLoading, error, refetch } = useSwissList(game, format);
-  const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 pt-8 pb-20 sm:px-6">
@@ -128,15 +125,13 @@ export function SwissListSection({
               : t("intro")}
           </div>
         </div>
-        <button
-          onClick={() => setShowCreate((v) => !v)}
+        <Link
+          href="/casino/chess/swiss/create"
           className="text-ink cursor-pointer rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium transition-transform hover:-translate-y-0.5"
         >
-          {showCreate ? t("closeCreate") : t("createTitle")}
-        </button>
+          {t("createTitle")}
+        </Link>
       </div>
-
-      {showCreate ? <SwissCreateForm game={game} format={format} /> : null}
 
       {error ? (
         <CasinoError error={error} subject={t("subject")} onRetry={refetch} />

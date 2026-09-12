@@ -263,7 +263,10 @@ describe("chess lobby", () => {
   it("shows the three lobby start choices without inventing open games", async () => {
     render(<LobbySection />, { wrapper });
     expect(await screen.findByRole("button", { name: "Create a lobby game" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Challenge a friend/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Challenge a friend/ })).toHaveAttribute(
+      "href",
+      "/casino/chess?setup=friend#game-setup"
+    );
     expect(screen.getByRole("button", { name: "Set up a computer game" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("Open lobby games")).not.toBeInTheDocument());
   });

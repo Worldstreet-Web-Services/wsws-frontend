@@ -9,6 +9,8 @@ import type PuzzleCtrl from '@/ctrl';
 import type { Angle, PuzzleDifficulty } from '@/interfaces';
 import type PuzzleStreak from '@/streak';
 
+import { currentPuzzleAppPath, puzzleAppPath } from '../routes';
+
 export function puzzleBox(ctrl: PuzzleCtrl): VNode {
   return hl('div.puzzle__side__metas', [puzzleInfos(ctrl), gameInfos(ctrl)]);
 }
@@ -33,7 +35,7 @@ const puzzleInfos = (ctrl: PuzzleCtrl): VNode => {
                 'a',
                 {
                   attrs: {
-                    href: ctrl.routerWithLang(`/training/${puzzle.id}`),
+                    href: currentPuzzleAppPath(ctrl, puzzle.id),
                     ...(ctrl.streak ? { target: '_blank' } : {}),
                   },
                 },
@@ -153,7 +155,7 @@ export function replay(ctrl: PuzzleCtrl): MaybeVNode {
   const i = replay.i + (ctrl.mode === 'play' ? 0 : 1);
   const text = i18n.puzzleTheme[angle.key];
   return hl('div.puzzle__side__replay', [
-    hl('a', { attrs: { href: `/training/dashboard/${replay.days}` } }, ['« ', `Replaying ${text} puzzles`]),
+    hl('a', { attrs: { href: puzzleAppPath({ theme: angle.key }) } }, ['« ', `Replaying ${text} puzzles`]),
     hl('div.puzzle__side__replay__bar', {
       attrs: {
         style: `---p:${replay.of ? Math.round((100 * i) / replay.of) : 1}%`,
@@ -183,8 +185,13 @@ export function config(ctrl: PuzzleCtrl): MaybeVNode {
 export const renderDifficultyForm = (ctrl: PuzzleCtrl): VNode =>
   hl(
     'form.puzzle__side__config__difficulty',
-    { attrs: { action: `/training/difficulty/${ctrl.data.angle.key}`, method: 'post' } },
+    { attrs: { action: puzzleAppPath(), method: 'get' } },
     [
+      ctrl.data.angle.key !== 'mix' &&
+        hl('input', { attrs: { type: 'hidden', name: 'theme', value: ctrl.data.angle.key } }),
+      ctrl.opts.settings.color &&
+        ctrl.opts.settings.color !== 'random' &&
+        hl('input', { attrs: { type: 'hidden', name: 'color', value: ctrl.opts.settings.color } }),
       hl('label', { attrs: { for: 'puzzle-difficulty' } }, i18n.puzzle.difficultyLevel),
       hl(
         'select#puzzle-difficulty.puzzle__difficulty__selector',
@@ -224,7 +231,14 @@ export const renderColorForm = (ctrl: PuzzleCtrl): VNode =>
           hl(
             `a.label.color-${key}${key === (ctrl.opts.settings.color || 'random') ? '.active' : ''}`,
             {
-              attrs: { href: `/training/${ctrl.data.angle.key}/${key}`, title: i18n.site[i18nKey] },
+              attrs: {
+                href: puzzleAppPath({
+                  color: key,
+                  difficulty: ctrl.opts.settings.difficulty,
+                  theme: ctrl.data.angle.key,
+                }),
+                title: i18n.site[i18nKey],
+              },
             },
             hl('icon'),
           ),

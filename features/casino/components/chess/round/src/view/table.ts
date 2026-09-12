@@ -131,6 +131,11 @@ export const renderTablePlay = (ctrl: RoundController): LooseVNodes => {
 };
 
 export const renderTable = (ctrl: RoundController): LooseVNodes => [
+  ctrl.data.player.spectator
+    ? hl('div.round__app__betting', {
+        attrs: { 'data-ark-spectator-betting-slot': 'true' },
+      })
+    : undefined,
   hl('div.round__app__table'),
   renderExpiration(ctrl),
   renderPlayer(ctrl, 'top'),

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Buffer } from "node:buffer";
-import { getRequestUser, verifyRequest } from "@/lib/server/auth";
+import { ACCESS_TOKEN_COOKIE, getRequestUser, verifyRequest } from "@/lib/server/auth";
 import {
   chessDisplayNameOfUser,
   chessReadNeedsSession,
@@ -32,8 +32,9 @@ const BASE =
   process.env.NEXT_PUBLIC_CHESS_API_URL ??
   wsapiService("chess");
 const NO_STORE = "no-store, max-age=0, must-revalidate";
-const COUNTRY_WRITE = /^(?:matches|matches\/[^/]+\/join|arenas\/[^/]+\/join)$/u;
-const PLAYER_PROFILE_WRITE = /^(?:matches|matches\/[^/]+\/join|computer\/matches)$/u;
+const COUNTRY_WRITE = /^(?:matches|matches\/[^/]+\/join|arenas\/[^/]+\/join|play\/computer)$/u;
+const PLAYER_PROFILE_WRITE = /^(?:matches|matches\/[^/]+\/join|computer\/matches|play\/computer)$/u;
+const SERVER_RENDERED_PAGE = /^(?:play|challenge)(?:\/|$)/u;
 
 // Just long enough to collapse the concurrent polls of two players watching the
 // same board, and short enough that neither sees a stale position. The match
@@ -45,7 +46,23 @@ const cache = new Map<
   { expires: number; body: string; status: number; contentType: string }
 >();
 
+function forwardedLocation(joined: string, location: string): string {
+  if (!location.startsWith("/") || location.startsWith("//")) return location;
+
+  const round = SERVER_RENDERED_PAGE.test(joined)
+    ? /^\/round\/([^/?#]+)(?:[?#].*)?$/u.exec(location)
+    : null;
+  if (round) {
+    return `/casino/chess/play?match=${encodeURIComponent(round[1])}`;
+  }
+
+  return SERVER_RENDERED_PAGE.test(joined) ? `/api/chess${location}` : location;
+}
+
 function cacheTtlMs(joined: string): number {
+  // Server-rendered lobby and challenge pages contain viewer-specific state.
+  if (SERVER_RENDERED_PAGE.test(joined)) return 0;
+  if (/^challenges(?:\/|$)/u.test(joined)) return 0;
   // The exact match snapshot carries lifecycle transitions. It is the repair
   // path when a creator misses the opponent-joined socket frame, so even a tiny
   // cache can replay `waiting` after the game is active. Move history and PGN
@@ -105,7 +122,7 @@ function noWallet() {
 
 function forwardAuthHeaders(req: NextRequest, headers: Record<string, string>): void {
   const authorization = req.headers.get("authorization");
-  const accessToken = req.cookies.get("privy-token")?.value;
+  const accessToken = req.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const identityToken =
     req.headers.get("privy-id-token") ?? req.cookies.get("privy-id-token")?.value;
 
@@ -134,7 +151,7 @@ async function forward(
   if (method !== "GET") {
     headers["content-type"] = requestContentType ?? "application/json";
   }
-  if (/^play(?:\/|$)/u.test(joined)) headers["x-forwarded-prefix"] = "/api/chess";
+  if (SERVER_RENDERED_PAGE.test(joined)) headers["x-forwarded-prefix"] = "/api/chess";
   if (wallet) {
     headers["x-wallet-address"] = wallet;
     forwardAuthHeaders(req, headers);
@@ -151,6 +168,7 @@ async function forward(
       headers,
       body,
       cache: "no-store",
+      redirect: SERVER_RENDERED_PAGE.test(joined) ? "manual" : "follow",
       signal: AbortSignal.timeout(15_000),
     });
     const text = await res.text();
@@ -199,10 +217,7 @@ async function forward(
     };
     const location = res.headers.get("location");
     if (location) {
-      responseHeaders.location =
-        /^play(?:\/|$)/u.test(joined) && location.startsWith("/play")
-          ? `/api/chess${location}`
-          : location;
+      responseHeaders.location = forwardedLocation(joined, location);
     }
     return new NextResponse(text, {
       status: res.status,

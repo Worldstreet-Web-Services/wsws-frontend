@@ -14,9 +14,9 @@ import {
   PlayIcon,
   SettingsIcon,
 } from "@/components/ui/icons";
-import { useCreateChallenge } from "@/features/casino/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
+import { useFundedChessChallenge } from "@/features/casino/hooks/use-funded-chess-challenge";
 import { exceedsUsdcBalance, normalizeUsdcAmount } from "@/features/casino/lib/api/cashier";
 import { parseTimeControl } from "@/features/casino/lib/api/chess-wire";
 import { BOARD_THEMES, DEFAULT_THEME } from "@/features/casino/lib/chess/board-theme";
@@ -260,7 +260,7 @@ export function CreateSection() {
   const router = useRouter();
   const wallet = useCasinoWallet();
   const cashier = useChessCashierStatus();
-  const create = useCreateChallenge();
+  const funded = useFundedChessChallenge();
 
   const [timeControl, setTimeControl] = useState<ChessTimeControl>("10+0");
   const [stake, setStake] = useState("");
@@ -279,14 +279,14 @@ export function CreateSection() {
 
   const stakeUsdc = (cashier.configured ? normalizeUsdcAmount(stake) : null) ?? undefined;
   const stakeOverBalance =
-    stakeUsdc !== undefined && exceedsUsdcBalance(stakeUsdc, cashier.available);
+    stakeUsdc !== undefined && exceedsUsdcBalance(stakeUsdc, funded.availableUsdc);
 
   const onCreate = async () => {
     if (!wallet.connected) {
       toast.error(t("toastConnect"));
       return;
     }
-    if (create.isPending || stakeOverBalance) return;
+    if (funded.isPending || stakeOverBalance) return;
 
     const id = toast.loading(t("toastCreating"));
 
@@ -304,7 +304,7 @@ export function CreateSection() {
       // The clipboard write is armed NOW, inside the click's user activation,
       // with a promise for the URL. Copying after the await instead fails
       // silently on Safari/iOS, where activation dies at the first await.
-      const created = create.mutateAsync(input);
+      const created = funded.create(input);
       const copiedPromise = copyTextWhenReady(
         created.then(({ challenge }) => `${shareOrigin()}/casino/chess/invite?code=${challenge.id}`)
       );
@@ -312,7 +312,7 @@ export function CreateSection() {
       const copied = await copiedPromise;
       toast.success(copied ? t("linkCopied") : t("toastCreatedInvite"), { id });
 
-      router.push(`/casino/chess/play?match=${challenge.id}`);
+      router.push(`/casino/chess/invite?code=${encodeURIComponent(challenge.id)}`);
     } catch (e) {
       toast.error(friendlyError(e, t("toastCreateFailed")), { id });
     }
@@ -433,9 +433,9 @@ export function CreateSection() {
                   setStake={setStake}
                   stakeUsdc={stakeUsdc}
                   stakeOverBalance={stakeOverBalance}
-                  cashierAvailable={cashier.available}
-                  feeBps={cashier.config?.platformFeeBps ?? 500}
-                  feePct={cashier.feePct}
+                  cashierAvailable={funded.availableUsdc}
+                  feeBps={funded.feeBps}
+                  feePct={funded.feeBps / 100}
                 />
               ) : null}
 
@@ -449,10 +449,10 @@ export function CreateSection() {
             <div className="mt-5 shrink-0 border-t border-white/6 pt-5">
               <button
                 onClick={() => void onCreate()}
-                disabled={create.isPending || stakeOverBalance}
+                disabled={funded.isPending || stakeOverBalance}
                 className={`${CHESS_PRIMARY_BUTTON_CLASS} w-full rounded-[14px] px-4 py-3.5 text-[14px] font-semibold`}
               >
-                {create.isPending ? t("creating") : t("submitInvite")}
+                {funded.isPending ? t("creating") : t("submitInvite")}
               </button>
               <div className="mt-2 text-center text-[12px] font-normal text-white/45">
                 The link is copied right after creation, and you can copy it again from the waiting

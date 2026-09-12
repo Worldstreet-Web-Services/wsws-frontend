@@ -33,7 +33,8 @@ const MAX_BATCH_CALLS = 100;
 // What Alchemy answers, with a 429, once the account owning the key has used
 // its monthly capacity. Unlike a throughput limit this does not clear on a
 // retry; it clears on the next billing cycle or a plan change.
-const MONTHLY_CAPACITY_EXHAUSTED = /monthly capacity limit exceeded/i;
+const MONTHLY_CAPACITY_EXHAUSTED =
+  /monthly capacity limit exceeded|over your gas sponsorship limit/i;
 
 // JSON-RPC "resource unavailable". viem retries 429s, LimitExceeded (-32005)
 // and Internal (-32603); it surfaces this one at once, which is what an
@@ -118,10 +119,12 @@ function sponsorPairsFor(
 // app is over capacity or rate limited, the key is refused, or the app does
 // not own the policy. Anything else is the request's own outcome.
 const PAIR_REJECTED =
-  /policy not found|must be authenticated|not authorized|unauthorized|invalid api key/i;
+  /policy not found|unsupported policy type|does not support bundler sponsorship|must be authenticated|not authorized|unauthorized|invalid api key/i;
 
 function pairCannotServe(status: number, text: string): "capacity" | "rejected" | null {
-  if (status === 429 && MONTHLY_CAPACITY_EXHAUSTED.test(text)) return "capacity";
+  // BSO returns the team spending-limit failure as a JSON-RPC error inside a
+  // 200, while the paymaster path returns the monthly limit as an HTTP 429.
+  if (MONTHLY_CAPACITY_EXHAUSTED.test(text)) return "capacity";
   if (status === 429 || status === 401 || status === 403) return "rejected";
   if (status === 200 && PAIR_REJECTED.test(text)) return "rejected";
   return null;

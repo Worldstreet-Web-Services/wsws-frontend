@@ -38,8 +38,9 @@ import type {
 } from './interfaces';
 import keyboard from './keyboard';
 import moveTest from './moveTest';
-import { pgnToTree, mergeSolution, nextCorrectMove } from './moveTree';
+import { fenToTree, pgnToTree, mergeSolution, nextCorrectMove } from './moveTree';
 import Report from './report';
+import { currentPuzzleAppPath, puzzleAppPath } from './routes';
 import PuzzleSession from './session';
 import PuzzleStreak from './streak';
 import * as xhr from './xhr';
@@ -245,7 +246,11 @@ export default class PuzzleCtrl implements CevalHandler {
 
   initiate = (fromData: PuzzleData): void => {
     this.data = fromData;
-    this.tree = makeTree(pgnToTree(this.data.game.pgn.split(' ')));
+    this.tree = makeTree(
+      this.data.game.sourceFen && this.data.game.setupMove
+        ? fenToTree(this.data.game.sourceFen, this.data.game.setupMove, this.data.puzzle.initialPly)
+        : pgnToTree(this.data.game.pgn.split(' ')),
+    );
     const initialPath = treePath.fromNodeList(treeOps.mainlineNodeList(this.tree.root));
     this.mode = 'play';
     this.next = defer();
@@ -387,6 +392,15 @@ export default class PuzzleCtrl implements CevalHandler {
     this.withGround(g => g.playPremove());
 
     const progress = moveTest(this);
+    const solutionPly = treePath.size(newPath) - treePath.size(this.initialPath) - 1;
+    if (solutionPly >= 0 && solutionPly % 2 === 0 && node.uci) {
+      void window.arkPuzzleBridge?.attempt({
+        puzzleId: this.data.puzzle.id,
+        uci: node.uci,
+        solutionPly,
+        hintUsed: this.hintHasBeenShown(),
+      });
+    }
     this.setAutoShapes();
     if (progress === 'fail') site.sound.say(i18n.puzzle.failed);
     if (progress) this.applyProgress(progress);
@@ -465,15 +479,23 @@ export default class PuzzleCtrl implements CevalHandler {
     if (this.resultSent) return Promise.resolve();
     this.resultSent = true;
     this.session.complete(this.data.puzzle.id, win);
-    const res = await xhr.complete(
-      this.data.puzzle.id,
-      this.data.angle.key,
-      win,
-      this.rated() && !this.hintHasBeenShown(),
-      this.data.replay,
-      this.streak,
-      this.opts.settings.color,
-    );
+    const res = window.arkPuzzleBridge
+      ? await window.arkPuzzleBridge.complete({
+          puzzleId: this.data.puzzle.id,
+          theme: this.data.angle.key,
+          win,
+          rated: this.rated() && !this.hintHasBeenShown(),
+          color: this.opts.settings.color,
+        })
+      : await xhr.complete(
+          this.data.puzzle.id,
+          this.data.angle.key,
+          win,
+          this.rated() && !this.hintHasBeenShown(),
+          this.data.replay,
+          this.streak,
+          this.opts.settings.color,
+        );
     const next = res.next;
     if (next?.user && this.data.user) {
       this.data.user.rating = next.user.rating;
@@ -489,7 +511,7 @@ export default class PuzzleCtrl implements CevalHandler {
     this.redraw();
     if (!next && !this.data.replay) {
       await alert('No more puzzles available! Try another theme.');
-      site.redirect('/training/themes');
+      site.redirect(puzzleAppPath());
     }
   };
 
@@ -511,12 +533,12 @@ export default class PuzzleCtrl implements CevalHandler {
     });
 
     if (this.data.replay && this.round === undefined) {
-      site.redirect(`/training/dashboard/${this.data.replay.days}`);
+      site.redirect(puzzleAppPath({ theme: this.data.angle.key }));
     }
 
     if (!this.streak && !this.data.replay) {
-      const path = this.routerWithLang(`/training/${this.data.angle.key}`);
-      if (location.pathname !== path) history.replaceState(null, '', path);
+      const path = currentPuzzleAppPath(this);
+      if (`${location.pathname}${location.search}` !== path) history.replaceState(null, '', path);
     }
   };
 
@@ -666,7 +688,8 @@ export default class PuzzleCtrl implements CevalHandler {
   };
 
   vote = (v: boolean) => {
-    xhr.vote(this.data.puzzle.id, v);
+    if (window.arkPuzzleBridge?.vote) void window.arkPuzzleBridge.vote(this.data.puzzle.id, v);
+    else xhr.vote(this.data.puzzle.id, v);
     this.voted = this.voted === v ? undefined : v;
     this.redraw();
   };
@@ -676,11 +699,15 @@ export default class PuzzleCtrl implements CevalHandler {
       this.round.themes = this.round.themes || ({} as RoundThemes);
       if (v === this.round.themes[theme]) {
         delete this.round.themes[theme];
-        xhr.voteTheme(this.data.puzzle.id, theme, undefined);
+        if (window.arkPuzzleBridge?.voteTheme)
+          void window.arkPuzzleBridge.voteTheme(this.data.puzzle.id, theme, undefined);
+        else xhr.voteTheme(this.data.puzzle.id, theme, undefined);
       } else {
         if (v || this.data.puzzle.themes.includes(theme)) this.round.themes[theme] = v;
         else delete this.round.themes[theme];
-        xhr.voteTheme(this.data.puzzle.id, theme, v);
+        if (window.arkPuzzleBridge?.voteTheme)
+          void window.arkPuzzleBridge.voteTheme(this.data.puzzle.id, theme, v);
+        else xhr.voteTheme(this.data.puzzle.id, theme, v);
       }
       this.redraw();
     }

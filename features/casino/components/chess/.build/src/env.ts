@@ -30,8 +30,8 @@ export interface Sync {
 }
 
 export const env = new (class {
-  readonly rootDir = resolve(dirname(new URL(import.meta.url).pathname), '../../..');
-  readonly uiDir = join(this.rootDir, 'ui');
+  readonly rootDir = resolve(dirname(new URL(import.meta.url).pathname), '../../../../../..');
+  readonly uiDir = join(this.rootDir, 'features/casino/components/chess');
   readonly outDir = join(this.rootDir, 'public');
   readonly cssOutDir = join(this.outDir, 'css');
   readonly jsOutDir = join(this.outDir, 'compiled');

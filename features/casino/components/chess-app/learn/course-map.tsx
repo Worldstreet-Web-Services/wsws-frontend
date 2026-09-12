@@ -17,7 +17,15 @@ import {
 } from "@/features/casino/lib/chess/learn-course";
 import { cn } from "@/lib/utils";
 
-function CourseSidebar({ home }: { home: ChessCoachHome }) {
+function CourseSidebar({
+  home,
+  title,
+  description,
+}: {
+  home: ChessCoachHome;
+  title: string;
+  description: string;
+}) {
   const progress = courseProgress(home.earnedPoints, home.maximumPoints);
   return (
     <aside className="overflow-hidden rounded-[7px] border border-white/10 bg-[#171715] shadow-[0_18px_55px_rgba(0,0,0,0.32)] lg:sticky lg:top-[84px]">
@@ -41,10 +49,10 @@ function CourseSidebar({ home }: { home: ChessCoachHome }) {
           </div>
         </div>
         <h1 className="mt-5 font-serif text-[27px] font-bold tracking-[-0.025em] text-white">
-          Chess basics
+          {title}
         </h1>
         <p className="mt-1 text-[13px] leading-5 text-white/48">
-          Learn the rules, pieces and first tactics by playing every move yourself.
+          {description}
         </p>
       </div>
       <div className="border-t border-white/8 px-5 py-4">
@@ -60,7 +68,7 @@ function CourseSidebar({ home }: { home: ChessCoachHome }) {
       </div>
       <div className="grid border-t border-white/8">
         <Link
-          href="/casino/chess/create"
+          href="/casino/chess?setup=friend#game-setup"
           className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold text-white/52 transition-colors hover:bg-white/[0.04] hover:text-white"
         >
           <PlayIcon size={13} /> Play a game
@@ -143,17 +151,21 @@ export function CourseMap({
   home,
   openingLessonKey,
   onOpenLesson,
+  title = "Chess basics",
+  description = "Learn the rules, pieces and first tactics by playing every move yourself.",
 }: {
   catalog: ChessCoachCatalog;
   home: ChessCoachHome;
   openingLessonKey: string | null;
   onOpenLesson: (lesson: ChessCoachLesson) => void;
+  title?: string;
+  description?: string;
 }) {
   const states = lessonStateMap(home.lessons);
   return (
     <main className="min-h-[calc(100svh-60px)] bg-[#0b0b0a] px-3 py-5 text-white sm:px-5 sm:py-8">
       <div className="mx-auto grid w-full max-w-[1280px] items-start gap-7 lg:grid-cols-[242px_minmax(0,1fr)]">
-        <CourseSidebar home={home} />
+        <CourseSidebar home={home} title={title} description={description} />
         <div className="min-w-0">
           {catalog.sections.map((section) => (
             <section key={section.key} className="mb-10 last:mb-0">

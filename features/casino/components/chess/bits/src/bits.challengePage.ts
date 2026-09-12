@@ -67,7 +67,8 @@ export function initModule(opts: ChallengeOpts): void {
             this.submit();
           });
       });
-    if (isTouchDevice() && typeof navigator.share === 'function') {
+    const mobileShare = window.matchMedia('(max-width: 799px) and (pointer: coarse)').matches;
+    if (mobileShare && isTouchDevice() && typeof navigator.share === 'function') {
       const inviteUrl = document.querySelector<HTMLElement>('.invite__url');
       if (!inviteUrl) return;
       inviteUrl.classList.add('none');

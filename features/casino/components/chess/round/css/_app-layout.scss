@@ -43,6 +43,14 @@
   grid-area: kb-move;
 }
 
+.round__app__betting {
+  display: none;
+
+  &.is-active {
+    display: contents;
+  }
+}
+
 .round__app {
   display: grid;
 
@@ -119,6 +127,14 @@
 
     &__table {
       grid-area: 5 / 2 / 11 / 3;
+    }
+
+    &__betting.is-active {
+      display: block;
+      grid-area: 1 / 2 / 3 / 3;
+      align-self: start;
+      min-width: 0;
+      z-index: 4;
     }
 
     #voice-bar {

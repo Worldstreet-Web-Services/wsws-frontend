@@ -52,19 +52,17 @@ describe("Alchemy sponsorship proxy", () => {
     expect(url).not.toContain("stale-dead-key");
   });
 
-  // Base runs through the paymaster path: the policy the team holds is a
-  // paymaster-type policy, and Alchemy answers the bundler header path for it
-  // with "does not support bundler sponsorship" (ADR-2026-09-06-base-
-  // sponsorship-via-paymaster). The proxy injects Base's own policy into the
-  // paymaster context and sends no bundler header.
-  it("injects the Base policy into paymaster context and sends no bundler header", async () => {
+  // The current Base policies are BSO policies. Alchemy rejects them when
+  // passed to pm_getPaymasterData, so the policy belongs on the sponsored
+  // eth_sendUserOperation request instead.
+  it("sends the Base BSO policy on the user-operation request", async () => {
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     const response = await forwardAlchemyBundlerRequest(
       makeReq({
         jsonrpc: "2.0",
         id: 1,
-        method: "pm_getPaymasterStubData",
-        params: [{ sender: "0x1" }, "0xentrypoint", "0x2105", {}],
+        method: "eth_sendUserOperation",
+        params: [{ sender: "0x1" }, "0xentrypoint"],
       }),
       "base-mainnet"
     );
@@ -72,8 +70,8 @@ describe("Alchemy sponsorship proxy", () => {
     expect(response.status).toBe(200);
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(String(url)).toContain("base-mainnet.g.alchemy.com/v2/data-api-key");
-    expect(JSON.parse(String(init?.body)).params[3]).toEqual({ policyId: "base-policy" });
-    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
+    expect(JSON.parse(String(init?.body)).params).toEqual([{ sender: "0x1" }, "0xentrypoint"]);
+    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBe("base-policy");
   });
 
   it("never rotates sponsorship onto the fallback key", async () => {
@@ -146,7 +144,7 @@ describe("Alchemy sponsorship proxy", () => {
     vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "");
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     const response = await forwardAlchemyBundlerRequest(
-      makeReq({ method: "pm_getPaymasterData", params: [{}, "0xentrypoint", "0x2105", {}] }),
+      makeReq({ method: "eth_sendUserOperation", params: [{}, "0xentrypoint"] }),
       "base-mainnet"
     );
 
@@ -191,6 +189,33 @@ describe("Alchemy sponsorship proxy", () => {
     expect(body.error.message).toMatch(/monthly capacity/i);
     expect(logged).toHaveBeenCalledWith(expect.stringMatching(/capacity/i), expect.anything());
     logged.mockRestore();
+  });
+
+  it("recognizes the BSO team sponsorship limit returned inside a 200", async () => {
+    const exhausted = {
+      jsonrpc: "2.0",
+      id: 7,
+      error: {
+        code: -32602,
+        message: "This transaction's USD cost will put your team over your gas sponsorship Limit.",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(exhausted), { status: 200 }))
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({ jsonrpc: "2.0", id: 7, method: "eth_sendUserOperation", params: [] }),
+      "base-mainnet"
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.error.code).toBe(-32002);
+    expect(body.error.message).toMatch(/monthly capacity/i);
   });
 
   it("answers every call of a batch when capacity is exhausted", async () => {
@@ -313,7 +338,11 @@ describe("Alchemy sponsorship across the key pool", () => {
   function policyOf(call: number): { key: string; policyId: unknown } {
     const [url, init] = vi.mocked(fetch).mock.calls[call];
     const body = JSON.parse(String(init?.body));
-    return { key: String(url).split("/v2/")[1], policyId: body.params?.[3]?.policyId };
+    const headers = init?.headers as Record<string, string>;
+    return {
+      key: String(url).split("/v2/")[1],
+      policyId: headers["x-alchemy-policy-id"] ?? body.params?.[3]?.policyId,
+    };
   }
 
   it("moves to the next pair, with that pair's policy, when the first is over capacity", async () => {
@@ -329,8 +358,8 @@ describe("Alchemy sponsorship across the key pool", () => {
       makeReq({
         jsonrpc: "2.0",
         id: 1,
-        method: "pm_getPaymasterStubData",
-        params: [{}, "0x", "0x2105", {}],
+        method: "eth_sendUserOperation",
+        params: [{}, "0x"],
       }),
       "base-mainnet"
     );
@@ -364,12 +393,42 @@ describe("Alchemy sponsorship across the key pool", () => {
       makeReq({
         jsonrpc: "2.0",
         id: 1,
-        method: "pm_getPaymasterStubData",
-        params: [{}, "0x", "0x2105", {}],
+        method: "eth_sendUserOperation",
+        params: [{}, "0x"],
       }),
       "base-mainnet"
     );
     expect((await response.json()).result.paymaster).toBe("0xpm");
+    expect(policyOf(2)).toEqual({ key: "k2", policyId: "p2" });
+  });
+
+  it("moves past a paymaster policy when the Base route needs a BSO policy", async () => {
+    const unsupportedPolicy = {
+      jsonrpc: "2.0",
+      id: 1,
+      error: { code: -32602, message: "Policy does not support bundler sponsorship" },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify(exhausted(1)), { status: 429 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(unsupportedPolicy), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(ok(1)), { status: 200 }))
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_sendUserOperation",
+        params: [{}, "0x"],
+      }),
+      "base-mainnet"
+    );
+
+    expect((await response.json()).result.paymaster).toBe("0xpm");
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
     expect(policyOf(2)).toEqual({ key: "k2", policyId: "p2" });
   });
 
@@ -384,8 +443,8 @@ describe("Alchemy sponsorship across the key pool", () => {
       makeReq({
         jsonrpc: "2.0",
         id: 1,
-        method: "pm_getPaymasterStubData",
-        params: [{}, "0x", "0x2105", {}],
+        method: "eth_sendUserOperation",
+        params: [{}, "0x"],
       }),
       "base-mainnet"
     );
@@ -407,8 +466,8 @@ describe("Alchemy sponsorship across the key pool", () => {
         makeReq({
           jsonrpc: "2.0",
           id,
-          method: "pm_getPaymasterStubData",
-          params: [{}, "0x", "0x2105", {}],
+          method: "eth_sendUserOperation",
+          params: [{}, "0x"],
         }),
         "base-mainnet"
       );

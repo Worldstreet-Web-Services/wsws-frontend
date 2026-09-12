@@ -218,7 +218,10 @@ export function LobbySection() {
                 />
               </button>
 
-              <Link href="/casino/chess/create" className={LOBBY_ACTION_CLASS}>
+              <Link
+                href="/casino/chess?setup=friend#game-setup"
+                className={LOBBY_ACTION_CLASS}
+              >
                 <LobbyActionContent
                   title="Challenge a friend"
                   note="Create a private challenge link"

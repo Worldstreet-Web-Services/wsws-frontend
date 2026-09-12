@@ -5,6 +5,7 @@ import type PuzzleCtrl from '@/ctrl';
 import type { ThemeKey, RoundThemes } from '@/interfaces';
 
 import { renderColorForm } from './side';
+import { puzzleAppPath } from '../routes';
 
 const STUDY_URL = 'https://lichess.org/study/viiWlKjv';
 
@@ -15,7 +16,7 @@ export default function theme(ctrl: PuzzleCtrl): MaybeVNode {
   if (replay) return showEditor ? hl('div.puzzle__side__theme', editor(ctrl)) : null;
   if (ctrl.streak) return null;
 
-  const backHref = ctrl.routerWithLang(`/training/${angle.opening ? 'openings' : 'themes'}`);
+  const backHref = puzzleAppPath();
 
   if (ctrl.isDaily) {
     return hl(
@@ -85,7 +86,7 @@ const editor = (ctrl: PuzzleCtrl): VNode[] => {
         hl('div.puzzle__themes__list__entry', { class: { strike: votedThemes[key] === false } }, [
           hl(
             'a',
-            { attrs: { href: `/training/${key}`, title: themeTrans(`${key}Description`) } },
+            { attrs: { href: puzzleAppPath({ theme: key }), title: themeTrans(`${key}Description`) } },
             themeTrans(key),
           ),
           allThemes &&

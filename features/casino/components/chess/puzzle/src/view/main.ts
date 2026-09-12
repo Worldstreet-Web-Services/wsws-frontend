@@ -20,6 +20,7 @@ import stepwiseScroll from 'lib/view/stepwiseScroll';
 
 import * as control from '@/control';
 import type PuzzleCtrl from '@/ctrl';
+import { puzzleAppPath } from '../routes';
 import { view as keyboardView } from '@/keyboard';
 
 import boardMenu from './boardMenu';
@@ -168,7 +169,7 @@ function session(ctrl: PuzzleCtrl): MaybeVNode {
           key: id,
           class: { current: currentId === id, 'result-empty': !rd },
           attrs: {
-            href: `/training/${theme}/${id}`,
+            href: puzzleAppPath({ id, theme }),
             ...(ctrl.streak ? { target: '_blank' } : {}),
           },
         },
@@ -176,12 +177,12 @@ function session(ctrl: PuzzleCtrl): MaybeVNode {
       );
     }),
     rounds.some(r => r.id === currentId)
-      ? !ctrl.streak && hl('a.session-new', { key: 'new', attrs: { href: `/training/${theme}` } })
+      ? !ctrl.streak && hl('a.session-new', { key: 'new', attrs: { href: puzzleAppPath({ theme }) } })
       : hl(
           'a.result-cursor.current',
           {
             key: currentId,
-            attrs: ctrl.streak ? {} : { href: `/training/${theme}/${currentId}` },
+            attrs: ctrl.streak ? {} : { href: puzzleAppPath({ id: currentId, theme }) },
           },
           ctrl.streak && (ctrl.streak.data.index + 1).toString(),
         ),

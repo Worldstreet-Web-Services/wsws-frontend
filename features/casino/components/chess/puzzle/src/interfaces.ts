@@ -88,6 +88,33 @@ export interface PuzzleGame {
   players: [PuzzlePlayer, PuzzlePlayer];
   pgn: string;
   clock?: string;
+  sourceFen?: FEN;
+  setupMove?: Uci;
+}
+
+export interface ArkPuzzleBridge {
+  attempt(input: {
+    puzzleId: PuzzleId;
+    uci: Uci;
+    solutionPly: number;
+    hintUsed: boolean;
+  }): Promise<void>;
+  complete(input: {
+    puzzleId: PuzzleId;
+    theme: ThemeKey;
+    win: boolean;
+    rated: boolean;
+    color?: Color;
+  }): Promise<PuzzleResult>;
+  vote?(puzzleId: PuzzleId, vote: boolean): Promise<void>;
+  voteTheme?(puzzleId: PuzzleId, theme: ThemeKey, vote: boolean | undefined): Promise<void>;
+  report?(puzzleId: PuzzleId, reason: string): Promise<void>;
+}
+
+declare global {
+  interface Window {
+    arkPuzzleBridge?: ArkPuzzleBridge;
+  }
 }
 
 export interface PuzzlePlayer {

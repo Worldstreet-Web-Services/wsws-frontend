@@ -79,7 +79,7 @@ export function RoundReplayControls({
   const liveDisabled = viewingPly === currentPly;
 
   return (
-    <div className="h-[2.5rem] border-b border-[#3b3936] bg-[#2b2926]">
+    <div className="rbuttons h-[2.5rem] border-b border-[#3b3936] bg-[#2b2926]">
       <div className="grid h-full grid-cols-6 items-stretch">
         <button
           type="button"
@@ -166,7 +166,7 @@ function MoveButton({
       type="button"
       onClick={() => onSelect(move.ply)}
       disabled={disabled}
-      className={`tnum min-w-0 text-left transition-colors ${
+      className={`move tnum min-w-0 text-left transition-colors ${
         compact ? "rounded-[8px] px-2 py-1 font-medium" : "py-0 pl-[0.7em]"
       } ${moveButtonClass(active)} ${disabled ? "cursor-not-allowed opacity-45" : "cursor-pointer"}`}
     >
@@ -209,11 +209,13 @@ export function RoundMoveList({
   }, [viewingPly]);
 
   if (pairs.length === 0) {
-    return <div className="px-4 py-4 text-[14px] text-white/58">{emptyLabel}</div>;
+    return <div className="message px-4 py-4 text-[14px] text-white/58">{emptyLabel}</div>;
   }
 
   return (
-    <div className={`${compact ? "max-h-[360px]" : "ws-chess-lila-moves min-h-0"} overflow-y-auto`}>
+    <div
+      className={`moves ${compact ? "max-h-[360px]" : "ws-chess-lila-moves min-h-0"} overflow-y-auto`}
+    >
       {pairs.map((row) => (
         <div
           key={`${row.turn}-${row.white?.san ?? ""}-${row.black?.san ?? ""}`}
@@ -224,7 +226,7 @@ export function RoundMoveList({
           }
         >
           <div
-            className={`tnum ${
+            className={`index tnum ${
               compact
                 ? "text-white/36"
                 : "flex items-end justify-center bg-black/10 px-1 py-1.5 text-white/32"

@@ -16,7 +16,11 @@ interface RoundPlayerBaseProps {
 
 function PlayerIdentity({ name, muted = false }: { name: string; muted?: boolean }) {
   return (
-    <div className={`flex min-w-0 items-center gap-2 ${muted ? "text-white/72" : "text-white/88"}`}>
+    <div
+      className={`user-link online flex min-w-0 items-center gap-2 ${
+        muted ? "text-white/72" : "text-white/88"
+      }`}
+    >
       <span
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${muted ? "bg-white/28" : "bg-[#6f9827]"}`}
       />
@@ -48,8 +52,35 @@ export function RoundTablePlayer({
   captured,
   position,
 }: RoundPlayerBaseProps & { position: "top" | "bottom" }) {
+  const identity = (
+    <div className={`ruser ruser-${position} bg-[#262421] py-[0.5em] pr-[0.5em] pl-[0.3em]`}>
+      <PlayerIdentity name={name} muted={!active} />
+    </div>
+  );
+  const material = captured ? (
+    <div className={`material material-${position} flex h-10 items-center px-[0.3em]`}>
+      {captured}
+    </div>
+  ) : null;
+
+  // Lichess does not render infinity as a clock block. Unlimited rounds keep
+  // only the user rows around the move table.
+  if (clockMode === "unlimited") {
+    return position === "top" ? (
+      <div className="shrink-0 border-b border-[#3b3936]">
+        {material}
+        {identity}
+      </div>
+    ) : (
+      <div className="shrink-0 border-t border-[#3b3936]">
+        {identity}
+        {material}
+      </div>
+    );
+  }
+
   const clock = (
-    <div className="flex justify-start">
+    <div className={`rclock rclock-${position} flex justify-start`}>
       <div
         className={`px-[15px] shadow-[0_2px_5px_rgba(0,0,0,0.28)] ${
           position === "top" ? "rounded-tr-[2px]" : "rounded-br-[2px]"
@@ -59,15 +90,6 @@ export function RoundTablePlayer({
       </div>
     </div>
   );
-  const identity = (
-    <div className="bg-[#262421] py-[0.5em] pr-[0.5em] pl-[0.3em]">
-      <PlayerIdentity name={name} muted={!active} />
-    </div>
-  );
-  const material = captured ? (
-    <div className="flex h-10 items-center px-[0.3em]">{captured}</div>
-  ) : null;
-
   return position === "top" ? (
     <div className="shrink-0 border-b border-[#3b3936]">
       {material}
@@ -104,7 +126,9 @@ export function RoundMobilePlayer({
           <PlayerIdentity name={name} muted={!active} />
           {captured ? <div className="mt-1 pl-[18px]">{captured}</div> : null}
         </div>
-        <RoundClockValue mode={clockMode} seconds={seconds} live={live} active={active} compact />
+        {clockMode === "unlimited" ? null : (
+          <RoundClockValue mode={clockMode} seconds={seconds} live={live} active={active} compact />
+        )}
       </div>
     </div>
   );
@@ -122,14 +146,16 @@ export function RoundDialogPlayer({
     <div className="rounded-[14px] border border-white/8 bg-black/12 px-4 py-4">
       <div className="mb-2 text-[11px] tracking-[0.06em] text-white/34 uppercase">{seatLabel}</div>
       <div className="truncate text-[17px] font-semibold text-white">{name}</div>
-      <RoundClockValue
-        mode={clockMode}
-        seconds={seconds}
-        live={live}
-        active={active}
-        compact
-        className="mt-3 !text-[38px] !font-light"
-      />
+      {clockMode === "unlimited" ? null : (
+        <RoundClockValue
+          mode={clockMode}
+          seconds={seconds}
+          live={live}
+          active={active}
+          compact
+          className="mt-3 !text-[38px] !font-light"
+        />
+      )}
     </div>
   );
 }

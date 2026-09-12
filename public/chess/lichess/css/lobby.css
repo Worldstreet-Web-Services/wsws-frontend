@@ -1664,6 +1664,127 @@ html.transp .daily-feed__update__marker.nobg {
   grid-area: timeline;
 }
 
+.lobby__app--activities {
+  align-self: start;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding-top: 0.35rem;
+  overflow: visible;
+  user-select: auto;
+}
+.lobby__activities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 300px));
+  gap: 0.7rem;
+  align-items: start;
+  justify-content: center;
+}
+.lobby-activity {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(---ui-roundness, 7px);
+  background: var(--c-bg-box);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
+}
+.lobby-activity:nth-child(3) {
+  grid-column: 1 / -1;
+  width: min(300px, calc(50% - 0.35rem));
+  justify-self: center;
+}
+.lobby-activity__board {
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  overflow: hidden;
+}
+.lobby-activity__square {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.lobby-activity__square--light {
+  background: #ebecd0;
+}
+.lobby-activity__square--dark {
+  background: #779556;
+}
+.lobby-activity__piece {
+  display: block;
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+}
+.lobby-activity__content {
+  display: flex;
+  min-height: 8.6rem;
+  padding: 0.9rem;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.lobby-activity__header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.lobby-activity__icon {
+  color: var(--c-font-dimmer);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.lobby-activity__title,
+.lobby-activity__detail {
+  display: block;
+}
+.lobby-activity__title {
+  color: var(--c-font-clear);
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+.lobby-activity__detail {
+  margin-top: 0.2rem;
+  color: var(--c-font-dim);
+  font-size: 0.72rem;
+}
+.lobby-activity__button {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 0.4rem;
+  text-align: center;
+  white-space: nowrap;
+}
+@media (min-width: 799.3px) and (max-width: 1259.29px) {
+  .lobby {
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "table app" "side app" "about about";
+  }
+}
+@media (min-width: 1259.3px) {
+  .lobby {
+    grid-template-rows: auto auto;
+    grid-template-areas: "side app app table" "about about about about";
+  }
+}
+@media (max-width: 620px) {
+  .lobby__activities {
+    grid-template-columns: 1fr;
+  }
+  .lobby-activity {
+    display: grid;
+    grid-template-columns: minmax(9rem, 42%) 1fr;
+  }
+  .lobby-activity:nth-child(3) {
+    grid-column: auto;
+    width: 100%;
+  }
+  .lobby-activity__content {
+    min-height: 0;
+  }
+}
+
 body {
   /* improves preload */
   overflow-y: scroll;

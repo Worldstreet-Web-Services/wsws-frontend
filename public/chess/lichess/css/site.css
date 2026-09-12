@@ -319,7 +319,7 @@ html {
 }
 
 body {
-  background: var(--c-bg-page) linear-gradient(to bottom, var(--c-body-gradient), var(--c-bg-page) 116px) no-repeat;
+  background: #000;
   color: var(--c-font);
   text-align: start;
   overflow-x: hidden;
@@ -1372,6 +1372,15 @@ coords.squares.rank8 {
 }
 
 @media (max-width: 1019.29px) {
+  #topnav .arkade-mobile {
+    display: block;
+    flex-basis: 100%;
+    margin-top: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  #topnav .arkade-mobile > a {
+    color: var(--c-font-clearer);
+  }
   .topnav-toggle {
     display: block;
     position: absolute;
@@ -1575,6 +1584,9 @@ coords.squares.rank8 {
   }
 }
 @media (min-width: 1019.3px) {
+  #topnav .arkade-mobile {
+    display: none;
+  }
   .hbg,
   .site-title-nav .fullscreen-mask,
   .topnav-toggle {

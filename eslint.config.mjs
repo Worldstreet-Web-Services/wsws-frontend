@@ -19,16 +19,11 @@ const eslintConfig = defineConfig([
     "reference/**",
     // Lila is an independent pnpm workspace with its own build and lint rules.
     "features/casino/components/chess/**",
+    "ui/**",
     // Preserved pre-Lila chess frontend retained as migration reference.
     "features/casino/components/chess-app/**",
-    // Lila's static and generated browser assets are immutable vendor output.
-    "public/chess/lichess/**",
-    // Vendored Stockfish worker build (GPLv3, shipped as a static asset).
-    "public/stockfish/**",
-    // Generated Lila browser bundles are validated by `chess:ui:build`.
-    "public/compiled/**",
-    "public/hashed/**",
-    "public/npm/**",
+    // Static and generated browser assets are immutable vendor output.
+    "public/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

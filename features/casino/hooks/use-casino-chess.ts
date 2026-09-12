@@ -137,7 +137,7 @@ function incrementSeconds(timeControl: string): number {
 
 function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
   if (base.state !== "in_progress") return null;
-  const nextPosition = applyUciToFen(base.fen, uci);
+  const nextPosition = applyUciToFen(base.fen, uci, base.variant);
   if (!nextPosition) {
     return null;
   }
@@ -469,7 +469,17 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
   const applyMatch = useCallback(
     (next: ChessMatch) => {
       setOptimistic(null);
-      queryClient.setQueryData(CHESS_KEYS.match(next.id), next);
+      queryClient.setQueryData<ChessMatch>(CHESS_KEYS.match(next.id), (previous) => {
+        if (!previous || previous.id !== next.id) return next;
+        const previousStep = previous.round?.steps.at(-1);
+        const canKeepRound =
+          !next.round &&
+          !!previous.round &&
+          previousStep?.ply === next.moves.length &&
+          previousStep.fen === next.fen;
+        const candidate = canKeepRound ? { ...next, round: previous.round } : next;
+        return mergeChessMatchSnapshot(previous, candidate);
+      });
       if (next.state === "settled" && next.rating?.rated) {
         void queryClient.invalidateQueries({
           queryKey: ["casino", "chess", "ratings"],
@@ -527,7 +537,10 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
       }
     },
     onError: () => setOptimistic(null),
-    onSuccess: applyMatch,
+    onSuccess: (next) => {
+      applyMatch(next);
+      void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.match(next.id) });
+    },
   });
 
   const coachedMove = useMutation({
@@ -765,6 +778,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
     requestingHint: hint.isPending,
     extendTime: timeExtension.mutateAsync,
     extendingTime: timeExtension.isPending,
+    claimTimeout: flag.mutateAsync,
     claimingTimeout: flag.isPending,
   };
 }
@@ -940,7 +954,9 @@ export function useCreateComputerMatch() {
       createComputerMatch({
         ...input,
         player: requireWallet(wallet.address),
-        ...(input.stakeUsdc ? { idempotencyKey: newChessIdempotencyKey() } : {}),
+        ...(input.stakeUsdc
+          ? { idempotencyKey: input.idempotencyKey ?? newChessIdempotencyKey() }
+          : {}),
       }),
     onSuccess: (match) => {
       queryClient.setQueryData(CHESS_KEYS.match(match.id), match);

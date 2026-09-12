@@ -5,7 +5,10 @@ const auth = vi.hoisted(() => ({
   verifyRequest: vi.fn(),
   getRequestUser: vi.fn(),
 }));
-vi.mock("@/lib/server/auth", () => auth);
+vi.mock("@/lib/server/auth", () => ({
+  ...auth,
+  ACCESS_TOKEN_COOKIE: "privy-token",
+}));
 
 function makeReq(
   url: string,
@@ -154,6 +157,52 @@ describe("chess proxy route", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it("authenticates server-rendered challenge pages and preserves their route prefix", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    const { GET } = await loadRoute();
+    const res = await GET(makeReq("https://app.test/api/chess/challenge"), {
+      params: Promise.resolve({ path: ["challenge"] }),
+    });
+
+    expect(res.status).toBe(200);
+    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
+    expect(init.headers).toMatchObject({
+      "x-wallet-address": "0xabc",
+      "x-forwarded-prefix": "/api/chess",
+    });
+  });
+
+  it("never shares viewer-specific challenge pages through the read cache", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser
+      .mockResolvedValueOnce(walletUser("0xaaa"))
+      .mockResolvedValueOnce(walletUser("0xbbb"));
+    const { GET } = await loadRoute();
+    const request = () => makeReq("https://app.test/api/chess/challenge/challenge-1");
+    const context = { params: Promise.resolve({ path: ["challenge", "challenge-1"] }) };
+
+    expect((await GET(request(), context)).status).toBe(200);
+    expect((await GET(request(), context)).status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("authenticates challenge lifecycle polling", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    const { GET } = await loadRoute();
+
+    const res = await GET(makeReq("https://app.test/api/chess/challenges/challenge-1"), {
+      params: Promise.resolve({ path: ["challenges", "challenge-1"] }),
+    });
+
+    expect(res.status).toBe(200);
+    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
+    expect(init.headers).toMatchObject({ "x-wallet-address": "0xabc" });
+  });
+
   it("requires a session for match notes", async () => {
     auth.verifyRequest.mockResolvedValue(null);
     const { GET } = await loadRoute();
@@ -279,5 +328,98 @@ describe("chess proxy route", () => {
         stakeUsdc: "5",
       })
     );
+  });
+
+  it("opens server-created computer games in the interactive chess board", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue({
+      linked_accounts: [
+        ...walletUser("0xabc").linked_accounts,
+        { type: "google_oauth", name: "Alice" },
+      ],
+    });
+    global.fetch = vi.fn(
+      async () =>
+        new Response("", {
+          status: 303,
+          headers: { location: "/round/game-1" },
+        })
+    ) as unknown as typeof fetch;
+    const { POST } = await loadRoute();
+
+    const res = await POST(
+      makeReq("https://app.test/api/chess/play/computer", {
+        body: "level=3&color=random",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          authorization: "Bearer access-token",
+          "privy-id-token": "identity-token",
+          "x-vercel-ip-country": "US",
+        },
+      }),
+      { params: Promise.resolve({ path: ["play", "computer"] }) }
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/casino/chess/play?match=game-1");
+    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
+    expect(init.body).toBe("level=3&color=random");
+    expect(init.headers).toMatchObject({
+      authorization: "Bearer access-token",
+      "privy-id-token": "identity-token",
+      "x-wallet-address": "0xabc",
+      "x-forwarded-prefix": "/api/chess",
+    });
+    expect(init.redirect).toBe("manual");
+    expect((init.headers as Record<string, string>)["x-player-display-name-b64"]).toBeTruthy();
+  });
+
+  it("keeps challenge redirects inside the chess proxy", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    global.fetch = vi.fn(
+      async () =>
+        new Response("", {
+          status: 303,
+          headers: { location: "/challenge/challenge-1" },
+        })
+    ) as unknown as typeof fetch;
+    const { POST } = await loadRoute();
+
+    const res = await POST(
+      makeReq("https://app.test/api/chess/challenge", {
+        body: "time_control=300%2B3&mode=rated&color=random",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+      { params: Promise.resolve({ path: ["challenge"] }) }
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/api/chess/challenge/challenge-1");
+    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0];
+    expect(init.redirect).toBe("manual");
+    expect(init.headers).toMatchObject({ "x-forwarded-prefix": "/api/chess" });
+  });
+
+  it("opens accepted friend challenges on the interactive board", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    global.fetch = vi.fn(
+      async () =>
+        new Response("", {
+          status: 303,
+          headers: { location: "/round/game-1" },
+        })
+    ) as unknown as typeof fetch;
+    const { POST } = await loadRoute();
+
+    const res = await POST(makeReq("https://app.test/api/chess/challenge/challenge-1/accept"), {
+      params: Promise.resolve({ path: ["challenge", "challenge-1", "accept"] }),
+    });
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/casino/chess/play?match=game-1");
   });
 });

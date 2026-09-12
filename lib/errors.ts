@@ -153,6 +153,9 @@ export function friendlyError(
   if (/zerodev sponsorship is not configured|zerodev bundler/.test(m)) {
     return "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
   }
+  if (/unsupported policy type|gas sponsorship policy .* missing/.test(m)) {
+    return "This gas-sponsored transaction is temporarily unavailable. Your funds are safe.";
+  }
   // Not enough of the specific asset being moved (e.g. an ERC-20 balance revert).
   if (/insufficient[- ]?balance|amount exceeds balance|exceeds allowance/.test(m)) {
     return "You don't have enough of this asset for that. Try a smaller amount.";
@@ -165,7 +168,11 @@ export function friendlyError(
   // saying "try again in a moment" would be a lie until the account is
   // topped up. Checked before the rate-limit rule, which it would otherwise
   // match through the 429 the upstream sends.
-  if (/out of monthly capacity|monthly capacity limit exceeded/.test(m)) {
+  if (
+    /out of monthly capacity|monthly capacity limit exceeded|over your gas sponsorship limit/.test(
+      m
+    )
+  ) {
     return "Gas-sponsored transactions are paused until sponsorship capacity is restored. Your funds are safe.";
   }
   // Provider is busy or rate limiting us.

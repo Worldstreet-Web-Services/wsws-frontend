@@ -41,7 +41,8 @@ describe("useSessionWallet", () => {
       </ServerSessionProvider>
     );
     expect(screen.getByTestId("ethereum")).toHaveTextContent("0xserver");
-    expect(screen.getByTestId("solana")).toHaveTextContent("solserver");
+    // Base58, so the case is the address. Only the EVM one is folded.
+    expect(screen.getByTestId("solana")).toHaveTextContent("SoLServer");
   });
 
   it("is Privy's answer alone once Privy is ready, including no wallet", () => {
@@ -78,6 +79,26 @@ describe("useSessionWallet", () => {
       </ServerSessionProvider>
     );
     expect(screen.getByTestId("ethereum")).toHaveTextContent("none");
+  });
+
+  it("keeps a Solana address exactly as Privy gives it", () => {
+    privy.state = {
+      user: {
+        id: "user_1",
+        linkedAccounts: [
+          {
+            type: "wallet",
+            walletClientType: "privy",
+            chainType: "solana",
+            address: "SoLPrivyWallet",
+          },
+        ],
+      },
+      ready: true,
+      authenticated: true,
+    };
+    render(<Wallet chain="solana" />);
+    expect(screen.getByTestId("solana")).toHaveTextContent("SoLPrivyWallet");
   });
 
   it("works outside the provider, from Privy alone", () => {

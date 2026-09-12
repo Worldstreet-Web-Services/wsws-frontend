@@ -32,13 +32,16 @@ export function useServerSession(): ServerSession | null {
 // rendered. Falling back on null here was the review finding that a stale
 // server wallet could outlive the session that produced it.
 //
-// The address is lowercased so the query key built from it is stable across
+// An EVM address is lowercased so the query key built from it is stable across
 // the server→Privy transition. The server SDK and the browser SDK return the
-// same wallet but can disagree on EVM checksum casing, and a casing change
+// same wallet but can disagree on EIP-55 checksum casing, and a casing change
 // is a new query key — which triggers a duplicate fetch on every cold entry.
+// A Solana address is left exactly as it came: base58 carries meaning in its
+// case, so a folded one names a different account, or none.
 export function useSessionWallet(chain: "ethereum" | "solana"): string | null {
   const { ready, user } = usePrivy();
   const server = useServerSession();
   const address = ready ? getWalletAddress(user, chain) : (server?.wallets[chain] ?? null);
-  return address?.toLowerCase() ?? null;
+  if (!address) return null;
+  return chain === "ethereum" ? address.toLowerCase() : address;
 }

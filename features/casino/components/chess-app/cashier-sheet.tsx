@@ -35,7 +35,7 @@ export function CashierSheet({ onClose, initialMode = "deposit", productName }: 
   // the wallet's Base USDC holding.
   const tFund = useTranslations("casino.fund");
   const cashier = useChessCashier();
-  const { tokens, refetch: refetchPortfolio } = usePortfolio();
+  const { tokens, refetch: refetchPortfolio } = usePortfolio({ scope: "base" });
 
   const [mode, setMode] = useState<CashierMode>(initialMode);
   const [amount, setAmount] = useState("");

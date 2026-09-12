@@ -28,7 +28,7 @@ export function ChessHeaderActions() {
 }
 
 export function ChessProfileBalance() {
-  const { totalUsd, loading, error } = usePortfolio();
+  const { totalUsd, loading, error } = usePortfolio({ scope: "base" });
   const money = useMoney();
   const { mask } = useBalanceVisibility();
   const value = loading ? "…" : error ? "—" : mask(money.format(totalUsd));

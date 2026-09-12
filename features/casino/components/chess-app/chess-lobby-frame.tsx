@@ -37,11 +37,21 @@ export function chessAppRouteForUrl(
     return `${path}${url.search}${url.hash}`;
   }
   if (path === "/play") {
+    const params = new URLSearchParams();
+    if (url.searchParams.get("tab") === "lobby") params.set("tab", "lobby");
     const setup = url.searchParams.get("setup");
-    return setup
-      ? `/casino/chess?setup=${encodeURIComponent(setup)}${url.hash}`
-      : "/casino/chess";
+    if (setup === "ai" || setup === "friend" || setup === "hook") {
+      params.set("setup", setup);
+    }
+    const search = params.size ? `?${params.toString()}` : "";
+    return `/casino/chess${search}${url.hash}`;
   }
+  const challenge = /^\/challenge\/(?:funded\/)?([^/?#]+)$/u.exec(path);
+  if (challenge) {
+    return `/casino/chess/invite?code=${encodeURIComponent(challenge[1])}`;
+  }
+  const round = /^\/round\/([^/?#]+)$/u.exec(path);
+  if (round) return `/casino/chess/play?match=${encodeURIComponent(round[1])}`;
   if (path === "/tournament/new") return "/casino/chess/tournaments/create";
   if (path === "/tournament") return "/casino/chess/tournaments";
   if (path === "/swiss/new") return "/casino/chess/swiss/create";
@@ -79,6 +89,9 @@ export function chessAppRouteForUrl(
 }
 
 function appRouteFor(anchor: HTMLAnchorElement): string | null {
+  const bridgedRoute = anchor.dataset.arkRoute;
+  if (bridgedRoute) return bridgedRoute;
+
   return chessAppRouteForUrl(
     new URL(anchor.href, window.location.origin),
     anchor.textContent?.trim().toLowerCase() ?? "",
@@ -90,9 +103,35 @@ export function chessFrameSourceForAppRoute(destination: string): string | null 
   if (url.pathname !== "/casino/chess") return null;
 
   const setup = url.searchParams.get("setup");
-  if (!setup && !url.search) return "/api/chess/play";
-  if (setup !== "ai" && setup !== "friend" && setup !== "hook") return null;
-  return `/api/chess/play?setup=${encodeURIComponent(setup)}#game-setup`;
+  const tab = url.searchParams.get("tab");
+  if (setup && setup !== "ai" && setup !== "friend" && setup !== "hook") return null;
+  if (tab && tab !== "lobby") return null;
+
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (setup) params.set("setup", setup);
+  const search = params.size ? `?${params.toString()}` : "";
+  return `/api/chess/play${search}${setup ? "#game-setup" : ""}`;
+}
+
+export function chessParentRouteForFrameUrl(
+  url: URL,
+  appOrigin = window.location.origin
+): string | null {
+  if (url.origin !== appOrigin) return null;
+  if (
+    url.pathname === "/api/chess/play" &&
+    (url.searchParams.has("setup") || !url.searchParams.has("tab"))
+  ) {
+    return null;
+  }
+  if (
+    !url.pathname.startsWith("/casino/chess") &&
+    !url.pathname.startsWith("/api/chess/")
+  ) {
+    return null;
+  }
+  return chessAppRouteForUrl(url, "", appOrigin);
 }
 
 export function chessLobbyUrlAfterSetupConsumed(url: URL): string | null {
@@ -117,9 +156,21 @@ export function rewriteChessFrameLinks(
       appOrigin
     );
     if (!destination) continue;
-    anchor.setAttribute("href", destination);
-    anchor.setAttribute("target", "_top");
+    // The parent click bridge keeps normal transitions client-side. The real
+    // href and `_top` target are the browser-level fallback: if a click lands
+    // before the bridge attaches, it must still update the canonical URL
+    // rather than loading another page inside the lobby iframe.
+    anchor.dataset.arkRoute = destination;
+    anchor.href = destination;
+    anchor.target = "_top";
   }
+
+  // Unfunded friend challenges use the backend form directly. Positive stakes
+  // are intercepted by React, so this target only controls the native path.
+  frameDocument.querySelector<HTMLFormElement>("form[data-friend-setup]")?.setAttribute(
+    "target",
+    "_top"
+  );
 }
 
 export function ChessLobbyFrame({ source }: { source: string }) {
@@ -155,27 +206,72 @@ export function ChessLobbyFrame({ source }: { source: string }) {
     if (!frame) return;
 
     let frameDocument: Document | null = null;
-    let lobbyForm: HTMLFormElement | null = null;
-    let computerForm: HTMLFormElement | null = null;
-    let friendForm: HTMLFormElement | null = null;
-    let fundedFriendAcceptForm: HTMLFormElement | null = null;
+    let promotingFrameNavigation = false;
     const onFrameClick = (event: MouseEvent) => {
       // Nodes created by the iframe fail `instanceof Element` against the parent realm.
       const anchor = (event.target as Element | null)?.closest?.<HTMLAnchorElement>("a[href]");
       if (!anchor) return;
       const destination = appRouteFor(anchor);
       if (!destination) return;
+
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
+
       const nextFrameSource = chessFrameSourceForAppRoute(destination);
       if (nextFrameSource) {
-        // The iframe must navigate now; waiting for the parent RSC refresh caused
-        // setup modals to appear only after a full page reload.
+        // Change the embedded document immediately so setup dialogs never wait
+        // for a parent RSC refresh.
         frame.src = nextFrameSource;
         setFrameSource(nextFrameSource);
       }
       router.push(destination);
     };
+    const attachNavigation = () => {
+      if (promotingFrameNavigation) return;
+
+      try {
+        const frameUrl = new URL(frame.contentWindow?.location.href ?? "", window.location.origin);
+        const destination = chessParentRouteForFrameUrl(frameUrl);
+        const parentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (destination && destination !== parentLocation) {
+          // An unfunded backend form follows its 303 inside the iframe. Promote
+          // that destination to the application router before a second Next app
+          // can remain mounted inside the lobby and duplicate the shared header.
+          promotingFrameNavigation = true;
+          frame.style.visibility = "hidden";
+          setFrameReady(false);
+          router.push(destination);
+          return;
+        }
+      } catch {
+        // Cross-origin and transient about:blank documents are not app routes.
+      }
+
+      frameDocument?.removeEventListener("click", onFrameClick, true);
+      frameDocument = frame.contentDocument;
+      if (!frameDocument) return;
+      rewriteChessFrameLinks(frameDocument);
+      frameDocument.addEventListener("click", onFrameClick, true);
+    };
+
+    frame.addEventListener("load", attachNavigation);
+    attachNavigation();
+    return () => {
+      frame.removeEventListener("load", attachNavigation);
+      frameDocument?.removeEventListener("click", onFrameClick, true);
+    };
+  }, [router]);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+
+    let frameDocument: Document | null = null;
+    let lobbyForm: HTMLFormElement | null = null;
+    let computerForm: HTMLFormElement | null = null;
+    let friendForm: HTMLFormElement | null = null;
+    let fundedFriendAcceptForm: HTMLFormElement | null = null;
     const onComputerSubmit = (event: SubmitEvent) => {
       const form = event.currentTarget as HTMLFormElement;
       const formData = new FormData(form);
@@ -412,7 +508,6 @@ export function ChessLobbyFrame({ source }: { source: string }) {
         });
     };
     const attach = (reveal: boolean) => {
-      frameDocument?.removeEventListener("click", onFrameClick, true);
       lobbyForm?.removeEventListener("submit", onLobbySubmit, true);
       computerForm?.removeEventListener("submit", onComputerSubmit, true);
       friendForm?.removeEventListener("submit", onFriendSubmit, true);
@@ -439,7 +534,6 @@ export function ChessLobbyFrame({ source }: { source: string }) {
         return;
       }
       if (frameDocument) rewriteChessFrameLinks(frameDocument);
-      frameDocument?.addEventListener("click", onFrameClick, true);
       lobbyForm = frameDocument?.querySelector<HTMLFormElement>("form[data-lobby-setup]") ?? null;
       lobbyForm?.addEventListener("submit", onLobbySubmit, true);
       computerForm =
@@ -470,7 +564,6 @@ export function ChessLobbyFrame({ source }: { source: string }) {
     attach(false);
     return () => {
       frame.removeEventListener("load", onFrameLoad);
-      frameDocument?.removeEventListener("click", onFrameClick, true);
       lobbyForm?.removeEventListener("submit", onLobbySubmit, true);
       computerForm?.removeEventListener("submit", onComputerSubmit, true);
       friendForm?.removeEventListener("submit", onFriendSubmit, true);

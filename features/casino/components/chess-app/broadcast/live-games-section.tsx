@@ -9,14 +9,19 @@ import { fetchLiveMatches } from "@/features/casino/lib/api/chess";
 import { CHESS_KEYS } from "@/features/casino/hooks/use-casino-chess";
 import { LiveGameList } from "@/features/casino/components/chess/broadcast/live-game-list";
 
+// The list is not the game transport. Individual boards receive moves over the
+// chess socket, so this request only repairs the catalog when games start/end.
+const LIVE_GAMES_POLL_MS = 30_000;
+
 export function LiveGamesSection() {
   const wallet = useSessionWallet("ethereum")?.toLowerCase() ?? null;
   const channel = useSearchParams()?.get("channel") ?? "best";
   const live = useQuery({
     queryKey: CHESS_KEYS.liveMatches,
     queryFn: fetchLiveMatches,
-    refetchInterval: 4000,
-    refetchIntervalInBackground: true,
+    staleTime: LIVE_GAMES_POLL_MS,
+    refetchInterval: LIVE_GAMES_POLL_MS,
+    refetchIntervalInBackground: false,
   });
   const matches = useMemo(
     () =>

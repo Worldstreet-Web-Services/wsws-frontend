@@ -58,6 +58,7 @@ import {
   ChessLobbyFrame,
   chessAppRouteForUrl,
   chessFrameSourceForAppRoute,
+  chessParentRouteForFrameUrl,
   rewriteChessFrameLinks,
 } from "@/features/casino/components/chess-app/chess-lobby-frame";
 
@@ -103,16 +104,49 @@ describe("ChessLobbyFrame", () => {
     });
   });
 
-  it("rewrites backend puzzle navigation to the top-level Ark puzzle route", () => {
+  it("gives backend navigation a canonical top-level fallback", () => {
     const frameDocument = document.implementation.createHTMLDocument("Ark Chess");
-    frameDocument.body.innerHTML =
-      '<a href="http://localhost:3000/api/chess/learn/puzzles">Puzzles</a>';
+    frameDocument.body.innerHTML = `
+      <a href="http://localhost:3000/api/chess/learn/puzzles" target="_top">Puzzles</a>
+      <form action="/api/chess/play/seeks" target="_top"></form>
+      <form action="/api/chess/challenge" data-friend-setup></form>
+      <button formtarget="_top">Submit</button>
+    `;
 
     rewriteChessFrameLinks(frameDocument, "http://localhost:3000");
 
     const link = frameDocument.querySelector("a");
     expect(link?.getAttribute("href")).toBe("/casino/chess/puzzles");
+    expect(link?.dataset.arkRoute).toBe("/casino/chess/puzzles");
     expect(link?.getAttribute("target")).toBe("_top");
+    expect(
+      frameDocument.querySelector('form[action="/api/chess/play/seeks"]')?.getAttribute("target")
+    ).toBe("_top");
+    expect(frameDocument.querySelector("form[data-friend-setup]")?.getAttribute("target")).toBe(
+      "_top"
+    );
+    expect(frameDocument.querySelector("button")?.getAttribute("formtarget")).toBe("_top");
+  });
+
+  it("opens the lobby puzzle card on the parent puzzle route", () => {
+    render(<ChessLobbyFrame source="/api/chess/play" />);
+
+    const frame = screen.getByTitle<HTMLIFrameElement>("Ark Chess");
+    const frameDocument = frame.contentDocument!;
+    frameDocument.open();
+    frameDocument.write(
+      '<body><a href="/api/chess/learn/puzzles" target="_top">Solve Puzzles</a></body>'
+    );
+    frameDocument.close();
+    fireEvent.load(frame);
+
+    const puzzleLink = frameDocument.querySelector<HTMLAnchorElement>("a")!;
+    expect(puzzleLink.getAttribute("href")).toBe("/casino/chess/puzzles");
+    expect(puzzleLink.getAttribute("target")).toBe("_top");
+
+    fireEvent.click(puzzleLink);
+
+    expect(navigation.push).toHaveBeenCalledWith("/casino/chess/puzzles");
   });
 
   it("routes Back to Arkade through the parent router on the first click", () => {
@@ -158,6 +192,58 @@ describe("ChessLobbyFrame", () => {
     }
   });
 
+  it("promotes frontend routes reached by backend form redirects", () => {
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("http://localhost:3000/casino/chess/play?match=match-1"),
+        "http://localhost:3000"
+      )
+    ).toBe("/casino/chess/play?match=match-1");
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("http://localhost:3000/api/chess/play"),
+        "http://localhost:3000"
+      )
+    ).toBeNull();
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("http://localhost:3000/api/chess/challenge/funded/challenge-1"),
+        "http://localhost:3000"
+      )
+    ).toBe("/casino/chess/invite?code=challenge-1");
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("http://localhost:3000/api/chess/play?tab=lobby"),
+        "http://localhost:3000"
+      )
+    ).toBe("/casino/chess?tab=lobby");
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("http://localhost:3000/api/chess/learn/puzzles"),
+        "http://localhost:3000"
+      )
+    ).toBe("/casino/chess/puzzles");
+    expect(
+      chessParentRouteForFrameUrl(
+        new URL("https://example.com/casino/chess/play?match=match-1"),
+        "http://localhost:3000"
+      )
+    ).toBeNull();
+  });
+
+  it("keeps the selected lobby tab in both parent and frame routes", () => {
+    const appRoute = chessAppRouteForUrl(
+      new URL("http://localhost:3000/api/chess/play?tab=lobby&setup=hook#game-setup"),
+      "",
+      "http://localhost:3000"
+    );
+
+    expect(appRoute).toBe("/casino/chess?tab=lobby&setup=hook#game-setup");
+    expect(chessFrameSourceForAppRoute(appRoute!)).toBe(
+      "/api/chess/play?tab=lobby&setup=hook#game-setup"
+    );
+  });
+
   it.each(["ai", "friend", "hook"])(
     "opens the %s setup inside the iframe without waiting for a refresh",
     async (setup) => {
@@ -172,7 +258,10 @@ describe("ChessLobbyFrame", () => {
       );
       frameDocument!.close();
       fireEvent.load(frame);
-      fireEvent.click(frameDocument!.querySelector("a")!);
+      const setupLink = frameDocument!.querySelector("a")!;
+      expect(setupLink.getAttribute("target")).toBe("_top");
+      expect(setupLink.dataset.arkRoute).toBe(`/casino/chess?setup=${setup}#game-setup`);
+      fireEvent.click(setupLink);
 
       expect(navigation.push).toHaveBeenCalledWith(`/casino/chess?setup=${setup}#game-setup`);
       await waitFor(() => {

@@ -55,6 +55,13 @@ const cache = new Map<
 function forwardedLocation(joined: string, location: string): string {
   if (!location.startsWith("/") || location.startsWith("//")) return location;
 
+  const challenge = SERVER_RENDERED_PAGE.test(joined)
+    ? /^\/challenge\/(?:funded\/)?([^/?#]+)(?:[?#].*)?$/u.exec(location)
+    : null;
+  if (challenge) {
+    return `/casino/chess/invite?code=${encodeURIComponent(challenge[1])}`;
+  }
+
   const round = SERVER_RENDERED_PAGE.test(joined)
     ? /^\/round\/([^/?#]+)(?:[?#].*)?$/u.exec(location)
     : null;

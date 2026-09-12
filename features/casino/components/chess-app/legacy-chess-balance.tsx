@@ -19,7 +19,7 @@ import styles from "./chess-profile-balance.module.css";
 
 export function LegacyChessBalance() {
   const cashier = useChessCashierWithdrawal();
-  const portfolio = usePortfolio();
+  const portfolio = usePortfolio({ scope: "base" });
   const money = useMoney();
   const { mask } = useBalanceVisibility();
   const [open, setOpen] = useState(false);

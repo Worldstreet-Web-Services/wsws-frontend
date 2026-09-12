@@ -46,7 +46,7 @@ export function useFundedChessChallenge() {
   const queryClient = useQueryClient();
   const wallet = useCasinoWallet();
   const cashier = useChessCashier();
-  const portfolio = usePortfolio();
+  const portfolio = usePortfolio({ scope: "base" });
   const createMutation = useCreateChallenge();
   const acceptMutation = useAcceptChallenge();
   const createChallenge = createMutation.mutateAsync;

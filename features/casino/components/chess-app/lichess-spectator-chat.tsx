@@ -17,7 +17,9 @@ import { friendlyError } from "@/lib/errors";
 import { truncateAddress } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
-const CHAT_POLL_MS = 4_000;
+// Chat lines arrive through the match socket. REST is only a repair path for a
+// missed frame or an unavailable gateway, not a second real-time transport.
+const CHAT_POLL_MS = 30_000;
 const EVM_WALLET = /^0x[0-9a-fA-F]{40}$/u;
 
 function sameActor(author: string, value: string | null | undefined): boolean {
@@ -50,8 +52,9 @@ export function LichessSpectatorChat({
     queryKey: CHESS_KEYS.chat(match.id, "spectator"),
     queryFn: () => fetchMatchChat(match.id, { room: "spectator", limit: 100 }),
     retry: false,
+    staleTime: CHAT_POLL_MS,
     refetchInterval: CHAT_POLL_MS,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
   const post = useMutation({
     mutationFn: (text: string) => postMatchChatMessage(match.id, "spectator", text),

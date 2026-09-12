@@ -1,1 +1,0 @@
-window.site.manifest.i18n={}

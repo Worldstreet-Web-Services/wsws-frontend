@@ -23,6 +23,13 @@ describe("chessLobbySource", () => {
     expect(chessLobbySource({ setup: "hook" })).toBe("/api/chess/play?setup=hook#game-setup");
   });
 
+  it("restores the selected lobby tab on a full refresh", () => {
+    expect(chessLobbySource({ tab: "lobby" })).toBe("/api/chess/play?tab=lobby");
+    expect(chessLobbySource({ tab: "lobby", setup: "hook" })).toBe(
+      "/api/chess/play?tab=lobby&setup=hook#game-setup"
+    );
+  });
+
   it("consumes setup navigation state after opening the requested modal", () => {
     expect(
       chessLobbyUrlAfterSetupConsumed(

@@ -389,7 +389,7 @@ describe("chess proxy route", () => {
     expect((init.headers as Record<string, string>)["x-player-display-name-b64"]).toBeTruthy();
   });
 
-  it("keeps challenge redirects inside the chess proxy", async () => {
+  it("opens created challenges on a refreshable frontend invite route", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
     auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
     mockRedirectingUpstream("/challenge/challenge-1");
@@ -404,12 +404,30 @@ describe("chess proxy route", () => {
     );
 
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/api/chess/challenge/challenge-1");
+    expect(res.headers.get("location")).toBe("/casino/chess/invite?code=challenge-1");
     const [, init] = (
       global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
     ).mock.calls.find(([url]) => url.endsWith("/challenge"))!;
     expect(init.redirect).toBe("manual");
     expect(init.headers).toMatchObject({ "x-forwarded-prefix": "/api/chess" });
+  });
+
+  it("opens funded challenge redirects on the same refreshable invite route", async () => {
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+    mockRedirectingUpstream("/challenge/funded/challenge-2");
+    const { POST } = await loadRoute();
+
+    const res = await POST(
+      makeReq("https://app.test/api/chess/challenge", {
+        body: "time_control=300%2B3&mode=rated&color=random&stake_usdc=5",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+      { params: Promise.resolve({ path: ["challenge"] }) }
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/casino/chess/invite?code=challenge-2");
   });
 
   it("opens accepted friend challenges on the interactive board", async () => {

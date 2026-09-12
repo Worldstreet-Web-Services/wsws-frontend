@@ -80,7 +80,7 @@ function BetForm({
   const { login } = usePrivy();
   const viewer = useSessionWallet("ethereum");
   const cashier = useChessCashier();
-  const portfolio = usePortfolio();
+  const portfolio = usePortfolio({ scope: "base" });
   const market = useMatchMarket(match.id, viewer);
   const placeBet = usePlaceBet();
   const pendingDeposit = useRef<PendingDeposit | null>(null);

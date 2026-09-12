@@ -35,7 +35,7 @@ function baseUsdcBalance(tokens: ReturnType<typeof usePortfolio>["tokens"]): str
 export function useFundedChessComputer() {
   const wallet = useCasinoWallet();
   const cashier = useChessCashier();
-  const portfolio = usePortfolio();
+  const portfolio = usePortfolio({ scope: "base" });
   const create = useCreateComputerMatch();
   const pendingDeposit = useRef<PendingDeposit | null>(null);
   const [isStarting, setIsStarting] = useState(false);

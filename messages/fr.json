@@ -710,7 +710,10 @@
     "assetDetails": "Détails de l'actif",
     "goToCard": "Aller à la carte {number}",
     "searchHoldings": "Rechercher dans vos avoirs",
-    "noChart": "Pas encore d'historique de prix."
+    "noChart": "Pas encore d'historique de prix.",
+    "arkStorePitch": "Téléchargez notre app",
+    "arkStoreTagline": "sur ArkStore",
+    "arkStoreAria": "Téléchargez notre app sur ArkStore"
   },
   "markets": {
     "title": "Marchés",

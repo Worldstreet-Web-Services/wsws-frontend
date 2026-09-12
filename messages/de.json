@@ -710,7 +710,10 @@
     "assetDetails": "Asset-Details",
     "goToCard": "Zu Karte {number}",
     "searchHoldings": "Deine Bestände durchsuchen",
-    "noChart": "Noch kein Kursverlauf."
+    "noChart": "Noch kein Kursverlauf.",
+    "arkStorePitch": "Hol dir unsere App",
+    "arkStoreTagline": "im ArkStore",
+    "arkStoreAria": "Hol dir unsere App im ArkStore"
   },
   "markets": {
     "title": "Märkte",

@@ -269,6 +269,21 @@ export function PortfolioView({
   const squareHref = marketSquareHref();
   const squareBanner = squareHref ? <MarketSquareBanner href={squareHref} /> : null;
 
+  // The ArkStore ticket, first on both strips: the deck a phone swipes and the
+  // rail the desk carries. The store is another deployment, so it is a plain
+  // anchor into a new tab rather than a route.
+  const arkStoreBanner = (
+    <a
+      href={ARKSTORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t("arkStoreAria")}
+      className="block w-full"
+    >
+      <ArkStoreBanner />
+    </a>
+  );
+
   // The stake banner, and the third rail stop it used to fill on its own. With
   // the square switched off there is still no Market Square banner, so it
   // repeats as it always did and the carousel keeps something to move to.
@@ -331,6 +346,25 @@ export function PortfolioView({
             onHistory={() => setKashModal("history")}
           />
         </BalanceCarousel>
+        {/* The phone's own promo strip, one ticket at a time. The desk has its
+            own rail under the balance cards below. */}
+        <div className="mt-3">
+          <PromoCarousel>
+            {arkStoreBanner}
+            {/* The ticket is presentational; the doorway to the casino lives
+                here at the composition site. Embla suppresses the click after a
+                drag, so a tap navigates and a swipe still pages the deck. */}
+            <Link
+              href="/casino"
+              aria-label="Set the stake, play in the casino"
+              className="block w-full"
+            >
+              <SetTheStakeBanner />
+            </Link>
+            <GetKashBanner onBuy={() => setKashModal("buy")} />
+            {squareBanner}
+          </PromoCarousel>
+        </div>
       </div>
 
       {/* Desktop: the side-by-side grid. */}
@@ -363,42 +397,12 @@ export function PortfolioView({
         />
       </div>
 
-      {/* The promo deck, at every width: the phone swipes one ticket at a
-          time under its carousel, the desk shows two or three of them under
-          the balance grid below. */}
-      <div className="mt-3">
-        <PromoCarousel>
-          {/* The store is another deployment, so this is a plain anchor into
-              a new tab rather than a route. */}
-          <a
-            href={ARKSTORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t("arkStoreAria")}
-            className="block w-full"
-          >
-            <ArkStoreBanner />
-          </a>
-          {/* The ticket is presentational; the doorway to the casino lives
-              here at the composition site. Embla suppresses the click after a
-              drag, so a tap navigates and a swipe still pages the deck. */}
-          <Link
-            href="/casino"
-            aria-label="Set the stake, play in the casino"
-            className="block w-full"
-          >
-            <SetTheStakeBanner />
-          </Link>
-          <GetKashBanner onBuy={() => setKashModal("buy")} />
-          {squareBanner}
-        </PromoCarousel>
-      </div>
-
       {/* The promo rail, as the Market design draws the desktop head: below the
           two cards, a carousel of banners. Desktop-only — the phone carries its
           own promo strip in the mobile head above. */}
       <div className="mt-3 hidden md:block">
         <PromoRail label={tDiscovery("promoRailCarousel")}>
+          {arkStoreBanner}
           {stakeBanner}
           <KashBanner onBuy={() => setKashModal("buy")} />
           {squareBanner ?? stakeBanner}

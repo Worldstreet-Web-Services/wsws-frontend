@@ -10,18 +10,14 @@ import {
   artLayer,
 } from "@/features/discovery/components/conversation-card";
 import {
-  ArkBallCard,
-  CheckersCard,
-  LastManCard,
+  FeedCard,
+  GoLiveCard,
   SquareCard,
 } from "@/features/discovery/components/conversation-cards";
 import { DiscoveryRow } from "@/features/discovery/components/discovery-row";
 import { useLiveConversations } from "@/features/discovery/hooks/use-live-conversations";
 import type { SpaceSpot } from "@/features/discovery/types";
-import { useCountdown } from "@/hooks/use-countdown";
-import { useDashboardFeed } from "@/hooks/use-dashboard-feed";
 import { useRotatingIndex } from "@/hooks/use-rotating-index";
-import type { LiveRound } from "@/lib/dashboard-feed";
 import { MARKET_SQUARE_HIDDEN, marketSquareHref } from "@/lib/market-square";
 
 interface ChessRoomCardProps {
@@ -52,7 +48,7 @@ function ChessRoomCard({ room, onHold }: ChessRoomCardProps) {
       }
       kicker={{ icon: <KickerIcon src="/market/convo-house-icon.png" />, label: room.room }}
       headline={room.headline}
-      primary={{
+      action={{
         href: room.href,
         label: t("conversationJoin"),
         icon: (
@@ -66,40 +62,16 @@ function ChessRoomCard({ room, onHold }: ChessRoomCardProps) {
           />
         ),
       }}
-      secondary={{
-        href: room.actionHref,
-        label: t("conversationPlay"),
-        icon: (
-          <img
-            src="/market/convo-icon-pawn.svg"
-            alt=""
-            aria-hidden
-            width={7}
-            height={9}
-            className="h-[9.17px] w-[7.463px] shrink-0"
-          />
-        ),
-      }}
       onHold={onHold}
     />
   );
 }
 
-/** The open round with the most in it, or null when none is open. */
-function richestRound(rounds: readonly LiveRound[] | undefined, nowSeconds: number) {
-  let best: LiveRound | null = null;
-  for (const round of rounds ?? []) {
-    if (round.endTime <= nowSeconds) continue;
-    if (best === null || round.potUsd > best.potUsd) best = round;
-  }
-  return best;
-}
-
-// "Join the Conversation": one heading, and under it the places on this app
-// where something is happening right now. The chess room first, as drawn, then
-// the Last Man round, the rooms live on Market Square, Checkers and ArkBall.
-// Every card is a doorway: the heading leads to the square itself, and the two
-// pills on each card lead into the game or the room.
+// "Join the Conversation": one heading, and under it Square, which is what
+// the band is for. The chess room the design drew it around, the rooms that
+// are live now, the way into one of your own, and the feed. The Arkade's
+// games used to sit here too; they have their own shelf beside this one, so
+// neither row has to answer two questions at once.
 //
 // The chess room and the square room both rotate through whatever is live. The
 // rotations are owned here rather than on the cards because the carousel draws
@@ -128,14 +100,6 @@ export function ConversationRow({ spaces = [] }: { spaces?: readonly SpaceSpot[]
   const rooms = spaces.length > 0 ? spaces : [chessRoom];
   const room = rooms[useRotatingIndex(rooms.length, { paused })];
 
-  // Rounds are read against the feed's own clock. A round that had ended by
-  // the time the server composed the feed is not one to join; the countdown
-  // below catches one that ends after that.
-  const feed = useDashboardFeed().data;
-  const round = richestRound(feed?.live?.rounds, feed ? feed.asOf / 1000 : 0);
-  const remainingMs = useCountdown(round ? round.endTime * 1000 : null);
-  const checkersLive = feed?.live?.checkers.length ?? 0;
-
   const conversations = useLiveConversations();
   const conversation = conversations[useRotatingIndex(conversations.length, { paused })] ?? null;
   const hosts = conversations.flatMap((live) => live.avatars).slice(0, 6);
@@ -149,14 +113,24 @@ export function ConversationRow({ spaces = [] }: { spaces?: readonly SpaceSpot[]
     >
       <Carousel label={t("conversationCarousel")} gapPx={20} trimPx={50}>
         <ChessRoomCard room={room} onHold={hold} />
-        <LastManCard round={round} remainingMs={remainingMs} onHold={hold} />
-        {/* A hidden square has no rooms and no deployment to link to, so the
-            card goes rather than standing with dead pills. */}
-        {!MARKET_SQUARE_HIDDEN && squareHome !== null ? (
-          <SquareCard room={conversation} avatars={hosts} homeHref={squareHome} onHold={hold} />
-        ) : null}
-        <CheckersCard liveCount={checkersLive} onHold={hold} />
-        <ArkBallCard onHold={hold} />
+        {/* A hidden square has no rooms and no deployment to link to, so its
+            cards go rather than standing with dead pills. */}
+        {/* An array rather than a fragment: the carousel counts its children
+            to make slides, and a fragment would be one slide with three cards
+            stacked inside it. */}
+        {!MARKET_SQUARE_HIDDEN && squareHome !== null
+          ? [
+              <SquareCard
+                key="rooms"
+                room={conversation}
+                avatars={hosts}
+                homeHref={squareHome}
+                onHold={hold}
+              />,
+              <GoLiveCard key="go-live" homeHref={squareHome} onHold={hold} />,
+              <FeedCard key="feed" homeHref={squareHome} onHold={hold} />,
+            ]
+          : null}
       </Carousel>
     </DiscoveryRow>
   );

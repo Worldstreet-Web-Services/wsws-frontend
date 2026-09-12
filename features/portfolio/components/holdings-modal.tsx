@@ -165,10 +165,11 @@ export function HoldingsModal({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    // Straight into the filter, which is what this modal is for. Queried
-    // rather than held by ref: SearchField owns its own input and does not
-    // forward one, and reaching for it here keeps that primitive untouched.
-    rootRef.current?.querySelector("input")?.focus();
+    // Into the dialog itself, not the filter. Focusing the field raised the
+    // phone keyboard over the very list the reader opened this to read, and
+    // filtering is a choice they make by tapping it. The panel takes focus so
+    // the trap below and the screen reader still start inside the dialog.
+    rootRef.current?.focus();
     return () => {
       document.body.style.overflow = previousOverflow;
       if (restoreFocus.current) opener?.focus();
@@ -271,6 +272,9 @@ export function HoldingsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      // Focusable so the panel itself can hold focus on open, but never a tab
+      // stop of its own.
+      tabIndex={-1}
       data-sensitive="balance"
     >
       <div id={titleId} className="ws-display pr-10 text-[20px]">

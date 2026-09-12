@@ -28,6 +28,7 @@ import { SquareLivePromo, SquarePeoplePromo, SquarePostsPromo } from "@/features
 // The desktop discovery shelves. Each falls back to a static editorial card
 // when the route has nothing live to feed it.
 import { ConversationRow } from "@/features/discovery/components/conversation-row";
+import { ArkadeRow } from "@/features/discovery/components/arkade-row";
 import { OwnMarketRow } from "@/features/discovery/components/own-market-row";
 import { TokenMovesRow } from "@/features/discovery/components/token-moves-row";
 import { Next100xRow } from "@/features/discovery/components/next-100x-row";
@@ -330,6 +331,11 @@ export function DashboardPage() {
         <div className="px-4">
           <ConversationRow />
         </div>
+        {/* The Arkade's own shelf, one card per game. It used to share the
+            band above with Square's rooms. */}
+        <div className="px-4">
+          <ArkadeRow />
+        </div>
         {/* "Your Next Prediction Starts Here" — the same discovery card the
             desktop shows, on the phone with its horizontal gutter. */}
         <div className="px-4">
@@ -361,7 +367,8 @@ export function DashboardPage() {
 
       {/* Desktop: the discovery shelves, as the phone design's desktop sibling
           draws them under the balance cards — Token Moves, Join the
-          Conversation, Find the next 100X, then Prediction starts. */}
+          Conversation, the Arkade, Find the next 100X, then Prediction
+          starts. */}
       <div className="mx-auto hidden w-full max-w-[1520px] flex-col gap-11 px-4 pb-2 sm:px-6 md:flex lg:px-8">
         {rwaLeads ? realAssets : null}
         <TokenMovesRow
@@ -370,6 +377,9 @@ export function DashboardPage() {
           onBuy={discoveryTrade.onBuyToken}
         />
         <ConversationRow />
+        {/* The Arkade's own shelf, one card per game. It shared the band above
+            with Square's rooms until the two were split. */}
+        <ArkadeRow />
         {/* "Own The Market.": the perps desk's shelf, as the design draws it
             beside the conversation band. */}
         <OwnMarketRow />

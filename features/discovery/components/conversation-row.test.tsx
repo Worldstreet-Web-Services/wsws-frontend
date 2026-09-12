@@ -79,17 +79,24 @@ function realSlideHeadlines(): string[] {
 }
 
 describe("conversation row", () => {
-  it("deals the chess room first, then Last Man, the square, Checkers and ArkBall", () => {
+  // The band is Square and nothing else now: the room the design drew it
+  // around, the rooms that are live, the way into one of your own, and the
+  // feed. The Arkade's games have their own shelf.
+  it("deals the chess room, then the rooms, going live and the feed", () => {
     render(<ConversationRow />, { wrapper });
     expect(realSlideHeadlines()).toEqual([
       enMessages.discovery.conversationHeadline,
-      // The Last Man card is the event's poster now, so what stands where the
-      // other cards put a headline is its wordmark.
-      `${enMessages.discovery.lastManMarathonLead} ${enMessages.discovery.lastManMarathonTitle}`,
       enMessages.discovery.squareIdleHeadline,
-      enMessages.discovery.checkersIdleHeadline,
-      enMessages.discovery.arkballHeadline,
+      enMessages.discovery.goLiveHeadline,
+      enMessages.discovery.feedHeadline,
     ]);
+  });
+
+  it("carries no Arkade game, which is the other shelf's job", () => {
+    render(<ConversationRow />, { wrapper });
+    expect(screen.queryByText(enMessages.discovery.checkersIdleHeadline)).toBeNull();
+    expect(screen.queryByText(enMessages.discovery.arkballHeadline)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Join Now/ })).toBeNull();
   });
 
   it("sends the heading to Market Square in a new tab", () => {
@@ -97,25 +104,6 @@ describe("conversation row", () => {
     const heading = screen.getByRole("link", { name: enMessages.discovery.conversationTitle });
     expect(heading).toHaveAttribute("href", "https://square.example");
     expect(heading).toHaveAttribute("target", "_blank");
-  });
-
-  it("puts the richest open round on the Last Man card", () => {
-    const soon = Math.floor(Date.now() / 1000) + 3600;
-    useDashboardFeed.mockReturnValue({
-      data: feed({
-        rounds: [
-          { gameId: 7, endTime: soon, potUsd: 100, pot: "$100" },
-          { gameId: 9, endTime: soon, potUsd: 900, pot: "$900" },
-          { gameId: 11, endTime: 1, potUsd: 9000, pot: "$9,000" },
-        ],
-        chess: [],
-        checkers: [{ id: "a" }, { id: "b" }],
-      }),
-    });
-    render(<ConversationRow />, { wrapper });
-    const joins = screen.getAllByRole("link", { name: /Join Now/ });
-    for (const join of joins) expect(join).toHaveAttribute("href", "/casino/last-standing/9");
-    expect(screen.getAllByText("2 matches being played right now").length).toBeGreaterThan(0);
   });
 
   it("puts the live room on the square card", () => {

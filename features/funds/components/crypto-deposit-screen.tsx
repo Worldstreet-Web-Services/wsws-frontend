@@ -20,6 +20,7 @@ import {
   type DepositToken,
   type StaticAddressRequest,
 } from "@/lib/deposit";
+import type { DepositPrefill } from "@/lib/voice/intent";
 
 interface CryptoDepositScreenProps {
   onBack: () => void;
@@ -70,7 +71,6 @@ export function CryptoDepositScreen({ onBack, initialDeposit }: CryptoDepositScr
     } catch {
       return [];
     }
-     
   }, []);
   const historyChains = useMemo(
     () =>

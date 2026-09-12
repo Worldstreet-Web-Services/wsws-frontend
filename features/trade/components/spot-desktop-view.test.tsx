@@ -38,6 +38,17 @@ vi.mock("@/features/trade/hooks/use-spot-buy", () => ({
   useSpotBuy: () => ({ pending: false, submit: vi.fn() }),
 }));
 
+// Stubbed for the same reason as the buy hook: this suite measures the desk's
+// columns and paging, and the real sell hook reaches Privy for a wallet.
+vi.mock("@/features/trade/hooks/use-spot-sell", () => ({
+  useSpotSell: () => ({
+    pending: false,
+    blockedReason: null,
+    maxAmount: "0",
+    submit: vi.fn(),
+  }),
+}));
+
 function market(i: number): SpotMarket {
   return {
     symbol: `T${i}`,
@@ -53,7 +64,7 @@ function market(i: number): SpotMarket {
 function renderDesk() {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <SpotDesktopView onSell={vi.fn()} />
+      <SpotDesktopView />
     </NextIntlClientProvider>
   );
 }
@@ -154,7 +165,7 @@ describe("SpotDesktopView paging", () => {
     fittedRows = 13;
     rerender(
       <NextIntlClientProvider locale="en" messages={messages}>
-        <SpotDesktopView onSell={vi.fn()} />
+        <SpotDesktopView />
       </NextIntlClientProvider>
     );
 

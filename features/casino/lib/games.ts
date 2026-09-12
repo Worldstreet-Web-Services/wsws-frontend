@@ -102,6 +102,35 @@ export const CASINO_GAMES: CasinoGame[] = [
     note: "Fast staked matches",
     comingSoon: false,
   },
+  // Arkjet and Pilot Chicken, back on staging on 2026-09-11 after the 2.0
+  // port dropped them; they follow Checkers. Their artwork is branded, so
+  // the tile keeps its colour.
+  {
+    id: "arkjet",
+    name: "Arkjet",
+    category: "New",
+    size: "tall",
+    glyph: "✈",
+    image: "/casino/arkjet/hero.webp",
+    preserveImageColor: true,
+    isNew: true,
+    href: "/casino/arkjet",
+    note: "Cash out before the multiplier crashes",
+    comingSoon: false,
+  },
+  {
+    id: "chicken",
+    name: "Pilot Chicken",
+    category: "New",
+    size: "tall",
+    glyph: "C",
+    image: "/casino/chicken/ark-chicken.png",
+    preserveImageColor: true,
+    isNew: true,
+    href: "/casino/chicken",
+    note: "Cross each lane and cash out before the crash",
+    comingSoon: false,
+  },
   {
     id: "ayo",
     name: "Ayo",

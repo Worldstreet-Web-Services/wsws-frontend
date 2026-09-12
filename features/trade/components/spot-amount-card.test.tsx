@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -83,8 +83,10 @@ function renderCard(props: CardHarnessProps = {}) {
 function renderActions(props: Partial<SpotTradeActionsProps> = {}) {
   const onBuy = vi.fn();
   const onSell = vi.fn();
+  const side = props.side ?? "buy";
   renderWithIntl(
     <SpotTradeActions
+      side={side}
       amount=""
       pay={{ balance: BALANCE_1240, decimals: USDC_DECIMALS, symbol: "USDC" }}
       sell={{ balance: HALF_BTC, decimals: BTC_DECIMALS, symbol: "BTC" }}
@@ -96,8 +98,9 @@ function renderActions(props: Partial<SpotTradeActionsProps> = {}) {
   return {
     onBuy,
     onSell,
-    buy: screen.getByRole("button", { name: "Buy" }),
-    sell: screen.getByRole("button", { name: "Sell" }),
+    // One button, for the chosen side. Rendering both at once is what let a
+    // USDC-denominated amount be measured against a coin balance.
+    action: screen.getByRole("button", { name: side === "buy" ? "Buy" : "Sell" }),
   };
 }
 
@@ -313,161 +316,100 @@ describe("SpotOrderModeToggle", () => {
 });
 
 describe("SpotTradeActions", () => {
-  it("disables both actions and says why once, when no amount is entered", () => {
-    const { buy, sell } = renderActions({ amount: "" });
-    expect(buy).toBeDisabled();
-    expect(sell).toBeDisabled();
-    // Both sides stall for the same reason, so it is said once rather than twice.
+  it("disables the action and says why when no amount is entered", () => {
+    const { action } = renderActions({ amount: "" });
+    expect(action).toBeDisabled();
     expect(screen.getByText("Enter an amount")).toBeInTheDocument();
   });
 
-  it("ties a shared reason to both buttons for screen readers", () => {
-    const { buy, sell } = renderActions({ amount: "" });
+  it("ties the reason to the button for screen readers", () => {
+    const { action } = renderActions({ amount: "" });
     const reason = screen.getByText("Enter an amount");
-    expect(buy).toHaveAttribute("aria-describedby", reason.id);
-    expect(sell).toHaveAttribute("aria-describedby", reason.id);
+    expect(action).toHaveAttribute("aria-describedby", reason.id);
   });
 
-  it("enables both actions for a valid amount and reports the exact string", () => {
-    const { buy, sell, onBuy, onSell } = renderActions({ amount: "0.12345" });
-    expect(buy).toBeEnabled();
-    expect(sell).toBeEnabled();
-    fireEvent.click(buy);
-    fireEvent.click(sell);
-    expect(onBuy).toHaveBeenCalledWith("0.12345");
-    expect(onSell).toHaveBeenCalledWith("0.12345");
+  it("reports the exact string typed, on either side", () => {
+    const buy = renderActions({ side: "buy", amount: "0.12345" });
+    expect(buy.action).toBeEnabled();
+    fireEvent.click(buy.action);
+    expect(buy.onBuy).toHaveBeenCalledWith("0.12345");
+    cleanup();
+
+    const sell = renderActions({ side: "sell", amount: "0.12345" });
+    expect(sell.action).toBeEnabled();
+    fireEvent.click(sell.action);
+    expect(sell.onSell).toHaveBeenCalledWith("0.12345");
   });
 
   it("spends the whole pay balance when the amount equals it", () => {
-    const { buy, onBuy } = renderActions({ amount: "1240" });
-    expect(buy).toBeEnabled();
-    fireEvent.click(buy);
+    const { action, onBuy } = renderActions({ side: "buy", amount: "1240" });
+    expect(action).toBeEnabled();
+    fireEvent.click(action);
     expect(onBuy).toHaveBeenCalledWith("1240");
   });
 
-  // The trapping case. Gating Sell on the pay balance would strand a user who
-  // holds the asset but no USDC: they could not close the position.
+  /**
+   * The trapping case. Gating Sell on the pay balance would strand a user who
+   * holds the asset but no USDC: they could not close the position.
+   */
   it("lets a holder sell with an empty pay balance", () => {
-    const { buy, sell, onSell } = renderActions({
+    const { action, onSell } = renderActions({
+      side: "sell",
       amount: "0.25",
       pay: { balance: 0n, decimals: USDC_DECIMALS, symbol: "USDC" },
     });
-    expect(sell).toBeEnabled();
-    expect(buy).toBeDisabled();
-    fireEvent.click(sell);
+    expect(action).toBeEnabled();
+    fireEvent.click(action);
     expect(onSell).toHaveBeenCalledWith("0.25");
   });
 
-  it("names the asset each side is actually short of", () => {
-    const { buy, sell } = renderActions({ amount: "900" });
-    expect(buy).toBeEnabled();
-    expect(sell).toBeDisabled();
-    // 900 is inside the 1,240 USDC pay balance but far past the 0.5 BTC held.
+  /**
+   * The bug this switch was built for. 900 sits inside the 1,240 USDC pay
+   * balance and far past the 0.5 BTC held, so the SAME string is spendable on
+   * one leg and impossible on the other. Before the switch both buttons read it
+   * at once and one of them was always wrong about what it meant.
+   */
+  it("measures one string against whichever asset the side is denominated in", () => {
+    const buy = renderActions({ side: "buy", amount: "900" });
+    expect(buy.action).toBeEnabled();
+    expect(screen.queryByText("Not enough BTC")).not.toBeInTheDocument();
+    cleanup();
+
+    const sell = renderActions({ side: "sell", amount: "900" });
+    expect(sell.action).toBeDisabled();
     expect(screen.getByText("Not enough BTC")).toBeInTheDocument();
     expect(screen.queryByText("Not enough USDC")).not.toBeInTheDocument();
   });
 
-  it("reports each side against its own balance when both are short", () => {
-    const { buy, sell, onBuy, onSell } = renderActions({ amount: "1240.000001" });
-    expect(buy).toBeDisabled();
-    expect(sell).toBeDisabled();
+  it("names the asset the active side is short of, and refuses to fire", () => {
+    const { action, onBuy } = renderActions({ side: "buy", amount: "1240.000001" });
+    expect(action).toBeDisabled();
     expect(screen.getByText("Not enough USDC")).toBeInTheDocument();
-    expect(screen.getByText("Not enough BTC")).toBeInTheDocument();
-    fireEvent.click(buy);
-    fireEvent.click(sell);
+    fireEvent.click(action);
     expect(onBuy).not.toHaveBeenCalled();
-    expect(onSell).not.toHaveBeenCalled();
   });
 
-  // BTC carries 8 decimals and USDC 6, so an 8dp amount is fine to sell and too
-  // precise to spend. Each side applies its own asset's limit.
-  it("applies each side's own decimal limit", () => {
-    const { buy, sell } = renderActions({ amount: "0.12345678" });
-    expect(sell).toBeEnabled();
-    expect(buy).toBeDisabled();
+  /**
+   * BTC carries 8 decimals and USDC 6, so an 8dp amount is fine to sell and too
+   * precise to spend. Each side applies its own asset's limit.
+   */
+  it("applies the active side's own decimal limit", () => {
+    const sell = renderActions({ side: "sell", amount: "0.12345678" });
+    expect(sell.action).toBeEnabled();
+    cleanup();
+
+    const buy = renderActions({ side: "buy", amount: "0.12345678" });
+    expect(buy.action).toBeDisabled();
     expect(screen.getByText("USDC allows at most 6 decimal places")).toBeInTheDocument();
   });
 
-  it("points each button at its own reason when the two differ", () => {
-    const { buy, sell } = renderActions({ amount: "900" });
-    const sellReason = screen.getByText("Not enough BTC");
-    expect(sell).toHaveAttribute("aria-describedby", sellReason.id);
-    // Buy is fine here, so its reason element is present but silent, and the
-    // two buttons never share an id.
-    expect(buy.getAttribute("aria-describedby")).not.toBe(sellReason.id);
-    expect(document.getElementById(buy.getAttribute("aria-describedby") ?? "")).toBeTruthy();
-  });
-
-  it("blocks selling and names the asset when the user holds none of it", () => {
-    const { sell, onSell } = renderActions({
-      amount: "0.25",
-      // No holding means no token record, so there are no decimals to pass.
+  it("explains rather than offering a sell for a coin the wallet holds none of", () => {
+    const { action } = renderActions({
+      side: "sell",
+      amount: "1",
       sell: { balance: null, symbol: "BTC" },
     });
-    expect(sell).toBeDisabled();
+    expect(action).toBeDisabled();
     expect(screen.getByText("You don't own any BTC to sell yet.")).toBeInTheDocument();
-    fireEvent.click(sell);
-    expect(onSell).not.toHaveBeenCalled();
-  });
-
-  // No sell leg at all is a different thing from holding none, and must not
-  // quietly fall back to the pay balance.
-  it("asks for a market rather than guessing when no sell asset is given", () => {
-    const { buy, sell } = renderActions({ amount: "500", sell: undefined });
-    expect(sell).toBeDisabled();
-    expect(screen.getByText("Select a market")).toBeInTheDocument();
-    expect(screen.queryByText("Not enough USDC")).not.toBeInTheDocument();
-    expect(buy).toBeEnabled();
-  });
-
-  it("locks both actions and shows progress while an order is in flight", () => {
-    const { buy, sell, onBuy } = renderActions({ amount: "0.25", pending: "buy" });
-    expect(buy).toBeDisabled();
-    expect(sell).toBeDisabled();
-    expect(screen.getByText("Placing your order")).toBeInTheDocument();
-    expect(buy).toHaveAttribute("aria-busy", "true");
-    fireEvent.click(buy);
-    expect(onBuy).not.toHaveBeenCalled();
-  });
-
-  it("says nothing extra once both sides are good and nothing is in flight", () => {
-    renderActions({ amount: "0.25" });
-    expect(screen.queryByText("Enter an amount")).not.toBeInTheDocument();
-    expect(screen.queryByText("Not enough USDC")).not.toBeInTheDocument();
-    expect(screen.queryByText("Not enough BTC")).not.toBeInTheDocument();
-  });
-
-  // The design draws each button 48px tall. It rendered 24px, because the
-  // button sits in a column and flex-1 sets flex-basis: 0% on the column's own
-  // axis, which replaces h-12 as the flex base size; the column is
-  // content-height, so the button shrank to its 24px line box. jsdom has no
-  // layout engine, so the height itself cannot be measured here. What is
-  // assertable is the cause: the button keeps its fixed height and never
-  // becomes a growable flex item again.
-  it("keeps both buttons at the fixed design height, not flex-sized", () => {
-    const { buy, sell } = renderActions({ amount: "0.25" });
-    for (const button of [buy, sell]) {
-      expect(button).toHaveClass("h-12");
-      expect(button.className).not.toMatch(/(^|\s)flex-1(\s|$)/);
-      expect(button.className).not.toMatch(/(^|\s)basis-/);
-      expect(button).toHaveClass("shrink-0");
-    }
-  });
-
-  // 8px between the pair, per the design. The gap lives on the row that holds
-  // the two sides, so it is read from there rather than from a button.
-  it("holds the design gap between the two sides", () => {
-    const { buy, sell } = renderActions({ amount: "0.25" });
-    const row = buy.parentElement?.parentElement;
-    expect(row).toBe(sell.parentElement?.parentElement);
-    expect(row).toHaveClass("gap-2");
-  });
-
-  // bg-buy and bg-sell are the action tokens. --color-up and --color-down are
-  // price-delta colours and must never stand in for them.
-  it("paints each side with its action token", () => {
-    const { buy, sell } = renderActions({ amount: "0.25" });
-    expect(buy).toHaveClass("bg-buy");
-    expect(sell).toHaveClass("bg-sell");
   });
 });

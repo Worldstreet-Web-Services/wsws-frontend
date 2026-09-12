@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "Nicht genug {symbol}",
     "priceUnavailable": "Preis nicht verfügbar",
     "loadingBalance": "Dein Guthaben wird geladen…",
-    "balanceSubject": "dein USDC-Guthaben"
+    "balanceSubject": "dein USDC-Guthaben",
+    "sideLabel": "Kaufen oder verkaufen",
+    "youAreSelling": "Du verkaufst",
+    "amountLabelSell": "Zu verkaufender Betrag",
+    "sellShortcutsLabel": "Einen Teil deines Guthabens verkaufen"
   },
   "topbar": {
     "support": "support",
@@ -734,6 +738,7 @@
     "tokenMoveFlat": "<b>{symbol} ist unverändert</b> in den letzten 24 Stunden.",
     "tokenMoveUnknown": "Für <b>{symbol}</b> liegt derzeit keine 24-Stunden-Bewegung vor.",
     "tabSpot": "Spot",
+    "tabLeverage": "Hebel",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Prognosen",
     "tabsAria": "Marktkategorien",
@@ -1608,6 +1613,14 @@
         "checkers": {
           "name": "Dame",
           "note": "Schnelle Partien mit Einsatz"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Auszahlen, bevor der Multiplikator abstürzt"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Überquere jede Spur und zahle vor dem Absturz aus"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2804,7 +2817,7 @@
     "conversationHeadline": "Denken wie ein Schachgroßmeister",
     "conversationJoin": "Space beitreten",
     "conversationPlay": "Schach spielen",
-    "ownMarketTitle": "Beherrsche den Markt.",
+    "ownMarketTitle": "Beherrsche den Markt mit <accent>Hebel-Trading</accent>.",
     "arenaTitle": "Betritt die Arena",
     "arenaBody": "Mach deinen Zug. Steuere dein Risiko. Beherrsche den Markt.",
     "arenaCta": "Jetzt traden",

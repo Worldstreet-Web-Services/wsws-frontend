@@ -11,7 +11,7 @@ import { WalletIcon } from "@/components/ui/icons";
 import { useMoney } from "@/components/ui/currency-select";
 import { TypeChip } from "@/features/portfolio/components/type-chip";
 import { displayNetworkIconKey, displayNetworkLabel } from "@/features/portfolio/lib/network-label";
-import { selectHoldings } from "@/features/portfolio/lib/holdings";
+import { isDustHolding, selectHoldings } from "@/features/portfolio/lib/holdings";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { displaySymbol } from "@/lib/buy";
 import { coingeckoId } from "@/lib/coingecko";
@@ -105,10 +105,14 @@ export function HoldingsModal({
   // to the coins button behind that sheet would pull it off the new dialog.
   const restoreFocus = useRef(true);
 
-  // The bought-asset set, minus anything with no balance. selectHoldings drops
-  // the USDC-on-Base deposit float for the same reason the holdings table does:
-  // it is spendable cash, not a position the user chose to take.
-  const holdings = useMemo(() => selectHoldings(tokens).filter(hasBalance), [tokens]);
+  // The bought-asset set, minus anything with no balance and anything worth so
+  // little it can only be shown as "<$0.01". selectHoldings drops the
+  // USDC-on-Base deposit float for the same reason the holdings table does: it
+  // is spendable cash, not a position the user chose to take.
+  const holdings = useMemo(
+    () => selectHoldings(tokens).filter((token) => hasBalance(token) && !isDustHolding(token)),
+    [tokens]
+  );
 
   // Biggest position first, which is the holdings table's own default sort.
   // Ordering only; no money is computed from these floats.

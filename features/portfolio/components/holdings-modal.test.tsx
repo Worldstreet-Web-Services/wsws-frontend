@@ -106,6 +106,69 @@ function renderModal(props: Partial<ReturnType<typeof handlers>> = {}) {
   return all;
 }
 
+/**
+ * Dust, and the one holding that looks like dust but is not.
+ *
+ * A position worth less than a cent renders as "<$0.01", which tells the owner
+ * nothing. Worse, it is what a wallet looks like straight after selling the
+ * whole position: a remainder too small to round to a cent reads as though the
+ * sale never happened.
+ */
+describe("HoldingsModal dust", () => {
+  beforeEach(() => {
+    push.mockClear();
+  });
+
+  it("hides a position worth less than a cent", () => {
+    setPortfolio({
+      tokens: [
+        token({ symbol: "LINK", valueUsd: 240 }),
+        token({
+          symbol: "syrupUSDC",
+          name: "Syrup USDC",
+          balance: 0.0042,
+          rawBalance: "4200",
+          priceUsd: 1,
+          valueUsd: 0.0042,
+        }),
+      ],
+    });
+    renderModal();
+    expect(screen.getByText("LINK")).toBeInTheDocument();
+    expect(screen.queryByText("syrupUSDC")).not.toBeInTheDocument();
+  });
+
+  /**
+   * The carve-out that must survive. valueUsd is balance x price, so a real
+   * balance we could not price is $0 through no fault of the owner. Hiding it
+   * would tell them they do not hold something they do.
+   */
+  it("keeps a real balance we could not price", () => {
+    setPortfolio({
+      tokens: [
+        token({
+          symbol: "HYPE",
+          name: "Hyperliquid",
+          balance: 4,
+          rawBalance: "4000000000000000000",
+          priceUsd: 0,
+          valueUsd: 0,
+        }),
+      ],
+    });
+    renderModal();
+    expect(screen.getByText("HYPE")).toBeInTheDocument();
+  });
+
+  it("keeps a position worth exactly a cent", () => {
+    setPortfolio({
+      tokens: [token({ symbol: "USOR", name: "Usor", priceUsd: 1, valueUsd: 0.01 })],
+    });
+    renderModal();
+    expect(screen.getByText("USOR")).toBeInTheDocument();
+  });
+});
+
 describe("HoldingsModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "Nicht genug {symbol}",
     "priceUnavailable": "Preis nicht verfügbar",
     "loadingBalance": "Dein Guthaben wird geladen…",
-    "balanceSubject": "dein USDC-Guthaben"
+    "balanceSubject": "dein USDC-Guthaben",
+    "sideLabel": "Kaufen oder verkaufen",
+    "youAreSelling": "Du verkaufst",
+    "amountLabelSell": "Zu verkaufender Betrag",
+    "sellShortcutsLabel": "Einen Teil deines Guthabens verkaufen"
   },
   "topbar": {
     "support": "support",
@@ -906,7 +910,25 @@
     "stepSigning": "Dein Geld wird gesendet, kostenlos",
     "stepSettling": "Fast geschafft…",
     "stepBuilding": "Deine Order wird vorbereitet…",
-    "useLandedBalance": "Stattdessen mit deinen {amount} kaufen"
+    "useLandedBalance": "Stattdessen mit deinen {amount} kaufen",
+    "change24hLabel": "24-Std-Änderung",
+    "viewChart": "Chart anzeigen",
+    "changeAsset": "Asset wechseln",
+    "selectAsset": "Asset auswählen",
+    "sideLabel": "Kaufen oder verkaufen",
+    "youAreSelling": "Sie verkaufen",
+    "amountLabel": "Zu zahlender Betrag",
+    "amountLabelSell": "Zu verkaufender Betrag",
+    "changeToken": "Token wechseln",
+    "sellShortcutsLabel": "Einen Teil Ihres Guthabens verkaufen",
+    "quickAmountLabel": "{amount} zahlen",
+    "purchaseValue": "Kaufwert",
+    "fee": "Gebühr",
+    "youReceive": "Sie erhalten",
+    "estFee": "Gesch. Gebühr",
+    "amountInvalid": "Geben Sie einen gültigen Betrag ein",
+    "amountTooPrecise": "{symbol} erlaubt höchstens {decimals} Nachkommastellen",
+    "notEnoughOf": "Nicht genug {symbol}"
   },
   "prediction": {
     "exploreAllMarkets": "Alle Märkte entdecken",

@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "{symbol} insuficiente",
     "priceUnavailable": "Preço indisponível",
     "loadingBalance": "Carregando seu saldo…",
-    "balanceSubject": "seu saldo de USDC"
+    "balanceSubject": "seu saldo de USDC",
+    "sideLabel": "Comprar ou vender",
+    "youAreSelling": "Você está vendendo",
+    "amountLabelSell": "Quantia a vender",
+    "sellShortcutsLabel": "Vender uma parte do seu saldo"
   },
   "topbar": {
     "support": "suporte",
@@ -906,7 +910,25 @@
     "stepSigning": "Enviando seu dinheiro, grátis",
     "stepSettling": "Quase lá…",
     "stepBuilding": "A preparar a sua ordem…",
-    "useLandedBalance": "Comprar com os {amount} que tem"
+    "useLandedBalance": "Comprar com os {amount} que tem",
+    "change24hLabel": "Variação 24 h",
+    "viewChart": "Ver gráfico",
+    "changeAsset": "Mudar ativo",
+    "selectAsset": "Selecione um ativo",
+    "sideLabel": "Comprar ou vender",
+    "youAreSelling": "Está a vender",
+    "amountLabel": "Montante a pagar",
+    "amountLabelSell": "Montante a vender",
+    "changeToken": "Mudar token",
+    "sellShortcutsLabel": "Vender uma parte do seu saldo",
+    "quickAmountLabel": "Pagar {amount}",
+    "purchaseValue": "Valor da compra",
+    "fee": "Taxa",
+    "youReceive": "Recebe",
+    "estFee": "Taxa est.",
+    "amountInvalid": "Introduza um montante válido",
+    "amountTooPrecise": "{symbol} permite no máximo {decimals} casas decimais",
+    "notEnoughOf": "{symbol} insuficiente"
   },
   "prediction": {
     "exploreAllMarkets": "Explorar todos os mercados",

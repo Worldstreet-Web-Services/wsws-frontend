@@ -1613,6 +1613,14 @@
           "name": "Checkers",
           "note": "Fast staked matches"
         },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Cash out before the multiplier crashes"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cross each lane and cash out before the crash"
+        },
         "arkball": {
           "name": "ArkBall",
           "note": "Pick 5 white balls and 1 ArkBall"

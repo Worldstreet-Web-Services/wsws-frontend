@@ -1613,6 +1613,14 @@
           "name": "Dame",
           "note": "Schnelle Partien mit Einsatz"
         },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Auszahlen, bevor der Multiplikator abstürzt"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Überquere jede Spur und zahle vor dem Absturz aus"
+        },
         "arkball": {
           "name": "ArkBall",
           "note": "Pick 5 white balls and 1 ArkBall"

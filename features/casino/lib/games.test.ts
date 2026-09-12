@@ -20,6 +20,24 @@ describe("casino game catalogue", () => {
     expect(SPAN[first.size] + SPAN[second.size]).toBe(6);
   });
 
+  // Back on staging on 2026-09-11: the two crash games sit right after
+  // Checkers, playable, with their branded art kept in colour.
+  it("places Arkjet and Pilot Chicken after Checkers", () => {
+    const checkers = CASINO_GAMES.findIndex((game) => game.id === "checkers");
+    expect(CASINO_GAMES[checkers + 1]).toMatchObject({
+      id: "arkjet",
+      href: "/casino/arkjet",
+      preserveImageColor: true,
+      comingSoon: false,
+    });
+    expect(CASINO_GAMES[checkers + 2]).toMatchObject({
+      id: "chicken",
+      href: "/casino/chicken",
+      preserveImageColor: true,
+      comingSoon: false,
+    });
+  });
+
   it("keeps that order under the All games filter", () => {
     const shown = filterGames(CASINO_GAMES, "All games", "");
     expect(shown.slice(0, 4).map((g) => g.id)).toEqual([

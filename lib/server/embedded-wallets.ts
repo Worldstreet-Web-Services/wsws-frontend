@@ -19,7 +19,8 @@ export function embeddedWalletAddress(user: User | null, chain: EmbeddedChain): 
     if (account.type !== "wallet") continue;
     if (!("wallet_client_type" in account) || account.wallet_client_type !== "privy") continue;
     if (!("chain_type" in account) || account.chain_type !== chain) continue;
-    if ("address" in account && typeof account.address === "string") return account.address;
+    if ("address" in account && typeof account.address === "string")
+      return account.address.toLowerCase();
   }
   return null;
 }

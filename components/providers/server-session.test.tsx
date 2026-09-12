@@ -40,8 +40,8 @@ describe("useSessionWallet", () => {
         <Wallet chain="solana" />
       </ServerSessionProvider>
     );
-    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xServer");
-    expect(screen.getByTestId("solana")).toHaveTextContent("SoLServer");
+    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xserver");
+    expect(screen.getByTestId("solana")).toHaveTextContent("solserver");
   });
 
   it("is Privy's answer alone once Privy is ready, including no wallet", () => {
@@ -52,7 +52,7 @@ describe("useSessionWallet", () => {
         <Wallet chain="solana" />
       </ServerSessionProvider>
     );
-    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xPrivy");
+    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xprivy");
     // Privy lists no Solana wallet for this user. The server's snapshot must
     // not stand in: it could belong to whoever the cookie named when the page
     // rendered, and Privy has since become the authority.
@@ -83,6 +83,6 @@ describe("useSessionWallet", () => {
   it("works outside the provider, from Privy alone", () => {
     privy.state = { user: privyUser, ready: true, authenticated: true };
     render(<Wallet chain="ethereum" />);
-    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xPrivy");
+    expect(screen.getByTestId("ethereum")).toHaveTextContent("0xprivy");
   });
 });

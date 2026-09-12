@@ -31,9 +31,14 @@ export function useServerSession(): ServerSession | null {
 // this chain, must not inherit the address the cookie named when the page
 // rendered. Falling back on null here was the review finding that a stale
 // server wallet could outlive the session that produced it.
+//
+// The address is lowercased so the query key built from it is stable across
+// the server→Privy transition. The server SDK and the browser SDK return the
+// same wallet but can disagree on EVM checksum casing, and a casing change
+// is a new query key — which triggers a duplicate fetch on every cold entry.
 export function useSessionWallet(chain: "ethereum" | "solana"): string | null {
   const { ready, user } = usePrivy();
   const server = useServerSession();
-  if (!ready) return server?.wallets[chain] ?? null;
-  return getWalletAddress(user, chain);
+  const address = ready ? getWalletAddress(user, chain) : (server?.wallets[chain] ?? null);
+  return address?.toLowerCase() ?? null;
 }

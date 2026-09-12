@@ -31,14 +31,14 @@ const externalEvm = {
 describe("embeddedWalletAddress", () => {
   it("returns the embedded wallet on each chain", () => {
     const user = userWith([embeddedEvm, embeddedSolana]);
-    expect(embeddedWalletAddress(user, "ethereum")).toBe("0xEmbedded");
-    expect(embeddedWalletAddress(user, "solana")).toBe("SoLEmbedded");
+    expect(embeddedWalletAddress(user, "ethereum")).toBe("0xembedded");
+    expect(embeddedWalletAddress(user, "solana")).toBe("solembedded");
   });
 
   it("skips an external wallet even when it is listed first", () => {
     // The browser picks the embedded one too; the query key must agree.
     const user = userWith([externalEvm, embeddedEvm]);
-    expect(embeddedWalletAddress(user, "ethereum")).toBe("0xEmbedded");
+    expect(embeddedWalletAddress(user, "ethereum")).toBe("0xembedded");
   });
 
   it("returns null when there is no embedded wallet on that chain", () => {

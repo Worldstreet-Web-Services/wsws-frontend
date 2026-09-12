@@ -51,9 +51,9 @@ describe("dehydratedPortfolio", () => {
 
     const state = await dehydratedPortfolio();
 
-    expect(alchemy.fetchPortfolio).toHaveBeenCalledWith("0xabc", "SoL1");
+    expect(alchemy.fetchPortfolio).toHaveBeenCalledWith("0xabc", "sol1");
     expect(state?.queries).toHaveLength(1);
-    expect(state?.queries[0].queryKey).toEqual(["portfolio", "0xabc", "SoL1"]);
+    expect(state?.queries[0].queryKey).toEqual(["portfolio", "0xabc", "sol1"]);
     expect(state?.queries[0].state.data).toEqual({ totalUsd: 42, tokens: [] });
   });
 

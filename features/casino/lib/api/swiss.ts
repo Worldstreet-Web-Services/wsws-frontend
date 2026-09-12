@@ -67,8 +67,7 @@ export function swissSurfaceRoutes(
     label: "Chess",
     home: "/casino/chess",
     tournaments: format === "champions" ? "/casino/chess/tournaments" : "/casino/chess/swiss",
-    create:
-      format === "champions" ? "/casino/chess/tournaments/create" : "/casino/chess/swiss/create",
+    create: format === "champions" ? "/casino/chess/tournaments/create" : "/casino/chess/create",
     games: "/casino/chess/history",
     detail: (tournamentId) =>
       format === "champions"

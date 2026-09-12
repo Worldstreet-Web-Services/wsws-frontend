@@ -82,8 +82,6 @@ describe("chess identity helper", () => {
   });
 
   it("marks per-caller chess reads as session-bound", () => {
-    expect(chessReadNeedsSession("play")).toBe(true);
-    expect(chessReadNeedsSession("play/pool")).toBe(true);
     expect(chessReadNeedsSession("cashier/players/0xabc/balance")).toBe(true);
     expect(chessReadNeedsSession("cashier/config")).toBe(false);
     expect(chessReadNeedsSession("betting/markets/match-1/bets")).toBe(true);

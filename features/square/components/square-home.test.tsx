@@ -26,6 +26,7 @@ const reads = vi.hoisted(() => ({
   fetchCommentReplies: vi.fn(),
   addPostComment: vi.fn(),
   setCommentLike: vi.fn(),
+  searchSquare: vi.fn(),
 }));
 
 vi.mock("@/lib/api/market-square", async (importActual) => ({
@@ -205,6 +206,43 @@ beforeEach(() => {
     author: null,
   });
   reads.setCommentLike.mockResolvedValue({ liked: true, likeCount: 3 });
+  reads.searchSquare.mockResolvedValue({
+    items: [
+      {
+        kind: "profile",
+        id: "u-sam",
+        profile: {
+          id: "u-sam",
+          username: "samuel",
+          displayName: "Samuel Yaras",
+          avatarUrl: null,
+          verification: "none",
+          role: "citizen",
+          orgBadge: null,
+        },
+      },
+      {
+        kind: "stream",
+        id: "st-9",
+        stream: {
+          id: "st-9",
+          title: "Sam's room",
+          owner: { username: "samuel", displayName: null },
+        },
+      },
+      {
+        kind: "post",
+        id: "p-9",
+        post: { id: "p-9", text: "sam says hi", author: { username: "samuel" } },
+      },
+      {
+        kind: "product",
+        id: "pr-1",
+        product: { id: "pr-1", slug: "sam-tee", name: "Sam tee", tagline: "soft" },
+      },
+    ],
+    nextCursor: null,
+  });
 });
 
 function headings(): string[] {
@@ -407,5 +445,51 @@ describe("the comments sheet", () => {
     fireEvent.click(within(sheet).getByRole("button", { name: "Post reply to comment" }));
     await within(sheet).findByText("hello");
     expect(reads.addPostComment).toHaveBeenCalledWith("post-1", "hello", "c-1");
+  });
+});
+
+// Home answers its own search, in place: while the field holds words the
+// sections give way to what the Square found, each row opening the thing it
+// names in the Square, and clearing the field puts the page back.
+describe("the search row", () => {
+  it("answers in place and gives the page back when cleared", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    render(<SquareHome markets={[]} />, { wrapper });
+    await screen.findByText("monthly wrap up");
+
+    const field = screen.getByRole("searchbox", { name: "Search Gistrooms, houses, friends" });
+    fireEvent.change(field, { target: { value: "sam" } });
+    await screen.findByText("Samuel Yaras");
+    expect(reads.searchSquare).toHaveBeenCalledWith("sam", null);
+    expect(screen.queryByText("monthly wrap up")).toBeNull();
+    expect(headings()).toEqual(["People", "Gist rooms", "Posts", "ARK Store"]);
+    expect(screen.getByRole("button", { name: "Follow" })).toBeInTheDocument();
+    outbound(
+      screen.getByRole("link", { name: "Wink at Samuel Yaras" }),
+      "https://square.test/u/samuel"
+    );
+    outbound(screen.getByRole("link", { name: /Sam's room/ }), "https://square.test/live/st-9");
+    outbound(screen.getByRole("link", { name: /sam says hi/ }), "https://square.test/p/p-9");
+    outbound(screen.getByRole("link", { name: /Sam tee/ }), "https://square.test/store/sam-tee");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await screen.findByText("monthly wrap up");
+    expect(screen.queryByText("Samuel Yaras")).toBeNull();
+  });
+
+  it("offers the room when the words are a room code", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    reads.searchSquare.mockResolvedValue({ items: [], nextCursor: null });
+    render(<SquareHome markets={[]} />, { wrapper });
+    await screen.findByText("monthly wrap up");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search Gistrooms, houses, friends" }), {
+      target: { value: "bcd-2345-fg" },
+    });
+    outbound(
+      await screen.findByRole("link", { name: /Open this room/ }),
+      "https://square.test/code/bcd2345fg"
+    );
+    expect(screen.getByText("bcd-2345-fg")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing matched")).toBeNull();
   });
 });

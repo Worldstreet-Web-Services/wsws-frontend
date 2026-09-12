@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import { useSquareMe } from "@/features/square/hooks/use-square-home";
 import { SquareHomeBanner } from "@/features/square/components/square-home-banner";
@@ -7,6 +8,7 @@ import { SquareHomeHouses } from "@/features/square/components/square-home-house
 import { SquareHomePeople } from "@/features/square/components/square-home-people";
 import { SquareHomePosts } from "@/features/square/components/square-home-posts";
 import { SquareHomeRooms } from "@/features/square/components/square-home-rooms";
+import { SquareHomeSearch } from "@/features/square/components/square-home-search";
 import { SquareHomeTopRow } from "@/features/square/components/square-home-top-row";
 import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
@@ -16,7 +18,8 @@ import type { BuyPayload } from "@/lib/modal-types";
  * the Square draws it.
  *
  * Home is a column in a fixed order, and this is that column in that order:
- * the search row and the gistroom banner, then "Top GistRooms", "Make some
+ * the search row (which answers in place, as Home's does), the gistroom
+ * banner, then "Top GistRooms", "Make some
  * friends", "Coming Soon", "Popular Houses" and "Post For You", each with
  * its two-tone heading and its "View more" into the Square. Each section
  * reads the same route Home reads and shows what it returns, on the Square's
@@ -39,6 +42,11 @@ export function SquareHome({
   onOpenBuy?: (buy: BuyPayload) => void;
 }) {
   const me = useSquareMe();
+  // Home answers its own search: the words are local state, and while there
+  // are any the sections give way to the results. Clearing the field puts
+  // the page back exactly as it was.
+  const [query, setQuery] = useState("");
+  const searching = query.trim().length > 0;
 
   if (MARKET_SQUARE_HIDDEN) return null;
 
@@ -46,14 +54,19 @@ export function SquareHome({
     // The column fills the screen, as asked; the deck alone keeps Home's
     // 600 (see SquareFriendsDeck), so the fan is never scaled past the file.
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <SquareHomeTopRow />
-      <SquareHomeBanner />
-
-      <SquareHomeRooms status="live" />
-      <SquareHomePeople meId={me.data?.id} />
-      <SquareHomeRooms status="scheduled" />
-      <SquareHomeHouses />
-      <SquareHomePosts markets={markets} onOpenBuy={onOpenBuy} meId={me.data?.id} />
+      <SquareHomeTopRow value={query} onChange={setQuery} />
+      {searching ? (
+        <SquareHomeSearch query={query} meId={me.data?.id} />
+      ) : (
+        <>
+          <SquareHomeBanner />
+          <SquareHomeRooms status="live" />
+          <SquareHomePeople meId={me.data?.id} />
+          <SquareHomeRooms status="scheduled" />
+          <SquareHomeHouses />
+          <SquareHomePosts markets={markets} onOpenBuy={onOpenBuy} meId={me.data?.id} />
+        </>
+      )}
     </div>
   );
 }

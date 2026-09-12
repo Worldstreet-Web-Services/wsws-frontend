@@ -134,6 +134,15 @@ describe("market square proxy allowlist", () => {
     expect(marketSquareProxyPaths.allows("POST", "comments/c1/replies")).toBe(false);
   });
 
+  // Home's search answers in place from the Square's one search route, which
+  // serves anybody. Only the GET; there is nothing to write to it.
+  it("relays the search as a public read", () => {
+    expect(marketSquareProxyPaths.allows("GET", "search")).toBe(true);
+    expect(marketSquareProxyPaths.isPublicGet("search")).toBe(true);
+    expect(marketSquareProxyPaths.allows("POST", "search")).toBe(false);
+    expect(marketSquareProxyPaths.allows("GET", "search/extra")).toBe(false);
+  });
+
   it("matches whole paths, so a lookalike prefix is not relayed", () => {
     expect(marketSquareProxyPaths.allows("POST", "posts/abc")).toBe(false);
     expect(marketSquareProxyPaths.allows("POST", "streams/abc/go-live/extra")).toBe(false);

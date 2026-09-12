@@ -56,10 +56,13 @@ scenario-impact: updated
 
 ## What is not carried over, and why
 
-- Home's search answers in place from reads this app's relay does not carry
-  (room codes, the people filter), so a search here opens the Square's
-  Explore with the query. Home's Explore-settings pill acts on the Square's
-  session (location, filters), so its seat carries "Open the Square" instead.
+- Home's Explore-settings pill acts on the Square's session (location,
+  filters), so its seat carries "Open the Square" instead. The search itself
+  answers in place, as Home's does: the Square's one search route is relayed
+  (public), and the results list people (follow acts here, the wink and the
+  identity open the profile in the Square), gist rooms, posts and ARK Store
+  hits, each opening in the Square, plus a way into a room when the words
+  are a room code.
 - The gist-room card's hover preview listens to the room's audio through the
   Square's LiveKit session; this app has no room session, so the card is the
   file's resting state.
@@ -77,7 +80,8 @@ scenario-impact: updated
 read like profiles and the feed, and its payload is judged at the boundary.
 For the comments sheet, `GET comments/{id}/replies` is relayed as a public
 read and `POST|DELETE comments/{id}/like` with the session; a reply carries
-its `parentId`. Nothing that joins a house, winks, hosts, sets a reminder or
+its `parentId`. For the search row, `GET search` is relayed as a public
+read. Nothing that joins a house, winks, hosts, sets a reminder or
 deletes a comment is relayed; those stay in the Square, which is what "do
 more" means.
 
@@ -95,8 +99,10 @@ Square's exports sit under `public/square-home/`.
 - `lib/sections.test.ts`: `square` is a section whose route is `/square`,
   and it stays out of the reorderable rail list.
 - `lib/square/links.test.ts`: `house(id)`, `pals()`, `gistRooms()`,
-  `houses()`, `feed()`, `hostRoom()` and `search(q)` are the Square's own
-  routes, escaped.
+  `houses()`, `feed()`, `hostRoom()`, `roomCode(code)` and `product(slug)`
+  are the Square's own routes, escaped.
+- `lib/square/room-code.test.ts` (new): a room code is recognised with or
+  without its dashes and printed in the Square's grouping.
 - `lib/square/starts-in.test.ts` (new): the "starts in" chip counts the
   largest whole unit and says now for a room whose time has come.
 - `lib/api/market-square-proxy-paths.test.ts`: the house directory is a
@@ -120,8 +126,10 @@ Square's exports sit under `public/square-home/`.
   the banner and the search row, the reader left out of the deck, follow kept
   in the app and never offered on the reader's own post, the deck's pass and
   arrows stepping through people, the comments sheet opening from the tally
-  with replies expanded, liked and answered, and nothing rendered while the
-  square is hidden.
+  with replies expanded, liked and answered, the search answering in place
+  with every row on its Square link and the page coming back when cleared,
+  a room code offered as a way in, and nothing rendered while the square is
+  hidden.
 - `components/layout/sidebar.test.tsx`: the entry links to `/square` in the
   same tab and lights up on it.
 - `features/discovery/components/conversation-cards.test.tsx` and

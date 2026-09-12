@@ -33,6 +33,9 @@ const GET_PATHS = [
   // read the Square's own Home makes. Joining a house is not relayed: that
   // stays in the Square, which is what the page's "Join house" opens.
   /^conversations\/discover$/u,
+  // The Square's one search route, for Home's search row on the Square page,
+  // which answers in place as Home does. Public upstream, and a read only.
+  /^search$/u,
   // A post's comment thread, read in place on the dashboard.
   /^posts\/[^/]+\/comments$/u,
   // One comment's replies, for the Square page's comments sheet, which nests
@@ -129,6 +132,7 @@ const PUBLIC_GET_PATHS = [
   /^hashtags\/trending$/u,
   /^profiles$/u,
   /^conversations\/discover$/u,
+  /^search$/u,
   /^posts\/[^/]+\/comments$/u,
   /^comments\/[^/]+\/replies$/u,
 ];

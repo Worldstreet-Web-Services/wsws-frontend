@@ -938,3 +938,73 @@ export async function fetchDiscoverHouses(limit = 8): Promise<MarketSquareHouse[
   });
   return (page?.items ?? []).map(toHouse);
 }
+
+// ── Home's search ───────────────────────────────────────────────────────────
+
+/** A person the search found, as the Square's directory hydrates them. */
+export interface SquareSearchProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verification: string;
+  role: MarketSquareRole;
+  orgBadge?: string | null;
+  followerCount?: number;
+  isFollowing?: boolean;
+}
+
+/** One hit from the Square's search, shaped by its kind. */
+export type SquareSearchItem =
+  | { kind: "profile"; id: string; profile: SquareSearchProfile }
+  | {
+      kind: "stream";
+      id: string;
+      stream: {
+        id: string;
+        title: string;
+        thumbnailUrl?: string | null;
+        owner?: { username: string; displayName: string | null } | null;
+      };
+    }
+  | {
+      kind: "post";
+      id: string;
+      post: { id: string; text: string; author?: { username: string } | null };
+    }
+  | {
+      kind: "product";
+      id: string;
+      product: {
+        id: string;
+        slug: string;
+        name: string;
+        tagline?: string | null;
+        thumbnailUrl?: string | null;
+      };
+    };
+
+export interface SquareSearchPage {
+  items: SquareSearchItem[];
+  nextCursor: string | null;
+}
+
+/**
+ * Everything the Square finds for a query, as Home's own search asks for it:
+ * people, rooms, posts and products in one list, paged. Public upstream.
+ */
+export async function searchSquare(
+  query: string,
+  cursor?: string | null
+): Promise<SquareSearchPage> {
+  const page = await marketSquare.get<Partial<SquareSearchPage>>("/search", {
+    q: query.trim(),
+    type: "all",
+    limit: 30,
+    ...(cursor ? { cursor } : {}),
+  });
+  return {
+    items: Array.isArray(page?.items) ? page.items : [],
+    nextCursor: page?.nextCursor ?? null,
+  };
+}

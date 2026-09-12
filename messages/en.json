@@ -2891,7 +2891,18 @@
     "repliesFailed": "Couldn't load the replies.",
     "tryAgain": "Try again",
     "member": "Member",
-    "thisComment": "this comment"
+    "thisComment": "this comment",
+    "searchNothing": "Nothing matched",
+    "searchNothingBody": "No people, rooms, posts or products for \"{query}\".",
+    "searchFailed": "That search didn't load.",
+    "openRoomCode": "Open this room",
+    "sectionPeople": "People",
+    "sectionRooms": "Gist rooms",
+    "sectionPosts": "Posts",
+    "sectionStore": "ARK Store",
+    "aPost": "A post",
+    "postNoWords": "A post with no words",
+    "showMoreResults": "Show more results"
   },
   "connection": {
     "offline": "Can't reach the server.",

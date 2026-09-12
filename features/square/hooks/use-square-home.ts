@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   fetchDiscoverHouses,
   fetchLiveStreams,
@@ -8,6 +8,7 @@ import {
   fetchSquareMe,
   fetchSquareTopics,
   fetchSuggestedProfiles,
+  searchSquare,
 } from "@/lib/api/market-square";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 
@@ -99,5 +100,22 @@ export function useSquareMe() {
     enabled,
     staleTime: 5 * 60_000,
     retry: false,
+  });
+}
+
+/**
+ * Home's search, answered in place: everything the Square finds for the
+ * words typed, paged on the service's cursor. Nothing is asked while the
+ * field is empty, and a query is kept half a minute so retyping it is free.
+ */
+export function useSquareSearch(query: string) {
+  const trimmed = query.trim();
+  return useInfiniteQuery({
+    queryKey: ["market-square", "search", trimmed] as const,
+    queryFn: ({ pageParam }) => searchSquare(trimmed, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
+    enabled: !MARKET_SQUARE_HIDDEN && trimmed.length > 0,
+    staleTime: 30_000,
   });
 }

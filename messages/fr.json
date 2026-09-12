@@ -2891,7 +2891,18 @@
     "repliesFailed": "Impossible de charger les réponses.",
     "tryAgain": "Réessayer",
     "member": "Membre",
-    "thisComment": "ce commentaire"
+    "thisComment": "ce commentaire",
+    "searchNothing": "Aucun résultat",
+    "searchNothingBody": "Aucune personne, salon, publication ou produit pour \"{query}\".",
+    "searchFailed": "Cette recherche n'a pas abouti.",
+    "openRoomCode": "Ouvrir ce salon",
+    "sectionPeople": "Personnes",
+    "sectionRooms": "Salons Gist",
+    "sectionPosts": "Publications",
+    "sectionStore": "ARK Store",
+    "aPost": "Une publication",
+    "postNoWords": "Une publication sans mots",
+    "showMoreResults": "Afficher plus de résultats"
   },
   "connection": {
     "offline": "Serveur injoignable.",

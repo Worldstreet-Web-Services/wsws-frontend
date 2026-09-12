@@ -39,8 +39,10 @@ export const squarePath = {
   feed: (): string => "feed",
   /** app/gist-rooms with its create sheet open: where Home's banner lands. */
   hostRoom: (): string => "gist-rooms?open=1",
-  /** app/discover, which owns `?q=`: where a search typed on Home's row lands. */
-  search: (query: string): string => `discover?q=${encodeURIComponent(query)}`,
+  /** app/code/[code]: a room by its code, where Home's search sends one. */
+  roomCode: (code: string): string => `code/${encodeURIComponent(code)}`,
+  /** app/store/[slug]: a product the search found. */
+  product: (slug: string): string => `store/${encodeURIComponent(slug)}`,
 } as const;
 
 export const squareLinks = {
@@ -55,5 +57,6 @@ export const squareLinks = {
   houses: (): string | null => marketSquareHref(squarePath.houses()),
   feed: (): string | null => marketSquareHref(squarePath.feed()),
   hostRoom: (): string | null => marketSquareHref(squarePath.hostRoom()),
-  search: (query: string): string | null => marketSquareHref(squarePath.search(query)),
+  roomCode: (code: string): string | null => marketSquareHref(squarePath.roomCode(code)),
+  product: (slug: string): string | null => marketSquareHref(squarePath.product(slug)),
 } as const;

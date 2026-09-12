@@ -2891,7 +2891,18 @@
     "repliesFailed": "Não foi possível carregar as respostas.",
     "tryAgain": "Tentar de novo",
     "member": "Membro",
-    "thisComment": "este comentário"
+    "thisComment": "este comentário",
+    "searchNothing": "Nada encontrado",
+    "searchNothingBody": "Sem pessoas, salas, publicações ou produtos para \"{query}\".",
+    "searchFailed": "Essa busca não carregou.",
+    "openRoomCode": "Abrir esta sala",
+    "sectionPeople": "Pessoas",
+    "sectionRooms": "Salas Gist",
+    "sectionPosts": "Publicações",
+    "sectionStore": "ARK Store",
+    "aPost": "Uma publicação",
+    "postNoWords": "Uma publicação sem palavras",
+    "showMoreResults": "Mostrar mais resultados"
   },
   "connection": {
     "offline": "Não foi possível contactar o servidor.",

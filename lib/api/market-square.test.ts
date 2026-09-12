@@ -23,6 +23,7 @@ vi.mock("@/lib/api/service", () => ({
 }));
 
 const {
+  searchSquare,
   addPostComment,
   fetchCommentReplies,
   setCommentLike,
@@ -260,5 +261,30 @@ describe("comments on the Square page", () => {
     calls.del.mockResolvedValue({ liked: false, likeCount: 2 });
     expect(await setCommentLike("c-1", false)).toEqual({ liked: false, likeCount: 2 });
     expect(calls.del).toHaveBeenCalledWith("/comments/c-1/like");
+  });
+});
+
+describe("searchSquare", () => {
+  it("asks the Square's one search route for everything, and pages on its cursor", async () => {
+    calls.get.mockResolvedValue({
+      items: [{ kind: "profile", id: "u-1", profile: { id: "u-1", username: "samuel" } }],
+      nextCursor: "n",
+    });
+    const page = await searchSquare("sam");
+    expect(calls.get).toHaveBeenCalledWith("/search", { q: "sam", type: "all", limit: 30 });
+    expect(page.items[0]).toMatchObject({ kind: "profile", id: "u-1" });
+    expect(page.nextCursor).toBe("n");
+    await searchSquare(" sam ", "n");
+    expect(calls.get).toHaveBeenLastCalledWith("/search", {
+      q: "sam",
+      type: "all",
+      limit: 30,
+      cursor: "n",
+    });
+  });
+
+  it("treats an absent list as nothing matched", async () => {
+    calls.get.mockResolvedValue({});
+    expect(await searchSquare("x")).toEqual({ items: [], nextCursor: null });
   });
 });

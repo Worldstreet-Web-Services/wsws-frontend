@@ -53,8 +53,14 @@ describe("squarePath for the Square page", () => {
   // The banner's "Host Room" lands where the Square's own does: the rooms
   // page with its create sheet open. A search opens the Square's Explore,
   // which owns ?q= over there, with the words escaped.
-  it("points the banner and the search at the Square's rooms and Explore", () => {
+  it("points the banner at the Square's rooms page with its create sheet open", () => {
     expect(squarePath.hostRoom()).toBe("gist-rooms?open=1");
-    expect(squarePath.search("room codes & pals")).toBe("discover?q=room%20codes%20%26%20pals");
+  });
+
+  // Home's search answers a room code with a way into that room, at the
+  // Square's /code/[code]; a store hit opens the product at /store/[slug].
+  it("points a room code and a product at the Square's own routes", () => {
+    expect(squarePath.roomCode("abc2345bc")).toBe("code/abc2345bc");
+    expect(squarePath.product("gold-tee")).toBe("store/gold-tee");
   });
 });

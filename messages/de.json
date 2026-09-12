@@ -2891,7 +2891,18 @@
     "repliesFailed": "Die Antworten konnten nicht geladen werden.",
     "tryAgain": "Erneut versuchen",
     "member": "Mitglied",
-    "thisComment": "diesen Kommentar"
+    "thisComment": "diesen Kommentar",
+    "searchNothing": "Nichts gefunden",
+    "searchNothingBody": "Keine Leute, Räume, Beiträge oder Produkte für \"{query}\".",
+    "searchFailed": "Die Suche konnte nicht geladen werden.",
+    "openRoomCode": "Diesen Raum öffnen",
+    "sectionPeople": "Leute",
+    "sectionRooms": "Gist-Räume",
+    "sectionPosts": "Beiträge",
+    "sectionStore": "ARK Store",
+    "aPost": "Ein Beitrag",
+    "postNoWords": "Ein Beitrag ohne Worte",
+    "showMoreResults": "Mehr Ergebnisse anzeigen"
   },
   "connection": {
     "offline": "Server nicht erreichbar.",

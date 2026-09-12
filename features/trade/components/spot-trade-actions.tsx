@@ -5,15 +5,22 @@ import { useTranslations } from "next-intl";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { spotAmountStatus } from "@/features/trade/components/spot-amount-card";
 
-// The two ends of the spot ticket. Buy and Sell are actions, so they carry the
-// action tokens (bg-buy, bg-sell), never the price-delta colours.
+// The action end of the spot ticket. Buy and Sell are actions, so they carry
+// the action tokens (bg-buy, bg-sell), never the price-delta colours.
 //
-// The two sides are gated separately, against different assets. Buying spends
-// the pay token, so Buy is gated on the pay balance. Selling draws down the
-// asset being sold and needs no pay balance at all, so gating Sell on the pay
-// token would strand a user who holds the asset but little USDC: they could not
-// close the position. A sell is the way out of a position, so its gate must be
-// about the thing being sold and nothing else.
+// ONE button, for the side the switch above has chosen. It used to render both
+// at once, and that was the bug: a single amount field cannot be denominated in
+// USDC and in the coin at the same time, so whichever button you were not
+// looking at was reading the other leg's number as its own. Typing 100 to buy
+// $100 of a coin had the Sell button reading it as 100 coins and refusing on a
+// balance that had nothing to do with it.
+//
+// Each side is still gated against its own asset. Buying spends the pay token,
+// so Buy is gated on the pay balance. Selling draws down the asset being sold
+// and needs no pay balance at all, so gating Sell on the pay token would strand
+// a user who holds the asset but little USDC: they could not close the
+// position. A sell is the way out of a position, so its gate must be about the
+// thing being sold and nothing else.
 //
 // Neither button is ever a silently dead control: whenever one is disabled a
 // line says why and names the asset it is short of, and every button points at
@@ -40,6 +47,9 @@ export type SpotSellAsset =
   | { balance: null; symbol: string };
 
 export interface SpotTradeActionsProps {
+  // Which leg the switch has chosen. Decides which button is rendered, and so
+  // which asset the amount is measured against.
+  side: SpotTradeSide;
   // The entered amount, as a decimal string. Handed back to the callback
   // untouched, so what executes is what was typed.
   amount: string;
@@ -56,6 +66,7 @@ export interface SpotTradeActionsProps {
 }
 
 export function SpotTradeActions({
+  side,
   amount,
   pay,
   sell,
@@ -93,41 +104,21 @@ export function SpotTradeActions({
         ? t("noSellBalance", { symbol: sell.symbol })
         : amountReason(sell.balance, sell.decimals, sell.symbol));
 
-  // Both sides usually stall for the same reason (no amount yet, or an order in
-  // flight). Saying it once under the pair reads better than printing the same
-  // sentence twice.
-  const shared = buyReason !== null && buyReason === sellReason;
-  const sharedId = `${baseId}-both`;
-  const buyReasonId = shared ? sharedId : `${baseId}-buy`;
-  const sellReasonId = shared ? sharedId : `${baseId}-sell`;
+  const buying = side === "buy";
+  const reason = buying ? buyReason : sellReason;
+  const reasonId = `${baseId}-${side}`;
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex w-full items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <ActionButton
-            label={t("buy")}
-            tone="buy"
-            busy={pending === "buy"}
-            disabled={buyReason !== null}
-            describedBy={buyReasonId}
-            onClick={() => onBuy(amount)}
-          />
-          {shared ? null : <Reason id={buyReasonId} text={buyReason} />}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <ActionButton
-            label={t("sell")}
-            tone="sell"
-            busy={pending === "sell"}
-            disabled={sellReason !== null}
-            describedBy={sellReasonId}
-            onClick={() => onSell(amount)}
-          />
-          {shared ? null : <Reason id={sellReasonId} text={sellReason} />}
-        </div>
-      </div>
-      {shared ? <Reason id={sharedId} text={buyReason} /> : null}
+      <ActionButton
+        label={buying ? t("buy") : t("sell")}
+        tone={side}
+        busy={pending === side}
+        disabled={reason !== null}
+        describedBy={reasonId}
+        onClick={() => (buying ? onBuy(amount) : onSell(amount))}
+      />
+      <Reason id={reasonId} text={reason} />
     </div>
   );
 }

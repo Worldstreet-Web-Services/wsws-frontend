@@ -3,15 +3,24 @@
 import { useTranslations } from "next-intl";
 import { SkeletonLine } from "@/components/ui/skeleton-line";
 
-// What the order costs, shown above the Buy and Sell buttons: the value of the
-// purchase and the fee on it.
+// What the order comes to, shown above the Buy and Sell buttons: the value
+// moving and the fee on it.
 //
 // Both figures arrive display-ready. This component does no arithmetic and no
 // parsing, so there is no place for a rounding error to enter; the quote that
 // produced them owns the precision.
 
+export type SpotOrderSide = "buy" | "sell";
+
 export interface SpotOrderSummaryProps {
-  // Formatted for display, without the symbol: "5,000", "3.50".
+  // Which leg the card sits above. It picks the wording and nothing else.
+  // Buy is the default so the callers written before the sell leg existed
+  // render exactly what they rendered before.
+  side?: SpotOrderSide;
+  // Formatted for display, without the symbol: "5,000", "3.50". On the buy leg
+  // it is what the purchase costs, on the sell leg what the sale pays out. The
+  // name is the buy leg's because the buy leg shipped first and its callers
+  // still pass it.
   purchaseValue: string;
   fee: string;
   // The token both figures are quoted in, e.g. "USDC".
@@ -21,13 +30,27 @@ export interface SpotOrderSummaryProps {
   loading?: boolean;
 }
 
+// Fixed per row rather than per side. Both legs then draw the same two
+// placeholders, so a side switch mid-quote does not resize the card.
+const VALUE_SKELETON_WIDTH = "w-[5.5em]";
+const FEE_SKELETON_WIDTH = "w-[4.5em]";
+
 export function SpotOrderSummary({
+  side = "buy",
   purchaseValue,
   fee,
   symbol,
   loading = false,
 }: SpotOrderSummaryProps) {
   const t = useTranslations("spot");
+
+  // Two rows either way, same padding, same gap, same line box, so the card is
+  // the same height on both legs and switching side does not shift the button
+  // under it. Only the wording differs.
+  const labels =
+    side === "sell"
+      ? { value: t("youReceive"), fee: t("estFee") }
+      : { value: t("purchaseValue"), fee: t("fee") };
 
   return (
     // The leading is set on the card so both rows inherit one line box. At the
@@ -39,18 +62,18 @@ export function SpotOrderSummary({
     // so a longer label in another locale still sets the row it sits in.
     <div className="rounded-card border-hairline-amber bg-panel flex w-full flex-col gap-2.5 border-2 p-4 leading-[14px] whitespace-nowrap">
       <SummaryRow
-        label={t("purchaseValue")}
+        label={labels.value}
         value={purchaseValue}
         symbol={symbol}
         loading={loading}
-        skeletonWidth="w-[5.5em]"
+        skeletonWidth={VALUE_SKELETON_WIDTH}
       />
       <SummaryRow
-        label={t("fee")}
+        label={labels.fee}
         value={fee}
         symbol={symbol}
         loading={loading}
-        skeletonWidth="w-[4.5em]"
+        skeletonWidth={FEE_SKELETON_WIDTH}
       />
     </div>
   );

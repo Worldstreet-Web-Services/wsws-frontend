@@ -13,7 +13,7 @@ import { useMemeTrade } from "@/features/trade/hooks/use-meme-trade";
 import { belowMinimumBuy, isSolanaChainId, minimumBuyUsd } from "@/lib/trade/minimums";
 import { routesForSymbol } from "@/lib/buy";
 import { swapRouteForSymbol } from "@/lib/spot-swap";
-import { usdcBaseUnits } from "@/lib/deposit";
+import { TERMINAL_STAGES, depositProgress, usdcBaseUnits } from "@/lib/deposit";
 import { toast } from "@/lib/toast";
 import { friendlyError } from "@/lib/errors";
 import { track } from "@/lib/analytics/mixpanel";
@@ -115,19 +115,33 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
   // sheet runs, minus its progress UI.
   useEffect(() => {
     if (requestId == null || settledRef.current || !status.data) return;
-    const s = status.data.status;
-    if (s === "settled") {
-      settledRef.current = true;
+
+    /**
+     * Normalised through depositProgress, exactly as the buy sheet and the spot
+     * panel do, rather than compared against three literal strings.
+     *
+     * The service's terminal vocabulary is wider than "settled": complete,
+     * success, filled, done, relayed and fulfilled all mean the same thing, and
+     * completion can arrive on executionStatus while status is still
+     * mid-flight. Reading the raw field missed all of those, and because the
+     * POLL stops on a terminal stage there was nothing left to fire again. The
+     * purchase landed and the toast span forever.
+     */
+    const { stage } = depositProgress(status.data.status, status.data.executionStatus);
+    if (!TERMINAL_STAGES.has(stage)) return;
+
+    settledRef.current = true;
+    if (stage === "settled") {
       track("trade_completed", { vertical: "spot", asset: symbol, side: "buy", amount_usd: value });
       toast.success(t("boughtToast", { name }), { id: toastRef.current });
       toastRef.current = undefined;
       void portfolio.refetchUntilChanged(settledNetworks);
-    } else if (s === "failed" || s === "refunded") {
-      settledRef.current = true;
-      track("trade_failed", { vertical: "spot", asset: symbol, reason: s });
-      toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
-      toastRef.current = undefined;
+      return;
     }
+    // Refunded or failed. The stage carries which, so the report says so.
+    track("trade_failed", { vertical: "spot", asset: symbol, reason: stage });
+    toast.error(t("purchaseRefundedToast"), { id: toastRef.current });
+    toastRef.current = undefined;
   }, [requestId, status.data, symbol, name, value, portfolio, settledNetworks, t]);
 
   // A loading toast never times out, so dismiss any orphan on unmount.
@@ -171,7 +185,14 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
       return;
     }
 
-    if (!route) return;
+    if (!route) {
+      // Nothing was placed, so the toast must not be left spinning. canBuy
+      // already blocks this, which is why it reads as unavailable rather than
+      // as a failure.
+      toast.error(t("unavailable"), { id: toastRef.current });
+      toastRef.current = undefined;
+      return;
+    }
     try {
       const result = await buy.mutateAsync({
         route,

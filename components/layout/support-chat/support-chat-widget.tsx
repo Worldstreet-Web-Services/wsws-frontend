@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { ChatHeader } from "./chat-header";
 import { ChatMessageList, type ChatMessage } from "./chat-message-list";
 import { ChatComposer } from "./chat-composer";
 import type { ChatAttachment } from "./attachment-preview";
+import { sendSupportChatMessage } from "@/lib/support-chat/client";
+
+const CHAT_HISTORY_KEY = "wsws_support_chat_messages";
 
 interface SupportChatWidgetProps {
   defaultOpen?: boolean;
@@ -18,59 +21,56 @@ export function SupportChatWidget({ defaultOpen = false }: SupportChatWidgetProp
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const welcomeMsg: ChatMessage = {
       id: "initial-welcome",
       sender: "agent",
       text: t("greetingMessage"),
       timestamp: Date.now(),
-    },
-  ]);
+    };
+
+    if (typeof window === "undefined" || !window.localStorage) {
+      return [welcomeMsg];
+    }
+
+    try {
+      const stored = window.localStorage.getItem(CHAT_HISTORY_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore storage parsing error
+    }
+
+    return [welcomeMsg];
+  });
+
+  // Save messages to local storage whenever they change
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    try {
+      if (messages.length > 0) {
+        window.localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+      }
+    } catch {
+      // ignore storage write errors
+    }
+  }, [messages]);
 
   const handleOpen = () => {
     setIsOpen(true);
     setUnreadCount(0);
   };
 
-  const simulateAgentResponse = useCallback(
-    (userQuery: string, attachmentsCount: number) => {
-      setIsTyping(true);
-
-      setTimeout(() => {
-        setIsTyping(false);
-
-        let responseText = t("defaultAgentReply");
-
-        const q = userQuery.toLowerCase();
-        if (q.includes("deposit") || q.includes("fund")) {
-          responseText = t("depositHelpReply");
-        } else if (q.includes("trade") || q.includes("swap") || q.includes("order")) {
-          responseText = t("tradeHelpReply");
-        } else if (q.includes("bug") || q.includes("error") || attachmentsCount > 0) {
-          responseText = t("bugReportReply");
-        }
-
-        const agentMsg: ChatMessage = {
-          id: `agent-${Date.now()}`,
-          sender: "agent",
-          text: responseText,
-          timestamp: Date.now(),
-        };
-
-        setMessages((prev) => [...prev, agentMsg]);
-
-        if (!isOpen) {
-          setUnreadCount((c) => c + 1);
-        }
-      }, 900);
-    },
-    [isOpen, t]
-  );
-
   const handleSendMessage = useCallback(
-    (text: string, attachments: ChatAttachment[]) => {
+    async (text: string, attachments: ChatAttachment[]) => {
+      const tempId = `user-${Date.now()}`;
       const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
+        id: tempId,
         sender: "user",
         text,
         timestamp: Date.now(),
@@ -78,9 +78,42 @@ export function SupportChatWidget({ defaultOpen = false }: SupportChatWidgetProp
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      simulateAgentResponse(text, attachments.length);
+      setIsTyping(true);
+
+      try {
+        const res = await sendSupportChatMessage(text);
+        setIsTyping(false);
+
+        if (res.ok && res.reply) {
+          const aiMsg: ChatMessage = {
+            id: `agent-${Date.now()}`,
+            sender: "agent",
+            text: res.reply,
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+        } else {
+          const fallbackMsg: ChatMessage = {
+            id: `agent-${Date.now()}`,
+            sender: "agent",
+            text: res.error || t("defaultAgentReply"),
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, fallbackMsg]);
+        }
+      } catch (err) {
+        console.error("[SupportChatWidget] Failed to send message:", err);
+        setIsTyping(false);
+        const errorMsg: ChatMessage = {
+          id: `err-${Date.now()}`,
+          sender: "agent",
+          text: t("defaultAgentReply"),
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+      }
     },
-    [simulateAgentResponse]
+    [t]
   );
 
   const handleSelectFaq = useCallback(

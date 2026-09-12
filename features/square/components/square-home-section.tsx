@@ -99,10 +99,21 @@ export function SquareHomeSection({
  * row that scrolls without a scrollbar, each card holding its own width. The
  * gap is the caller's, because Home's rails each measure a different one.
  */
-export function SquareHomeRail({ gap, children }: { gap: number; children: React.ReactNode }) {
+export function SquareHomeRail({
+  gap,
+  align = "start",
+  children,
+}: {
+  gap: number;
+  /** Home's post rail sits its cards on their feet; the rest on their heads. */
+  align?: "start" | "end";
+  children: React.ReactNode;
+}) {
   return (
     <div
-      className="flex snap-x [scrollbar-width:none] items-start overflow-x-auto pb-1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className={`flex snap-x [scrollbar-width:none] overflow-x-auto pb-1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+        align === "end" ? "items-end" : "items-start"
+      }`}
       style={{ gap }}
     >
       {children}

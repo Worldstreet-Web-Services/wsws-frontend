@@ -118,6 +118,7 @@ export function SquareGistRoomCard({
                     seed={face.id}
                     name={face.displayName}
                     size={tile.size - tile.ring * 2}
+                    shape="fill"
                   />
                 </span>
               </span>

@@ -35,6 +35,9 @@ const GET_PATHS = [
   /^conversations\/discover$/u,
   // A post's comment thread, read in place on the dashboard.
   /^posts\/[^/]+\/comments$/u,
+  // One comment's replies, for the Square page's comments sheet, which nests
+  // them under their parent the way the Square's own sheet does.
+  /^comments\/[^/]+\/replies$/u,
   // The reader's own square identity and inbox, for the compose sheet's
   // header. Both are scoped to the caller by the service itself — there is no
   // id in either path, so neither can be pointed at somebody else.
@@ -76,6 +79,9 @@ const POST_PATHS = [
   /^posts\/[^/]+\/repost$/u,
   /^posts\/[^/]+\/comments$/u,
   /^posts\/[^/]+\/views$/u,
+  // Liking a comment in the sheet: a heart on one comment the reader is
+  // looking at, idempotent upstream, and the undo is the DELETE below.
+  /^comments\/[^/]+\/like$/u,
   // Following an author from the feed. This one DOES reach another account,
   // unlike the rest of this list — it is here because following is the whole
   // point of a social surface and a feed you cannot build is a feed you never
@@ -93,6 +99,7 @@ const POST_PATHS = [
 const DELETE_PATHS = [
   /^posts\/[^/]+\/like$/u,
   /^posts\/[^/]+\/repost$/u,
+  /^comments\/[^/]+\/like$/u,
   /^profiles\/[^/]+\/follow$/u,
 ];
 
@@ -123,6 +130,7 @@ const PUBLIC_GET_PATHS = [
   /^profiles$/u,
   /^conversations\/discover$/u,
   /^posts\/[^/]+\/comments$/u,
+  /^comments\/[^/]+\/replies$/u,
 ];
 
 export type ProxyMethod = "GET" | "POST" | "DELETE";

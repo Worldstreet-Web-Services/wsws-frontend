@@ -21,14 +21,23 @@ scenario-impact: updated
   For You", each with its two-tone Manrope heading and its "View more" pill.
   The cards are the Square's components brought across with their numbers,
   their glass, their purple ramp, their glyphs and their exports: the
-  338-by-120 gist-room invite, the 479-by-147 upcoming-room card in
-  container units, the white-to-lavender pal card with its follow badge and
-  its pass and wink discs, the 356-by-120 house card. A section with nothing
+  338-by-120 gist-room invite, the fanned people deck with its glass arrows,
+  its five pills and its swipe (right goes back, left goes on), the pal card
+  with its crown, follow badge, pass and wink discs, the 479-by-147
+  upcoming-room card in container units, the 356-by-120 house card, and the
+  Square's post card in its compact 467-by-367 form: the identity row with
+  the seal, the org lockup and the role chip, tip, wink and follow, the rule,
+  the media rail with its pager dots, the two-line caption, the tallies pill
+  and share, Arkmark and more. Tapping the comment tally opens the Square's
+  comments sheet: the thread with each author's marks, a heart on every
+  comment, replies nested under their parent behind "View N replies", and a
+  reply field that names who it answers. The column is Home's own 600px, so
+  the deck and the rails scale as the file has them. A section with nothing
   to show does not appear.
-- **What already works here keeps working.** Posts render on the post card
-  the dashboard uses: like, repost, reply and follow stay in the app, and a
+- **What already works here keeps working.** On the post card, like, repost,
+  reply and follow act on the same hooks the dashboard's card uses, and a
   `$TICKER` the app trades still opens the buy sheet. Following from a
-  person's badge stays in the app; passing takes the card off the rail.
+  person's badge stays in the app; pass steps the deck on, as on the Square.
 - **Everything else is a trip to the Square**, in a new tab, on exactly the
   thing the card shows: "Join Gistroom" and "Remind me" open the room, the
   wink and the photo open the person's profile, "Join House" opens the house,
@@ -54,18 +63,23 @@ scenario-impact: updated
 - The gist-room card's hover preview listens to the room's audio through the
   Square's LiveKit session; this app has no room session, so the card is the
   file's resting state.
-- The people deck's swipe gesture and verdict stamps, the Square's post card
-  (which composes its tips, KASH balance and wink slices), the "Suggested
-  pals" foot and the ecosystem partners rail are the Square's own and are
-  not here. The Square's post card is 1,194 lines over four of its slices; a
-  port is a decision of its own.
+- Home's filter pill on the deck acts on the Square's directory facets;
+  the Square's post card's own sheets (edit, delete, report, quote, the
+  image viewer), its mention picker and its rich text (quotes, lists, bold)
+  are not here: tip, wink, share, Arkmark, more and a media tile open the
+  post or the author in the Square, and the caption renders mentions, tags,
+  links and cashtags. Deleting a comment stays in the Square. The
+  "Suggested pals" foot and the ecosystem partners rail are the Square's own.
 
 ## The relay
 
 `GET conversations/discover`, the house directory, is now relayed, as a public
 read like profiles and the feed, and its payload is judged at the boundary.
-Nothing that joins a house, winks, hosts or sets a reminder is relayed; those
-stay in the Square, which is what "do more" means.
+For the comments sheet, `GET comments/{id}/replies` is relayed as a public
+read and `POST|DELETE comments/{id}/like` with the session; a reply carries
+its `parentId`. Nothing that joins a house, winks, hosts, sets a reminder or
+deletes a comment is relayed; those stay in the Square, which is what "do
+more" means.
 
 ## Cost
 
@@ -86,17 +100,28 @@ Square's exports sit under `public/square-home/`.
 - `lib/square/starts-in.test.ts` (new): the "starts in" chip counts the
   largest whole unit and says now for a room whose time has come.
 - `lib/api/market-square-proxy-paths.test.ts`: the house directory is a
-  public GET; nothing under `conversations/` is written to.
+  public GET; nothing under `conversations/` is written to; a thread's
+  replies and a like on a comment are relayed and nothing else under
+  `comments/`.
+- `lib/square/comment-thread.test.ts` (new): the thread's shape, the
+  expander's count and the optimistic heart.
 - `lib/api/schemas/market-square.test.ts`: the directory payload is modelled,
   and a house without an id is refused.
 - `lib/api/market-square.test.ts`: the live, scheduled and house reads ask
-  for what Home asks for and treat an absent list as nothing to show.
+  for what Home asks for and treat an absent list as nothing to show; a reply
+  carries its parent, a thread's replies page, and a comment like renders the
+  server's count.
+- `lib/square/deck.test.ts` and `post-media.test.ts` (new): the deck's fan
+  fits its column and a drag only commits sideways and far; a post's media
+  list and the rail's dots.
 - `features/square/components/square-home.test.tsx` (new): the five sections
   in Home's order and words, an empty one omitted, a topic labelled from the
   vocabulary, every "do more" control on its Square deep link in a new tab,
   the banner and the search row, the reader left out of the deck, follow kept
-  in the app, a passed person taken off the rail, and nothing rendered while
-  the square is hidden.
+  in the app and never offered on the reader's own post, the deck's pass and
+  arrows stepping through people, the comments sheet opening from the tally
+  with replies expanded, liked and answered, and nothing rendered while the
+  square is hidden.
 - `components/layout/sidebar.test.tsx`: the entry links to `/square` in the
   same tab and lights up on it.
 - `features/discovery/components/conversation-cards.test.tsx` and

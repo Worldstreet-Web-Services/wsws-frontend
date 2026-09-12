@@ -43,6 +43,8 @@ export function SquareHome({
   if (MARKET_SQUARE_HIDDEN) return null;
 
   return (
+    // The column fills the screen, as asked; the deck alone keeps Home's
+    // 600 (see SquareFriendsDeck), so the fan is never scaled past the file.
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
       <SquareHomeTopRow />
       <SquareHomeBanner />

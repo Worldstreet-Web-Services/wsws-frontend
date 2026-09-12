@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import enMessages from "@/messages/en.json";
@@ -22,6 +22,10 @@ const reads = vi.hoisted(() => ({
   fetchSquareMe: vi.fn(),
   fetchSquareFeed: vi.fn(),
   fetchSquareTopics: vi.fn(),
+  fetchPostComments: vi.fn(),
+  fetchCommentReplies: vi.fn(),
+  addPostComment: vi.fn(),
+  setCommentLike: vi.fn(),
 }));
 
 vi.mock("@/lib/api/market-square", async (importActual) => ({
@@ -156,6 +160,51 @@ beforeEach(() => {
   });
   reads.fetchSquareFeed.mockResolvedValue(feedPage);
   reads.fetchSquareTopics.mockResolvedValue([{ key: "crypto", label: "Crypto" }]);
+  reads.fetchPostComments.mockResolvedValue({
+    items: [
+      {
+        id: "c-1",
+        authorId: "u-prince",
+        text: "nice one",
+        createdAt: "2026-09-11T10:00:00.000Z",
+        parentId: null,
+        replyCount: 1,
+        likeCount: 2,
+        likedByMe: false,
+        author: { ...people[0] },
+      },
+    ],
+    nextCursor: null,
+  });
+  reads.fetchCommentReplies.mockResolvedValue({
+    items: [
+      {
+        id: "c-2",
+        authorId: "me-1",
+        text: "thanks",
+        createdAt: "2026-09-11T11:00:00.000Z",
+        parentId: "c-1",
+        replyCount: 0,
+        likeCount: 0,
+        author: {
+          id: "me-1",
+          username: "ogazboiz",
+          displayName: "ogazboiz",
+          avatarUrl: null,
+          verification: "none",
+          role: "creator",
+        },
+      },
+    ],
+    nextCursor: null,
+  });
+  reads.addPostComment.mockResolvedValue({
+    id: "c-3",
+    text: "hello",
+    createdAt: "2026-09-12T00:00:00.000Z",
+    author: null,
+  });
+  reads.setCommentLike.mockResolvedValue({ liked: true, likeCount: 3 });
 });
 
 function headings(): string[] {
@@ -228,12 +277,8 @@ describe("SquareHome", () => {
     ]);
     for (const link of more) outbound(link, link.getAttribute("href") ?? "");
 
-    const person = screen.getByRole("article", { name: "Prince" });
-    outbound(
-      within(person).getByRole("link", { name: "Wink at Prince" }),
-      "https://square.test/u/prince"
-    );
-    outbound(within(person).getByRole("link", { name: "Prince" }), "https://square.test/u/prince");
+    outbound(screen.getByRole("link", { name: "Wink at Prince" }), "https://square.test/u/prince");
+    outbound(screen.getByRole("link", { name: "Prince" }), "https://square.test/u/prince");
 
     outbound(
       screen.getByRole("link", { name: enMessages.square.openPost }),
@@ -245,8 +290,8 @@ describe("SquareHome", () => {
   it("leaves the reader out of Make some friends", async () => {
     render(<SquareHome markets={[]} />, { wrapper });
     await screen.findByText("monthly wrap up");
-    expect(screen.getByRole("article", { name: "Prince" })).toBeInTheDocument();
-    expect(screen.queryByRole("article", { name: "ogazboiz" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Skip Prince" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip ogazboiz" })).toBeNull();
   });
 
   // Following is backed here, so it stays a button on the person's card
@@ -254,22 +299,35 @@ describe("SquareHome", () => {
   it("keeps follow in this app", async () => {
     render(<SquareHome markets={[]} />, { wrapper });
     await screen.findByText("monthly wrap up");
-    const person = screen.getByRole("article", { name: "Prince" });
-    expect(within(person).getByRole("button", { name: "Follow Prince" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Follow Prince" })).toHaveAttribute(
       "aria-pressed",
       "false"
     );
+    // The post card's header pill is the Square's, and never offers the
+    // reader their own post to follow: this post is theirs.
+    expect(screen.queryByRole("button", { name: "Follow" })).toBeNull();
   });
 
-  // Passing takes the card off the rail for this visit, as on the Square's
-  // deck. With nobody left the section goes with it.
-  it("takes a passed person off the rail", async () => {
+  // The deck is the Square's: the front card is the one that acts, pass
+  // steps to the next person, and the arrows page it.
+  it("deals the people as a deck, and pass steps to the next person", async () => {
     const { fireEvent } = await import("@testing-library/react");
+    reads.fetchSuggestedProfiles.mockResolvedValue([
+      ...people,
+      { ...people[0], id: "u-ada", username: "ada", displayName: "Ada" },
+    ]);
     render(<SquareHome markets={[]} />, { wrapper });
     await screen.findByText("monthly wrap up");
+    expect(screen.getByRole("button", { name: "Skip Prince" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next person" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Previous person" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Skip Prince" }));
-    expect(screen.queryByRole("article", { name: "Prince" })).toBeNull();
-    expect(headings()).not.toContain("Make some friends");
+    expect(screen.getByRole("button", { name: "Skip Ada" })).toBeEnabled();
+    // Prince's card is behind the front one now, and a card behind is hidden
+    // from the accessibility tree as the file marks it.
+    expect(screen.queryByRole("button", { name: "Skip Prince" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Next person" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous person" })).toBeEnabled();
   });
 });
 
@@ -289,5 +347,38 @@ describe("SquareHome while the square is hidden", () => {
     const { container } = render(<Hidden markets={[]} />, { wrapper });
     expect(container).toBeEmptyDOMElement();
     expect(reads.fetchLiveStreams).not.toHaveBeenCalled();
+  });
+});
+
+// The Square's comments sheet on the Square's post card: the thread with
+// its replies behind an expander, a heart on each comment, and a reply that
+// names who it answers and carries that parent to the service.
+describe("the comments sheet", () => {
+  it("opens the thread from the tally, expands replies, likes, and replies to a comment", async () => {
+    const { fireEvent, within, waitFor } = await import("@testing-library/react");
+    render(<SquareHome markets={[]} />, { wrapper });
+    await screen.findByText("monthly wrap up");
+
+    fireEvent.click(screen.getByRole("button", { name: "Comments" }));
+    const sheet = await screen.findByRole("dialog", { name: "Comments" });
+    await within(sheet).findByText("nice one");
+
+    fireEvent.click(within(sheet).getByRole("button", { name: "View 1 reply" }));
+    await within(sheet).findByText("thanks");
+
+    // The root's heart sits after its replies in the document, as the
+    // Square's row draws it; the reply's heart comes first.
+    const hearts = within(sheet).getAllByRole("button", { name: "Like this comment" });
+    fireEvent.click(hearts[hearts.length - 1]);
+    await waitFor(() => expect(reads.setCommentLike).toHaveBeenCalledWith("c-1", true));
+
+    fireEvent.click(within(sheet).getAllByRole("button", { name: "Reply" })[0]);
+    // The field's row says who the reply answers.
+    expect(within(sheet).getByText("Replying to").parentElement).toHaveTextContent("@prince");
+    const field = within(sheet).getByRole("textbox", { name: "Write a reply to this comment" });
+    fireEvent.change(field, { target: { value: "hello" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Post reply to comment" }));
+    await within(sheet).findByText("hello");
+    expect(reads.addPostComment).toHaveBeenCalledWith("post-1", "hello", "c-1");
   });
 });

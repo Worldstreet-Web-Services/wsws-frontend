@@ -24,7 +24,7 @@ const HOME_STALE_MS = 60_000;
 
 /** How many of each the page shows. Home's rails hold about this many. */
 const ROOMS_LIMIT = 8;
-const PEOPLE_LIMIT = 12;
+const PEOPLE_LIMIT = 24;
 const HOUSES_LIMIT = 8;
 
 export const SQUARE_HOME_KEYS = {

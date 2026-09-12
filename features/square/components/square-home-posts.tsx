@@ -5,21 +5,19 @@ import { useTranslations } from "next-intl";
 import { squareLinks } from "@/lib/square/links";
 import { useSquareFeed } from "@/features/square/hooks/use-square-feed";
 import {
-  SQUARE_GLASS,
   SquareHomeRail,
   SquareHomeSection,
 } from "@/features/square/components/square-home-section";
-import { SquarePostCard } from "@/features/square/components/square-post-card";
+import { SquareFeedPostCard } from "@/features/square/components/square-feed-post-card";
 import type { TradableSymbol } from "@/lib/square/tradable";
 import type { BuyPayload } from "@/lib/modal-types";
 
 /**
  * "Post For You": Home's for-you lane, laid sideways the way Home lays it,
- * one 467-wide card per post. The card is the post card the dashboard
- * already renders, so nothing the reader can do there is taken away here:
- * like, repost, reply and follow stay in the app, and a $TICKER the app
- * trades opens the buy sheet. The full thread is the Square's, which the
- * card's arrow opens; the whole timeline is where "View more" goes.
+ * one 467-by-367 card per post, on the Square's own post card. Like, repost,
+ * reply and follow stay in the app, and a $TICKER the app trades opens the
+ * buy sheet; the rest of the card opens the post in the Square. The whole
+ * timeline is where "View more" goes.
  *
  * The rail grows to the right when asked to, with the same "Show more" the
  * dashboard section uses at its end, never a scroll listener.
@@ -56,17 +54,14 @@ export function SquareHomePosts({
       onRetry={() => void feed.refetch()}
       empty={posts.length === 0}
     >
-      <SquareHomeRail gap={17.37}>
+      <SquareHomeRail gap={17.37} align="end">
         {posts.map((post) => (
-          <div
-            key={post.id}
-            className={`${SQUARE_GLASS} w-[467px] max-w-[85vw] shrink-0 snap-start rounded-[16.5px] px-4 pt-4 [&>article]:border-b-0 [&>article]:py-0 [&>article]:pb-4`}
-          >
-            <SquarePostCard post={post} markets={markets} onOpenBuy={onOpenBuy} meId={meId} />
+          <div key={post.id} className="h-[367px] w-[467px] max-w-[85vw] shrink-0 snap-start">
+            <SquareFeedPostCard post={post} markets={markets} onOpenBuy={onOpenBuy} meId={meId} />
           </div>
         ))}
         {feed.hasNextPage ? (
-          <div className="flex h-[120px] shrink-0 items-center px-2">
+          <div className="flex h-[367px] shrink-0 items-center px-2">
             <button
               type="button"
               onClick={() => void feed.fetchNextPage()}

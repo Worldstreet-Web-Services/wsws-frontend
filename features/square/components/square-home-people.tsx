@@ -1,35 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { squareLinks } from "@/lib/square/links";
 import { useSquarePeople } from "@/features/square/hooks/use-square-home";
-import {
-  SquareHomeRail,
-  SquareHomeSection,
-} from "@/features/square/components/square-home-section";
-import { SquarePersonCard } from "@/features/square/components/square-person-card";
+import { SquareFriendsDeck } from "@/features/square/components/square-friends-deck";
+import { SquareHomeSection } from "@/features/square/components/square-home-section";
 
 /**
  * "Make some friends": Home's deck of people, busiest first, on the
- * Square's own card, with the reader left out of it. The reader is not
- * someone to meet, and offering them their own follow badge is the one
- * thing the card must never do.
- *
- * Passing takes a card off the rail for this visit, as it takes it off the
- * Square's deck; the Square's swipe gesture and its verdict stamps are its
- * own and are not here. Views more at the Square's pals page, as Home does.
+ * Square's own fanned deck, with the reader left out of it. The reader is
+ * not someone to meet, and offering them their own follow badge is the one
+ * thing the card must never do. Views more at the Square's pals page, as
+ * Home does; Home's filter pill acts on the Square's own directory facets
+ * and is not here.
  */
 export function SquareHomePeople({ meId }: { meId?: string }) {
   const t = useTranslations("square");
   const people = useSquarePeople();
-  const [passed, setPassed] = useState<ReadonlySet<string>>(() => new Set());
   const items = useMemo(
-    () =>
-      (people.data ?? []).filter(
-        (person) => (meId === undefined || person.id !== meId) && !passed.has(person.id)
-      ),
-    [people.data, meId, passed]
+    () => (people.data ?? []).filter((person) => meId === undefined || person.id !== meId),
+    [people.data, meId]
   );
 
   return (
@@ -47,15 +38,8 @@ export function SquareHomePeople({ meId }: { meId?: string }) {
       onRetry={() => void people.refetch()}
       empty={items.length === 0}
     >
-      <SquareHomeRail gap={16}>
-        {items.map((person) => (
-          <SquarePersonCard
-            key={person.id}
-            person={person}
-            onPass={() => setPassed((prev) => new Set(prev).add(person.id))}
-          />
-        ))}
-      </SquareHomeRail>
+      {/* The deck sits centred in the column, at Home's own width. */}
+      <SquareFriendsDeck people={items} />
     </SquareHomeSection>
   );
 }

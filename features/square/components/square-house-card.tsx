@@ -62,7 +62,7 @@ export function SquareHouseCard({ house }: { house: MarketSquareHouse }) {
             />
           ) : (
             <span className="grid h-full w-full place-items-center bg-[#DCDAD5]">
-              <SquareAvatar src={null} seed={house.id} name={title} size={40} />
+              <SquareAvatar src={null} seed={house.id} name={title} size={71} shape="fill" />
             </span>
           )}
         </span>
@@ -97,6 +97,7 @@ export function SquareHouseCard({ house }: { house: MarketSquareHouse }) {
                         seed={member.id}
                         name={member.displayName}
                         size={16}
+                        shape="fill"
                       />
                     </span>
                   ))}

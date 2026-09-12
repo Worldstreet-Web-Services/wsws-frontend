@@ -471,6 +471,8 @@ export interface MarketSquareAuthor {
   role: MarketSquareRole;
   /** Viewer state, hydrated by the feed for a signed-in reader. */
   isFollowing?: boolean;
+  /** The organisation lockup beside the name: "market", "ark", or none. */
+  orgBadge?: string | null;
 }
 
 /**
@@ -495,9 +497,13 @@ export interface MarketSquareFeedPost {
   mediaUrl: string | null;
   mediaKind: string | null;
   thumbnailUrl: string | null;
+  /** Every picture on a post with more than one; absent on a single one. */
+  media?: { url: string; kind: string; thumbnailUrl?: string | null }[] | null;
   deepLink: MarketSquareDeepLink | null;
   preview: MarketSquarePreview | null;
   likeCount: number;
+  /** How many saved it, when the deployment counts. Never who. */
+  bookmarkCount?: number;
   commentCount: number;
   repostCount: number;
   /** Distinct people who have seen it. Never raised by a re-watch. */
@@ -617,9 +623,19 @@ export async function setPostRepost(postId: string, reposted: boolean): Promise<
 
 export interface MarketSquareComment {
   id: string;
+  /** Present even when the author is not hydrated. */
+  authorId?: string;
   text: string;
   createdAt: string;
   author: MarketSquareAuthor | null;
+  /** The comment this one answers, or null at the top of a thread. */
+  parentId?: string | null;
+  replyCount?: number;
+  likeCount?: number;
+  /** Viewer state; absent for a signed-out reader. */
+  likedByMe?: boolean;
+  /** Who a reply answered, when it answered a reply rather than the root. */
+  replyTo?: { username: string | null } | null;
 }
 
 export async function fetchPostComments(
@@ -638,8 +654,39 @@ export async function fetchPostComments(
   };
 }
 
-export async function addPostComment(postId: string, text: string): Promise<MarketSquareComment> {
-  return marketSquare.post<MarketSquareComment>(`/posts/${postId}/comments`, { text });
+/** A reply to the post, or to one of its comments when `parentId` is given. */
+export async function addPostComment(
+  postId: string,
+  text: string,
+  parentId?: string | null
+): Promise<MarketSquareComment> {
+  return marketSquare.post<MarketSquareComment>(`/posts/${postId}/comments`, {
+    text,
+    ...(parentId ? { parentId } : {}),
+  });
+}
+
+/** One comment's replies, oldest first as the service orders them. */
+export async function fetchCommentReplies(
+  commentId: string,
+  cursor?: string | null
+): Promise<{ items: MarketSquareComment[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ limit: "25" });
+  if (cursor) params.set("cursor", cursor);
+  const page = await marketSquare.get<{
+    items?: MarketSquareComment[];
+    nextCursor?: string | null;
+  }>(`/comments/${commentId}/replies?${params.toString()}`);
+  return {
+    items: Array.isArray(page?.items) ? page.items : [],
+    nextCursor: page?.nextCursor ?? null,
+  };
+}
+
+/** Like or unlike a comment. Idempotent upstream in both directions. */
+export async function setCommentLike(commentId: string, liked: boolean): Promise<LikeResult> {
+  const path = `/comments/${commentId}/like`;
+  return liked ? marketSquare.post<LikeResult>(path, {}) : marketSquare.del<LikeResult>(path);
 }
 
 /**

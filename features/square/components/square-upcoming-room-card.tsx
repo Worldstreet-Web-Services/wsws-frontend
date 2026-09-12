@@ -167,6 +167,7 @@ export function SquareUpcomingRoomCard({
               seed={host?.id ?? room.id}
               name={host?.displayName}
               size={20}
+              shape="fill"
             />
           </span>
           <span className="truncate font-medium" style={{ fontSize: u(8), lineHeight: u(10.4) }}>

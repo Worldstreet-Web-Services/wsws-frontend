@@ -9,6 +9,7 @@ const calls = vi.hoisted(() => ({
   get: vi.fn(),
   authedGet: vi.fn(),
   post: vi.fn(),
+  del: vi.fn(),
 }));
 
 vi.mock("@/lib/api/service", () => ({
@@ -17,11 +18,14 @@ vi.mock("@/lib/api/service", () => ({
     authedGet: calls.authedGet,
     post: calls.post,
     put: vi.fn(),
-    del: vi.fn(),
+    del: calls.del,
   }),
 }));
 
 const {
+  addPostComment,
+  fetchCommentReplies,
+  setCommentLike,
   fetchDiscoverHouses,
   fetchLiveStreams,
   fetchScheduledStreams,
@@ -226,5 +230,35 @@ describe("fetchDiscoverHouses", () => {
   it("treats an absent list as no houses", async () => {
     calls.get.mockResolvedValue({});
     expect(await fetchDiscoverHouses()).toEqual([]);
+  });
+});
+
+// ── The comments sheet's reads and writes ───────────────────────────────────
+
+describe("comments on the Square page", () => {
+  it("posts a reply to a comment with its parent, and a top-level one without", async () => {
+    calls.post.mockResolvedValue({ id: "c-2", text: "hi", createdAt: "2026-09-12T00:00:00Z" });
+    await addPostComment("p-1", "hi", "c-1");
+    expect(calls.post).toHaveBeenCalledWith("/posts/p-1/comments", { text: "hi", parentId: "c-1" });
+    await addPostComment("p-1", "hi");
+    expect(calls.post).toHaveBeenLastCalledWith("/posts/p-1/comments", { text: "hi" });
+  });
+
+  it("reads a thread's replies, oldest first as the service orders them", async () => {
+    calls.get.mockResolvedValue({ items: [{ id: "c-3", text: "yo" }], nextCursor: "n" });
+    const page = await fetchCommentReplies("c-1", null);
+    expect(calls.get).toHaveBeenCalledWith("/comments/c-1/replies?limit=25");
+    expect(page).toEqual({ items: [{ id: "c-3", text: "yo" }], nextCursor: "n" });
+    await fetchCommentReplies("c-1", "n");
+    expect(calls.get).toHaveBeenLastCalledWith("/comments/c-1/replies?limit=25&cursor=n");
+  });
+
+  it("likes and unlikes a comment, and renders the server's count", async () => {
+    calls.post.mockResolvedValue({ liked: true, likeCount: 3 });
+    expect(await setCommentLike("c-1", true)).toEqual({ liked: true, likeCount: 3 });
+    expect(calls.post).toHaveBeenCalledWith("/comments/c-1/like", {});
+    calls.del.mockResolvedValue({ liked: false, likeCount: 2 });
+    expect(await setCommentLike("c-1", false)).toEqual({ liked: false, likeCount: 2 });
+    expect(calls.del).toHaveBeenCalledWith("/comments/c-1/like");
   });
 });

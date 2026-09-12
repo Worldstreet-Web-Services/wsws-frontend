@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "{symbol} insuficiente",
     "priceUnavailable": "Preço indisponível",
     "loadingBalance": "Carregando seu saldo…",
-    "balanceSubject": "seu saldo de USDC"
+    "balanceSubject": "seu saldo de USDC",
+    "sideLabel": "Comprar ou vender",
+    "youAreSelling": "Você está vendendo",
+    "amountLabelSell": "Quantia a vender",
+    "sellShortcutsLabel": "Vender uma parte do seu saldo"
   },
   "topbar": {
     "support": "suporte",
@@ -1609,6 +1613,14 @@
         "checkers": {
           "name": "Damas",
           "note": "Partidas rápidas com aposta"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Levante antes de o multiplicador cair"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Atravesse cada faixa e levante antes da queda"
         },
         "arkball": {
           "name": "ArkBall",

@@ -73,6 +73,12 @@ export interface SellPayload {
   rawBalance: string;
   priceUsd: number;
   logo?: string | null;
+  /**
+   * Opening amount for the sheet, in the asset being sold. Set by a desk whose
+   * own field is already denominated in the coin; omitted everywhere the sheet
+   * is the first place an amount is asked for.
+   */
+  amount?: string;
 }
 
 // A held RWA to trade. RWA buy/sell must go through the RWA service (quote +

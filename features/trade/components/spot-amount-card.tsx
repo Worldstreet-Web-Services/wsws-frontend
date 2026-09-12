@@ -95,6 +95,14 @@ export interface SpotAmountCardProps {
   payLogo?: string | null;
   // Omit to render the token as a static pill instead of a picker.
   onSelectPayToken?: () => void;
+  // Which leg is being entered. It changes only the heading: the asset, its
+  // decimals and its balance are already chosen by the caller. Defaults to the
+  // buy leg so existing callers read exactly as before.
+  side?: "buy" | "sell";
+  // Rendered inside the card, under the input. The sell leg puts its share
+  // shortcuts here so they sit within the field's own border, the way the meme
+  // desk draws them, rather than floating below it as a separate control.
+  footer?: React.ReactNode;
   // Set while an order is in flight, so the amount cannot move under a signature.
   disabled?: boolean;
 }
@@ -107,6 +115,8 @@ export function SpotAmountCard({
   paySymbol,
   payLogo,
   onSelectPayToken,
+  side = "buy",
+  footer,
   disabled = false,
 }: SpotAmountCardProps) {
   const t = useTranslations("spot");
@@ -123,7 +133,7 @@ export function SpotAmountCard({
     >
       <div className="flex items-center justify-between gap-3 whitespace-nowrap">
         <span className="ws-display text-[13px] font-semibold tracking-[-0.39px] text-[rgba(148,163,184,0.5)]">
-          {t("youArePaying")}
+          {side === "buy" ? t("youArePaying") : t("youAreSelling")}
         </span>
         <span className="ws-display text-[12px] font-semibold tracking-[-0.24px] text-[rgba(179,186,196,0.6)]">
           {t("balance", {
@@ -144,7 +154,7 @@ export function SpotAmountCard({
           spellCheck={false}
           value={amount}
           disabled={disabled}
-          aria-label={t("amountLabel")}
+          aria-label={side === "buy" ? t("amountLabel") : t("amountLabelSell")}
           aria-invalid={invalid}
           placeholder="0"
           onChange={(event) => {
@@ -163,6 +173,8 @@ export function SpotAmountCard({
           disabled={disabled}
         />
       </div>
+
+      {footer}
     </div>
   );
 }

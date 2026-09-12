@@ -224,7 +224,11 @@
     "ctaNoBalanceOf": "Not enough {symbol}",
     "priceUnavailable": "Price unavailable",
     "loadingBalance": "Loading your balance…",
-    "balanceSubject": "your USDC balance"
+    "balanceSubject": "your USDC balance",
+    "sideLabel": "Buy or sell",
+    "youAreSelling": "You are selling",
+    "amountLabelSell": "Amount to sell",
+    "sellShortcutsLabel": "Sell a share of your balance"
   },
   "topbar": {
     "support": "support",
@@ -1609,6 +1613,14 @@
         "checkers": {
           "name": "Checkers",
           "note": "Fast staked matches"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Cash out before the multiplier crashes"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cross each lane and cash out before the crash"
         },
         "arkball": {
           "name": "ArkBall",

@@ -18,6 +18,7 @@ import { ChevronLeftIcon } from "@/components/ui/icons";
 import { MemeCoin, PctChange, priceLabel } from "@/features/trade/components/meme-bits";
 import { parseBaseUnits } from "@/features/trade/components/meme-base-units";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
+import { PerpsSection } from "@/features/trade/components/perps-section";
 import { TradeTicket, USD_DECIMALS } from "@/features/trade/components/meme-trade-ticket";
 import {
   MemeMarketMetrics,
@@ -80,11 +81,9 @@ interface MobileMarketViewProps {
 // opens the spot ticket for it (Figma 1:7825) in the list's place, the way the
 // Memecoins tab opens its trade sheet. The list is kept, not replaced.
 
-// All four categories render inline on this page: nothing here navigates, so
+// All five categories render inline on this page: nothing here navigates, so
 // the strip is a tab control rather than a set of links. The order is the
-// rail's: Spot, Memecoins, Real assets, Prediction. The design's Leverage tab
-// is not on this build, since perpetuals are not; it returns as one entry here
-// when they do.
+// rail's: Spot, Leverage, Memecoins, Real assets, Prediction.
 //
 // Every tab carries its own search field, at the top of its own list. Spot and
 // Memecoins are the two this view filters itself; Real assets and Prediction
@@ -92,6 +91,7 @@ interface MobileMarketViewProps {
 // is decided here.
 const TABS = [
   { id: "spot", labelKey: "tabSpot" },
+  { id: "perps", labelKey: "tabLeverage" },
   { id: "memecoins", labelKey: "tabMemecoins" },
   { id: "rwa", labelKey: "tabRealAssets" },
   { id: "prediction", labelKey: "tabPrediction" },
@@ -100,11 +100,13 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 // Each tab's standalone desktop screen. Spot goes to the desk (with the app
-// sidebar), and Memecoins, Real assets and Prediction to their own routes.
+// sidebar), and Leverage, Memecoins, Real assets and Prediction to their own
+// routes.
 // Every tab has one, so md and up always leaves this phone column for the
 // matching desktop surface.
 const DESKTOP_ROUTE: Partial<Record<TabId, string>> = {
   spot: "/spot",
+  perps: "/perps",
   memecoins: "/meme",
   rwa: "/rwa",
   prediction: "/prediction",
@@ -589,7 +591,17 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
           aria-labelledby={tabDomId(activeTab)}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {activeTab === "rwa" ? (
+          {activeTab === "perps" ? (
+            // The perps desk renders inline, the same section /perps shows.
+            // Mounted only while this tab is selected, so its market reads are
+            // not made for someone who never opens it.
+            <div
+              data-testid="perps-panel-scroll"
+              className="mt-3 min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
+            >
+              <PerpsSection />
+            </div>
+          ) : activeTab === "rwa" ? (
             // The real assets slot is that feature's own phone tab: its list,
             // its search field, and the order ticket a tapped row swaps the
             // list for, all inside the slot. Mounted only while this tab is

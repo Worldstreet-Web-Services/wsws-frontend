@@ -710,7 +710,10 @@
     "assetDetails": "Detalles del activo",
     "goToCard": "Ir a la tarjeta {number}",
     "searchHoldings": "Buscar en tus posiciones",
-    "noChart": "Aún no hay historial de precios."
+    "noChart": "Aún no hay historial de precios.",
+    "arkStorePitch": "Consigue nuestra app",
+    "arkStoreTagline": "en ArkStore",
+    "arkStoreAria": "Consigue nuestra app en ArkStore"
   },
   "markets": {
     "title": "Mercados",
@@ -738,6 +741,7 @@
     "tokenMoveFlat": "<b>{symbol} se mantiene estable</b> en las últimas 24 horas.",
     "tokenMoveUnknown": "<b>{symbol}</b> no tiene movimiento de 24 horas por ahora.",
     "tabSpot": "Spot",
+    "tabLeverage": "Apalancamiento",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Predicción",
     "tabsAria": "Categorías de mercado",
@@ -1630,6 +1634,14 @@
         "checkers": {
           "name": "Damas",
           "note": "Partidas rápidas con apuesta"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Retira antes de que caiga el multiplicador"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cruza cada carril y retira antes del choque"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2826,7 +2838,7 @@
     "conversationHeadline": "Cómo pensar como un gran maestro del ajedrez",
     "conversationJoin": "Unirse al espacio",
     "conversationPlay": "Jugar al ajedrez",
-    "ownMarketTitle": "Domina el mercado.",
+    "ownMarketTitle": "Domina el mercado con <accent>trading apalancado</accent>.",
     "arenaTitle": "Entra en la arena",
     "arenaBody": "Haz tu jugada. Gestiona tu riesgo. Domina el mercado.",
     "arenaCta": "Operar ahora",

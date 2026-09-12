@@ -710,7 +710,10 @@
     "assetDetails": "Asset details",
     "goToCard": "Go to card {number}",
     "searchHoldings": "Search your holdings",
-    "noChart": "No price history yet."
+    "noChart": "No price history yet.",
+    "arkStorePitch": "Get our app",
+    "arkStoreTagline": "on ArkStore",
+    "arkStoreAria": "Get our app on ArkStore"
   },
   "markets": {
     "title": "Markets",
@@ -738,6 +741,7 @@
     "tokenMoveFlat": "<b>{symbol} is flat</b> over the last 24 hours.",
     "tokenMoveUnknown": "<b>{symbol}</b> has no 24 hour move to show right now.",
     "tabSpot": "Spot",
+    "tabLeverage": "Leverage",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Prediction",
     "tabsAria": "Market categories",
@@ -1630,6 +1634,14 @@
         "checkers": {
           "name": "Checkers",
           "note": "Fast staked matches"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Cash out before the multiplier crashes"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cross each lane and cash out before the crash"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2826,7 +2838,7 @@
     "conversationHeadline": "How to think like a chess grandmaster",
     "conversationJoin": "Join Space",
     "conversationPlay": "Play Chess",
-    "ownMarketTitle": "Own The Market.",
+    "ownMarketTitle": "Own the market with <accent>leverage trading</accent>.",
     "arenaTitle": "Enter The Arena",
     "arenaBody": "Make your move. Manage your risk. Own the market.",
     "arenaCta": "Trade Now",

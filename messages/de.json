@@ -710,7 +710,10 @@
     "assetDetails": "Asset-Details",
     "goToCard": "Zu Karte {number}",
     "searchHoldings": "Deine Bestände durchsuchen",
-    "noChart": "Noch kein Kursverlauf."
+    "noChart": "Noch kein Kursverlauf.",
+    "arkStorePitch": "Hol dir unsere App",
+    "arkStoreTagline": "im ArkStore",
+    "arkStoreAria": "Hol dir unsere App im ArkStore"
   },
   "markets": {
     "title": "Märkte",
@@ -738,6 +741,7 @@
     "tokenMoveFlat": "<b>{symbol} ist unverändert</b> in den letzten 24 Stunden.",
     "tokenMoveUnknown": "Für <b>{symbol}</b> liegt derzeit keine 24-Stunden-Bewegung vor.",
     "tabSpot": "Spot",
+    "tabLeverage": "Hebel",
     "tabMemecoins": "Memecoins",
     "tabPrediction": "Prognosen",
     "tabsAria": "Marktkategorien",
@@ -1630,6 +1634,14 @@
         "checkers": {
           "name": "Dame",
           "note": "Schnelle Partien mit Einsatz"
+        },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Auszahlen, bevor der Multiplikator abstürzt"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Überquere jede Spur und zahle vor dem Absturz aus"
         },
         "arkball": {
           "name": "ArkBall",
@@ -2826,7 +2838,7 @@
     "conversationHeadline": "Denken wie ein Schachgroßmeister",
     "conversationJoin": "Space beitreten",
     "conversationPlay": "Schach spielen",
-    "ownMarketTitle": "Beherrsche den Markt.",
+    "ownMarketTitle": "Beherrsche den Markt mit <accent>Hebel-Trading</accent>.",
     "arenaTitle": "Betritt die Arena",
     "arenaBody": "Mach deinen Zug. Steuere dein Risiko. Beherrsche den Markt.",
     "arenaCta": "Jetzt traden",

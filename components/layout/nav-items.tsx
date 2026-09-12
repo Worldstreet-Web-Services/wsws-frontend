@@ -7,6 +7,7 @@ import {
   FlameIcon,
   GridIcon,
   HouseIcon,
+  TrendIcon,
 } from "@/components/ui/icons";
 import {
   HIDDEN_NAV_SECTIONS,
@@ -18,6 +19,7 @@ import {
 export const SECTION_ICONS: Record<SectionId, (props: { size?: number }) => React.ReactNode> = {
   portfolio: GridIcon,
   spot: ChartBarsIcon,
+  perps: TrendIcon,
   meme: FlameIcon,
   rwa: HouseIcon,
   prediction: BulbIcon,

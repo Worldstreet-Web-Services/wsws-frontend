@@ -48,7 +48,8 @@ describe("usePredictionSpots", () => {
         question: "Will there be no change in Fed interest rates?",
         closesAt: Date.UTC(2026, 8, 16, 0, 0, 0),
         images: ["https://cdn.example/fed.jpg"],
-        href: "/market?tab=prediction",
+        // Its page in the Explore market, as the desk's own cards link it.
+        href: "/prediction/markets/481717?category=politics&source=markets",
       },
     ]);
   });

@@ -209,7 +209,7 @@ export interface KashLedgerEntry {
  */
 export function claimSettlementMessage(wallet: string, timestamp: number): string {
   return [
-    "World Street — claim Kash settlement",
+    "Market — claim Kash settlement",
     `wallet: ${wallet.toLowerCase()}`,
     `ts: ${timestamp}`,
   ].join("\n");

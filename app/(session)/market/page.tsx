@@ -35,14 +35,7 @@ export default function MarketPage() {
           onOpenDetail={modals.openDetail}
           onOpenBuy={modals.openBuy}
           predictionSlot={<PredictionMarketList />}
-          rwaSlot={
-            <RwaSection
-              phone
-              onOpenDetail={modals.openDetail}
-              onOpenConfirm={modals.openConfirm}
-              onAddFunds={modals.openFunds}
-            />
-          }
+          rwaSlot={<RwaSection onAddFunds={modals.openFunds} />}
         />
       </Suspense>
       <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />

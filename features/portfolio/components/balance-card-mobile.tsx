@@ -34,9 +34,10 @@ export function BalanceCardMobile({
   // button below); its state is parked until it returns.
   // const [allocationOpen, setAllocationOpen] = useState(false);
 
-  // The two money actions, sized to match the Kash card's buttons.
+  // The two money actions, sized to match the Kash card's buttons (h-[9.6cqw]
+  // ≈ 34px and text-[3.5cqw] ≈ 12px on a ~350px mobile column).
   const action =
-    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[12px] font-sans text-[15px] font-semibold tracking-[-0.15px] whitespace-nowrap transition-opacity";
+    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[14px] font-sans text-[15px] font-semibold tracking-[-0.15px] whitespace-nowrap transition-opacity";
 
   return (
     <div

@@ -38,7 +38,12 @@ export default function MarketPage() {
           rwaSlot={<RwaSection onAddFunds={modals.openFunds} />}
         />
       </Suspense>
-      <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
+      <AppModalHost
+        active={modals.modal}
+        onClose={modals.close}
+        onConfirmed={modals.showDone}
+        onOpenFunds={modals.openFunds}
+      />
 
       {/* The bottom nav, so Market is not a one-way trip. The view reserves room
           for it (see the pb on its content column) so nothing hides behind it.

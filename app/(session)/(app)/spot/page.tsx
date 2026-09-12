@@ -26,7 +26,12 @@ export default function SpotPage() {
   return (
     <>
       <SpotDesktopView />
-      <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
+      <AppModalHost
+        active={modals.modal}
+        onClose={modals.close}
+        onConfirmed={modals.showDone}
+        onOpenFunds={modals.openFunds}
+      />
     </>
   );
 }

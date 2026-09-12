@@ -240,6 +240,33 @@ describe("SquareHome", () => {
     expect(headings()).toEqual(["Top GistRooms", "Make some friends", "Post For You"]);
   });
 
+  // A profile without a display name is named by its handle, never left
+  // blank beside its seal: prince on the local gateway has none.
+  it("names an author by handle when there is no display name", async () => {
+    reads.fetchSquareFeed.mockResolvedValue({
+      ...feedPage,
+      items: [
+        {
+          ...feedPage.items[0],
+          id: "post-2",
+          post: {
+            ...feedPage.items[0].post!,
+            id: "post-2",
+            authorId: "u-prince",
+            text: "gm",
+            author: { ...people[0], displayName: "" },
+          },
+        },
+      ],
+    });
+    render(<SquareHome markets={[]} />, { wrapper });
+    await screen.findByText("gm");
+    const card = screen.getByText("gm").closest("article");
+    if (card === null) throw new Error("the post rendered no card");
+    expect(card.querySelector("header")).toHaveTextContent("prince");
+    expect(card.querySelector("header")?.textContent?.startsWith("@")).toBe(false);
+  });
+
   it("labels a room's topic from the Square's vocabulary", async () => {
     render(<SquareHome markets={[]} />, { wrapper });
     await screen.findByText("Base season, who wins");

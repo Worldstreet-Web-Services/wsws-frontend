@@ -167,6 +167,9 @@ export function SquareFeedPostCard({
   const isMe = meId !== undefined && author?.id === meId;
   const href = squareLinks.post(post.id);
   const authorHref = author ? squareLinks.profile(author.username) : null;
+  // A profile without a display name still has its handle; a blank beside
+  // the seal reads as a missing person, not a missing field.
+  const authorName = author ? author.displayName || author.username : "";
   const video = isVideoPost(post);
   const rail = postMediaList(post);
 
@@ -222,11 +225,11 @@ export function SquareFeedPostCard({
                     rel="noopener noreferrer"
                     className="truncate text-[14.8px] leading-[14.1px] font-bold text-white hover:underline"
                   >
-                    {author.displayName}
+                    {authorName}
                   </a>
                 ) : (
                   <span className="truncate text-[14.8px] leading-[14.1px] font-bold text-white">
-                    {author.displayName}
+                    {authorName}
                   </span>
                 )}
                 <VerifiedBadge verification={author.verification} className="h-3.5 w-3.5" />
@@ -274,7 +277,7 @@ export function SquareFeedPostCard({
                 href={authorHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={t("winkAt", { name: author.displayName })}
+                aria-label={t("winkAt", { name: authorName })}
                 title={t("wink")}
                 className="ws-pressable flex h-[33.26px] w-[33.26px] shrink-0 items-center justify-center rounded-full bg-[linear-gradient(195deg,#9f65fd_0%,#7e3beb_100%)] text-white transition-colors"
               >

@@ -43,7 +43,7 @@ export function LegacyChessBalance() {
       // The cashier returns as soon as the sponsored call is durable. Keep
       // bypassing the portfolio cache until the confirmed USDC transfer is
       // indexed instead of racing it with a single immediate refresh.
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(["base-mainnet"]);
     } catch (error) {
       toast.error(friendlyError(error, "Could not move the in-play balance."), {
         id: toastId,

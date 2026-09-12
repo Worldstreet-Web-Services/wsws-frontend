@@ -113,7 +113,7 @@ export function useFundedChessChallenge() {
     if (wallet.address) {
       void queryClient.invalidateQueries({ queryKey: CASHIER_KEYS.balance(wallet.address) });
     }
-    void refetchPortfolio();
+    void refetchPortfolio(["base-mainnet"]);
   }, [queryClient, refetchPortfolio, wallet.address]);
 
   const runFunded = useCallback(

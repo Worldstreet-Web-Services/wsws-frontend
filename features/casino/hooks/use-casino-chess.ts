@@ -135,7 +135,7 @@ function incrementSeconds(timeControl: string): number {
   }
 }
 
-function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
+export function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | null {
   if (base.state !== "in_progress") return null;
   const nextPosition = applyUciToFen(base.fen, uci, base.variant);
   if (!nextPosition) {
@@ -161,6 +161,7 @@ function optimisticMove(base: ChessMatch, uci: string): OptimisticMatchState | n
       clocks: nextClocks,
       clockUpdatedAt: new Date(now).toISOString(),
       drawOffered: null,
+      moves: [...base.moves, nextPosition.san],
     },
   };
 }
@@ -174,22 +175,39 @@ function requireWallet(address: string | null): string {
 
 export function chessMatchRefetchMs(
   state: ChessMatchState | undefined,
-  socketLive: boolean
+  socketLive: boolean,
+  computerGame = false
 ): number | false {
   if (state === "settled" || state === "cancelled") return false;
   if (state === "awaiting_opponent") return MATCH_WAITING_POLL_MS;
+  // Computer moves are returned in the authoritative write response, so a
+  // background repair poll only re-downloads an unchanged match every second.
+  if (computerGame) return false;
   return socketLive ? MATCH_POLL_LIVE_MS : MATCH_POLL_MS;
 }
 
-export function useChessLobby(wallet: string | null) {
+interface ChessLobbyOptions {
+  challenges?: boolean;
+  liveMatches?: boolean;
+}
+
+export function useChessLobby(
+  wallet: string | null,
+  {
+    challenges: includeChallenges = true,
+    liveMatches: includeLiveMatches = true,
+  }: ChessLobbyOptions = {}
+) {
   const challenges = useQuery({
     queryKey: [...CHESS_KEYS.challenges, wallet ?? "anon"],
     queryFn: () => fetchLobbyChallenges(wallet),
+    enabled: includeChallenges,
     refetchInterval: pollUnlessFailing(LOBBY_POLL_MS),
   });
   const live = useQuery({
     queryKey: CHESS_KEYS.liveMatches,
     queryFn: fetchLiveMatches,
+    enabled: includeLiveMatches,
     refetchInterval: pollUnlessFailing(LOBBY_POLL_MS),
   });
   const mine = wallet?.toLowerCase() ?? null;
@@ -209,11 +227,13 @@ export function useChessLobby(wallet: string | null) {
     myActiveGames,
     myOpenGames: challenges.data?.myOpenGames ?? [],
     liveMatches: allLive.filter((match) => !isMine(match)),
-    isLoading: challenges.isLoading || live.isLoading,
-    error: challenges.error ?? live.error,
+    isLoading:
+      (includeChallenges && challenges.isLoading) || (includeLiveMatches && live.isLoading),
+    error:
+      (includeChallenges ? challenges.error : null) ?? (includeLiveMatches ? live.error : null),
     refetch: () => {
-      void challenges.refetch();
-      void live.refetch();
+      if (includeChallenges) void challenges.refetch();
+      if (includeLiveMatches) void live.refetch();
     },
   };
 }
@@ -297,7 +317,8 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchOnWindowFocus: "always",
-    refetchInterval: (q) => chessMatchRefetchMs(q.state.data?.state, socketLive),
+    refetchInterval: (q) =>
+      chessMatchRefetchMs(q.state.data?.state, socketLive, !!q.state.data?.computer),
     // A second browser/tab on the same game must keep moving even when it is
     // backgrounded. If the live socket is absent or silent (local backend with
     // no broker fanout, dropped relay, etc.), window-focus refetch is too late:
@@ -739,6 +760,7 @@ export function useChessMatch(matchId: string | null, seatName: string | null = 
 
   return {
     match,
+    confirmedPly: baseMatch?.moves.length ?? null,
     clocks,
     you,
     isLoading: query.isLoading,

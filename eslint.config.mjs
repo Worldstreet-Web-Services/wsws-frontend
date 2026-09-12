@@ -24,6 +24,11 @@ const eslintConfig = defineConfig([
     "features/casino/components/chess-app/**",
     // Static and generated browser assets are immutable vendor output.
     "public/**",
+    // Sibling worktrees under .worktrees/ are whole checkouts of this repo,
+    // build output included. Linting from the root otherwise walks into each
+    // one's .next and lints megabytes of bundled vendor code, which is slow
+    // and reports warnings nobody can act on.
+    ".worktrees/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

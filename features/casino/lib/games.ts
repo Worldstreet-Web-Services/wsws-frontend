@@ -1,3 +1,5 @@
+import type { Game } from "@/lib/analytics/events";
+
 // The casino's game catalogue: which games exist, where they live, and how
 // their tile is laid out. This is static product structure, not game data.
 // Everything that changes (jackpots, who is playing, queue depth) comes from
@@ -32,6 +34,8 @@ export interface CasinoGame {
   // composed into tint gradients at varying alphas by the tile.
   image?: string;
   tintRgb?: string;
+  // Keeps branded artwork vivid even when the game is still coming soon.
+  preserveImageColor?: boolean;
   // Shows the "New" badge regardless of category.
   isNew?: boolean;
   href: string | null;
@@ -41,11 +45,28 @@ export interface CasinoGame {
 }
 
 export const CASINO_GAMES: CasinoGame[] = [
+  // The order the team set on 2026-09-11: Last Man, Chess, ArkBall, Checkers.
+  // Last Man takes the hero slot, four of the six columns.
+  {
+    id: "last-standing",
+    name: "The Last Man",
+    category: "New",
+    size: "hero",
+    glyph: "⌛",
+    image:
+      "https://images.unsplash.com/photo-1518281420975-50db6e5d0a97?w=900&q=80&auto=format&fit=crop",
+    tintRgb: "251 191 36",
+    href: "/casino/last-standing",
+    note: "Outlast everyone, winner takes the pot",
+    comingSoon: false,
+  },
+  // Beside Last Man in the first row: "tall" is the two-column slot that
+  // pairs with the hero.
   {
     id: "chess",
     name: "Chess",
     category: "Skill",
-    size: "hero",
+    size: "tall",
     glyph: "♞",
     image:
       "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=1600&q=80&auto=format&fit=crop",
@@ -55,52 +76,11 @@ export const CASINO_GAMES: CasinoGame[] = [
     note: "Staked head-to-head, invite or quick match",
     comingSoon: false,
   },
-  // Sits beside Chess in the first row: the hero spans four of the six
-  // columns, and "tall" is the two-column slot that pairs with it.
-  {
-    id: "last-standing",
-    name: "The Last Man",
-    category: "New",
-    size: "tall",
-    glyph: "⌛",
-    image:
-      "https://images.unsplash.com/photo-1518281420975-50db6e5d0a97?w=900&q=80&auto=format&fit=crop",
-    tintRgb: "251 191 36",
-    href: "/casino/last-standing",
-    note: "Outlast everyone, winner takes the pot",
-    comingSoon: false,
-  },
-  {
-    id: "draw",
-    name: "Draw",
-    category: "Draws",
-    size: "tall",
-    glyph: "✦",
-    image:
-      "https://images.unsplash.com/photo-1518688248740-7c31f1a945c4?w=900&q=80&auto=format&fit=crop",
-    tintRgb: "167 139 250",
-    href: null,
-    note: "Pick 5 numbers and a bonus",
-    comingSoon: true,
-  },
-  {
-    id: "checkers",
-    name: "Checkers",
-    category: "Skill",
-    size: "medium",
-    glyph: "⛃",
-    image: "https://upload.wikimedia.org/wikipedia/commons/3/30/International_draughts.jpg",
-    tintRgb: "148 163 184",
-    href: "/casino/checkers",
-    isNew: true,
-    note: "Fast staked matches",
-    comingSoon: false,
-  },
   {
     id: "arkball",
     name: "ArkBall",
     category: "Draws",
-    size: "medium",
+    size: "tall",
     glyph: "●",
     image: "/casino/arkball/hero.png",
     tintRgb: "225 29 53",
@@ -110,10 +90,52 @@ export const CASINO_GAMES: CasinoGame[] = [
     comingSoon: false,
   },
   {
+    id: "checkers",
+    name: "Checkers",
+    category: "Skill",
+    size: "tall",
+    glyph: "⛃",
+    image: "https://upload.wikimedia.org/wikipedia/commons/3/30/International_draughts.jpg",
+    tintRgb: "148 163 184",
+    href: "/casino/checkers",
+    isNew: true,
+    note: "Fast staked matches",
+    comingSoon: false,
+  },
+  // Arkjet and Pilot Chicken, back on staging on 2026-09-11 after the 2.0
+  // port dropped them; they follow Checkers. Their artwork is branded, so
+  // the tile keeps its colour.
+  {
+    id: "arkjet",
+    name: "Arkjet",
+    category: "New",
+    size: "tall",
+    glyph: "✈",
+    image: "/casino/arkjet/hero.webp",
+    preserveImageColor: true,
+    isNew: true,
+    href: "/casino/arkjet",
+    note: "Cash out before the multiplier crashes",
+    comingSoon: false,
+  },
+  {
+    id: "chicken",
+    name: "Pilot Chicken",
+    category: "New",
+    size: "tall",
+    glyph: "C",
+    image: "/casino/chicken/ark-chicken.png",
+    preserveImageColor: true,
+    isNew: true,
+    href: "/casino/chicken",
+    note: "Cross each lane and cash out before the crash",
+    comingSoon: false,
+  },
+  {
     id: "ayo",
     name: "Ayo",
     category: "New",
-    size: "medium",
+    size: "tall",
     glyph: "◉",
     image:
       "https://images.unsplash.com/photo-1585504198199-20277593b94f?w=900&q=80&auto=format&fit=crop",
@@ -126,7 +148,7 @@ export const CASINO_GAMES: CasinoGame[] = [
     id: "poker",
     name: "Poker",
     category: "Cards",
-    size: "wide",
+    size: "tall",
     glyph: "♠",
     image:
       "https://images.unsplash.com/photo-1541278107931-e006523892df?w=900&q=80&auto=format&fit=crop",
@@ -138,7 +160,7 @@ export const CASINO_GAMES: CasinoGame[] = [
     id: "racing",
     name: "Racing outrights",
     category: "Racing",
-    size: "wide",
+    size: "tall",
     glyph: "⚑",
     image:
       "https://images.unsplash.com/photo-1541348263662-e068662d82af?w=900&q=80&auto=format&fit=crop",
@@ -166,3 +188,17 @@ export function filterGames(
     return inCategory && (!q || nameOf(g).toLowerCase().includes(q));
   });
 }
+
+// The three games the catalogue names to the analytics layer. Anything else has
+// no agreed id, so opening it reports nothing rather than inventing one.
+//
+// This lives here, beside the ids it maps, because three call sites need it:
+// the phone tiles, the desktop hub's tiles, and the casino route, which fires
+// the event itself now that ArkadeDesktop is presentational. It was duplicated
+// in two of those before, and the desktop copy silently stopped firing when the
+// hub it lived in was replaced.
+export const TRACKED_GAMES: Record<string, Game | undefined> = {
+  chess: "chess",
+  checkers: "checkers",
+  "last-standing": "last_man",
+};

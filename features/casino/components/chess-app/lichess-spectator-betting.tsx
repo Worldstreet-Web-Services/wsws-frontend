@@ -161,7 +161,7 @@ function BetForm({
         stakeUsdc,
       });
       pendingDeposit.current = null;
-      void portfolio.refetchFresh();
+      void portfolio.refetchFresh(["base-mainnet"]);
       toast.success(`Bet placed. Estimated return ${formatUsd(potentialReturn)}.`, {
         id: toastId,
         sensitive: true,

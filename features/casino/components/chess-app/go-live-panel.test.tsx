@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   ChessBroadcastActions,
   ChessBroadcastState,
@@ -117,7 +117,9 @@ describe("GoLivePanel state machine", () => {
     const cancels = screen.getAllByRole("button", { name: "Cancel" });
     fireEvent.click(cancels[cancels.length - 1]);
     expect(actions.start).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Before you share your screen/i)).toBeNull();
+    // The dialog now plays an exit transition rather than unmounting
+    // instantly, so its text lingers in the DOM until that finishes.
+    await waitFor(() => expect(screen.queryByText(/Before you share your screen/i)).toBeNull());
   });
 
   it("never shows LIVE while starting, only once the screen is actually going out", () => {

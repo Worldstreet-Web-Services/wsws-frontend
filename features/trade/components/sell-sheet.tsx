@@ -1,5 +1,8 @@
 "use client";
 
+import { BASE_CHAIN_ID } from "@/lib/meme/chain";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
+import { networkForChainId } from "@/lib/trade-share";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -28,12 +31,21 @@ const DECIMAL = /^\d*\.?\d*$/;
 interface SellSheetProps {
   payload: SellPayload;
   onClose: () => void;
+  /**
+   * Opening amount, in the asset being sold.
+   *
+   * The spot ticket's field is already denominated in the coin on the sell leg,
+   * so whatever was typed there is a valid sell amount and the sheet starts on
+   * it. Omitted everywhere else, where the sheet is the first place an amount
+   * is asked for.
+   */
+  initialAmount?: string;
 }
 
-export function SellSheet({ payload, onClose }: SellSheetProps) {
+export function SellSheet({ payload, onClose, initialAmount = "" }: SellSheetProps) {
   const t = useTranslations("buySell");
   const portfolio = usePortfolio();
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(initialAmount);
   const [maxRequested, setMaxRequested] = useState(false);
   const sell = useSell();
 
@@ -138,7 +150,9 @@ export function SellSheet({ payload, onClose }: SellSheetProps) {
       });
       toast.success(t("takesAMoment"), { id: toastRef.current });
       toastRef.current = undefined;
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(
+        scopeOf(networkForChainId(BASE_CHAIN_ID), payload.network)
+      );
       onClose();
     } catch (error) {
       if (error instanceof SolanaBalanceChangedError) {

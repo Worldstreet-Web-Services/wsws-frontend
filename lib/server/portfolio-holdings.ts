@@ -1,4 +1,5 @@
 import "server-only";
+import { freshFor, type FreshScope } from "@/lib/portfolio/fresh-scope";
 import {
   decodeAbiParameters,
   decodeFunctionResult,
@@ -72,6 +73,11 @@ export const HOT_NETWORKS = new Set([
 ]);
 export const HOT_TTL_MS = 75_000;
 export const COLD_TTL_MS = 10 * 60_000;
+// A cold network that keeps answering "nothing" is asked less often each
+// time: the ordinary cold wait, then an hour, then two hours, and it stays
+// there. Any balance puts it back on the hot cadence, and a fresh read goes
+// through regardless (ADR-2026-09-09-portfolio-polling-at-scale).
+export const EMPTY_BACKOFF_MS = [COLD_TTL_MS, 60 * 60_000, 2 * 60 * 60_000] as const;
 const WARM_FOR_MS = 60 * 60_000;
 // A refresh has to end: what has not answered by then is logged and skipped
 // for this refresh, and its snapshot stays whatever it was.
@@ -99,6 +105,8 @@ export interface HoldingRow {
 }
 
 const warmUntil = new Map<string, number>();
+// Consecutive empty answers per network and wallet, for the backoff above.
+const emptyStreak = new Map<string, number>();
 
 interface Snapshot {
   expires: number;
@@ -209,7 +217,6 @@ export async function readHoldings(
   if (!chainId) throw new Error(`No chain id for ${network}`);
   const key = `${network}:${wallet.toLowerCase()}`;
   const hot = HOT_NETWORKS.has(network) || (warmUntil.get(key) ?? 0) > Date.now();
-  const ttl = hot ? HOT_TTL_MS : COLD_TTL_MS;
 
   const hit = holdingsCache.get(key);
   if (!fresh && hit && hit.expires > Date.now()) return hit.rows;
@@ -251,7 +258,19 @@ export async function readHoldings(
           }
         );
       }
-      if (rows.some((row) => BigInt(row.tokenBalance) > 0n)) markWarm(key);
+      const holding = rows.some((row) => BigInt(row.tokenBalance) > 0n);
+      if (holding) {
+        markWarm(key);
+        emptyStreak.delete(key);
+      }
+      let ttl = HOT_TTL_MS;
+      if (!holding && !hot) {
+        const streak = (emptyStreak.get(key) ?? 0) + 1;
+        emptyStreak.set(key, streak);
+        ttl = EMPTY_BACKOFF_MS[Math.min(streak - 1, EMPTY_BACKOFF_MS.length - 1)];
+      } else if (!holding) {
+        ttl = HOT_NETWORKS.has(network) ? HOT_TTL_MS : COLD_TTL_MS;
+      }
       remember(key, rows, ttl, startedAt);
       return rows;
     } catch (error) {
@@ -477,16 +496,23 @@ async function inSlots<T>(
  * prices by address. One failed network is logged and skipped; every network
  * failing propagates, so the portfolio cache's stale-serve still applies.
  */
+export interface EvmSweep {
+  tokens: AlchemyToken[];
+  // Networks that did not answer inside the deadline; their holdings are not
+  // in `tokens`. The caller decides how long such a snapshot may live.
+  missing: string[];
+}
+
 export async function readEvmPortfolioTokens(
   wallet: string,
   networks: readonly string[],
   contractsFor: (network: string) => string[],
-  fresh: boolean
-): Promise<AlchemyToken[]> {
+  fresh: FreshScope | null
+): Promise<EvmSweep> {
   const deadline = Date.now() + REFRESH_DEADLINE_MS;
   const settled = await inSlots(
     networks.map((network) => () => {
-      const read = readHoldings(wallet, network, contractsFor(network), fresh);
+      const read = readHoldings(wallet, network, contractsFor(network), freshFor(fresh, network));
       const remaining = deadline - Date.now();
       if (remaining <= 0) return Promise.reject(new Error(`${network}: refresh deadline passed`));
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -508,6 +534,7 @@ export async function readEvmPortfolioTokens(
       failed.map((r) => (r.reason instanceof Error ? r.reason.message : r.reason))
     );
   }
+  const missing = networks.filter((_, index) => settled[index].status === "rejected");
   const rows = settled
     .filter((r): r is PromiseFulfilledResult<HoldingRow[]> => r.status === "fulfilled")
     .flatMap((r) => r.value);
@@ -531,7 +558,7 @@ export async function readEvmPortfolioTokens(
   ]);
   const metaFor = new Map(metas);
 
-  return rows.map((row) => {
+  const tokens = rows.map((row) => {
     if (row.tokenAddress === null) {
       return {
         network: row.network,
@@ -557,6 +584,7 @@ export async function readEvmPortfolioTokens(
       tokenPrices: price !== undefined ? [{ currency: "usd", value: String(price) }] : [],
     };
   });
+  return { tokens, missing };
 }
 
 /** Test seam. */
@@ -567,4 +595,5 @@ export function resetHoldingsState(): void {
   priceCache.clear();
   metaCache.clear();
   logoCache.clear();
+  emptyStreak.clear();
 }

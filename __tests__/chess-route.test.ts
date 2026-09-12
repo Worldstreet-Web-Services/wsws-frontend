@@ -34,6 +34,18 @@ function walletUser(address: string) {
   };
 }
 
+function mockRedirectingUpstream(location: string): void {
+  global.fetch = vi.fn(async (input: string | URL | Request) => {
+    if (String(input).endsWith("/ready")) {
+      return new Response(JSON.stringify({ ready: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response("", { status: 303, headers: { location } });
+  }) as unknown as typeof fetch;
+}
+
 async function loadRoute(env: { chessApiUrl?: string; publicChessApiUrl?: string } = {}) {
   vi.resetModules();
   if (env.chessApiUrl) process.env.CHESS_API_URL = env.chessApiUrl;
@@ -120,6 +132,12 @@ describe("chess proxy route", () => {
         })
       )
       .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: false }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -131,7 +149,7 @@ describe("chess proxy route", () => {
 
     expect((await GET(request(), context)).status).toBe(404);
     expect((await GET(request(), context)).status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it("never caches player coach state", async () => {
@@ -317,8 +335,9 @@ describe("chess proxy route", () => {
     );
 
     expect(res.status).toBe(200);
-    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
-      .calls[0];
+    const [, init] = (
+      global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
+    ).mock.calls.find(([url]) => url.endsWith("/betting/bets"))!;
     expect((init.headers as Record<string, string>)["x-wallet-address"]).toBe("0xabc");
     expect(init.body).toBe(
       JSON.stringify({
@@ -338,13 +357,7 @@ describe("chess proxy route", () => {
         { type: "google_oauth", name: "Alice" },
       ],
     });
-    global.fetch = vi.fn(
-      async () =>
-        new Response("", {
-          status: 303,
-          headers: { location: "/round/game-1" },
-        })
-    ) as unknown as typeof fetch;
+    mockRedirectingUpstream("/round/game-1");
     const { POST } = await loadRoute();
 
     const res = await POST(
@@ -362,8 +375,9 @@ describe("chess proxy route", () => {
 
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/casino/chess/play?match=game-1");
-    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
-      .calls[0];
+    const [, init] = (
+      global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
+    ).mock.calls.find(([url]) => url.endsWith("/play/computer"))!;
     expect(init.body).toBe("level=3&color=random");
     expect(init.headers).toMatchObject({
       authorization: "Bearer access-token",
@@ -378,13 +392,7 @@ describe("chess proxy route", () => {
   it("keeps challenge redirects inside the chess proxy", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
     auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
-    global.fetch = vi.fn(
-      async () =>
-        new Response("", {
-          status: 303,
-          headers: { location: "/challenge/challenge-1" },
-        })
-    ) as unknown as typeof fetch;
+    mockRedirectingUpstream("/challenge/challenge-1");
     const { POST } = await loadRoute();
 
     const res = await POST(
@@ -397,8 +405,9 @@ describe("chess proxy route", () => {
 
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/api/chess/challenge/challenge-1");
-    const [, init] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
-      .calls[0];
+    const [, init] = (
+      global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
+    ).mock.calls.find(([url]) => url.endsWith("/challenge"))!;
     expect(init.redirect).toBe("manual");
     expect(init.headers).toMatchObject({ "x-forwarded-prefix": "/api/chess" });
   });
@@ -406,13 +415,7 @@ describe("chess proxy route", () => {
   it("opens accepted friend challenges on the interactive board", async () => {
     auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
     auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
-    global.fetch = vi.fn(
-      async () =>
-        new Response("", {
-          status: 303,
-          headers: { location: "/round/game-1" },
-        })
-    ) as unknown as typeof fetch;
+    mockRedirectingUpstream("/round/game-1");
     const { POST } = await loadRoute();
 
     const res = await POST(makeReq("https://app.test/api/chess/challenge/challenge-1/accept"), {

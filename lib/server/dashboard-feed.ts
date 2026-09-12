@@ -1,10 +1,7 @@
 import "server-only";
 
-import { createPublicClient, custom, formatEther } from "viem";
-import { base } from "viem/chains";
 import { fetchPrices } from "@/lib/server/alchemy";
 import { dextopusRequest } from "@/lib/server/dextopus";
-import { forwardEvmRpcRead } from "@/lib/server/evm-rpc";
 import { fetchMarketTokens } from "@/lib/server/market-tokens";
 import { cached } from "@/lib/server/response-cache";
 import { fetchRwaMarket } from "@/lib/server/rwa-prices";
@@ -23,13 +20,16 @@ import {
 } from "@/lib/dashboard-feed";
 import { tradableHere, type Paged } from "@/lib/meme/catalog";
 import type { MemeToken } from "@/lib/meme/types";
-import { composePerpBrief, perpBriefFallbackSymbols, type PerpBriefRow } from "@/lib/perp/brief";
-import type { PerpPair, PerpPrice } from "@/lib/perp/types";
+import {
+  composePerpBrief,
+  parsePerpBriefAssets,
+  parsePerpBriefContexts,
+  perpBriefFallbackSymbols,
+  type PerpBriefContext,
+  type PerpBriefRow,
+} from "@/lib/perp/brief";
 import { assetPriceUsd, listedRwaAssets, rwaLogoPath, type RwaApiAsset } from "@/lib/rwa/catalog";
 import { composeSpotMarkets } from "@/lib/spot-markets";
-import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
-import { VAULT_CHAIN_ID } from "@/lib/vault/contract";
-import { readActiveGamesWith } from "@/lib/vault/read";
 
 // The dashboard's public data, composed once for every user.
 //
@@ -116,21 +116,27 @@ async function spotSection(): Promise<SpotBriefRow[]> {
     }));
 }
 
+// The same two reads the perps desk makes: the listing, which decides which
+// majors are tradable and how far, and the live marks.
 async function perpsSection(): Promise<PerpBriefRow[]> {
-  const pairs = (
-    await envelopeData<PerpPair[]>(
-      await wsapiPerpRequest("pairs", { method: "GET", revalidate: 300 })
+  const assets = parsePerpBriefAssets(
+    await envelopeData<unknown>(
+      await wsapiPerpRequest("ark/assets", { method: "GET", revalidate: 300 })
     )
-  ).filter((p) => p.from !== "" && p.to !== "");
-  // The marks are a bonus over the CoinGecko fallback, not a requirement: a
-  // gateway that serves pairs but not prices still gets a priced brief.
-  const [marks, fallback] = await Promise.all([
-    wsapiPerpRequest("prices", { method: "GET", revalidate: 3 })
-      .then((res) => envelopeData<PerpPrice[]>(res))
-      .catch((): PerpPrice[] => []),
-    priceMap(perpBriefFallbackSymbols(DASHBOARD_FEED_ROWS)),
+  );
+  // The marks are a bonus over the app's own prices, not a requirement: a
+  // service that lists assets but cannot mark them still gives a priced brief.
+  const [contexts, fallback] = await Promise.all([
+    wsapiPerpRequest("ark/market-contexts", { method: "GET", revalidate: 5 })
+      .then((res) => envelopeData<unknown>(res))
+      .then(parsePerpBriefContexts)
+      .catch((error): PerpBriefContext[] => {
+        console.warn("[dashboard-feed] perps: marks unavailable:", error);
+        return [];
+      }),
+    priceMap(perpBriefFallbackSymbols()),
   ]);
-  return composePerpBrief(pairs, marks, fallback, DASHBOARD_FEED_ROWS);
+  return composePerpBrief(assets, contexts, fallback, DASHBOARD_FEED_ROWS);
 }
 
 async function memesSection(): Promise<MemeBriefRow[]> {
@@ -172,7 +178,10 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
   const assets = await envelopeData<RwaApiAsset[]>(
     await wsapiRwaRequest("assets", { method: "GET", revalidate: 60 })
   );
-  const listed = listedRwaAssets(assets).slice(0, DASHBOARD_FEED_ROWS);
+  // Every listed asset, not the brief's eight: the "Own the Real World" shelf
+  // picks one per category out of this, and composing it here once for
+  // everyone is what keeps the dashboard from mounting the desk's own poll.
+  const listed = listedRwaAssets(assets);
   // Market stats are an enrichment; the registry's own price still stands
   // when the market read fails.
   const market = await fetchRwaMarket(
@@ -185,9 +194,14 @@ async function rwaSection(): Promise<RwaBriefRow[]> {
       id: a.id,
       symbol: a.symbol,
       name: a.name,
+      issuer: a.issuer,
+      category: a.category ?? null,
+      apyBps: typeof a.yieldApyBps === "number" ? a.yieldApyBps : null,
       logo: rwaLogoPath(a.chain, a.address),
       priceUsd: assetPriceUsd(a) ?? stats?.priceUsd ?? null,
       change24h: stats?.change24h ?? null,
+      chain: a.chain,
+      address: a.address,
     };
   });
 }
@@ -213,38 +227,14 @@ interface DraughtsMatchWireLite {
   result: unknown;
 }
 
-// A viem client for Base that reads through the same provider the RPC route
-// uses, without the route: this runs on the server already.
-function baseReadClient() {
-  const chain = getSponsoredEvmChainByNetwork("base-mainnet");
-  if (!chain || chain.chainId !== VAULT_CHAIN_ID) throw new Error("Base is not configured");
-  let id = 0;
-  return createPublicClient({
-    chain: base,
-    transport: custom({
-      async request({ method, params }) {
-        const { payload } = await forwardEvmRpcRead(chain, {
-          jsonrpc: "2.0",
-          id: ++id,
-          method,
-          params,
-        });
-        const envelope = (Array.isArray(payload) ? payload[0] : payload) as {
-          result?: unknown;
-          error?: { message?: string };
-        };
-        if (envelope?.error) throw new Error(envelope.error.message ?? "rpc error");
-        return envelope?.result;
-      },
-    }),
-  });
-}
-
 async function liveSection(): Promise<DashboardLive> {
   const now = Math.floor(Date.now() / 1000);
   // Each source contributes nothing when it fails, as the marquee always did;
   // a dead chess gateway must not empty the Last Man chips.
-  const [indexed, chain, ethUsd, chess, checkers] = await Promise.all([
+  // The vault service indexes every game and prices it; it falls through to
+  // the contract itself for a game its index has not reached, so the feed no
+  // longer reads the chain (ADR-2026-09-10-last-man-backend-reads).
+  const [indexed, chess, checkers] = await Promise.all([
     getJson(`${VAULT_BASE}/games`, 5)
       .then((res) => envelopeData<{ games: IndexedGame[] }>(res))
       .then((data) => data.games)
@@ -252,13 +242,6 @@ async function liveSection(): Promise<DashboardLive> {
         console.warn("[dashboard-feed] live: vault index unavailable:", error);
         return [];
       }),
-    readActiveGamesWith(baseReadClient(), now).catch((error) => {
-      console.warn("[dashboard-feed] live: chain read unavailable:", error);
-      return [];
-    }),
-    priceMap(["ETH"])
-      .then((p) => p.ETH ?? 0)
-      .catch(() => 0),
     getJson(`${CHESS_BASE}/matches?status=active&limit=50`, 5)
       .then((res) => envelopeData<{ items: ChessMatchWireLite[] }>(res))
       .then((data) => data.items)
@@ -275,33 +258,15 @@ async function liveSection(): Promise<DashboardLive> {
       }),
   ]);
 
-  const live = indexed.filter((g) => g.active && !g.settled && g.endTime > now);
-  const indexedIds = new Set(live.map((g) => g.gameId));
-  const rounds: LiveRound[] = [
-    ...live.map((g) => ({
+  const rounds: LiveRound[] = indexed
+    .filter((g) => g.active && !g.settled && g.endTime > now)
+    .map((g) => ({
       gameId: g.gameId,
       endTime: g.endTime,
       potUsd: g.pot.usdValue,
       pot: g.pot.formattedUsd || `${g.pot.amount} ${g.pot.tokenSymbol}`,
-    })),
-    // Chain rounds the index has not caught up with yet, priced here since the
-    // contract only knows wei.
-    ...chain
-      .filter((g) => !indexedIds.has(g.gameId) && g.endTime > now)
-      .map((g) => {
-        // Wei to ether as an exact decimal string; the label carries every
-        // digit. The USD figure is display only, a sort key and a rounded
-        // label, and is the one place a float is allowed to enter.
-        const eth = formatEther(g.potWei);
-        const usd = ethUsd > 0 ? Number(eth) * ethUsd : 0;
-        return {
-          gameId: g.gameId,
-          endTime: g.endTime,
-          potUsd: usd,
-          pot: usd > 0 ? `$${usd.toFixed(2)}` : `${eth} ETH`,
-        };
-      }),
-  ].sort((a, b) => b.potUsd - a.potUsd);
+    }))
+    .sort((a, b) => b.potUsd - a.potUsd);
 
   return {
     rounds,

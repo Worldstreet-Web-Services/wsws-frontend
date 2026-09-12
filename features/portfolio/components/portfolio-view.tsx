@@ -15,7 +15,20 @@ import {
 } from "@tanstack/react-table";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
 import { KashBanner } from "@/features/portfolio/components/kash-banner";
+import { MarketSquareBanner } from "@/features/portfolio/components/market-square-banner";
 import { KashCard } from "@/features/portfolio/components/kash-card";
+// The phone's portfolio head: a swipe carousel of the balance and Kash+ cards,
+// then a promo strip. Desktop keeps the side-by-side grid below.
+import { KashCardMobile } from "@/features/portfolio/components/kash-card-mobile";
+import { BalanceCarousel } from "@/features/portfolio/components/balance-carousel";
+import Link from "next/link";
+import { PromoCarousel } from "@/components/ui/promo-deck";
+import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
+import { ARKSTORE_URL } from "@/lib/brand";
+import { marketSquareHref } from "@/lib/market-square";
+import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
+import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
+import { ArkStoreBanner } from "@/features/portfolio/components/ark-store-banner";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
 import { KashConvertModal } from "@/features/portfolio/components/kash-convert-modal";
 import { KashHistoryModal } from "@/features/portfolio/components/kash-history-modal";
@@ -32,7 +45,6 @@ import { tokenBg } from "@/lib/trade/assets";
 import { track } from "@/lib/analytics/mixpanel";
 import { NetworkIcon } from "@/components/ui/network-icon";
 import { useMoney } from "@/components/ui/currency-select";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { isZeroValueHolding, selectHoldings } from "@/features/portfolio/lib/holdings";
@@ -46,6 +58,8 @@ import type { BuyPayload, DetailPayload, RwaTradePayload, SellPayload } from "@/
 interface PortfolioViewProps {
   onOpenFunds: () => void;
   onOpenWithdraw: () => void;
+  /** Replays the walkthrough; owned by the route, wired into the balance card. */
+  onTakeTour: () => void;
   crossBorderSlot: ReactNode;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
@@ -89,6 +103,7 @@ const HOLDINGS_COLUMNS = [
 export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
+  onTakeTour,
   // crossBorderSlot is unused while the section below is commented out.
   onOpenDetail,
   onOpenBuy,
@@ -100,6 +115,7 @@ export function PortfolioView({
   const money = useMoney();
   const router = useRouter();
   const t = useTranslations("portfolio");
+  const tDiscovery = useTranslations("discovery");
   const { wallet: kashWallet } = useKashAccount();
   const claimPoints = useKashClaim();
   const [kashModal, setKashModal] = useState<
@@ -245,11 +261,66 @@ export function PortfolioView({
     });
   };
 
+  // The Market Square banner, or nothing when the square has no URL configured.
+  // The square is a sibling deployment rather than a route here, so without a
+  // destination there is no banner to draw, which is the rule the sidebar entry
+  // follows too. `squareBanner` is the placeholder the duplicate stake banner
+  // below was standing in for.
+  const squareHref = marketSquareHref();
+  const squareBanner = squareHref ? <MarketSquareBanner href={squareHref} /> : null;
+
+  // The ArkStore ticket, first on both strips: the deck a phone swipes and the
+  // rail the desk carries. The store is another deployment, so it is a plain
+  // anchor into a new tab rather than a route.
+  const arkStoreBanner = (
+    <a
+      href={ARKSTORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t("arkStoreAria")}
+      className="block w-full"
+    >
+      <ArkStoreBanner />
+    </a>
+  );
+
+  // The stake banner, and the third rail stop it used to fill on its own. With
+  // the square switched off there is still no Market Square banner, so it
+  // repeats as it always did and the carousel keeps something to move to.
+  const stakeBanner = (
+    <PromoBanner
+      href="/casino"
+      title={tDiscovery("stakeTitle")}
+      subtitle={tDiscovery("stakeSubtitle")}
+      background="#ed2b07"
+      glyph="/market/promo-stake-flame.svg"
+      scallop="/market/promo-stake-scallop.svg"
+      art={[
+        {
+          src: "/market/promo-stake-glow-left.svg",
+          top: -17.38,
+          left: -19.85,
+          width: 253.22,
+          height: 253.22,
+        },
+        {
+          src: "/market/promo-stake-glow-right.svg",
+          top: -71.99,
+          left: 188.68,
+          width: 439.41,
+          height: 439.41,
+        },
+      ]}
+    />
+  );
+
+  // "Your Holdings" is hidden at request. The list/table, its error and empty
+  // states, and all the machinery feeding them stay in place behind this flag,
+  // so flipping it to false brings the section straight back.
+  const HOLDINGS_HIDDEN = true;
+
   return (
     <div className="mx-auto w-full max-w-[1520px] p-4 sm:p-6 lg:p-8">
-      <div className="mb-4">
-        <KashBanner onBuy={() => setKashModal("buy")} />
-      </div>
       <KashBuyModal
         open={kashModal === "buy"}
         wallet={kashWallet}
@@ -260,10 +331,49 @@ export function PortfolioView({
       <KashUpgradeModal open={kashModal === "upgrade"} onClose={() => setKashModal(null)} />
       <KashSendModal open={kashModal === "send"} onClose={() => setKashModal(null)} />
 
-      <Eyebrow>{t("eyebrow")}</Eyebrow>
+      {/* Phone head: swipe carousel of the two starfield cards, then the promo
+          strip. The carousel gives the h-full cards their height. */}
+      <div className="md:hidden">
+        <BalanceCarousel>
+          <BalanceCard
+            onOpenFunds={onOpenFunds}
+            onOpenWithdraw={onOpenWithdraw}
+            onTakeTour={onTakeTour}
+          />
+          <KashCardMobile
+            onBuy={() => setKashModal("buy")}
+            onConvert={() => setKashModal("convert")}
+            onHistory={() => setKashModal("history")}
+          />
+        </BalanceCarousel>
+        {/* The phone's own promo strip, one ticket at a time. The desk has its
+            own rail under the balance cards below. */}
+        <div className="mt-3">
+          <PromoCarousel>
+            {arkStoreBanner}
+            {/* The ticket is presentational; the doorway to the casino lives
+                here at the composition site. Embla suppresses the click after a
+                drag, so a tap navigates and a swipe still pages the deck. */}
+            <Link
+              href="/casino"
+              aria-label="Set the stake, play in the casino"
+              className="block w-full"
+            >
+              <SetTheStakeBanner />
+            </Link>
+            <GetKashBanner onBuy={() => setKashModal("buy")} />
+            {squareBanner}
+          </PromoCarousel>
+        </div>
+      </div>
 
-      <div className="mt-3.5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <BalanceCard onOpenFunds={onOpenFunds} onOpenWithdraw={onOpenWithdraw} />
+      {/* Desktop: the side-by-side grid. */}
+      <div className="hidden gap-3 md:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <BalanceCard
+          onOpenFunds={onOpenFunds}
+          onOpenWithdraw={onOpenWithdraw}
+          onTakeTour={onTakeTour}
+        />
         <KashCard
           onBuy={() => setKashModal("buy")}
           onClaim={
@@ -287,11 +397,24 @@ export function PortfolioView({
         />
       </div>
 
+      {/* The promo rail, as the Market design draws the desktop head: below the
+          two cards, a carousel of banners. Desktop-only — the phone carries its
+          own promo strip in the mobile head above. */}
+      <div className="mt-3 hidden md:block">
+        <PromoRail label={tDiscovery("promoRailCarousel")}>
+          {arkStoreBanner}
+          {stakeBanner}
+          <KashBanner onBuy={() => setKashModal("buy")} />
+          {squareBanner ?? stakeBanner}
+        </PromoRail>
+      </div>
+
       {/* Commented out for now, at explicit request — cross-border is still
           just a "coming soon" announcement banner, not a live flow. */}
       {/* <div className="mt-3">{crossBorderSlot}</div> */}
 
-      {errored ? (
+      {/* "Your Holdings" — hidden at request (see HOLDINGS_HIDDEN above). */}
+      {HOLDINGS_HIDDEN ? null : errored ? (
         <div className="ws-card mt-[18px] flex flex-col items-center gap-3 px-6 py-12 text-center">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/6">
             <WalletIcon size={22} />

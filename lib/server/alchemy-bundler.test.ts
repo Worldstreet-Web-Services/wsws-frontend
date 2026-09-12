@@ -74,6 +74,53 @@ describe("Alchemy sponsorship proxy", () => {
     expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBe("base-policy");
   });
 
+  // The send path asks for gas and paymaster data in one call. The policy is
+  // the request object's own field there, and a policy the browser names is
+  // discarded: sponsorship is always under the server's policy for the pair.
+  it("injects the policy into a Gas Manager request and overrides any the client sent", async () => {
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "alchemy_requestGasAndPaymasterAndData",
+        params: [
+          {
+            policyId: "client-chosen",
+            entryPoint: "0xentrypoint",
+            dummySignature: "0xff",
+            userOperation: { sender: "0x1", nonce: "0x1", callData: "0x" },
+          },
+        ],
+      }),
+      "arb-mainnet"
+    );
+
+    expect(response.status).toBe(200);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("arb-mainnet.g.alchemy.com/v2/data-api-key");
+    const sent = JSON.parse(String(init?.body)).params[0];
+    expect(sent.policyId).toBe("base-policy");
+    expect(sent.userOperation).toEqual({ sender: "0x1", nonce: "0x1", callData: "0x" });
+    expect((init?.headers as Record<string, string>)["x-alchemy-policy-id"]).toBeUndefined();
+  });
+
+  it("uses the Polygon policy for a Gas Manager request on Polygon", async () => {
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+    await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "alchemy_requestGasAndPaymasterAndData",
+        params: [{ entryPoint: "0xentrypoint", dummySignature: "0xff", userOperation: {} }],
+      }),
+      "polygon-mainnet"
+    );
+
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect(JSON.parse(String(init?.body)).params[0].policyId).toBe("polygon-policy");
+  });
+
   it("never rotates sponsorship onto the fallback key", async () => {
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
     await forwardAlchemyBundlerRequest(
@@ -191,31 +238,90 @@ describe("Alchemy sponsorship proxy", () => {
     logged.mockRestore();
   });
 
-  it("recognizes the BSO team sponsorship limit returned inside a 200", async () => {
-    const exhausted = {
+  // Seen live on 2026-09-09: the pair's policy had reached its gas
+  // sponsorship spend limit, answered as a 200 with a JSON-RPC error rather
+  // than a 429. It is the same condition as an exhausted month: this pair
+  // cannot serve until the dashboard changes, so the next pair is tried and,
+  // when none can, the client gets the paused message it will not retry.
+  it("treats a gas sponsorship spend limit as exhausted capacity", async () => {
+    vi.stubEnv("ALCHEMY_API_KEY", "key-a,key-b");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-a,policy-b");
+    const overLimit = {
       jsonrpc: "2.0",
       id: 7,
       error: {
         code: -32602,
-        message: "This transaction's USD cost will put your team over your gas sponsorship Limit.",
+        message:
+          "This transaction’s USD cost will put your team over your gas sponsorship Limit. To increase your limit, please upgrade your account.",
       },
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify(exhausted), { status: 200 }))
+      vi.fn(async () => new Response(JSON.stringify(overLimit), { status: 200 }))
     );
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
 
     const response = await forwardAlchemyBundlerRequest(
-      makeReq({ jsonrpc: "2.0", id: 7, method: "eth_sendUserOperation", params: [] }),
-      "base-mainnet"
+      makeReq({
+        jsonrpc: "2.0",
+        id: 7,
+        method: "alchemy_requestGasAndPaymasterAndData",
+        params: [{ userOperation: {} }],
+      }),
+      "arb-mainnet"
     );
     const body = await response.json();
 
-    expect(response.status).toBe(200);
+    const urls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.endsWith("/key-a"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/key-b"))).toBe(true);
     expect(body.error.code).toBe(-32002);
-    expect(body.error.message).toMatch(/monthly capacity/i);
+    expect(body.error.message).toMatch(/sponsorship is out of monthly capacity/i);
+    expect(logged).toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
+  // A bundler-sponsorship policy cannot answer the paymaster path at all.
+  // That pair is skipped like a missing policy, not passed through as the
+  // user's own error.
+  it("moves past a pair whose policy type the paymaster path cannot use", async () => {
+    vi.stubEnv("ALCHEMY_API_KEY", "key-a,key-b");
+    vi.stubEnv("ALCHEMY_GAS_POLICY_ID", "policy-a,policy-b");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              error: { code: -32602, message: "Unsupported Policy Type: BUNDLER_SPONSORSHIP" },
+            }),
+            { status: 200 }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { paymaster: "0x1" } }), {
+            status: 200,
+          })
+        )
+    );
+    const { forwardAlchemyBundlerRequest } = await import("./alchemy-bundler");
+
+    const response = await forwardAlchemyBundlerRequest(
+      makeReq({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "alchemy_requestGasAndPaymasterAndData",
+        params: [{ userOperation: {} }],
+      }),
+      "arb-mainnet"
+    );
+
+    expect((await response.json()).result).toEqual({ paymaster: "0x1" });
+    expect(String(vi.mocked(fetch).mock.calls[1][0])).toContain("/key-b");
   });
 
   it("answers every call of a batch when capacity is exhausted", async () => {

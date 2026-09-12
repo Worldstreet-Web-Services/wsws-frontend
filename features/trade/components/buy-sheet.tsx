@@ -1,6 +1,8 @@
 "use client";
 
 import { BASE_CHAIN_ID } from "@/lib/meme/chain";
+import { scopeOf } from "@/lib/portfolio/fresh-scope";
+import { networkForChainId } from "@/lib/trade-share";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AssetIcon } from "@/components/ui/asset-icon";
@@ -10,6 +12,7 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { useDepositChains, useDepositStatus } from "@/hooks/use-deposit";
 import { useBuyDestinations } from "@/features/trade/hooks/use-buy-catalog";
 import { useBuy } from "@/features/trade/hooks/use-buy";
+import { useMemeToken } from "@/features/trade/hooks/use-meme-tokens";
 import { useMemeTrade } from "@/features/trade/hooks/use-meme-trade";
 import { NetworkPicker, NetworkSelect } from "@/features/trade/components/network-select";
 import { belowMinimumBuy, isSolanaChainId, minimumBuyUsd } from "@/lib/trade/minimums";
@@ -76,6 +79,20 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
   const memeTrade = useMemeTrade();
   const swapBusy = isSwapMarket && memeTrade.phase !== "idle" && memeTrade.phase !== "failed";
 
+  // A swap-market asset settles through the same trade engine as memecoins
+  // (see lib/spot-swap.ts), which means it's subject to the same live
+  // liquidity/risk policy — its tradability can change after this screen's
+  // static route lookup. Checked live here so a token that's currently
+  // blocked shows "trading is paused" up front, instead of only failing at
+  // submit with the backend's raw policy message.
+  // Identity is chainId + address since main's chain-aware memecoin work; a
+  // swap route carries its own chain.
+  const swapToken = useMemeToken(
+    isSwapMarket ? { address: swapRoute.tokenAddress, chainId: swapRoute.chainId } : null
+  );
+  const swapTradabilityKnown = !isSwapMarket || swapToken.token != null;
+  const swapTradable = !isSwapMarket || swapToken.token?.buyEnabled === true;
+
   // Network display name and logo come from the Dextopus chain catalog, keyed by
   // the route's destination chain.
   const chainMeta = useDepositChains();
@@ -127,6 +144,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
   // (EIP-7702 through our bundler), so no native ETH is ever required here.
   const canBuy =
     (Boolean(route) || isSwapMarket) &&
+    swapTradable &&
     value >= minUsd &&
     !portfolio.loading &&
     value <= balance &&
@@ -200,7 +218,12 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       });
       toast.success(t("boughtToast", { name: payload.name }), { id: toastRef.current });
       toastRef.current = undefined;
-      void portfolio.refetchUntilChanged();
+      void portfolio.refetchUntilChanged(
+        scopeOf(
+          networkForChainId(BASE_CHAIN_ID),
+          networkForChainId(route?.destinationChainId ?? -1)
+        )
+      );
     } else if (stage === "failed" || stage === "refunded") {
       settledRef.current = true;
       track("trade_failed", { vertical: "spot", asset: payload.symbol, reason: stage });
@@ -222,6 +245,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
     payload.name,
     payload.symbol,
     route?.chainName,
+    route?.destinationChainId,
     value,
     portfolio,
     t,
@@ -247,6 +271,7 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
 
   const confirm = async () => {
     if (!route && !swapRoute) return;
+    if (isSwapMarket && !swapTradable) return;
     // The attempt, as opposed to the fill reported on settlement. The two
     // together are what make the drop-off between them visible.
     track("trade_previewed", {
@@ -476,15 +501,19 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       >
         {!route && !isSwapMarket
           ? t("unavailable")
-          : value <= 0
-            ? t("enterAmount")
-            : belowMin
-              ? t("minimumUsd", { amount: minUsd })
-              : notEnough
-                ? t("notEnoughBalance")
-                : buy.isPending || swapBusy
-                  ? t("confirming")
-                  : t("buyToken", { name: payload.name })}
+          : isSwapMarket && !swapTradable
+            ? swapTradabilityKnown
+              ? t("tradingPaused")
+              : t("checkingTradability")
+            : value <= 0
+              ? t("enterAmount")
+              : belowMin
+                ? t("minimumUsd", { amount: minUsd })
+                : notEnough
+                  ? t("notEnoughBalance")
+                  : buy.isPending || swapBusy
+                    ? t("confirming")
+                    : t("buyToken", { name: payload.name })}
       </button>
     </div>
   );

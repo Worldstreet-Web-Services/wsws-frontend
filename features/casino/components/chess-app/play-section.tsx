@@ -731,6 +731,7 @@ export function PlaySection({
   const cashier = useChessCashierStatus();
   const {
     match,
+    confirmedPly,
     clocks,
     you,
     isLoading,
@@ -855,7 +856,7 @@ export function PlaySection({
     matchId,
     preferredChatRoom,
     canUsePlayerChat,
-    currentPly,
+    confirmedPly,
     seatName,
     !!match && match.computer == null
   );

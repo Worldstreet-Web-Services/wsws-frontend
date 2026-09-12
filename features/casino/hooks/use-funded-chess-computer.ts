@@ -104,7 +104,7 @@ export function useFundedChessComputer() {
           idempotencyKey: `deposit:${txHash}`,
         });
         pendingDeposit.current = null;
-        void refetchPortfolio();
+        void refetchPortfolio(["base-mainnet"]);
         return match;
       } finally {
         setIsStarting(false);

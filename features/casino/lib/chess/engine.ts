@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { chessgroundDests, lichessRules } from "chessops/compat";
 import { makeFen, parseFen as parseChessopsFen } from "chessops/fen";
+import { makeSanAndPlay } from "chessops/san";
 import type { Position as ChessopsPosition } from "chessops/chess";
 import type { Role as ChessopsRole, Square as ChessopsSquare } from "chessops/types";
 import { makeSquare, parseSquare, parseUci, roleToChar } from "chessops/util";
@@ -41,6 +42,10 @@ export interface FenPosition {
   turn: PieceColor;
   fen: string;
   variant: ChessVariant;
+}
+
+export interface AppliedFenPosition extends FenPosition {
+  san: string;
 }
 
 const PROMOTION_TYPES = ["q", "r", "b", "n"] as const;
@@ -411,13 +416,13 @@ export function applyUciToFen(
   fen: string,
   uci: string,
   variant: ChessVariant = "standard"
-): FenPosition | null {
+): AppliedFenPosition | null {
   try {
     const position = chessopsPosition(fen, variant);
     const move = parseUci(uci);
     if (!move || !position.isLegal(move)) return null;
-    position.play(move);
-    return parseFen(makeFen(position.toSetup()), variant);
+    const san = makeSanAndPlay(position, move);
+    return { ...parseFen(makeFen(position.toSetup()), variant), san };
   } catch {
     return null;
   }

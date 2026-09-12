@@ -8,9 +8,8 @@ const upstream = vi.hoisted(() => ({
   forwardEvmRpcRead: vi.fn(),
   fetchMarketTokens: vi.fn(),
   fetchRwaMarket: vi.fn(),
-  wsapiPerpRequest: vi.fn(),
   wsapiRwaRequest: vi.fn(),
-  readActiveGamesWith: vi.fn(),
+  wsapiPerpRequest: vi.fn(),
   fetch: vi.fn(),
 }));
 
@@ -20,10 +19,9 @@ vi.mock("@/lib/server/evm-rpc", () => ({ forwardEvmRpcRead: upstream.forwardEvmR
 vi.mock("@/lib/server/market-tokens", () => ({ fetchMarketTokens: upstream.fetchMarketTokens }));
 vi.mock("@/lib/server/rwa-prices", () => ({ fetchRwaMarket: upstream.fetchRwaMarket }));
 vi.mock("@/lib/server/wsapi", () => ({
-  wsapiPerpRequest: upstream.wsapiPerpRequest,
   wsapiRwaRequest: upstream.wsapiRwaRequest,
+  wsapiPerpRequest: upstream.wsapiPerpRequest,
 }));
-vi.mock("@/lib/vault/read", () => ({ readActiveGamesWith: upstream.readActiveGamesWith }));
 vi.mock("@/lib/server/upstreams", () => ({
   TRADE_BASE: "https://trade.test",
   VAULT_BASE: "https://vault.test",
@@ -73,9 +71,30 @@ function healthyUpstreams() {
     },
   ]);
   upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-    path === "pairs"
-      ? ok([{ from: "BTC", to: "USD", maxLeverage: 100 }])
-      : ok([{ pairIndex: 0, pair: "BTC/USD", price: "65000", publishTime: null }])
+    path === "ark/assets"
+      ? ok([
+          {
+            id: "btc",
+            assetIndex: 0,
+            dex: "",
+            symbol: "BTC",
+            category: "crypto",
+            szDecimals: 5,
+            maxLeverage: 40,
+            isActive: true,
+          },
+        ])
+      : ok([
+          {
+            symbol: "BTC",
+            markPrice: "65000",
+            oraclePrice: "65010",
+            prevDayPrice: "64000",
+            dayVolumeUsd: "1",
+            openInterest: "1",
+            fundingRate: "0.0000125",
+          },
+        ])
   );
   upstream.wsapiRwaRequest.mockResolvedValue(
     ok([
@@ -93,16 +112,6 @@ function healthyUpstreams() {
     ])
   );
   upstream.fetchRwaMarket.mockResolvedValue({ "usdy-base": { change24h: -0.01 } });
-  upstream.readActiveGamesWith.mockResolvedValue([
-    {
-      gameId: 7,
-      starter: "0x1",
-      king: "0x2",
-      potWei: 10n ** 18n,
-      minWagerWei: 0n,
-      endTime: NOW + 600,
-    },
-  ]);
   upstream.fetch.mockImplementation(async (url: string) => {
     if (url.startsWith("https://trade.test/tokens/trending")) {
       return ok({
@@ -247,12 +256,13 @@ describe("buildDashboardFeed", () => {
       priceUsd: 3000,
       change24h: 1.5,
     });
-    expect(feed.perps?.[0]).toMatchObject({
-      symbol: "BTC/USD",
-      base: "BTC",
-      priceUsd: 65000,
-      maxLeverage: 100,
-    });
+    expect(feed.perps).toEqual([
+      { symbol: "BTC/USD", base: "BTC", priceUsd: 65000, maxLeverage: 40 },
+    ]);
+    expect(upstream.wsapiPerpRequest.mock.calls.map(([path]) => path).sort()).toEqual([
+      "ark/assets",
+      "ark/market-contexts",
+    ]);
     expect(feed.memes).toEqual([
       {
         address: "0xMeme",
@@ -265,15 +275,17 @@ describe("buildDashboardFeed", () => {
     ]);
     expect(feed.rwa?.[0]).toMatchObject({
       id: "usdy-base",
+      issuer: "Ondo",
+      category: "treasury",
+      apyBps: null,
       priceUsd: 1.14,
       change24h: -0.01,
       logo: "/api/token-logo/base/0xUsdy",
+      chain: "base",
+      address: "0xUsdy",
     });
-    // The indexed round leads by pot; the chain-only round is priced from ETH.
-    expect(feed.live?.rounds.map((r) => [r.gameId, r.potUsd, r.pot])).toEqual([
-      [7, 3000, "$3000.00"],
-      [5, 42, "$42.00"],
-    ]);
+    // Only the live indexed round; the settled one is left out.
+    expect(feed.live?.rounds.map((r) => [r.gameId, r.potUsd, r.pot])).toEqual([[5, 42, "$42.00"]]);
     expect(feed.live?.chess).toEqual([{ id: "c1" }]);
     expect(feed.live?.checkers).toEqual([{ id: "d1" }]);
     expect(feed.asOf).toBe(NOW * 1000);
@@ -283,7 +295,7 @@ describe("buildDashboardFeed", () => {
     healthyUpstreams();
     upstream.wsapiRwaRequest.mockResolvedValue(down());
     upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-      path === "pairs" ? down() : ok([])
+      path === "ark/assets" ? down() : ok([])
     );
 
     const feed = await buildDashboardFeed();
@@ -292,6 +304,36 @@ describe("buildDashboardFeed", () => {
     expect(feed.perps).toBeNull();
     expect(feed.spot).not.toBeNull();
     expect(feed.memes).not.toBeNull();
+  });
+
+  // The "Own the Real World" shelf picks one asset per category out of the
+  // rwa section, so the section carries every listed asset and its yield,
+  // not the eight the brief shows.
+  it("carries every listed real asset with its category and yield", async () => {
+    healthyUpstreams();
+    upstream.wsapiRwaRequest.mockResolvedValue(
+      ok(
+        Array.from({ length: 12 }, (_, i) => ({
+          id: `asset-${i}`,
+          chain: "base",
+          address: `0xAsset${i}`,
+          symbol: `A${i}`,
+          name: `Asset ${i}`,
+          issuer: "Issuer",
+          category: i % 2 ? "equity" : "treasury",
+          yieldApyBps: i % 2 ? undefined : 360,
+          priceUsd: "1",
+          freelyTradable: true,
+        }))
+      )
+    );
+    upstream.fetchRwaMarket.mockResolvedValue({});
+
+    const feed = await buildDashboardFeed();
+
+    expect(feed.rwa).toHaveLength(12);
+    expect(feed.rwa?.[0]).toMatchObject({ category: "treasury", apyBps: 360 });
+    expect(feed.rwa?.[1]).toMatchObject({ category: "equity", apyBps: null });
   });
 
   // Trending is mostly Solana, and discovery is Base-only for now, so after
@@ -343,10 +385,11 @@ describe("buildDashboardFeed", () => {
     expect(feed.memes?.map((m) => m.symbol)).toEqual(["BASECAT"]);
   });
 
-  it("prices the perps brief from the fallback when only the marks are down", async () => {
+  it("prices the perps brief from the app's own feed when only the marks are down", async () => {
     healthyUpstreams();
+    const assets = upstream.wsapiPerpRequest.getMockImplementation()!;
     upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
-      path === "pairs" ? ok([{ from: "BTC", to: "USD", maxLeverage: 100 }]) : down()
+      path === "ark/assets" ? assets(path) : down()
     );
     upstream.fetchPrices.mockImplementation(async (symbols: string[]) =>
       symbols.map((symbol) => ({ symbol, priceUsd: symbol === "BTC" ? 64000 : 1 }))
@@ -354,6 +397,17 @@ describe("buildDashboardFeed", () => {
 
     const feed = await buildDashboardFeed();
     expect(feed.perps?.[0]).toMatchObject({ symbol: "BTC/USD", priceUsd: 64000 });
+  });
+
+  it("marks the perps brief unavailable when the asset list breaks its contract", async () => {
+    healthyUpstreams();
+    upstream.wsapiPerpRequest.mockImplementation(async (path: string) =>
+      path === "ark/assets" ? ok([{ symbol: "BTC" }]) : ok([])
+    );
+
+    const feed = await buildDashboardFeed();
+    expect(feed.perps).toBeNull();
+    expect(feed.spot).not.toBeNull();
   });
 
   it("keeps the live chips from the sources that answered", async () => {
@@ -368,31 +422,35 @@ describe("buildDashboardFeed", () => {
 
     const feed = await buildDashboardFeed();
     expect(feed.live).toEqual({
-      rounds: [{ gameId: 7, endTime: NOW + 600, potUsd: 3000, pot: "$3000.00" }],
+      rounds: [],
       chess: [],
       checkers: [],
     });
   });
 
-  it("labels a chain round's pot exactly when it cannot be priced", async () => {
+  it("labels a round's pot in its own token when the index could not price it", async () => {
     healthyUpstreams();
-    // No ETH price: the label falls back to the pot in ETH, and wei must reach
-    // it as an exact decimal, not through a float that rounds the last digits.
-    upstream.fetchPrices.mockImplementation(async (symbols: string[]) =>
-      symbols.filter((s) => s !== "ETH").map((symbol) => ({ symbol, priceUsd: 1 }))
-    );
-    upstream.readActiveGamesWith.mockResolvedValue([
-      {
-        gameId: 9,
-        starter: "0x1",
-        king: "0x2",
-        potWei: 1234567890123456789n,
-        minWagerWei: 0n,
-        endTime: NOW + 600,
-      },
-    ]);
+    // The service marks an unpriced pot with an empty formatted figure; the
+    // chip then shows the exact amount and token rather than "$0.00".
     upstream.fetch.mockImplementation(async (url: string) => {
-      if (url.startsWith("https://vault.test/games")) return ok({ games: [] });
+      if (url.startsWith("https://vault.test/games")) {
+        return ok({
+          games: [
+            {
+              gameId: 9,
+              active: true,
+              settled: false,
+              endTime: NOW + 600,
+              pot: {
+                amount: "1.234567890123456789",
+                tokenSymbol: "ETH",
+                usdValue: 0,
+                formattedUsd: "",
+              },
+            },
+          ],
+        });
+      }
       if (url.startsWith("https://trade.test"))
         return ok({ items: [], meta: { page: 1, limit: 8, total: 0 } });
       return down();

@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { usePrivy } from "@privy-io/react-auth";
-import { apiFetch } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchUserActivity, type UserActivity } from "@/lib/api/services/activity";
 import { getWalletAddress } from "@/lib/user";
 import { buildActivityEntries, type ActivityEntry } from "@/lib/activity/entries";
 import type { ActivityItem } from "@/lib/server/activity";
@@ -17,15 +18,15 @@ export type { ActivityEntry, ActivityKind } from "@/lib/activity/entries";
 // One sweep is the most expensive read in the app: an upstream call per
 // network per direction. So the rate depends on who is asking.
 //
-// The activity screen is being looked at, so it stays on a minute.
-const POLL_MS = 60_000;
+// The activity screen is being looked at, so it stays close: two minutes.
+const POLL_MS = 2 * 60_000;
 // The notification bell is in the topbar on EVERY screen, so its poll is the
 // one that multiplies across the whole signed-in population. It is a nudge
-// that something happened, not a live feed, and five minutes is well inside
+// that something happened, not a live feed, and ten minutes is well inside
 // what anyone notices. React Query drives a shared key at its shortest
-// observer interval, so opening the activity screen still pulls it back to a
-// minute for as long as that screen is mounted.
-export const BELL_POLL_MS = 5 * 60_000;
+// observer interval, so opening the activity screen still pulls it back to
+// two minutes for as long as that screen is mounted.
+export const BELL_POLL_MS = 10 * 60_000;
 const EMPTY: ActivityItem[] = [];
 const EMPTY_ENTRIES: ActivityEntry[] = [];
 
@@ -35,21 +36,10 @@ export function useActivity({ pollMs = POLL_MS }: { pollMs?: number } = {}) {
   const solana = getWalletAddress(user, "solana");
   const enabled = ready && authenticated && Boolean(evm || solana);
 
-  const query = useQuery<{ items: ActivityItem[] }>({
-    queryKey: ["activity", evm, solana],
+  const query = useQuery<UserActivity>({
+    queryKey: queryKeys.activity.byWallet(evm, solana),
     enabled,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (evm) params.set("evm", evm);
-      if (solana) params.set("solana", solana);
-      const res = await apiFetch(`/api/activity?${params.toString()}`, {}, { requireAuth: true });
-      if (!res.ok) {
-        throw new Error(
-          res.status === 429 ? "Too many requests, try again shortly" : "Could not load activity"
-        );
-      }
-      return res.json();
-    },
+    queryFn: () => fetchUserActivity({ evm, solana }),
     refetchInterval: pollMs,
     staleTime: POLL_MS,
     // Keep the current list rendered while a poll refetches, so the feed never
@@ -71,6 +61,9 @@ export function useActivity({ pollMs = POLL_MS }: { pollMs?: number } = {}) {
     items,
     loading: query.isLoading,
     error: query.isError,
+    // Some source did not answer, so `items` is not the whole history. The
+    // view says so rather than presenting a short list as a complete one.
+    partial: (query.data?.unavailable?.length ?? 0) > 0,
     refetch: query.refetch,
   };
 }

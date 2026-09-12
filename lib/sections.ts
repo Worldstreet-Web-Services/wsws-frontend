@@ -12,7 +12,11 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   prediction: "Prediction",
   earn: "Earn",
   casino: "Arkade",
-  activity: "Activity",
+  // "Arkivity" is the product name, and it is what `sections.activity` says
+  // in all five catalogues. This fallback only stands in when buildNav is
+  // called without a translate function, so it must not disagree with the
+  // translated string it is standing in for.
+  activity: "Arkivity",
 };
 
 // Portfolio is always the account home. The rest follow, led by whatever the
@@ -20,15 +24,11 @@ export const SECTION_LABEL: Record<SectionId, string> = {
 const PINNED: SectionId = "portfolio";
 const REORDERABLE: SectionId[] = [
   "spot",
-  // Perpetuals are hidden from the nav for now, like earn. The desk stays at
-  // /perps; dropping it here also drops its dashboard brief, its marquee item
-  // and its tab, all of which follow the nav.
-  // "perps",
+  // Perpetuals are hidden on production for now (#382). Staging is where the
+  // perps desk is exercised, so it stays in the nav here.
+  "perps",
   "meme",
-  // TEMPORARY: real assets are hidden from the nav for now, like perps and
-  // earn. The section stays at /rwa; dropping it here also drops its
-  // dashboard brief, its marquee item and its tab, all of which follow the nav.
-  // "rwa",
+  "rwa",
   "prediction",
   // Earn is hidden from the nav for now.
   // "earn",
@@ -36,9 +36,27 @@ const REORDERABLE: SectionId[] = [
   "activity",
 ];
 
-// Sections that are their own page rather than an anchor on /dashboard.
-// Portfolio is the dashboard itself, so it has no entry here.
+/**
+ * Sections kept out of the navigation.
+ *
+ * A visibility switch, not a removal, the way MARKET_SQUARE_HIDDEN in
+ * lib/market-square.ts is. Everything behind a listed id stays wired: its
+ * route, its slice, its holdings in the portfolio breakdown. The id is only
+ * not offered as a way in.
+ *
+ * buildNav in components/layout/nav-items.tsx is the single reader, so the
+ * desktop rail, the phone drawer, the marquee and the dashboard's brief order
+ * all drop a hidden section together.
+ *
+ * Empty since 2026-09-09: Real assets returned once the gateway's rwa and
+ * gas-sponsor services were confirmed live in production. To hide a section
+ * again, list its id here; nothing else needs to change.
+ */
+export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = [];
+
+// Sections that are their own page rather than an anchor.
 export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
+  portfolio: "/portfolio",
   spot: "/spot",
   perps: "/perps",
   meme: "/meme",
@@ -51,11 +69,11 @@ export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {
 
 // The section a path belongs to, for the rail's highlight: the route whose
 // prefix matches, so /prediction/event/abc lights Prediction, or portfolio,
-// which is the dashboard and the account home. A route fact, so the shell can
-// derive it once for every page; only the dashboard overrides it, from its
-// scroll position.
+// which is the account home. A route fact, so the shell can derive it once
+// for every page; only the portfolio overrides it, from its scroll position.
 export function sectionForPathname(pathname: string | null): SectionId {
   if (!pathname) return "portfolio";
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "portfolio";
   for (const [id, route] of Object.entries(SECTION_ROUTES) as [SectionId, string][]) {
     if (pathname === route || pathname.startsWith(`${route}/`)) return id;
   }
@@ -64,20 +82,18 @@ export function sectionForPathname(pathname: string | null): SectionId {
 
 // Maps an onboarding interest to the section it should surface first.
 const INTEREST_TO_SECTION: Record<string, SectionId> = {
-  // Real assets are hidden from the nav for now; these interests fall back to the default order.
-  // stocks: "rwa",
-  // gold: "rwa",
+  stocks: "rwa",
+  gold: "rwa",
   crypto: "spot",
-  // Perpetuals are hidden from the nav for now; the interest falls back to the default order.
-  // perps: "perps",
+  perps: "perps",
   meme: "meme",
   prediction: "prediction",
   casino: "casino",
   // Earn is hidden from the nav for now; the interest falls back to the default order.
   // earn: "earn",
-  // yield: "rwa",
-  // realestate: "rwa",
-  // treasuries: "rwa",
+  yield: "rwa",
+  realestate: "rwa",
+  treasuries: "rwa",
 };
 
 export function interestToSection(interest: string | null): SectionId | null {

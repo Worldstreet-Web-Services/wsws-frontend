@@ -1609,6 +1609,14 @@
           "name": "Damas",
           "note": "Partidas rápidas con apuesta"
         },
+        "arkjet": {
+          "name": "Arkjet",
+          "note": "Retira antes de que caiga el multiplicador"
+        },
+        "chicken": {
+          "name": "Pilot Chicken",
+          "note": "Cruza cada carril y retira antes del choque"
+        },
         "arkball": {
           "name": "ArkBall",
           "note": "Pick 5 white balls and 1 ArkBall"

@@ -35,6 +35,33 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/:path*", destination: "/portfolio/:path*", permanent: false },
     ];
   },
+  // Lichess assets are stored once under a namespace. Root URLs are retained
+  // as fallback aliases because the upstream CSS and runtime build them.
+  async rewrites() {
+    const lichessAssetRoots = [
+      "cursors",
+      "data",
+      "fide",
+      "flags",
+      "flair",
+      "font",
+      "images",
+      "javascripts",
+      "logo",
+      "oops",
+      "piece",
+      "sound",
+      "vendor",
+      "video",
+    ];
+
+    return {
+      fallback: lichessAssetRoots.map((root) => ({
+        source: `/${root}/:path*`,
+        destination: `/chess/lichess/${root}/:path*`,
+      })),
+    };
+  },
   // Pin the Turbopack root to this project. Otherwise Next walks up the tree,
   // finds the stray ~/package-lock.json, and treats the whole home directory as
   // the workspace root — so Turbopack watches far more of the filesystem than it

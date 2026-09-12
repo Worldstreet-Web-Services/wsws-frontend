@@ -55,7 +55,7 @@ describe("chess dark canvas", () => {
     expect(profileBalance).toContain("w-[232px]");
     expect(profileBalance).toContain("min-[1020px]:w-[304px]");
     expect(profileBalance).toContain('import { usePortfolio } from "@/hooks/use-portfolio"');
-    expect(profileBalance).toContain("usePortfolio()");
+    expect(profileBalance).toContain('usePortfolio({ scope: "base" })');
     expect(profileBalance).not.toContain("useCasinoWallet");
     expect(profileBalance).not.toContain("fetch(");
     expect(headerActionsCss).toContain(".arkadeAction");

@@ -19,6 +19,11 @@ const eslintConfig = defineConfig([
     "reference/**",
     // Vendored Stockfish worker build (GPLv3, shipped as a static asset).
     "public/stockfish/**",
+    // Sibling worktrees under .worktrees/ are whole checkouts of this repo,
+    // build output included. Linting from the root otherwise walks into each
+    // one's .next and lints megabytes of bundled vendor code, which is slow
+    // and reports warnings nobody can act on.
+    ".worktrees/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

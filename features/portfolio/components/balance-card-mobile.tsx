@@ -14,6 +14,7 @@ import { useHoldingsLauncher } from "@/features/portfolio/components/holdings-la
 // and star art that does not reduce to CSS cleanly.
 export function BalanceCardMobile({
   totalUsd,
+  readyToSpend,
   loading,
   errored,
   refreshing,
@@ -33,10 +34,9 @@ export function BalanceCardMobile({
   // button below); its state is parked until it returns.
   // const [allocationOpen, setAllocationOpen] = useState(false);
 
-  // The two money actions. A 40px pill at 13px type: the 46px pills the comp
-  // drew read heavy on a phone next to the figure they sit under.
+  // The two money actions, sized to match the Kash card's buttons.
   const action =
-    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[10px] font-sans text-[13px] font-semibold tracking-[-0.13px] whitespace-nowrap transition-opacity";
+    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full py-[12px] font-sans text-[15px] font-semibold tracking-[-0.15px] whitespace-nowrap transition-opacity";
 
   return (
     <div
@@ -112,12 +112,17 @@ export function BalanceCardMobile({
                 {t("couldntLoad")}
               </div>
             ) : (
-              <div
-                className="ws-chewy bg-gradient-to-b from-white to-[#c4c4c4] bg-clip-text text-[42px] leading-none tracking-[-0.84px] text-transparent"
-                data-sensitive="balance"
-              >
-                {formatMasked(totalUsd)}
-              </div>
+              <>
+                <div
+                  className="ws-chewy bg-gradient-to-b from-white to-[#c4c4c4] bg-clip-text text-[42px] leading-none tracking-[-0.84px] text-transparent"
+                  data-sensitive="balance"
+                >
+                  {formatMasked(totalUsd)}
+                </div>
+                <div className="tnum mt-1 text-center text-[11px] font-normal text-white/45">
+                  {t("readyToSpend", { amount: formatMasked(readyToSpend) })}
+                </div>
+              </>
             )}
           </div>
         </div>

@@ -42,14 +42,7 @@ export function PromoCarousel({ children }: { children: React.ReactNode }) {
         <div ref={emblaRef} className="overflow-hidden">
           <div className="flex touch-pan-y items-center">
             {slides.map((slide, i) => (
-              // A phone shows one ticket at a time. The desk is wide enough for
-              // two, and for three past 1280px, so the tickets stay near the
-              // size they are drawn at instead of being scaled up to a band.
-              // The gap is padding on the slide, which is what Embla measures.
-              <div
-                key={i}
-                className="flex min-w-0 shrink-0 grow-0 basis-full pr-0 md:basis-1/2 md:pr-3 xl:basis-1/3"
-              >
+              <div key={i} className="flex min-w-0 shrink-0 grow-0 basis-full">
                 <PromoFrontContext.Provider value={i === selected}>
                   <div className="w-full">{slide}</div>
                 </PromoFrontContext.Provider>

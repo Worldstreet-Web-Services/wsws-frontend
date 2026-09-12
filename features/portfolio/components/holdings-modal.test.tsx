@@ -351,14 +351,19 @@ describe("HoldingsModal focus handling", () => {
     setPortfolio({ tokens: [token()] });
   });
 
-  it("takes focus into the search field, and hands it back to the trigger on Escape", () => {
+  // Focus lands on the dialog, not in the search field: on a phone, focusing
+  // the field raises the keyboard over the very list the reader opened this to
+  // look at. Typing is a choice they make by tapping the field.
+  it("takes focus into the dialog without opening the keyboard, and hands it back on Escape", () => {
     render(<Harness />);
     const trigger = screen.getByRole("button", { name: "Your holdings" });
     trigger.focus();
     fireEvent.click(trigger);
 
+    const dialog = screen.getByRole("dialog");
     const search = screen.getByRole("searchbox", { name: "Search your holdings" });
-    expect(document.activeElement).toBe(search);
+    expect(document.activeElement).toBe(dialog);
+    expect(document.activeElement).not.toBe(search);
 
     fireEvent.keyDown(window, { key: "Escape" });
 

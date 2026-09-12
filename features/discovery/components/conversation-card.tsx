@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { DiscoveryCta } from "@/features/discovery/components/discovery-cta";
 
 // The chrome every card on the "Join the Conversation" band shares: a 203px
 // article with an 18px radius and a two-stop gradient, decorative art across
@@ -222,57 +222,6 @@ export interface PillLink {
   external?: boolean;
 }
 
-// The card's two pills. Neither matches DiscoveryCta: the design fills one in
-// the room's red and rules the other in white, and both put the glyph after the
-// label rather than before it.
-//
-// Neither carries a width or a height. The design draws both 112x34.4, and both
-// of those numbers are floors here rather than sizes. The width comes from the
-// column, which asks for 112px as a minimum and grows to whatever the longest
-// label needs. The height comes from the padding: 17.224px each side, and the
-// vertical padding that puts a single line of label on the drawn height, which
-// is 10px inside the solid pill and 8.8px inside the ruled one because the
-// rule is 1.435px of the 35px. That is the gap the design leaves around "Join
-// Space", and because it is padding rather than slack it is still there around
-// "Rejoindre l'espace". English renders at exactly the size it is drawn.
-//
-// The label wraps instead of ellipsising. On a card narrow enough that even the
-// column's cap cannot hold the longest label on one line, a second line inside
-// the pill keeps the whole call to action readable and the padding intact; an
-// ellipsis would save the pill's shape by throwing the word away.
-export function RoomPill({
-  href,
-  label,
-  icon,
-  external,
-  tone,
-}: PillLink & { tone: "solid" | "outline" }) {
-  // Below md the pills step down: 11px type in a 30px pill, so the copy beside
-  // them keeps its column on a phone. md and up is the design's 34.4px.
-  const className = `ws-pressable flex items-center justify-center gap-[5.115px] rounded-full px-[12px] text-center font-serif text-[11px] leading-[1.2] font-medium text-white capitalize md:px-[17.224px] md:text-[12px] ${
-    tone === "solid"
-      ? "min-h-[30px] bg-[#d12727] py-[7px] md:min-h-[34.447px] md:py-[10px]"
-      : "min-h-[30px] border-[1.435px] border-white py-[5.8px] md:min-h-[35px] md:py-[8.8px]"
-  }`;
-  const body = (
-    <>
-      <span className="min-w-0 break-words hyphens-auto">{label}</span>
-      {icon}
-    </>
-  );
-  // A link out to another deployment is a plain anchor: the router has no
-  // page to prefetch, and a new tab keeps the app where it was.
-  return external ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
-      {body}
-    </a>
-  ) : (
-    <Link href={href} className={className}>
-      {body}
-    </Link>
-  );
-}
-
 /**
  * The handlers a card on this band spreads to report itself held.
  *
@@ -310,8 +259,12 @@ export interface ConversationCardProps {
   art?: React.ReactNode;
   kicker: { icon: React.ReactNode; label: string };
   headline: string;
-  primary: PillLink;
-  secondary: PillLink;
+  /**
+   * The one thing the card does. Every card on these bands ends in a single
+   * pill: two pills asked the reader to choose before they had read the card,
+   * and the row is a set of doorways, not a menu.
+   */
+  action: PillLink;
   /** Reports the card holding a rotation still, for a card whose content advances on its own. */
   onHold?: (held: boolean) => void;
 }
@@ -331,8 +284,7 @@ export function ConversationCard({
   art,
   kicker,
   headline,
-  primary,
-  secondary,
+  action,
   onHold,
 }: ConversationCardProps) {
   const hold = useHoldReport(onHold);
@@ -340,6 +292,15 @@ export function ConversationCard({
   return (
     <article className={`relative h-[203px] overflow-hidden rounded-[18px] ${gradient}`} {...hold}>
       {art}
+      {/* On a phone the copy stands under its own full width, which brings it
+          up into the art. A scrim carries it: the art still reads at the top
+          of the card, the words sit on something dark enough to be read, and
+          from md the copy is back in its own column beside the art and the
+          scrim is not needed. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[78%] bg-[linear-gradient(to_top,rgba(0,0,0,0.88)_0%,rgba(0,0,0,0.72)_38%,rgba(0,0,0,0.4)_68%,transparent_100%)] md:hidden"
+      />
 
       {/* Copy on the left, pills on the right, both inside the band the design
           rules between x=44.32 and the far edge less 34, and above every art
@@ -351,14 +312,14 @@ export function ConversationCard({
           between a German headline that fills its column and a pill that has
           grown to hold "Space beitreten". */}
       <div
-        className="absolute bottom-[21.553px] z-[1] flex items-start justify-between gap-[18px]"
+        className="absolute bottom-[21.553px] z-[1] flex flex-col items-start gap-[10px] md:flex-row md:items-start md:justify-between md:gap-[18px]"
         style={{ left: across(44.32), right: across(34) }}
       >
         {/* The design draws this column at 227.37px, 56.3245% of the band; the
             cap is 62% so the Spanish and Portuguese headlines keep their two
             lines at the widths the card is actually rendered at. The 2.32px is
             the copy sitting that much lower than the pills. */}
-        <div className="mt-[2.32px] max-w-[62%] min-w-0 flex-1">
+        <div className="mt-[2.32px] w-full min-w-0 flex-1 md:max-w-[62%]">
           <p className="flex items-center gap-[4.878px] font-serif text-[10px] leading-[1.2] font-semibold text-white md:text-[11px]">
             {kicker.icon}
             {/* The kicker wraps to a second line before it gives up any of
@@ -376,13 +337,26 @@ export function ConversationCard({
           </h3>
         </div>
 
-        {/* 112px is the width the design draws both pills at, and the floor
-            here rather than the width, so a longer locale widens the column
-            instead of being clipped inside it. Past the 66% cap the label
-            wraps inside the pill rather than being cut. */}
-        <div className="flex max-w-[52%] min-w-[96px] shrink-0 flex-col items-stretch gap-[7px] md:max-w-[66%] md:min-w-[112px] md:gap-[9px]">
-          <RoomPill {...primary} tone="solid" />
-          <RoomPill {...secondary} tone="outline" />
+        {/* One pill, at the size the prediction row's "Predict Now" is drawn:
+            the same 15px label in the same 20.571 by 12.857 gutters, so the
+            bands read as one set rather than three sizes of button.
+            A phone's card is a third of that width, where the two could not
+            share a row: the pill took half the card, wrapped its label over
+            two lines, and left the headline three words and an ellipsis. Below
+            md the copy takes the full width and the pill sits under it, at
+            13px in 14 by 9. */}
+        <div className="flex max-w-full shrink-0 items-center md:max-w-[66%]">
+          <DiscoveryCta
+            href={action.href}
+            label={action.label}
+            tone="light"
+            size={15}
+            sizeClassName="text-[13px] md:text-[15px]"
+            external={action.external}
+            padding="px-[14px] py-[9px] md:px-[20.571px] md:py-[12.857px]"
+            className="tracking-[-0.15px]"
+            icon={action.icon}
+          />
         </div>
       </div>
     </article>

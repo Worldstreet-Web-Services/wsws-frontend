@@ -59,6 +59,18 @@ interface DiscoveryCtaBase {
   /** Design sizes run from 12px on the arena card to 17px on Eth Africa. */
   size?: number;
   /**
+   * A class that sets the label size instead of `size` doing it inline, for a
+   * pill that has to step down at a breakpoint. An inline font size wins over
+   * any class, so the two cannot both be in play: passing this drops the
+   * inline one. `size` still sets the gap between glyph and label.
+   */
+  sizeClassName?: string;
+  /**
+   * A sibling deployment rather than a route here: the pill becomes a plain
+   * anchor opening a new tab, since the router has no page to prefetch.
+   */
+  external?: boolean;
+  /**
    * Padding classes, for the few pills the design draws to its own numbers
    * rather than to the size scale. Passing this replaces the derived padding
    * outright; the gap between glyph and label still comes from the scale.
@@ -97,17 +109,19 @@ export function DiscoveryCta({
   tone,
   icon,
   size = 14,
+  sizeClassName,
+  external,
   padding,
   className = "",
 }: DiscoveryCtaProps) {
   const pill = discoveryPillPadding(size);
 
   const style = {
-    fontSize: size,
+    ...(sizeClassName ? null : { fontSize: size }),
     gap: pill.gap,
     ...(padding ? null : { paddingInline: pill.paddingInline, paddingBlock: pill.paddingBlock }),
   };
-  const classes = `ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? ""} text-center font-serif font-semibold ${
+  const classes = `ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? ""} ${sizeClassName ?? ""} text-center font-serif font-semibold ${
     tone === "dark" ? "bg-black text-white" : "bg-white text-[#0a0a0a]"
   } ${className}`;
   const content = (
@@ -119,10 +133,17 @@ export function DiscoveryCta({
 
   // The button carries `type` because a pill inside a form would otherwise
   // submit it, and the design's own font: a button does not inherit one.
-  return href === undefined ? (
-    <button type="button" onClick={onClick} style={style} className={`${classes} font-[inherit]`}>
+  if (href === undefined) {
+    return (
+      <button type="button" onClick={onClick} style={style} className={`${classes} font-[inherit]`}>
+        {content}
+      </button>
+    );
+  }
+  return external ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" style={style} className={classes}>
       {content}
-    </button>
+    </a>
   ) : (
     <Link href={href} style={style} className={classes}>
       {content}

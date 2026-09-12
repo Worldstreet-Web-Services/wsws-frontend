@@ -8,8 +8,7 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { Avatar } from "@/components/ui/avatar";
 import { HelpIcon } from "@/components/ui/icons";
-import { truncateAddress } from "@/lib/format";
-import { deriveProfile, getWalletAddress } from "@/lib/user";
+import { deriveProfile } from "@/lib/user";
 import { requestTourReplay, startDashboardTour } from "@/features/tour";
 
 interface TopbarProps {
@@ -33,7 +32,6 @@ function CompassIcon({ size = 17 }: { size?: number }) {
 export function Topbar({ onOpenAccount }: TopbarProps) {
   const { user } = usePrivy();
   const profile = deriveProfile(user);
-  const address = getWalletAddress(user, "ethereum");
   const t = useTranslations("topbar");
   const tTour = useTranslations("tour");
   const router = useRouter();
@@ -90,11 +88,7 @@ export function Topbar({ onOpenAccount }: TopbarProps) {
           <span className="block truncate font-sans text-[14px] font-semibold text-white md:font-serif md:text-[15px] md:leading-[17.4px] md:tracking-[-0.15px]">
             {profile.name}
           </span>
-          {address ? (
-            <span className="tnum block truncate text-[11.5px] font-normal text-white/45 md:font-serif md:text-[12px] md:leading-[14.3px] md:font-medium">
-              {truncateAddress(address)}
-            </span>
-          ) : null}
+          {/* Wallet address hidden on mobile — visible in the sidebar */}
         </span>
       </button>
       {isHome ? null : (

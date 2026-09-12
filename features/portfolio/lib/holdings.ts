@@ -1,3 +1,4 @@
+import { isFeeSponsoredNetwork } from "@/lib/trade/sponsored-evm";
 import type { TokenBalance } from "@/lib/server/alchemy";
 
 // Deposits currently settle as USDC on Base and sit in the wallet as spendable
@@ -22,7 +23,40 @@ export function isDepositSettlementToken(token: TokenBalance): boolean {
 // deposit settlement float. USDT, RWAs, native gas tokens, and every other
 // holding pass through unchanged.
 export function selectHoldings(tokens: TokenBalance[]): TokenBalance[] {
-  return tokens.filter((token) => !isDepositSettlementToken(token));
+  const canPayFeeOn = networksWithNativeBalance(tokens);
+  return tokens.filter(
+    (token) => !isDepositSettlementToken(token) && !isUnsellableHolding(token, canPayFeeOn)
+  );
+}
+
+// Networks where the wallet holds some of the chain's own coin. A native row is
+// the one with no contract address.
+function networksWithNativeBalance(tokens: TokenBalance[]): Set<string> {
+  const networks = new Set<string>();
+  for (const token of tokens) {
+    if (token.address === null && token.balance > 0) networks.add(token.network);
+  }
+  return networks;
+}
+
+/**
+ * True for a holding this wallet has no way to sell.
+ *
+ * Gas is meant to be invisible here: on every sponsored network the platform
+ * pays the fee, so a sale costs the owner nothing. A handful of chains cannot
+ * be sponsored (HyperEVM, ApeChain and opBNB all reject the EIP-7702 entry
+ * point our bundler uses, see PR #401), and there the transfer is paid by the
+ * sender in the chain's own coin. A wallet holding none of that coin can start
+ * a sale but never finish it, which is what a tester hit selling USD₮0 on
+ * HyperEVM on 2026-09-12.
+ *
+ * Rather than offer a sale that fails, the table leaves the row out. The
+ * balance is untouched and every other consumer of the portfolio still sees it;
+ * this is display-only, like the settlement float above.
+ */
+function isUnsellableHolding(token: TokenBalance, canPayFeeOn: Set<string>): boolean {
+  if (isFeeSponsoredNetwork(token.network)) return false;
+  return !canPayFeeOn.has(token.network);
 }
 
 // The floor the holdings table renders as "$0.00": one rounded cent.

@@ -136,6 +136,7 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
       onClose={onClose}
       contentKey={active?.type ?? "none"}
       size={active?.type === "funds" || active?.type === "withdraw" ? "lg" : "md"}
+      panelClassName={undefined}
     >
       {active?.type === "detail" ? <DetailModal detail={active.detail} /> : null}
       {active?.type === "confirm" ? (

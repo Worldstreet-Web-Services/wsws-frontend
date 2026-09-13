@@ -16,6 +16,7 @@ import {
   type PerpOrderSide,
   type PerpMarginMode,
 } from "@/features/trade/components/perp-order-ticket";
+import { spotAmountStatus } from "@/features/trade/components/spot-amount-card";
 import type { SpotOrderMode } from "@/features/trade/components/spot-order-mode-toggle";
 import { useHyperliquidTrading } from "@/features/trade/hooks/use-hyperliquid-trading";
 import { useHyperliquidMarketContexts } from "@/features/trade/hooks/use-hyperliquid-market-contexts";
@@ -245,6 +246,16 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
   const collateralBalance = trading.clearinghouse
     ? toBaseUnits(trading.clearinghouse.withdrawable, COLLATERAL_DECIMALS)
     : 0n;
+
+  // The entered collateral exceeds the withdrawable HyperCore balance — the same
+  // reading that raises the ticket's "may bridge" advisory. The order still
+  // places (placeOrder bridges from Arbitrum), so Buy stays live; this only
+  // points the eye at Top up, where funding it up front avoids the bridge hop.
+  // Gated on an actionable button: no accent on a disabled or busy control.
+  const emphasizeTopUp =
+    Boolean(trading.walletId) &&
+    !busy &&
+    spotAmountStatus(collateralUsdc, collateralBalance, COLLATERAL_DECIMALS) === "above-balance";
 
   // The price the order is expected to fill at, as a plain decimal string for
   // the estimator and as a formatted figure for the summary.
@@ -815,7 +826,16 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
                   type="button"
                   onClick={() => setFundOpen(true)}
                   disabled={!trading.walletId || busy}
-                  className="bg-surface-strong border-hairline flex h-12 min-w-0 flex-1 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-2 font-[family-name:var(--font-sportsbook)] text-[16px] font-semibold text-white transition-colors hover:bg-white/16 disabled:cursor-not-allowed disabled:opacity-45"
+                  // When the entered collateral outruns the HyperCore balance the
+                  // button takes the same kash accent as the ticket's "may bridge"
+                  // advisory, so the note and the way to clear it read as one
+                  // thing. The order still places either way; this only makes
+                  // funding up front the obvious move.
+                  className={`bg-surface-strong flex h-12 min-w-0 flex-1 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-2 font-[family-name:var(--font-sportsbook)] text-[16px] font-semibold transition-all hover:bg-white/16 disabled:cursor-not-allowed disabled:opacity-45 ${
+                    emphasizeTopUp
+                      ? "border-kash text-kash shadow-[0_0_0_3px_rgba(255,214,47,0.18)]"
+                      : "border-hairline text-white"
+                  }`}
                 >
                   {trading.walletId ? t("topUp") : t("topUpPreparing")}
                 </button>

@@ -47,7 +47,12 @@ export function useHoldingsLauncher(): {
         />
       </ModalShell>
 
-      <AppModalHost active={modals.modal} onClose={modals.close} onConfirmed={modals.showDone} />
+      <AppModalHost
+        active={modals.modal}
+        onClose={modals.close}
+        onConfirmed={modals.showDone}
+        onOpenFunds={modals.openFunds}
+      />
     </>
   ) : null;
 

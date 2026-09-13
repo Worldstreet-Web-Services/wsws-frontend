@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "@/messages/en.json";
@@ -541,6 +541,54 @@ describe("HyperliquidProPerps", () => {
       expect(preparing).toBeDisabled();
       expect(screen.queryByRole("button", { name: "Top up" })).not.toBeInTheDocument();
       expect(withdraw()).toBeDisabled();
+    });
+
+    // The ticket stays live on a short balance (placeOrder bridges), so the way
+    // to clear the shortfall gets the accent instead: the same kash tone the
+    // ticket's "may bridge" advisory carries, so the note and the fix match.
+    // The ticket is stubbed here, so the collateral is driven through the
+    // onQuantityChange it was handed rather than by typing into a real field.
+    const setCollateral = (value: string) => {
+      const props = ticketProps.mock.calls.at(-1)?.[0] as {
+        onQuantityChange: (v: string) => void;
+      };
+      act(() => props.onQuantityChange(value));
+    };
+
+    it("accents Top up when the entered collateral outruns the balance", () => {
+      renderDesk(); // withdrawable is 500 USDC
+
+      expect(topUp().className).toContain("border-hairline");
+      expect(topUp().className).not.toContain("border-kash");
+
+      setCollateral("600");
+
+      expect(topUp().className).toContain("border-kash");
+      expect(topUp().className).not.toContain("border-hairline");
+    });
+
+    it("leaves Top up unaccented when the collateral fits the balance", () => {
+      renderDesk();
+
+      setCollateral("100");
+
+      expect(topUp().className).toContain("border-hairline");
+      expect(topUp().className).not.toContain("border-kash");
+    });
+
+    // A shortfall while the wallet is still preparing has no live Top up to
+    // accent, so the emphasis holds off rather than lighting a disabled button.
+    it("does not accent Top up before the wallet exists", () => {
+      trading.walletId = null;
+      renderDesk();
+
+      const preparing = screen.getByRole("button", { name: "Preparing…" });
+      const props = ticketProps.mock.calls.at(-1)?.[0] as {
+        onQuantityChange: (v: string) => void;
+      };
+      act(() => props.onQuantityChange("600"));
+
+      expect(preparing.className).not.toContain("border-kash");
     });
   });
 

@@ -298,33 +298,43 @@ export function RwaTradePanel({
           ) : null}
 
           {!walletEmpty ? (
-            <button
-              onClick={() => void confirm()}
-              disabled={!canConfirm}
-              className="text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {busy
-                ? settlementBusy
-                  ? settlementRequest?.direction === "solana-to-base"
-                    ? t("proceedsBaseWorking")
-                    : t("fundSolanaWorking")
-                  : signStep
-                    ? t("signingStep", { current: signStep.index + 1, total: signStep.total })
-                    : t("buildingOrder")
-                : belowMin
-                  ? tBuySell("minimumUsd", { amount: minBuyUsd })
-                  : overBalance
-                    ? tBuySell("notEnoughBalance")
-                    : needsBaseToSolanaFunding
-                      ? t("buySymbol", { symbol: asset.symbol })
-                      : phase === "quoting"
-                        ? t("fetchingBestPrice")
-                        : quote
-                          ? isBuy
-                            ? t("buySymbol", { symbol: asset.symbol })
-                            : t("sellSymbol", { symbol: asset.symbol })
-                          : t("enterAmount")}
-            </button>
+            <div className={`mt-4 flex gap-3 ${overBalance && onAddFunds ? "" : "flex-col"}`}>
+              <button
+                onClick={() => void confirm()}
+                disabled={!canConfirm}
+                className={`text-ink cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 ${overBalance && onAddFunds ? "flex-1" : "w-full"}`}
+              >
+                {busy
+                  ? settlementBusy
+                    ? settlementRequest?.direction === "solana-to-base"
+                      ? t("proceedsBaseWorking")
+                      : t("fundSolanaWorking")
+                    : signStep
+                      ? t("signingStep", { current: signStep.index + 1, total: signStep.total })
+                      : t("buildingOrder")
+                  : belowMin
+                    ? tBuySell("minimumUsd", { amount: minBuyUsd })
+                    : overBalance
+                      ? tBuySell("notEnoughBalance")
+                      : needsBaseToSolanaFunding
+                        ? t("buySymbol", { symbol: asset.symbol })
+                        : phase === "quoting"
+                          ? t("fetchingBestPrice")
+                          : quote
+                            ? isBuy
+                              ? t("buySymbol", { symbol: asset.symbol })
+                              : t("sellSymbol", { symbol: asset.symbol })
+                            : t("enterAmount")}
+              </button>
+              {overBalance && onAddFunds && (
+                <button
+                  onClick={onAddFunds}
+                  className="flex-1 cursor-pointer rounded-[14px] border border-white/15 bg-white/5 p-3.5 font-sans text-[15px] font-semibold text-white transition-opacity hover:bg-white/10"
+                >
+                  {tBuySell("topUp")}
+                </button>
+              )}
+            </div>
           ) : null}
         </>
       )}

@@ -66,6 +66,7 @@ type FundingStep = "idle" | "moving" | "queued";
 interface MemeTradeSheetProps {
   token: MemeToken;
   onClose: () => void;
+  onTopUp?: () => void;
   // Opens on this side; a portfolio-initiated sell starts on SELL.
   defaultSide?: "BUY" | "SELL";
   // The generic on-chain risk scanner (contract-upgradeable, low-liquidity
@@ -143,6 +144,7 @@ function saleHandoff(input: {
 export function MemeTradeSheet({
   token: listed,
   onClose,
+  onTopUp,
   defaultSide = "BUY",
   showRisk = true,
 }: MemeTradeSheetProps) {
@@ -860,16 +862,34 @@ export function MemeTradeSheet({
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                onClick={() => void (needsFunding ? fundAndQueue() : onTrade())}
-                disabled={submitDisabled}
-                className={`mt-3 min-h-11 w-full rounded-full p-[15px] font-sans text-[15px] font-semibold md:min-h-auto md:rounded-[14px] ${
-                  buying ? "bg-up text-up-ink" : "bg-down text-down-ink"
-                } ${submitDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"}`}
+              <div
+                className={`mt-3 flex gap-3 ${(overBalance || fundingBlocked) && onTopUp ? "" : "flex-col"}`}
               >
-                {ctaLabel}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void (needsFunding ? fundAndQueue() : onTrade())}
+                  disabled={submitDisabled}
+                  className={`min-h-11 rounded-full p-[15px] font-sans text-[15px] font-semibold md:min-h-auto md:rounded-[14px] ${
+                    (overBalance || fundingBlocked) && onTopUp ? "flex-1" : "w-full"
+                  } ${
+                    buying ? "bg-up text-up-ink" : "bg-down text-down-ink"
+                  } ${submitDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"}`}
+                >
+                  {ctaLabel}
+                </button>
+                {(overBalance || fundingBlocked) && onTopUp && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onTopUp();
+                    }}
+                    className="flex-1 cursor-pointer rounded-full border border-white/15 bg-white/5 p-[15px] font-sans text-[15px] font-semibold text-white transition-opacity hover:bg-white/10 md:rounded-[14px]"
+                  >
+                    {t("topUp")}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </motion.div>

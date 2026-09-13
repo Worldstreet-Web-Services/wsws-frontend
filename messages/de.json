@@ -154,7 +154,8 @@
     "marketCap": "Marktkap.",
     "volume24h": "Volumen (24h)",
     "liquidity": "Liquidität",
-    "fdv": "FDV"
+    "fdv": "FDV",
+    "topUp": "Top Up"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -191,6 +192,7 @@
     "price": "Preis",
     "searchPlaceholder": "Märkte durchsuchen",
     "sell": "Verkaufen",
+    "addFunds": "Guthaben aufladen",
     "settledNote": "Ihr Guthaben wurde aktualisiert.",
     "stageDetected": "Zahlung eingegangen",
     "stageFailed": "Order fehlgeschlagen",
@@ -779,6 +781,7 @@
     "proceedsAdded": "{amount} $ wurden Ihrem Guthaben gutgeschrieben.",
     "proceedsAddedFallback": "Das Geld wurde Ihrem Guthaben gutgeschrieben.",
     "takesAMoment": "Das dauert meist nur einen Moment. Sie können schließen, es läuft weiter.",
+    "topUp": "Top Up",
     "amount": "Betrag",
     "amountToSell": "Verkaufsbetrag",
     "balanceUsd": "Guthaben {amount} $",

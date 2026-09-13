@@ -57,9 +57,10 @@ const STAGE_KEY: Record<DepositStage, string> = {
 interface BuySheetProps {
   payload: BuyPayload;
   onClose: () => void;
+  onTopUp?: () => void;
 }
 
-export function BuySheet({ payload, onClose }: BuySheetProps) {
+export function BuySheet({ payload, onClose, onTopUp }: BuySheetProps) {
   const t = useTranslations("buySell");
   const portfolio = usePortfolio();
   const destinations = useBuyDestinations();
@@ -494,27 +495,40 @@ export function BuySheet({ payload, onClose }: BuySheetProps) {
       ) : isSwapMarket && memeTrade.error ? (
         <p className="text-down mt-3 text-[13px] font-normal">{memeTrade.error}</p>
       ) : null}
-      <button
-        onClick={() => void confirm()}
-        disabled={!canBuy}
-        className="ws-chrome text-ink mt-4 w-full cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {!route && !isSwapMarket
-          ? t("unavailable")
-          : isSwapMarket && !swapTradable
-            ? swapTradabilityKnown
-              ? t("tradingPaused")
-              : t("checkingTradability")
-            : value <= 0
-              ? t("enterAmount")
-              : belowMin
-                ? t("minimumUsd", { amount: minUsd })
-                : notEnough
-                  ? t("notEnoughBalance")
-                  : buy.isPending || swapBusy
-                    ? t("confirming")
-                    : t("buyToken", { name: payload.name })}
-      </button>
+      <div className={`mt-4 flex gap-3 ${notEnough ? "" : "flex-col"}`}>
+        <button
+          onClick={() => void confirm()}
+          disabled={!canBuy}
+          className={`ws-chrome text-ink cursor-pointer rounded-[14px] bg-white p-3.5 font-sans text-[15px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 ${notEnough ? "flex-1" : "w-full"}`}
+        >
+          {!route && !isSwapMarket
+            ? t("unavailable")
+            : isSwapMarket && !swapTradable
+              ? swapTradabilityKnown
+                ? t("tradingPaused")
+                : t("checkingTradability")
+              : value <= 0
+                ? t("enterAmount")
+                : belowMin
+                  ? t("minimumUsd", { amount: minUsd })
+                  : notEnough
+                    ? t("notEnoughBalance")
+                    : buy.isPending || swapBusy
+                      ? t("confirming")
+                      : t("buyToken", { name: payload.name })}
+        </button>
+        {notEnough && onTopUp && (
+          <button
+            onClick={() => {
+              onClose();
+              onTopUp();
+            }}
+            className="flex-1 cursor-pointer rounded-[14px] border border-white/15 bg-white/5 p-3.5 font-sans text-[15px] font-semibold text-white transition-opacity hover:bg-white/10"
+          >
+            {t("topUp")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

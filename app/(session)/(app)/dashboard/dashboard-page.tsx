@@ -464,7 +464,12 @@ export function DashboardPage() {
         />
       )}
 
-      <AppModalHost active={active} onClose={close} onConfirmed={modals.showDone} />
+      <AppModalHost
+        active={active}
+        onClose={close}
+        onConfirmed={modals.showDone}
+        onOpenFunds={modals.openFunds}
+      />
     </>
   );
 }

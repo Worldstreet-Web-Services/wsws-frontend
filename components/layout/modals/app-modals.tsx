@@ -125,11 +125,14 @@ interface AppModalHostProps {
   onClose: () => void;
   /** Where a confirm lands once accepted. */
   onConfirmed: (title: string, msg: string) => void;
+  /** Opens the Add Funds sheet — threaded through so the buy sheet's "Top Up"
+   *  button can reach the parent's modal state. */
+  onOpenFunds?: () => void;
 }
 
 // Renders whichever sheet is active. Openness is derived from `active`, not
 // from the hook's own state, so a URL-staged sheet actually appears.
-export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps) {
+export function AppModalHost({ active, onClose, onConfirmed, onOpenFunds }: AppModalHostProps) {
   return (
     <ModalShell
       open={active !== null}
@@ -145,7 +148,9 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
           onConfirm={() => onConfirmed(active.confirm.successTitle, active.confirm.successMsg)}
         />
       ) : null}
-      {active?.type === "buy" ? <BuySheet payload={active.buy} onClose={onClose} /> : null}
+      {active?.type === "buy" ? (
+        <BuySheet payload={active.buy} onClose={onClose} onTopUp={onOpenFunds} />
+      ) : null}
       {active?.type === "sell" ? (
         <SellSheet payload={active.sell} initialAmount={active.sell.amount} onClose={onClose} />
       ) : null}
@@ -154,6 +159,7 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
           token={active.memeSell}
           defaultSide="SELL"
           onClose={onClose}
+          onTopUp={onOpenFunds}
           showRisk={false}
         />
       ) : null}
@@ -162,11 +168,19 @@ export function AppModalHost({ active, onClose, onConfirmed }: AppModalHostProps
           token={active.memeBuy}
           defaultSide="BUY"
           onClose={onClose}
+          onTopUp={onOpenFunds}
           showRisk={true}
         />
       ) : null}
       {active?.type === "rwaTrade" ? (
-        <RwaTradeModal payload={active.rwaTrade} onContinueInBackground={onClose} />
+        <RwaTradeModal
+          payload={active.rwaTrade}
+          onContinueInBackground={onClose}
+          onTopUp={() => {
+            onClose();
+            onOpenFunds?.();
+          }}
+        />
       ) : null}
       {active?.type === "funds" ? <FundsModal onClose={onClose} deposit={active.deposit} /> : null}
       {active?.type === "withdraw" ? <WithdrawModal onClose={onClose} /> : null}

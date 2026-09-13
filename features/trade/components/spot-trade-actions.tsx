@@ -41,6 +41,7 @@ export function SpotTradeActions(props: SpotTradeActionsProps) {
         noSellBalance: (symbol) => t("noSellBalance", { symbol }),
         buy: t("buy"),
         sell: t("sell"),
+        addFunds: t("addFunds"),
       }}
     />
   );

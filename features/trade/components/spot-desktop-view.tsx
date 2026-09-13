@@ -182,7 +182,14 @@ function toRowView(market: SpotMarket): SpotAssetRowView {
 // anything themselves.
 //
 // Phones keep the existing SpotSection. The page picks between them.
-export function SpotDesktopView() {
+interface SpotDesktopViewProps {
+  // Opens the deposit flow. A buy the USDC balance cannot cover grows an
+  // "Add funds" button beside a disabled Buy; the page supplies it from its
+  // own modal host.
+  onAddFunds?: () => void;
+}
+
+export function SpotDesktopView({ onAddFunds }: SpotDesktopViewProps = {}) {
   const t = useTranslations("spot");
   const { markets, destinations, loading, error } = useSpotMarkets();
   const portfolio = usePortfolio();
@@ -542,6 +549,7 @@ export function SpotDesktopView() {
                       // to open a modal with: the amount is already entered, in
                       // the coin, on the leg the reader chose.
                       onSell={(entered) => void sell.submit(entered)}
+                      onAddFunds={onAddFunds}
                       pending={buy.pending ? "buy" : sell.pending ? "sell" : null}
                     />
                   </div>

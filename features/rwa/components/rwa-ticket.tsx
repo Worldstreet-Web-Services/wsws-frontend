@@ -402,10 +402,15 @@ export function RwaTicket({
             }
             onBuy={() => void confirm()}
             onSell={() => void confirm()}
+            // A buy the wallet can't cover is the one block a deposit clears, so
+            // the actions grow an "Add funds" button beside a disabled Buy
+            // rather than leaving the reason line as the only way out.
+            onAddFunds={onAddFunds}
             pending={busy ? side : null}
             labels={{
               stageWaiting,
               ctaEnterAmount: holdReason ?? t("enterAmount"),
+              addFunds: t("addFunds"),
               ctaNoBalanceOf: (symbol) => t("notEnoughOf", { symbol }),
               amountTooPrecise: (symbol, decimals) => t("amountTooPrecise", { symbol, decimals }),
               amountInvalid: t("amountInvalid"),

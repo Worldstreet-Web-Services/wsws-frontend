@@ -35,6 +35,8 @@ interface SpotBuyState {
   balanceLoading: boolean;
   /** Whether a buy can be submitted right now. */
   canBuy: boolean;
+  /** True when the entered amount exceeds the spendable USDC balance. */
+  notEnough: boolean;
   /** Why the button is disabled, as a ready-to-show label (empty when enabled). */
   disabledLabel: string;
   /** True while an order is being placed or a swap is in flight. */
@@ -212,6 +214,7 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
     balance,
     balanceLoading: portfolio.loading,
     canBuy,
+    notEnough,
     disabledLabel,
     pending: buy.isPending || swapBusy,
     submit,

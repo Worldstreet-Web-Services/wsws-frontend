@@ -30,7 +30,7 @@ const link = (name: RegExp) => screen.getByRole("link", { name });
 describe("Market Square card", () => {
   const home = "https://square.example";
 
-  it("opens the live room and the square in new tabs", () => {
+  it("opens the live room in a new tab, because joining is the Square's", () => {
     renderWithIntl(
       <SquareCard
         room={{
@@ -41,7 +41,6 @@ describe("Market Square card", () => {
           href: `${home}/live/r1`,
         }}
         avatars={["https://cdn.example/ada.png"]}
-        homeHref={home}
       />
     );
     expect(screen.getByText("Base season, who wins")).toBeInTheDocument();
@@ -53,12 +52,14 @@ describe("Market Square card", () => {
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
-  it("invites the reader in when no room is live, faces from the design", () => {
-    const { container } = renderWithIntl(<SquareCard room={null} avatars={[]} homeHref={home} />);
+  // With nothing live there is nothing to join, so the pill opens the Square
+  // page in this app rather than leaving for the deployment.
+  it("invites the reader to the Square page when no room is live, faces from the design", () => {
+    const { container } = renderWithIntl(<SquareCard room={null} avatars={[]} />);
     expect(screen.getByText("Live rooms on Market Square, all day")).toBeInTheDocument();
     const open = link(/Open Square/);
-    expect(open).toHaveAttribute("href", home);
-    expect(open).toHaveAttribute("target", "_blank");
+    expect(open).toHaveAttribute("href", "/square");
+    expect(open).not.toHaveAttribute("target");
     expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(container.querySelector('img[src="/market/convo-avatar-4.png"]')).not.toBeNull();
   });
@@ -79,14 +80,14 @@ describe("Go live card", () => {
 });
 
 describe("Feed card", () => {
-  const home = "https://square.example";
-
-  it("sends both pills to Square, in a new tab", () => {
-    renderWithIntl(<FeedCard homeHref={home} />);
+  // Reading the feed is what the Square page is for, so the pill opens it
+  // here, in the same tab.
+  it("opens the Square page in this app", () => {
+    renderWithIntl(<FeedCard />);
     expect(screen.getByText(enMessages.discovery.feedHeadline)).toBeInTheDocument();
     const open = link(/Open the feed/);
-    expect(open).toHaveAttribute("href", home);
-    expect(open).toHaveAttribute("target", "_blank");
+    expect(open).toHaveAttribute("href", "/square");
+    expect(open).not.toHaveAttribute("target");
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });

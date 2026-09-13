@@ -136,14 +136,14 @@ export function KashCardMobile({ onBuy, onConvert, onHistory }: KashCardMobilePr
               the door is gone, so restoring it is this one pill. */}
           <button
             onClick={onBuy}
-            className="flex h-[9.6cqw] cursor-pointer items-center justify-center gap-[1.6cqw] rounded-full bg-white text-[3.5cqw] font-semibold text-black shadow-[0_1.6px_3.3px_rgba(90,60,0,0.18)] transition-transform active:scale-[0.98]"
+            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-white py-[14px] text-[15px] font-semibold text-black shadow-[0_1.6px_3.3px_rgba(90,60,0,0.18)] transition-transform active:scale-[0.98]"
           >
             <ArrowDownGlyph className="h-[3.7cqw] w-[3.7cqw]" />
             {t("buy")}
           </button>
           <button
             onClick={onConvert}
-            className="flex h-[9.6cqw] cursor-pointer items-center justify-center gap-[1.6cqw] rounded-full bg-black text-[3.5cqw] font-semibold text-white shadow-[0_1.6px_3.3px_rgba(0,0,0,0.28)] transition-transform active:scale-[0.98]"
+            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-black py-[14px] text-[15px] font-semibold text-white shadow-[0_1.6px_3.3px_rgba(0,0,0,0.28)] transition-transform active:scale-[0.98]"
           >
             <ArrowsLeftRightGlyph className="h-[3.7cqw] w-[3.7cqw]" />
             {t("convert")}

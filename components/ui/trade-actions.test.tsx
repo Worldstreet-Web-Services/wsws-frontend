@@ -27,6 +27,7 @@ const LABELS: TradeActionsProps["labels"] = {
   noSellBalance: (symbol) => `NONE-HELD:${symbol}`,
   buy: "BUY-LABEL",
   sell: "SELL-LABEL",
+  addFunds: "ADD-FUNDS",
 };
 
 function renderActions(props: Partial<TradeActionsProps> = {}) {
@@ -55,6 +56,10 @@ function renderActions(props: Partial<TradeActionsProps> = {}) {
     }),
   };
 }
+
+// The over-balance buy that the Add-funds companion is built for: an amount a
+// cent past the pay balance, on the buy leg.
+const OVER_BALANCE = "1240.000001";
 
 describe("TradeActions", () => {
   it("renders the label it is handed for the chosen side", () => {
@@ -177,5 +182,58 @@ describe("TradeActions", () => {
     expect(action).toHaveAttribute("aria-busy", "false");
     expect(action.querySelector(".animate-spin")).toBeNull();
     expect(screen.getByText(LABELS.stageWaiting)).toBeInTheDocument();
+  });
+
+  // The Add-funds companion: the way forward when a buy outruns the pay
+  // balance, standing where the dead Buy button was rather than only in a line.
+  describe("add funds", () => {
+    it("grows an Add funds button beside a Buy the balance cannot cover", () => {
+      const onAddFunds = vi.fn();
+      const { action } = renderActions({ side: "buy", amount: OVER_BALANCE, onAddFunds });
+      expect(action).toBeDisabled();
+      const addFunds = screen.getByRole("button", { name: LABELS.addFunds });
+      expect(addFunds).toBeEnabled();
+      fireEvent.click(addFunds);
+      expect(onAddFunds).toHaveBeenCalledOnce();
+    });
+
+    it("stays hidden while the buy is affordable", () => {
+      renderActions({ side: "buy", amount: "100", onAddFunds: vi.fn() });
+      expect(screen.queryByRole("button", { name: LABELS.addFunds })).not.toBeInTheDocument();
+    });
+
+    // Empty, too-precise and malformed amounts are the user's to fix; a deposit
+    // would not clear them, so the button holds off.
+    it.each([
+      ["an empty amount", ""],
+      ["a too-precise amount", "0.12345678"],
+      ["a malformed amount", "1e3"],
+    ])("stays hidden on %s", (_case, amount) => {
+      renderActions({ side: "buy", amount, onAddFunds: vi.fn() });
+      expect(screen.queryByRole("button", { name: LABELS.addFunds })).not.toBeInTheDocument();
+    });
+
+    it("stays hidden while the order is in flight", () => {
+      renderActions({ side: "buy", amount: OVER_BALANCE, pending: "buy", onAddFunds: vi.fn() });
+      expect(screen.queryByRole("button", { name: LABELS.addFunds })).not.toBeInTheDocument();
+    });
+
+    // Selling draws down the asset, not the pay token, so a short pay balance is
+    // no reason to top up: the companion is a buy-leg control only.
+    it("stays hidden on the sell leg", () => {
+      renderActions({
+        side: "sell",
+        amount: "0.6",
+        sell: { balance: HALF_BTC, decimals: BTC_DECIMALS, symbol: "BTC" },
+        onAddFunds: vi.fn(),
+      });
+      expect(screen.queryByRole("button", { name: LABELS.addFunds })).not.toBeInTheDocument();
+    });
+
+    it("stays hidden when the desk offers no deposit route", () => {
+      const { action } = renderActions({ side: "buy", amount: OVER_BALANCE });
+      expect(action).toBeDisabled();
+      expect(screen.queryByRole("button", { name: LABELS.addFunds })).not.toBeInTheDocument();
+    });
   });
 });

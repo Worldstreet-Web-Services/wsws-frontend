@@ -34,7 +34,8 @@ export type PageName =
   | "prediction"
   | "earn"
   | "arkade"
-  | "arktivity";
+  | "arktivity"
+  | "market_square";
 
 /**
  * Event name -> its properties. `void` means the event takes none.

@@ -120,15 +120,9 @@ export function ConversationRow({ spaces = [] }: { spaces?: readonly SpaceSpot[]
             stacked inside it. */}
         {!MARKET_SQUARE_HIDDEN && squareHome !== null
           ? [
-              <SquareCard
-                key="rooms"
-                room={conversation}
-                avatars={hosts}
-                homeHref={squareHome}
-                onHold={hold}
-              />,
+              <SquareCard key="rooms" room={conversation} avatars={hosts} onHold={hold} />,
               <GoLiveCard key="go-live" homeHref={squareHome} onHold={hold} />,
-              <FeedCard key="feed" homeHref={squareHome} onHold={hold} />,
+              <FeedCard key="feed" onHold={hold} />,
             ]
           : null}
       </Carousel>

@@ -1216,3 +1216,30 @@ body {
    pixels, so un-blurring on hover would push a balance to every viewer on an
    accidental mouse-over. Reading your own numbers means turning the blur off
    in the console, which is a decision rather than a gesture. */
+
+/* The wink face on the Square's people deck: the open-eyed frame blinks over
+   the winking one on the file's own 2.2s clock. Rests on the wink under
+   reduced motion. Carried over from the Square's globals. */
+@keyframes ws-wink-blink {
+  0%,
+  36.36% {
+    opacity: 0;
+  }
+  50%,
+  86.36% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@utility ws-wink-blink {
+  animation: ws-wink-blink 2.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-wink-blink {
+    animation: none;
+  }
+}

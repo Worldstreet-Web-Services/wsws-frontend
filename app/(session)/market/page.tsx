@@ -34,6 +34,7 @@ export default function MarketPage() {
         <MobileMarketView
           onOpenDetail={modals.openDetail}
           onOpenBuy={modals.openBuy}
+          onAddFunds={modals.openFunds}
           predictionSlot={<PredictionMarketList />}
           rwaSlot={<RwaSection onAddFunds={modals.openFunds} />}
         />

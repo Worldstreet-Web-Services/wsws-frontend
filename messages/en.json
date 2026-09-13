@@ -192,6 +192,7 @@
     "price": "Price",
     "searchPlaceholder": "Search markets",
     "sell": "Sell",
+    "addFunds": "Add funds",
     "settledNote": "Your balance has been updated.",
     "stageDetected": "Payment received",
     "stageFailed": "Order failed",

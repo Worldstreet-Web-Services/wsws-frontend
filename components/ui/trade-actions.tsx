@@ -68,6 +68,10 @@ export interface TradeActionsLabels {
   noSellBalance: (symbol: string) => string;
   buy: string;
   sell: string;
+  // The companion "Add funds" control, shown beside a buy the pay balance
+  // cannot cover. Optional: a desk that has no deposit route to offer omits it
+  // and the button never appears.
+  addFunds?: string;
 }
 
 export interface TradeActionsProps {
@@ -85,6 +89,13 @@ export interface TradeActionsProps {
   sell?: SellAsset;
   onBuy: (amount: string) => void;
   onSell: (amount: string) => void;
+  // Opens the deposit flow. When given, a buy the pay balance cannot cover
+  // grows an "Add funds" button beside a disabled Buy, so the way forward sits
+  // where the dead button was rather than only in a reason line. A short pay
+  // balance is the one block topping up fixes: an empty, malformed or
+  // too-precise amount is the user's to correct, so the button holds off on
+  // those.
+  onAddFunds?: () => void;
   // The side currently executing, or null when nothing is in flight.
   pending?: TradeSide | null;
   labels: TradeActionsLabels;
@@ -97,6 +108,7 @@ export function TradeActions({
   sell,
   onBuy,
   onSell,
+  onAddFunds,
   pending = null,
   labels,
 }: TradeActionsProps) {
@@ -133,16 +145,35 @@ export function TradeActions({
   const reason = buying ? buyReason : sellReason;
   const reasonId = `${baseId}-${side}`;
 
+  // The one block a deposit clears: a buy whose only problem is that the pay
+  // balance falls short. Not while an order is signing, not on an empty,
+  // malformed or too-precise amount — those the deposit would not fix — and
+  // only when the desk actually handed us a way to add funds.
+  const showAddFunds =
+    buying &&
+    !inFlight &&
+    onAddFunds != null &&
+    labels.addFunds != null &&
+    amountStatus(amount, pay.balance, pay.decimals) === "above-balance";
+
   return (
     <div className="flex w-full flex-col gap-2">
-      <ActionButton
-        label={buying ? labels.buy : labels.sell}
-        tone={side}
-        busy={pending === side}
-        disabled={reason !== null}
-        describedBy={reasonId}
-        onClick={() => (buying ? onBuy(amount) : onSell(amount))}
-      />
+      {/* Side by side when the top-up button is out, so it lands where the dead
+          Buy button was; a lone button keeps the full width it always had. */}
+      <div className={showAddFunds ? "flex w-full gap-3" : "contents"}>
+        <ActionButton
+          label={buying ? labels.buy : labels.sell}
+          tone={side}
+          busy={pending === side}
+          disabled={reason !== null}
+          describedBy={reasonId}
+          onClick={() => (buying ? onBuy(amount) : onSell(amount))}
+          fill={showAddFunds ? "share" : "full"}
+        />
+        {showAddFunds ? (
+          <AddFundsButton label={labels.addFunds ?? ""} onClick={onAddFunds} />
+        ) : null}
+      </div>
       <Reason id={reasonId} text={reason} />
     </div>
   );
@@ -170,6 +201,7 @@ function ActionButton({
   disabled,
   describedBy,
   onClick,
+  fill = "full",
 }: {
   label: string;
   tone: TradeSide;
@@ -177,15 +209,19 @@ function ActionButton({
   disabled: boolean;
   describedBy: string;
   onClick: () => void;
+  // "full" takes the whole width its parent gives it, the standing case.
+  // "share" splits a row with the Add-funds button, each taking half.
+  fill?: "full" | "share";
 }) {
   // The design set the label in Inter; production keeps its body face, Geist.
   //
-  // The button must not carry flex-1. Its parent is a column, so flex-1 would
-  // set flex-basis: 0% on the vertical axis, which replaces h-12 as the flex
-  // base size; the column is content-height, so the button collapsed to the
-  // 24px line box instead of the 48px the design draws. It is a fixed-height
-  // control: h-12 for the height, w-full for the width the column gives it,
-  // and shrink-0 so a shorter parent can never squeeze it again.
+  // Down the column the button must not carry flex-1: flex-basis: 0% would land
+  // on the vertical axis and replace h-12 as the base size, collapsing a
+  // content-height column to the 24px line box instead of the 48px the design
+  // draws. So the column case stays w-full + shrink-0. In a row the main axis is
+  // horizontal, so flex-1 sizes width, not height, and min-w-0 lets a long
+  // label shrink rather than push the top-up button off the edge.
+  const width = fill === "share" ? "flex-1 min-w-0" : "w-full shrink-0";
   return (
     <button
       type="button"
@@ -193,11 +229,27 @@ function ActionButton({
       disabled={disabled}
       aria-busy={busy}
       aria-describedby={describedBy}
-      className={`flex h-12 w-full shrink-0 items-center justify-center rounded-3xl font-sans text-[16px] font-semibold text-white transition-opacity disabled:opacity-45 ${
+      className={`flex h-12 ${width} items-center justify-center rounded-3xl font-sans text-[16px] font-semibold text-white transition-opacity disabled:opacity-45 ${
         tone === "buy" ? "bg-buy" : "bg-sell"
       }`}
     >
       {busy ? <ButtonSpinner /> : null}
+      {label}
+    </button>
+  );
+}
+
+// The way forward when a buy outruns the pay balance. Never disabled: adding
+// funds is always available, which is the whole reason it stands beside a Buy
+// that is not. It carries no action tone, so it never reads as a second Buy;
+// the neutral surface marks it as the escape hatch it is.
+function AddFundsButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-3xl border border-white/15 bg-white/8 font-sans text-[16px] font-semibold text-white transition-colors hover:bg-white/15"
+    >
       {label}
     </button>
   );

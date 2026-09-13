@@ -101,6 +101,10 @@ export interface SpotTicketProps {
   // The caret on the pair pill. The market list is this screen's picker, so
   // changing market means going back to it rather than opening a second one.
   onChangeMarket: () => void;
+  // Opens the deposit flow. A buy the USDC balance cannot cover grows an
+  // "Add funds" button beside a disabled Buy; omit it and the button never
+  // appears (the surfaces without a modal host to open leave it out).
+  onAddFunds?: () => void;
 }
 
 // The phone spot order ticket (Figma 1:7825): which market, its 24h move, the
@@ -123,7 +127,7 @@ export interface SpotTicketProps {
 // to show and any figure printed there would be invented. The row above it,
 // "Entry price", is the market price this ticket already shows in its own
 // field, which leaves the two rows SpotOrderSummary draws.
-export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
+export function SpotTicket({ market, onChangeMarket, onAddFunds }: SpotTicketProps) {
   const t = useTranslations("spot");
   const portfolio = usePortfolio();
 
@@ -400,6 +404,7 @@ export function SpotTicket({ market, onChangeMarket }: SpotTicketProps) {
           // leg the reader chose, so a second screen asking for it again was
           // the ticket refusing to do what its button says.
           onSell={(entered) => void sell.submit(entered)}
+          onAddFunds={onAddFunds}
           pending={buy.pending ? "buy" : sell.pending ? "sell" : null}
         />
       )}

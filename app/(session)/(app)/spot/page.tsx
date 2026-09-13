@@ -25,7 +25,7 @@ export default function SpotPage() {
 
   return (
     <>
-      <SpotDesktopView />
+      <SpotDesktopView onAddFunds={modals.openFunds} />
       <AppModalHost
         active={modals.modal}
         onClose={modals.close}

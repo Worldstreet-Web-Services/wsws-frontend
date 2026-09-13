@@ -14,6 +14,7 @@ import {
   type MemeMarketMetricsData,
   type MemeMetricValue,
 } from "@/features/trade/components/meme-market-metrics";
+import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 import { MemeSellPanel } from "@/features/trade/components/meme-sell-panel";
 import { MemeSettlementTracker } from "@/features/trade/components/meme-settlement-tracker";
 import { MemeTradeSheet } from "@/features/trade/components/meme-trade-sheet";
@@ -147,6 +148,9 @@ interface MemeBuyTicketProps {
   onBuy: () => Promise<void>;
   phase: TradePhase;
   error: string | null;
+  // Opens the deposit flow. A buy the balance cannot cover grows a Top Up
+  // button beside a disabled Buy; omit it and the button never appears.
+  onAddFunds?: () => void;
 }
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
@@ -168,6 +172,7 @@ function MemeBuyTicket({
   onBuy,
   phase,
   error,
+  onAddFunds,
 }: MemeBuyTicketProps) {
   const t = useTranslations("meme");
   const [submitting, setSubmitting] = useState(false);
@@ -185,6 +190,11 @@ function MemeBuyTicket({
   const busy = submitting || phaseBusy;
   const blocked = !token.buyEnabled || overBalance || belowMin || fundingBlocked;
   const disabled = busy || blocked || !amountValid;
+
+  // The one block a deposit clears: the balance falls short, or a Solana buy
+  // can't move enough USDC across. Only then, and only when the desk handed us
+  // a deposit route, does the Top Up button stand beside Buy.
+  const showTopUp = (overBalance || fundingBlocked) && onAddFunds != null;
 
   // A Solana buy that still needs its USDC moved cannot be quoted: the trade
   // service prices it against the Solana wallet, which does not hold the money
@@ -327,16 +337,31 @@ function MemeBuyTicket({
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => void submit()}
-        disabled={disabled}
-        className={`bg-buy h-12 w-full rounded-3xl font-sans text-base font-semibold text-white ${
-          disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"
-        }`}
-      >
-        {ctaLabel}
-      </button>
+      {/* A buy the balance can't cover grows a Top Up button beside a disabled
+          Buy, so the way forward lands where the dead button was rather than
+          only in the "Not enough" line above. Precision and minimum blocks are
+          the user's to fix, so only a shortfall opens the deposit route. */}
+      <div className={`flex gap-3 ${showTopUp ? "" : "flex-col"}`}>
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={disabled}
+          className={`bg-buy h-12 rounded-3xl font-sans text-base font-semibold text-white ${
+            showTopUp ? "flex-1" : "w-full"
+          } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-90"}`}
+        >
+          {ctaLabel}
+        </button>
+        {showTopUp ? (
+          <button
+            type="button"
+            onClick={onAddFunds}
+            className="h-12 flex-1 rounded-3xl border border-white/15 bg-white/5 font-sans text-base font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            {t("topUp")}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -346,6 +371,9 @@ function MemeBuyTicket({
 // the chart frame and the sell ticket are all presentational.
 function MemeDesk() {
   const t = useTranslations("meme");
+  // "Add funds" the buy ticket hands upward opens here, the same deposit sheet
+  // the RWA desk and dashboard use. The host is mounted at the foot of the desk.
+  const modals = useAppModals();
 
   const [query, setQuery] = useState("");
   // The catalogue arrives whole and is cut into pages here, so the list ends on
@@ -610,6 +638,7 @@ function MemeDesk() {
                 }
                 phase={phase}
                 error={error}
+                onAddFunds={modals.openFunds}
               />
             ) : (
               <MemeSellPanel
@@ -631,8 +660,21 @@ function MemeDesk() {
       />
 
       {sheetToken ? (
-        <MemeTradeSheet token={sheetToken} defaultSide={side} onClose={() => setSheetToken(null)} />
+        <MemeTradeSheet
+          token={sheetToken}
+          defaultSide={side}
+          onClose={() => setSheetToken(null)}
+          onTopUp={modals.openFunds}
+        />
       ) : null}
+
+      {/* Hosts the deposit sheet the buy ticket's "Add funds" opens. */}
+      <AppModalHost
+        active={modals.modal}
+        onClose={modals.close}
+        onConfirmed={modals.showDone}
+        onOpenFunds={modals.openFunds}
+      />
     </div>
   );
 }

@@ -121,7 +121,7 @@ export function DiscoveryCta({
     gap: pill.gap,
     ...(padding ? null : { paddingInline: pill.paddingInline, paddingBlock: pill.paddingBlock }),
   };
-  const classes = `ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? ""} ${sizeClassName ?? ""} text-center font-serif font-semibold ${
+  const classes = `ws-pressable inline-flex max-w-full shrink-0 items-center justify-center rounded-full ${padding ?? "md:py-[10px] py-[14px]"} ${sizeClassName ?? ""} text-center font-serif font-semibold ${
     tone === "dark" ? "bg-black text-white" : "bg-white text-[#0a0a0a]"
   } ${className}`;
   const content = (

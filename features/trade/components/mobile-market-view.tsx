@@ -73,6 +73,12 @@ interface MobileMarketViewProps {
    * view hands it no query.
    */
   rwaSlot: ReactNode;
+  /**
+   * Opens the deposit flow. The Spot and Memecoins tickets grow an "Add funds"
+   * button beside a disabled Buy when the balance can't cover it; the route
+   * supplies this from its own modal host.
+   */
+  onAddFunds?: () => void;
 }
 
 // The Market design's phone Spot page (Figma 173:42337): its own MARKET head on
@@ -265,7 +271,7 @@ function MarketTabs({
   );
 }
 
-export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewProps) {
+export function MobileMarketView({ predictionSlot, rwaSlot, onAddFunds }: MobileMarketViewProps) {
   const router = useRouter();
   const t = useTranslations("markets");
   const tCommon = useTranslations("common");
@@ -686,6 +692,7 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
                       onSubmit={submitMemeTrade}
                       phase={memePhase}
                       error={memeTradeError}
+                      onAddFunds={onAddFunds}
                     />
                   </div>
                 </div>
@@ -777,7 +784,11 @@ export function MobileMarketView({ predictionSlot, rwaSlot }: MobileMarketViewPr
             <>
               {ticketMarket ? (
                 <div className="min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-                  <SpotTicket market={ticketMarket} onChangeMarket={closeTicket} />
+                  <SpotTicket
+                    market={ticketMarket}
+                    onChangeMarket={closeTicket}
+                    onAddFunds={onAddFunds}
+                  />
                 </div>
               ) : null}
               <div

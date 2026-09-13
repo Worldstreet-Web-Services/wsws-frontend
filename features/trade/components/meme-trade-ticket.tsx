@@ -40,6 +40,9 @@ export interface TradeTicketProps {
   onSubmit: (input: MemeTradeInput) => Promise<void>;
   phase: TradePhase;
   error: string | null;
+  // Opens the deposit flow. A buy the balance cannot cover grows a Top Up
+  // button beside a disabled Buy; omit it and the button never appears.
+  onAddFunds?: () => void;
 }
 
 // The quantity card, the quote breakdown and the action, for whichever side is
@@ -64,6 +67,7 @@ export function TradeTicket({
   onSubmit,
   phase,
   error,
+  onAddFunds,
 }: TradeTicketProps) {
   const t = useTranslations("meme");
   const [submitting, setSubmitting] = useState(false);
@@ -91,6 +95,11 @@ export function TradeTicket({
   const busy = submitting || phaseBusy;
   const blocked = !sideEnabled || overBalance || belowMin || fundingBlocked;
   const disabled = busy || blocked || !amountValid;
+
+  // The one block a deposit clears: on the buy leg, the balance falls short or
+  // a Solana buy can't move enough USDC across. Only then, and only when the
+  // desk handed us a deposit route, does the Top Up button stand beside Buy.
+  const showTopUp = buying && (overBalance || fundingBlocked) && onAddFunds != null;
 
   // A Solana buy that still needs its USDC moved cannot be quoted: the trade
   // service prices it against the Solana wallet, which does not hold the money
@@ -291,16 +300,30 @@ export function TradeTicket({
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => void submit()}
-        disabled={disabled}
-        className={`${buying ? "bg-buy" : "bg-sell"} h-12 w-full rounded-3xl font-[family-name:var(--font-sportsbook)] text-base font-semibold text-white ${
-          disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-        }`}
-      >
-        {ctaLabel}
-      </button>
+      {/* A buy the balance can't cover grows a Top Up button beside a disabled
+          Buy, so the way forward lands where the dead button was rather than
+          only in the "Not enough" line above. */}
+      <div className={`flex gap-3 ${showTopUp ? "" : "flex-col"}`}>
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={disabled}
+          className={`${buying ? "bg-buy" : "bg-sell"} h-12 rounded-3xl font-[family-name:var(--font-sportsbook)] text-base font-semibold text-white ${
+            showTopUp ? "flex-1" : "w-full"
+          } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+        >
+          {ctaLabel}
+        </button>
+        {showTopUp ? (
+          <button
+            type="button"
+            onClick={onAddFunds}
+            className="h-12 flex-1 rounded-3xl border border-white/15 bg-white/5 font-[family-name:var(--font-sportsbook)] text-base font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            {t("topUp")}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

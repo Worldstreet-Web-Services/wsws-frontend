@@ -1,41 +1,39 @@
-import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
+import { validateAssetSummary } from "./lib/chess-r2-assets.mjs";
 
-const requiredAssets = [
+const requiredLocalAssets = [
   "public/compiled/round.DDOZHOU5.js",
   "public/compiled/voice.move.FKEXI2WL.js",
   "public/compiled/voice.vosk.NRDKBVQB.js",
   "public/css/voice.21b8d714.css",
   "public/css/voice.move.help.621e5f43.css",
-  "public/npm/vosk/vosk.worker.js",
-  "public/npm/vosk/vosk.wasm",
-  "public/chess/lichess/sound/standard/Move.mp3",
-  "public/chess/lichess/sound/standard/Capture.mp3",
+  "public/chess/lichess/css/site.css",
+  "public/chess/lichess/js/analyse-ark.js",
 ];
 
-const voiceModel = "public/chess/lichess/lifat/vosk/model-en-us-0.15.tar.gz";
-const expectedModel = {
-  bytes: 41_184_862,
-  sha256: "f0b24bb92a48ca575b6a96500d6b543f0f079c573dfe85bbe16001fc0404e1d8",
-};
-
-for (const path of requiredAssets) {
+for (const path of requiredLocalAssets) {
   const size = statSync(path).size;
   if (size === 0) throw new Error(`Required chess asset is empty: ${path}`);
 }
 
-const model = readFileSync(voiceModel);
-if (model.byteLength !== expectedModel.bytes) {
-  throw new Error(
-    `Invalid Lichess voice model size at ${voiceModel}: expected ${expectedModel.bytes}, received ${model.byteLength}. Fetch the Git LFS object before building.`
-  );
+const summary = validateAssetSummary(
+  JSON.parse(readFileSync("config/chess-assets-r2.json", "utf8"))
+);
+const requiredRemoteSuffixes = [
+  "/npm/stockfish-web/sf_18.wasm",
+  "/npm/vosk/vosk.worker.js",
+  "/npm/vosk/vosk.wasm",
+  "/chess/lichess/lifat/vosk/model-en-us-0.15.tar.gz",
+  "/chess/lichess/sound/standard/Move.mp3",
+  "/chess/lichess/piece/cburnett/wK.svg",
+];
+
+for (const suffix of requiredRemoteSuffixes) {
+  if (!summary.requiredObjects.some((key) => key.endsWith(suffix))) {
+    throw new Error(`Chess R2 summary is missing required asset: ${suffix}`);
+  }
 }
 
-const modelHash = createHash("sha256").update(model).digest("hex");
-if (modelHash !== expectedModel.sha256) {
-  throw new Error(
-    `Invalid Lichess voice model checksum at ${voiceModel}: expected ${expectedModel.sha256}, received ${modelHash}.`
-  );
-}
-
-console.log(`Verified ${requiredAssets.length + 1} required chess assets.`);
+console.log(
+  `Verified ${requiredLocalAssets.length} local chess assets and ${summary.files} R2 manifest entries.`
+);

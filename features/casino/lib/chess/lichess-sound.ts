@@ -1,3 +1,5 @@
+import { lichessPublicAssetPath } from "./lichess-assets";
+
 type SoundMoveOptions = {
   filter?: "game" | "music";
   name?: string;
@@ -7,8 +9,9 @@ type SoundMoveOptions = {
 
 type AudioContextConstructor = new () => AudioContext;
 
-const SOUND_ROOT = "/chess/lichess/sound";
-const SILENCE_PATH = `${SOUND_ROOT}/Silence.mp3`;
+const soundAssetPath = (path: string): string =>
+  lichessPublicAssetPath(`chess/lichess/sound/${path}`);
+const SILENCE_PATH = soundAssetPath("Silence.mp3");
 const STANDARD_SOUNDS = new Set([
   "berserk",
   "capture",
@@ -42,7 +45,7 @@ export function resolveLichessSoundPath(theme: string, name: string): string | u
   if (theme === "silent") return undefined;
   if (theme === "standard" && !STANDARD_SOUNDS.has(name)) return SILENCE_PATH;
   const directory = theme === "music" ? "standard" : theme;
-  return `${SOUND_ROOT}/${directory}/${titleCase(name)}.mp3`;
+  return soundAssetPath(`${directory}/${titleCase(name)}.mp3`);
 }
 
 export function lichessBoardSoundName(san?: string): string[] {
@@ -162,7 +165,7 @@ class LichessSoundRuntime {
   }
 
   url(name: string): string {
-    return `${SOUND_ROOT}/${name}`;
+    return soundAssetPath(name);
   }
 
   async load(name: string, explicitPath?: string): Promise<DecodedSound | undefined> {

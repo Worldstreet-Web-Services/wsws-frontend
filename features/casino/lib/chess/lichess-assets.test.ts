@@ -4,6 +4,7 @@ import {
   lichessEsmPath,
   lichessPublicAssetPath,
   lichessRoundStyles,
+  resolveLichessPublicAssetPath,
 } from "./lichess-assets";
 
 describe("Lichess round assets", () => {
@@ -26,5 +27,31 @@ describe("Lichess round assets", () => {
       "/chess/lichess/lifat/vosk/model-en-us-0.15.tar.gz"
     );
     expect(lichessPublicAssetPath("npm/vosk/vosk.worker.js")).toBe("/npm/vosk/vosk.worker.js");
+  });
+
+  it("resolves Lichess media through the versioned public asset origin", () => {
+    const baseUrl = "https://assets.example.com/";
+
+    expect(resolveLichessPublicAssetPath("/lifat/vosk/model-en-us-0.15.tar.gz", baseUrl)).toBe(
+      "https://assets.example.com/chess-assets/v1/chess/lichess/lifat/vosk/model-en-us-0.15.tar.gz"
+    );
+    expect(resolveLichessPublicAssetPath("sound/standard/Move.mp3", baseUrl)).toBe(
+      "https://assets.example.com/chess-assets/v1/chess/lichess/sound/standard/Move.mp3"
+    );
+  });
+
+  it("resolves npm engines through the versioned public asset origin", () => {
+    expect(
+      resolveLichessPublicAssetPath("npm/stockfish-web/sf_18.wasm", "https://assets.example.com")
+    ).toBe("https://assets.example.com/chess-assets/v1/npm/stockfish-web/sf_18.wasm");
+  });
+
+  it("keeps legacy same-origin paths when no public asset origin is configured", () => {
+    expect(resolveLichessPublicAssetPath("lifat/vosk/model-en-us-0.15.tar.gz", "")).toBe(
+      "/chess/lichess/lifat/vosk/model-en-us-0.15.tar.gz"
+    );
+    expect(resolveLichessPublicAssetPath("npm/vosk/vosk.worker.js", undefined)).toBe(
+      "/npm/vosk/vosk.worker.js"
+    );
   });
 });

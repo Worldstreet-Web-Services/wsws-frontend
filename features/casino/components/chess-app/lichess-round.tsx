@@ -30,6 +30,7 @@ import {
   lichessEsmPath,
   lichessPublicAssetPath,
   lichessRoundStyles,
+  resolveLichessPublicAssetPath,
 } from "@/features/casino/lib/chess/lichess-assets";
 import { LichessSpectatorChat } from "@/features/casino/components/chess-app/lichess-spectator-chat";
 import { LichessSpectatorBetting } from "@/features/casino/components/chess-app/lichess-spectator-betting";
@@ -639,8 +640,9 @@ export function installLichessRuntime(
   if (!document.getElementById("lichess-font-face")) {
     const fontFace = document.createElement("style");
     fontFace.id = "lichess-font-face";
-    fontFace.textContent =
-      "@font-face{font-family:lichess;font-display:block;src:url('/font/lichess.woff2') format('woff2')}";
+    fontFace.textContent = `@font-face{font-family:lichess;font-display:block;src:url('${lichessPublicAssetPath(
+      "font/lichess.woff2"
+    )}') format('woff2')}`;
     document.head.append(fontFace);
   }
   for (const side of ["white", "black"] as const) {
@@ -655,7 +657,7 @@ export function installLichessRuntime(
     ] as const) {
       root.setProperty(
         `---${side}-${role}`,
-        `url(/chess/lichess/piece/cburnett/${prefix}${piece}.svg)`
+        `url(${lichessPublicAssetPath(`piece/cburnett/${prefix}${piece}.svg`)})`
       );
     }
   }
@@ -673,9 +675,12 @@ export function installLichessRuntime(
   site.asset = {
     baseUrl: () => window.location.origin,
     loadPieces: Promise.resolve(),
-    url: (path: string) => lichessPublicAssetPath(path),
-    flairSrc: (flair: string) => `/flair/img/${flair}.webp`,
-    fideFedSrc: (fed: string) => `/fide/fed/${fed}.svg`,
+    url: (path: string, options: { documentOrigin?: boolean; pathOnly?: boolean } = {}) =>
+      options.documentOrigin || options.pathOnly
+        ? resolveLichessPublicAssetPath(path)
+        : lichessPublicAssetPath(path),
+    flairSrc: (flair: string) => lichessPublicAssetPath(`flair/img/${flair}.webp`),
+    fideFedSrc: (fed: string) => lichessPublicAssetPath(`fide/fed/${fed}.svg`),
     loadCss: (href: string) => loadLichessStyle(`/${href.replace(/^\//, "")}`),
     loadCssPath: (key: string) => loadLichessStyle(lichessCssPath(key)),
     removeCss: (href: string) => {

@@ -10,6 +10,8 @@ const CSS_PATHS: Record<string, string> = {
   "voice.move.help": "/css/voice.move.help.621e5f43.css",
 };
 
+const CHESS_ASSET_PREFIX = "chess-assets/v1";
+
 export const lichessRoundStyles = [
   "/css/lib.theme.all.ca09c987.css",
   "/css/site.5a4b7c75.css",
@@ -25,7 +27,22 @@ export function lichessCssPath(key: string): string {
   return CSS_PATHS[key] ?? `/css/${key}.css`;
 }
 
-export function lichessPublicAssetPath(path: string): string {
+export function resolveLichessPublicAssetPath(path: string, baseUrl?: string): string {
   const normalized = path.replace(/^\//u, "");
-  return normalized.startsWith("lifat/") ? `/chess/lichess/${normalized}` : `/${normalized}`;
+  const localPath =
+    normalized.startsWith("lifat/") || normalized.startsWith("chess/lichess/")
+      ? `/${normalized.startsWith("chess/lichess/") ? normalized : `chess/lichess/${normalized}`}`
+      : `/${normalized}`;
+
+  if (!baseUrl) return localPath;
+
+  const objectPath =
+    normalized.startsWith("npm/") || normalized.startsWith("chess/lichess/")
+      ? normalized
+      : `chess/lichess/${normalized}`;
+  return `${baseUrl.replace(/\/+$/u, "")}/${CHESS_ASSET_PREFIX}/${objectPath}`;
+}
+
+export function lichessPublicAssetPath(path: string): string {
+  return resolveLichessPublicAssetPath(path, process.env.NEXT_PUBLIC_CHESS_ASSET_BASE_URL);
 }

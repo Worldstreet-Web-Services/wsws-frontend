@@ -46,11 +46,15 @@ function mockRedirectingUpstream(location: string): void {
   }) as unknown as typeof fetch;
 }
 
-async function loadRoute(env: { chessApiUrl?: string; publicChessApiUrl?: string } = {}) {
+async function loadRoute(
+  env: { chessApiUrl?: string; publicChessApiUrl?: string; wsapiBaseUrl?: string } = {}
+) {
   vi.resetModules();
   if (env.chessApiUrl) process.env.CHESS_API_URL = env.chessApiUrl;
   else delete process.env.CHESS_API_URL;
   process.env.NEXT_PUBLIC_CHESS_API_URL = env.publicChessApiUrl ?? "https://chess.test";
+  process.env.WSAPI_BASE_URL = env.wsapiBaseUrl ?? "https://gateway.test";
+  delete process.env.NEXT_PUBLIC_WSAPI_BASE_URL;
   return import("@/app/api/chess/[...path]/route");
 }
 
@@ -89,19 +93,25 @@ describe("chess proxy route", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
-  it("prefers the server-only chess url when both envs are set", async () => {
-    const { GET } = await loadRoute({
-      chessApiUrl: "http://127.0.0.1:18083",
-      publicChessApiUrl: "https://prod-chess.test",
-    });
-    const res = await GET(makeReq("https://app.test/api/chess/cashier/config"), {
-      params: Promise.resolve({ path: ["cashier", "config"] }),
-    });
+  it("prefers the server-only chess url during development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
 
-    expect(res.status).toBe(200);
-    const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
-      .calls[0];
-    expect(url).toBe("http://127.0.0.1:18083/cashier/config");
+    try {
+      const { GET } = await loadRoute({
+        chessApiUrl: "http://127.0.0.1:18083",
+        publicChessApiUrl: "https://prod-chess.test",
+      });
+      const res = await GET(makeReq("https://app.test/api/chess/cashier/config"), {
+        params: Promise.resolve({ path: ["cashier", "config"] }),
+      });
+
+      expect(res.status).toBe(200);
+      const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+        .calls[0];
+      expect(url).toBe("http://127.0.0.1:18083/cashier/config");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("uses the Docker chess service by default in development", async () => {
@@ -122,15 +132,33 @@ describe("chess proxy route", () => {
     }
   });
 
+  it("pins deployed chess requests to the staging gateway", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    auth.verifyRequest.mockResolvedValue({ userId: "user_1" });
+    auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
+
+    try {
+      const { GET } = await loadRoute({
+        chessApiUrl: "https://stale-server-chess.test",
+        publicChessApiUrl: "https://legacy-chess.test",
+        wsapiBaseUrl: "https://staging.test",
+      });
+      const res = await GET(makeReq("https://app.test/api/chess/play?setup=hook"), {
+        params: Promise.resolve({ path: ["play"] }),
+      });
+
+      expect(res.status).toBe(200);
+      const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+        .calls[0];
+      expect(url).toBe("https://staging.tsionark.com/v1/chess/play?setup=hook");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("does not cache failed upstream reads", async () => {
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: false }), {
-          status: 404,
-          headers: { "content-type": "application/json" },
-        })
-      )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ success: false }), {
           status: 404,
@@ -149,7 +177,7 @@ describe("chess proxy route", () => {
 
     expect((await GET(request(), context)).status).toBe(404);
     expect((await GET(request(), context)).status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("never caches player coach state", async () => {
@@ -374,7 +402,7 @@ describe("chess proxy route", () => {
     );
 
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/casino/chess/play?match=game-1");
+    expect(res.headers.get("location")).toBe("/api/chess/round/game-1");
     const [, init] = (
       global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
     ).mock.calls.find(([url]) => url.endsWith("/play/computer"))!;
@@ -404,7 +432,7 @@ describe("chess proxy route", () => {
     );
 
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/casino/chess/invite?code=challenge-1");
+    expect(res.headers.get("location")).toBe("/api/chess/challenge/challenge-1");
     const [, init] = (
       global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }
     ).mock.calls.find(([url]) => url.endsWith("/challenge"))!;
@@ -427,7 +455,7 @@ describe("chess proxy route", () => {
     );
 
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/casino/chess/invite?code=challenge-2");
+    expect(res.headers.get("location")).toBe("/api/chess/challenge/funded/challenge-2");
   });
 
   it("opens accepted friend challenges on the interactive board", async () => {
@@ -441,6 +469,6 @@ describe("chess proxy route", () => {
     });
 
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/casino/chess/play?match=game-1");
+    expect(res.headers.get("location")).toBe("/api/chess/round/game-1");
   });
 });

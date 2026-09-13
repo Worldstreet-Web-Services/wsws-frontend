@@ -12,12 +12,8 @@ import {
 import { detectRequestCountry } from "@/lib/server/ipinfo";
 import { lotterySchemaFor } from "@/lib/api/schemas/lottery";
 import { checkUpstream } from "@/lib/server/validate-upstream";
-import { wsapiService } from "@/lib/wsapi-base";
-import {
-  fetchUpstreamRead,
-  fetchUpstreamWrite,
-  upstreamCandidates,
-} from "@/lib/server/upstream-failover";
+import { chessUpstreamCandidates } from "@/lib/server/chess-upstream";
+import { fetchUpstreamRead, fetchUpstreamWrite } from "@/lib/server/upstream-failover";
 
 // Server-side proxy for the chess service on the platform gateway. Same
 // arrangement as the other service proxies in this app: routing through our
@@ -28,19 +24,11 @@ import {
 // spectator-visible, except per-caller reads such as cashier balance and the
 // caller's own bets. Writes act on a game or a cashier balance, so they need a
 // verified session and the wallet that session owns.
-// Each configured override can contain a comma-separated priority list. The
-// legacy public env remains in the pool so existing deployments keep working.
-const LOCAL_DEV_CHESS_API = "http://127.0.0.1:8082";
-const UPSTREAMS = upstreamCandidates(
-  process.env.CHESS_API_URL,
-  process.env.NODE_ENV === "development" ? LOCAL_DEV_CHESS_API : undefined,
-  process.env.NEXT_PUBLIC_CHESS_API_URL,
-  wsapiService("chess")
-);
+const UPSTREAMS = chessUpstreamCandidates();
 const NO_STORE = "no-store, max-age=0, must-revalidate";
 const COUNTRY_WRITE = /^(?:matches|matches\/[^/]+\/join|arenas\/[^/]+\/join|play\/computer)$/u;
 const PLAYER_PROFILE_WRITE = /^(?:matches|matches\/[^/]+\/join|computer\/matches|play\/computer)$/u;
-const SERVER_RENDERED_PAGE = /^(?:play|challenge)(?:\/|$)/u;
+const SERVER_RENDERED_PAGE = /^(?:play|challenge|competition)(?:\/|$)/u;
 
 // Just long enough to collapse the concurrent polls of two players watching the
 // same board, and short enough that neither sees a stale position. The match
@@ -54,21 +42,9 @@ const cache = new Map<
 
 function forwardedLocation(joined: string, location: string): string {
   if (!location.startsWith("/") || location.startsWith("//")) return location;
-
-  const challenge = SERVER_RENDERED_PAGE.test(joined)
-    ? /^\/challenge\/(?:funded\/)?([^/?#]+)(?:[?#].*)?$/u.exec(location)
-    : null;
-  if (challenge) {
-    return `/casino/chess/invite?code=${encodeURIComponent(challenge[1])}`;
-  }
-
-  const round = SERVER_RENDERED_PAGE.test(joined)
-    ? /^\/round\/([^/?#]+)(?:[?#].*)?$/u.exec(location)
-    : null;
-  if (round) {
-    return `/casino/chess/play?match=${encodeURIComponent(round[1])}`;
-  }
-
+  // Server-rendered forms submit inside the chess iframe. Keep redirects in
+  // that document so its load bridge can promote one canonical parent route;
+  // redirecting directly to /casino/chess here would mount Next inside Next.
   return SERVER_RENDERED_PAGE.test(joined) ? `/api/chess${location}` : location;
 }
 

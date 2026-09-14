@@ -10,7 +10,8 @@ import { ConnectionBanner } from "@/components/layout/connection-banner";
 import { SupportButton } from "@/components/layout/support-button";
 import { BroadcastDock } from "@/components/broadcast/broadcast-dock";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { FundsModal } from "@/features/funds";
+import { FundsModal, WithdrawModal } from "@/features/funds";
+import { PortfolioFab } from "@/features/portfolio";
 import { InviteFriendsModal, useClaimReferralFromLink } from "@/features/referrals";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
@@ -39,6 +40,7 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
   // the action works on every page, not just the dashboard, which keeps its own
   // copy for the balance card and the empty states.
   const [fundsOpen, setFundsOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   // The marquee's invite item opens the same Invite Friends modal the account
   // menu reaches; the shell owns an instance so the item works on every page.
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -97,6 +99,11 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
       <SupportButton />
 
+      <PortfolioFab
+        onOpenFunds={() => setFundsOpen(true)}
+        onOpenWithdraw={() => setWithdrawOpen(true)}
+      />
+
       <InviteFriendsModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <ModalShell open={accountOpen} onClose={() => setAccountOpen(false)}>
@@ -105,6 +112,10 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
       <ModalShell open={fundsOpen} onClose={() => setFundsOpen(false)} size="lg">
         <FundsModal onClose={() => setFundsOpen(false)} />
+      </ModalShell>
+
+      <ModalShell open={withdrawOpen} onClose={() => setWithdrawOpen(false)} size="lg">
+        <WithdrawModal onClose={() => setWithdrawOpen(false)} />
       </ModalShell>
     </div>
   );

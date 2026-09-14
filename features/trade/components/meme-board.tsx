@@ -59,11 +59,6 @@ import { belowMinimumBuy } from "@/lib/trade/minimums";
 // live next door and are wired in below: BoardChart, TradeTicket,
 // LiveTransactions, and the swap history behind useMemeSwaps.
 
-// The whole catalogue in one request, filtered client-side. Same figure and
-// same query key as MemeGrid uses, so opening the picker reuses this entry
-// rather than asking again.
-const CATALOG_LIMIT = 500;
-
 // Long enough that typing an amount does not spend a quote per keystroke, short
 // enough that the ticket settles while you look at it. The quote endpoint is
 // rate limited at 20/min.
@@ -96,7 +91,10 @@ export function MemeBoard() {
   const metricsPanelId = `meme-metrics-${useId()}`;
   const pickerPanelId = `meme-picker-${useId()}`;
 
-  const catalog = useMemeCatalog(1, CATALOG_LIMIT);
+  // The first page of the curated catalogue, which picks the coin on screen
+  // until one is chosen. Same query key as MemeGrid's pages, so opening the
+  // picker reuses this entry rather than asking again.
+  const catalog = useMemeCatalog();
   const portfolio = usePortfolio();
   const { walletFor, phase, error, trade } = useMemeTrade();
 

@@ -12,12 +12,21 @@ import { TradeApiError, type MemeToken, type SwapPreview } from "@/lib/meme/api"
 
 const catalog = vi.hoisted(() => ({
   tokens: [] as MemeToken[],
-  pageCount: 1,
+  // What the All view keeps, when a test gives the two views different rows.
+  allTokens: null as MemeToken[] | null,
+  total: null as number | null,
+  loaded: 0,
+  shownCount: 0,
+  hasMore: false,
+  isLoadingMore: false,
+  loadMore: vi.fn(),
   isLoading: false,
   isFetching: false,
   error: null as unknown,
   refetch: vi.fn(),
 }));
+// The view each hook was last asked for.
+const views = vi.hoisted(() => ({ catalog: [] as unknown[], search: [] as unknown[] }));
 const search = vi.hoisted(() => ({
   results: [] as MemeToken[],
   searching: false,
@@ -30,8 +39,16 @@ const fresh = vi.hoisted(() => ({
   identities: [] as ({ address: string; chainId: number } | null)[],
 }));
 vi.mock("@/features/trade/hooks/use-meme-tokens", () => ({
-  useMemeCatalog: () => catalog,
-  useMemeSearch: () => search,
+  useMemeCatalog: (opts?: { view?: string }) => {
+    views.catalog.push(opts?.view);
+    return opts?.view === "all" && catalog.allTokens
+      ? { ...catalog, tokens: catalog.allTokens }
+      : catalog;
+  },
+  useMemeSearch: (_raw: string, view?: string) => {
+    views.search.push(view);
+    return search;
+  },
   useMemeToken: (identity: { address: string; chainId: number } | null) => {
     fresh.identities.push(identity);
     return { token: fresh.token, isLoading: false, unavailable: null };
@@ -173,6 +190,15 @@ beforeEach(() => {
   fresh.identities = [];
   linkForPreview.mockClear();
   catalog.tokens = [aaa, bbb];
+  catalog.allTokens = null;
+  catalog.total = null;
+  catalog.loaded = 0;
+  catalog.shownCount = 0;
+  catalog.hasMore = false;
+  catalog.isLoadingMore = false;
+  catalog.loadMore.mockClear();
+  views.catalog = [];
+  views.search = [];
   catalog.error = null;
   catalog.isLoading = false;
   search.active = false;
@@ -322,6 +348,52 @@ describe("the memecoin desk", () => {
 // both halves of the ticket, the fee is the preview's, a lapsed quote is
 // blanked, the coin is re-read before trading, and a LOW_LIQUIDITY coin is
 // confirmed before any preview goes out.
+// Slice 4: the desk reads the paged catalogue behind a Curated / All switch,
+// counts it against the server's total and loads the next page on demand.
+describe("the memecoin desk's catalogue", () => {
+  const switchGroup = () => screen.getByRole("group", { name: "Which memecoins to list" });
+
+  it("opens curated, and the switch lists what All keeps, in the catalogue and search", () => {
+    const wild = memeToken({ symbol: "WILD", riskLevel: "HIGH" });
+    catalog.allTokens = [aaa, bbb, wild];
+    renderDesk();
+    expect(views.catalog.at(-1)).toBe("curated");
+    expect(screen.queryByRole("button", { name: /WILD/ })).toBeNull();
+
+    fireEvent.click(within(switchGroup()).getByRole("button", { name: "All" }));
+    expect(screen.getByRole("button", { name: /WILD/ })).toBeInTheDocument();
+    expect(views.catalog.at(-1)).toBe("all");
+    expect(views.search.at(-1)).toBe("all");
+  });
+
+  it("counts the loaded rows against the server's total and shows the view's size", () => {
+    catalog.total = 11_502;
+    catalog.loaded = 500;
+    catalog.shownCount = 156;
+    renderDesk();
+    expect(screen.getByText("500 of 11,502")).toBeInTheDocument();
+    expect(screen.getByText("156 shown")).toBeInTheDocument();
+  });
+
+  it("loads the next page from the list's footer", () => {
+    catalog.total = 1_200;
+    catalog.loaded = 500;
+    catalog.hasMore = true;
+    renderDesk();
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(catalog.loadMore).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Load more once the pages cover the total", () => {
+    catalog.total = 2;
+    catalog.loaded = 2;
+    catalog.hasMore = false;
+    renderDesk();
+    expect(screen.getByText("2 of 2")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+  });
+});
+
 describe("the memecoin desk against the trade contract", () => {
   const risky = memeToken({
     symbol: "RISKY",

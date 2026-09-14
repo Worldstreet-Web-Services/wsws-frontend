@@ -38,6 +38,8 @@ import { useCoingeckoId } from "@/hooks/use-coingecko-id";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMarketHandoff } from "@/hooks/use-market-handoff";
 import { usePortfolio } from "@/hooks/use-portfolio";
+import { MemeCatalogMore, MemeViewSwitch } from "@/features/trade/components/meme-catalog-controls";
+import { DEFAULT_DISCOVERY_VIEW, type DiscoveryView } from "@/lib/meme/catalog";
 import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { displaySymbol } from "@/lib/buy";
 import { friendlyError } from "@/lib/errors";
@@ -59,10 +61,6 @@ import { belowMinimumBuy, minimumBuyUsd } from "@/lib/trade/minimums";
 // chart is disclosed, and whether the market metrics are. So there is one
 // route, one catalogue and one rail, and the state lives here because
 // MemeDesktopBoard is presentational and owns none of it.
-
-// The catalogue arrives in one request and is filtered here, the same way the
-// phone's grid reads it, so both interfaces share one cache entry.
-const CATALOG_LIMIT = 500;
 
 // Matches the trade sheet: long enough that typing an amount does not spend a
 // quote per keystroke, short enough that the ticket settles while you look at
@@ -429,8 +427,11 @@ function MemeDesk() {
   // A Solana order is finished in the sheet; see runTrade below.
   const [sheetToken, setSheetToken] = useState<MemeToken | null>(null);
 
-  const catalog = useMemeCatalog(1, CATALOG_LIMIT);
-  const search = useMemeSearch(query);
+  // The catalogue a server page of 500 at a time, judged by the Curated / All
+  // view; the phone's grid reads the same pages, so both share one cache entry.
+  const [view, setView] = useState<DiscoveryView>(DEFAULT_DISCOVERY_VIEW);
+  const catalog = useMemeCatalog({ view });
+  const search = useMemeSearch(query, view);
   const portfolio = usePortfolio();
   const { walletFor, phase, error, trade, linkForPreview } = useMemeTrade();
 
@@ -447,11 +448,13 @@ function MemeDesk() {
   const { token: freshRead } = useMemeToken(listed);
   const selected = listed && freshRead && sameCoin(freshRead, listed) ? freshRead : listed;
 
-  // A new search is a different list, so the page someone was on says nothing
-  // about where to open it.
-  const [pagedQuery, setPagedQuery] = useState(query);
-  if (query !== pagedQuery) {
-    setPagedQuery(query);
+  // A new search or a new view is a different list, so the page someone was on
+  // says nothing about where to open it. "Load more" appends to the same list,
+  // so it keeps the page.
+  const listKey = `${view}|${query}`;
+  const [pagedList, setPagedList] = useState(listKey);
+  if (listKey !== pagedList) {
+    setPagedList(listKey);
     setRequestedPage(1);
   }
 
@@ -634,6 +637,22 @@ function MemeDesk() {
         pageCount={pageCount}
         onPageChange={setRequestedPage}
         onPageSizeChange={setListPageSize}
+        listControls={<MemeViewSwitch value={view} onChange={setView} />}
+        listStatus={
+          // The count and "Load more" describe the catalogue; a search replaces
+          // it, so they step aside while one is showing.
+          search.active ? null : (
+            <MemeCatalogMore
+              loaded={catalog.loaded}
+              total={catalog.total}
+              shownCount={catalog.shownCount}
+              hasMore={catalog.hasMore}
+              loadingMore={catalog.isLoadingMore}
+              failed={catalog.loadMoreFailed}
+              onLoadMore={catalog.loadMore}
+            />
+          )
+        }
         pairLabel={selected ? pairLabelFor(selected) : undefined}
         side={side}
         onSideChange={changeSide}

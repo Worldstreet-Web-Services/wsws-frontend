@@ -1,5 +1,5 @@
 {
-  "$comment": "Initial client JavaScript per route, gzipped kB. A ratchet: set just above what the route ships, lowered as it improves. See scripts/first-load.mjs. 2026-09-13: /, /privacy, /welcome, /prediction and /casino raised by 12-32 kB for the Watchtower error reporting SDK (@sentry/nextjs). It is loaded statically on purpose: deferring it would move the bytes out of first load but miss the hydration-time crashes that are the most valuable thing it catches.",
+  "$comment": "Initial client JavaScript per route, gzipped kB. A ratchet: set just above what the route ships, lowered as it improves. See scripts/first-load.mjs. 2026-09-13: /, /privacy, /welcome, /prediction and /casino raised by 12-32 kB for the Watchtower error reporting SDK (@sentry/nextjs). It is loaded statically on purpose: deferring it would miss hydration-time crashes. 2026-09-14: /spot, /meme, /activity, /rwa, /prediction, /casino and all chess routes raised after staging merge (feat/chess Lichess experience, chess coach-lab, studies) added chessground + chessops to the shared bundle; prediction routes gained Polymarket client. These are the new baseline for this code; lower them as the chess bundle is code-split or tree-shaken.",
   "default": 1900,
   "routes": {
     "/": 320,
@@ -8,12 +8,28 @@
     "/auth": 1350,
     "/interests": 1350,
     "/dashboard": 1700,
-    "/spot": 1650,
+    "/spot": 1710,
     "/perps": 1650,
-    "/meme": 1650,
-    "/rwa": 1700,
-    "/activity": 1650,
-    "/prediction": 1880,
-    "/casino": 1885
+    "/meme": 1710,
+    "/rwa": 1710,
+    "/activity": 1710,
+    "/prediction": 1920,
+    "/prediction/[id]": 1920,
+    "/prediction/event/[id]": 1920,
+    "/casino": 1940,
+    "/casino/arkball": 1940,
+    "/casino/arkjet": 1940,
+    "/casino/chicken": 1940,
+    "/casino/chess/coach-lab": 1950,
+    "/casino/chess/learn": 1940,
+    "/casino/chess/learn/practice": 1950,
+    "/casino/chess/learn/studies": 1945,
+    "/casino/chess/learn/studies/[id]": 1945,
+    "/casino/chess/watch": 1940,
+    "/casino/chess/play": 1940,
+    "/casino/chess/review": 1940,
+    "/casino/chess/matchmaking": 1940,
+    "/casino/chess/history": 1940,
+    "/casino/chess/leaderboard": 1940
   }
 }

@@ -1158,6 +1158,7 @@ export function LichessRound({
       <div
         ref={hostRef}
         id="main-wrap"
+        className="ws-chess-lichess-round-host"
         data-no-ripple-scope="true"
         aria-hidden={loading || undefined}
         style={{ display: loading ? "none" : undefined, marginTop: 0 }}

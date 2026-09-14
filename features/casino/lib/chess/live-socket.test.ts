@@ -255,4 +255,17 @@ describe("chess live socket replay", () => {
     unsubscribe();
     await vi.advanceTimersByTimeAsync(8_000);
   });
+
+  it("pins production sockets to the deployed staging gateway", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_CHESS_WS_URL", "wss://stale-gateway.example");
+
+    const { subscribeChessTopic } = await import("@/features/casino/lib/chess/live-socket");
+    const unsubscribe = subscribeChessTopic("chess:match:production", vi.fn());
+
+    expect(FakeSocket.instances[0]?.url).toBe("wss://ws-staging.tsionark.com");
+
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(8_000);
+  });
 });

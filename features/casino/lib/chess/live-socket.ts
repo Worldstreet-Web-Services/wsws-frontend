@@ -18,9 +18,12 @@ import { resolveAuthTokens } from "@/lib/privy-token";
 // match id. Connection-level control frames (welcome/subscribed/pong/error) are
 // topic-less and ignored here.
 
-const DEFAULT_WS_URL =
-  process.env.NODE_ENV === "development" ? "ws://127.0.0.1:8100" : "wss://ws-staging.tsionark.com";
-const WS_URL = process.env.NEXT_PUBLIC_CHESS_WS_URL ?? DEFAULT_WS_URL;
+const LOCAL_CHESS_WS_URL = "ws://127.0.0.1:8100";
+const DEPLOYED_CHESS_WS_URL = "wss://ws-staging.tsionark.com";
+const WS_URL =
+  process.env.NODE_ENV === "production"
+    ? DEPLOYED_CHESS_WS_URL
+    : (process.env.NEXT_PUBLIC_CHESS_WS_URL ?? LOCAL_CHESS_WS_URL);
 
 export interface GatewayFrame {
   type?: string;

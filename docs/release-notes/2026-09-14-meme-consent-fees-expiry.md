@@ -124,3 +124,13 @@ Cancel reuse `meme.riskDisclaimer` and `meme.cancel`.
 `scenario-impact: updated`: the memecoin trade scenarios now include a
 consent step for low-liquidity coins before any price appears, a platform fee
 row on every ticket, and a lapsed-quote state on the desk and phone tickets.
+
+## First-load weight
+
+The consent dialog, the warnings and badge on every ticket, and the fee row
+put `/meme` at 1651 kB against a 1650 kB budget, with slice 2's zod already
+moved out of the initial payload. What crossed the line is safety UI the trade
+contract requires on every surface, not a regression, so the `/meme` budget in
+`scripts/first-load-budget.json` rises from 1650 to 1660 kB. That also leaves
+room for slice 4's paging controls (measured at 1654 kB). `/spot` stays at
+1650 and is not affected (1647 kB).

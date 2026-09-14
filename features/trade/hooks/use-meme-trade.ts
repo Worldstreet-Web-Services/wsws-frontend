@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePrivy, useSignMessage } from "@privy-io/react-auth";
 import {
   useSignMessage as useSolanaSignMessage,
@@ -11,6 +11,8 @@ import { useEvmSendWithReceipt } from "@/hooks/use-evm-send";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useSponsoredSolanaSend } from "@/hooks/use-sponsored-solana";
 import { formatReceived, receivedFromLogs, type ReceiptLog } from "@/lib/meme/delivery";
+import { formatUsdcAtomic } from "@/lib/meme/format";
+import { memePortfolioKeys } from "@/lib/meme/portfolio";
 import { isSubmittedEvmOperationError } from "@/lib/trade/sponsor";
 import { getWalletAddress } from "@/lib/user";
 import {
@@ -183,6 +185,7 @@ export function useMemeTrade() {
   const evmSend = useEvmSendWithReceipt();
   const { applyReceipt } = usePortfolio();
   const sendSponsoredSolana = useSponsoredSolanaSend();
+  const queryClient = useQueryClient();
   const wallet = getWalletAddress(user, "ethereum");
   const solanaWallet = getWalletAddress(user, "solana");
 
@@ -206,7 +209,20 @@ export function useMemeTrade() {
   // What the confirmation needs to offer a share: the settled transaction and
   // the chain it settled on.
   const [settled, setSettled] = useState<{ txHash: string; chainId: number } | null>(null);
+  // The platform fee the executable quote states, in USDC, once that quote is
+  // in hand. Only the Solana quote carries one (the Base quote names no fee;
+  // its preview does). Null until then, and null when the quote states none.
+  const [quotedFee, setQuotedFee] = useState<string | null>(null);
   const activeRef = useRef(false);
+
+  // The service's portfolio is built from CONFIRMED swaps only, so the moment
+  // one is confirmed its summary, positions, detail and activity are all out
+  // of date, and they share one key prefix. A delivered or pending trade has
+  // changed nothing there yet and refreshes nothing. The refetch runs in the
+  // background; its failures land on those queries, not on this trade.
+  const refreshServicePortfolio = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: memePortfolioKeys.all });
+  }, [queryClient]);
 
   // Challenge → exact-message signature → verify, cached per (user, wallet) so
   // repeat trades skip the signature. The backend stays authoritative: an
@@ -316,6 +332,11 @@ export function useMemeTrade() {
         }
       }
       setSwapId(quote.swapId);
+      setQuotedFee(
+        quote.platformFeeAmountAtomic === undefined
+          ? null
+          : formatUsdcAtomic(quote.platformFeeAmountAtomic)
+      );
 
       if (Date.now() >= Date.parse(quote.expiresAt)) {
         throw new TradeApiError("QUOTE_EXPIRED", "The quote expired. Try again.", 410);
@@ -339,12 +360,13 @@ export function useMemeTrade() {
         return { outcome: "pending", swapId: quote.swapId, requestId: null };
       }
       if (status === "CONFIRMED") {
+        refreshServicePortfolio();
         setPhase("confirmed");
         return { outcome: "confirmed", swapId: quote.swapId, requestId: null };
       }
       throw new TradeApiError(status, "The trade didn't complete.", 200);
     },
-    [solanaWallets, ensureLinked, user, sendSponsoredSolana]
+    [solanaWallets, ensureLinked, user, sendSponsoredSolana, refreshServicePortfolio]
   );
 
   const trade = useCallback(
@@ -359,6 +381,7 @@ export function useMemeTrade() {
       setSwapId(null);
       setRequestId(null);
       setReceived(null);
+      setQuotedFee(null);
       try {
         if (chainId === SOLANA_CHAIN_ID) {
           return await tradeSolana({ ...input, walletAddress: chainWallet });
@@ -507,6 +530,7 @@ export function useMemeTrade() {
           return { outcome: "pending", swapId: quote.swapId, requestId: null };
         }
         if (status === "CONFIRMED") {
+          refreshServicePortfolio();
           setPhase("confirmed");
           return { outcome: "confirmed", swapId: quote.swapId, requestId: null };
         }
@@ -531,7 +555,16 @@ export function useMemeTrade() {
         activeRef.current = false;
       }
     },
-    [walletFor, user, ensureLinked, evmSend, applyReceipt, tradeSolana, settleAsDelivered]
+    [
+      walletFor,
+      user,
+      ensureLinked,
+      evmSend,
+      applyReceipt,
+      tradeSolana,
+      settleAsDelivered,
+      refreshServicePortfolio,
+    ]
   );
 
   const reset = useCallback(() => {
@@ -540,6 +573,7 @@ export function useMemeTrade() {
     setSwapId(null);
     setRequestId(null);
     setReceived(null);
+    setQuotedFee(null);
     // Or the next trade offers to share the previous one.
     setSettled(null);
   }, []);
@@ -553,6 +587,7 @@ export function useMemeTrade() {
     requestId,
     received,
     settled,
+    quotedFee,
     trade,
     reset,
     linkForPreview,
@@ -560,15 +595,72 @@ export function useMemeTrade() {
 }
 
 // Debounced-by-caller indicative preview; rate limited upstream (20/min).
-export function useMemePreview(input: MemePreviewInput | null) {
-  return useQuery({
+//
+// `consented` is the risk-consent gate (useRiskConsent): for a LOW_LIQUIDITY
+// token nothing is sent until the user has accepted the warning, because the
+// contract wants that confirmation before a quote is requested. Every caller
+// passes it, so no surface can forget the gate.
+//
+// A quote has a lifetime and the service publishes it. The lapse is recorded
+// by a timer rather than read off the clock in render, so the caller
+// re-renders exactly once, at the moment the price stops being one the user
+// can act on; a quote that arrived already stale gets a zero-delay timer.
+// `quote` is null from then on, so every surface blanks a lapsed quote the same
+// way, and `expired` says why.
+export function useMemePreview(input: MemePreviewInput | null, consented: boolean) {
+  const query = useQuery({
     queryKey: ["meme", "preview", input],
     queryFn: () => {
       const { chainId, ...body } = input as MemePreviewInput;
       return previewSwap(body, chainId);
     },
-    enabled: input !== null,
+    enabled: input !== null && consented,
     staleTime: 4_000,
     retry: (count, err) => err instanceof Error && err.message.includes("retrying") && count < 3,
   });
+
+  const data = query.data ?? null;
+  const expiresAt = data ? Date.parse(data.expiresAt) : null;
+  const [lapsedAt, setLapsedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (expiresAt === null || Number.isNaN(expiresAt)) return;
+    const id = setTimeout(() => setLapsedAt(expiresAt), Math.max(0, expiresAt - Date.now()));
+    return () => clearTimeout(id);
+  }, [expiresAt]);
+  // Tied to the quote it belongs to, so the record of the last lapse can never
+  // condemn the quote that replaced it.
+  const expired = lapsedAt !== null && lapsedAt === expiresAt;
+
+  return {
+    quote: data && !expired ? data : null,
+    expired,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+// A first-ever preview 403s (WALLET_OWNERSHIP_MISMATCH) until the wallet is
+// linked, because the service wants the link before /swaps/preview too. Link
+// once (a headless signature) and ask again. One attempt per chain per mounted
+// surface (the link is per chain's wallet, and a desk can switch from a Base
+// coin to a Solana one): a second mismatch is real, and linkForPreview has
+// already put that failure on the trade state, where the surface shows it.
+export function usePreviewRelink(
+  error: unknown,
+  chainId: number | null,
+  linkForPreview: (chainId: number) => Promise<void>,
+  refetch: () => unknown
+) {
+  const triedRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (chainId === null || triedRef.current.has(chainId)) return;
+    if (!(error instanceof TradeApiError && error.code === "WALLET_OWNERSHIP_MISMATCH")) return;
+    triedRef.current.add(chainId);
+    linkForPreview(chainId)
+      .then(() => refetch())
+      .catch((e: unknown) => {
+        console.warn("[meme] linking the wallet for a preview failed", e);
+      });
+  }, [error, chainId, linkForPreview, refetch]);
 }

@@ -33,12 +33,9 @@ import type {
 // mapped value. A body that does not match throws TradeShapeError; the client
 // turns that into a BAD_RESPONSE TradeApiError.
 
-export class TradeShapeError extends Error {
-  constructor(what: string, problem: string) {
-    super(`trade ${what} no longer matches the contract: ${problem}`);
-    this.name = "TradeShapeError";
-  }
-}
+import { TradeShapeError } from "@/lib/meme/trade-shape-error";
+
+export { TradeShapeError };
 
 function read<S extends z.ZodType>(schema: S, data: unknown, what: string): z.output<S> {
   const result = schema.safeParse(data);

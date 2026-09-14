@@ -39,21 +39,7 @@ import type {
 } from "@/lib/meme/types";
 import { isMemecoinHere, tradableHere, withRiskDefaults, type Paged } from "@/lib/meme/catalog";
 import { SOLANA_CHAIN_ID, chainSlug, type MemeChainSlug } from "@/lib/meme/chain";
-import {
-  TradeShapeError,
-  parseSolanaSwapQuote,
-  parseSubmission,
-  parseSwapPage,
-  parseSwapPreview,
-  parseSwapQuote,
-  parseSwapStatus,
-  parseTokenPage,
-  parseTokenSearch,
-  parseTokenView,
-  parseTradability,
-  parseWalletChallenge,
-  parseWalletVerification,
-} from "@/lib/meme/parse";
+import { TradeShapeError } from "@/lib/meme/trade-shape-error";
 
 // The normalisation lives in lib/meme/catalog, shared with the server; the
 // formatting in lib/meme/format. The feature keeps importing both from here.
@@ -102,16 +88,32 @@ interface Envelope {
   error?: { code?: string; message?: string; details?: unknown; requestId?: string };
 }
 
+// The zod-backed mappers are loaded when a request runs, never on first paint:
+// this module is in the first-load payload of /meme and /spot, and a static
+// import put zod and every route schema there (1648 → 1714 kB against a 1650
+// budget). A call names its mapper; the module arrives with the first trade
+// request and is cached by the bundler after that.
+type ParserModule = typeof import("@/lib/meme/parse");
+type ParserName = {
+  [K in keyof ParserModule]: ParserModule[K] extends (data: unknown) => unknown ? K : never;
+}[keyof ParserModule];
+type Parsed<K extends ParserName> = ReturnType<ParserModule[K]>;
+
+async function loadParser<K extends ParserName>(name: K): Promise<(data: unknown) => Parsed<K>> {
+  const parsers = await import("@/lib/meme/parse");
+  return parsers[name] as (data: unknown) => Parsed<K>;
+}
+
 // Every call names the mapper its route's data goes through (lib/meme/parse.ts)
 // rather than casting the envelope to the type it hoped for. A body that does
 // not match is a BAD_RESPONSE, carrying the relay's request id when it sent
 // one, so drift surfaces as a typed failure rather than a half-shaped object.
-async function request<T>(
+async function request<K extends ParserName>(
   path: string,
-  parse: (data: unknown) => T,
+  parser: K,
   init: RequestInit = {},
   opts: { auth?: boolean } = {}
-): Promise<T> {
+): Promise<Parsed<K>> {
   const res = await apiFetch(`/api/trade${path}`, init, { requireAuth: opts.auth });
   const body = (await res.json().catch(() => null)) as Envelope | null;
   if (!res.ok || !body?.success) {
@@ -122,6 +124,7 @@ async function request<T>(
       typeof body?.error?.requestId === "string" ? body.error.requestId : null
     );
   }
+  const parse = await loadParser(parser);
   try {
     return parse(body.data);
   } catch (error) {
@@ -135,15 +138,15 @@ async function request<T>(
   }
 }
 
-function post<T>(
+function post<K extends ParserName>(
   path: string,
   payload: unknown,
-  parse: (data: unknown) => T,
+  parser: K,
   idempotencyKey?: string
-): Promise<T> {
-  return request<T>(
+): Promise<Parsed<K>> {
+  return request(
     path,
-    parse,
+    parser,
     {
       method: "POST",
       headers: idempotencyKey
@@ -175,7 +178,7 @@ export async function fetchTrendingTokens(): Promise<Paged<MemeToken>> {
   let trending: Paged<MemeToken> | null = null;
   try {
     trending = tradableHere(
-      await request("/tokens/trending", parseTokenPage, {
+      await request("/tokens/trending", "parseTokenPage", {
         signal: AbortSignal.timeout(TRENDING_TIMEOUT_MS),
       })
     );
@@ -189,7 +192,7 @@ export async function fetchTrendingTokens(): Promise<Paged<MemeToken>> {
   // chain=base matches the "Trending on Base" heading and keeps every address
   // in the EVM form the token detail routes expect.
   return tradableHere(
-    await request(`/tokens?page=1&limit=${TRENDING_FALLBACK_LIMIT}&chain=base`, parseTokenPage)
+    await request(`/tokens?page=1&limit=${TRENDING_FALLBACK_LIMIT}&chain=base`, "parseTokenPage")
   );
 }
 
@@ -207,12 +210,15 @@ export async function fetchTokenCatalog(
   chain?: MemeChainSlug
 ): Promise<Paged<MemeToken>> {
   const scope = chain ? `&chain=${chain}` : "";
-  const page_ = await request(`/tokens?page=${page}&limit=${limit}${scope}`, parseTokenPage);
+  const page_ = await request(`/tokens?page=${page}&limit=${limit}${scope}`, "parseTokenPage");
   return { ...page_, items: page_.items.filter(isMemecoinHere) };
 }
 
 export async function searchTokens(q: string): Promise<MemeToken[]> {
-  const rows = await request(`/tokens/search?q=${encodeURIComponent(q.trim())}`, parseTokenSearch);
+  const rows = await request(
+    `/tokens/search?q=${encodeURIComponent(q.trim())}`,
+    "parseTokenSearch"
+  );
   return rows.filter(isMemecoinHere);
 }
 
@@ -226,19 +232,19 @@ function detailPath(address: string, chainId: number, suffix = ""): string {
 }
 
 export async function fetchToken(address: string, chainId: number): Promise<MemeToken> {
-  return request(detailPath(address, chainId), parseTokenView);
+  return request(detailPath(address, chainId), "parseTokenView");
 }
 
 export function fetchTradability(address: string, chainId: number): Promise<TokenTradability> {
-  return request(detailPath(address, chainId, "/tradability"), parseTradability);
+  return request(detailPath(address, chainId, "/tradability"), "parseTradability");
 }
 
 export function createWalletChallenge(walletAddress: string): Promise<WalletChallenge> {
-  return post("/wallets/challenges", { walletAddress }, parseWalletChallenge);
+  return post("/wallets/challenges", { walletAddress }, "parseWalletChallenge");
 }
 
 export function verifyWallet(challengeId: string, signature: string): Promise<void> {
-  return post("/wallets/verify", { challengeId, signature }, parseWalletVerification);
+  return post("/wallets/verify", { challengeId, signature }, "parseWalletVerification");
 }
 
 // Base and Solana share one request shape and one status lifecycle; only
@@ -248,23 +254,23 @@ function swapsPrefix(chainId: number): string {
 }
 
 export function previewSwap(input: SwapRequest, chainId: number): Promise<SwapPreview> {
-  return post(`${swapsPrefix(chainId)}/preview`, input, parseSwapPreview);
+  return post(`${swapsPrefix(chainId)}/preview`, input, "parseSwapPreview");
 }
 
 export function createSolanaWalletChallenge(walletAddress: string): Promise<WalletChallenge> {
-  return post("/solana/wallets/challenges", { walletAddress }, parseWalletChallenge);
+  return post("/solana/wallets/challenges", { walletAddress }, "parseWalletChallenge");
 }
 
 /** `signature` is the base58 form of the 64-byte Ed25519 signature. */
 export function verifySolanaWallet(challengeId: string, signature: string): Promise<void> {
-  return post("/solana/wallets/verify", { challengeId, signature }, parseWalletVerification);
+  return post("/solana/wallets/verify", { challengeId, signature }, "parseWalletVerification");
 }
 
 export function quoteSolanaSwap(
   input: SwapRequest,
   idempotencyKey: string
 ): Promise<PreparedSolanaSwap> {
-  return post("/solana/swaps/quote", input, parseSolanaSwapQuote, idempotencyKey);
+  return post("/solana/swaps/quote", input, "parseSolanaSwapQuote", idempotencyKey);
 }
 
 // A Solana submission is the broadcast transaction's base58 signature; there
@@ -274,11 +280,15 @@ export function registerSolanaSubmission(
   walletAddress: string,
   signature: string
 ): Promise<SubmissionReceipt> {
-  return post(`/solana/swaps/${swapId}/submissions`, { walletAddress, signature }, parseSubmission);
+  return post(
+    `/solana/swaps/${swapId}/submissions`,
+    { walletAddress, signature },
+    "parseSubmission"
+  );
 }
 
 export function quoteSwap(input: SwapRequest, idempotencyKey: string): Promise<PreparedSwap> {
-  return post("/swaps/quote", input, parseSwapQuote, idempotencyKey);
+  return post("/swaps/quote", input, "parseSwapQuote", idempotencyKey);
 }
 
 // What a Base call broadcast produced: the bundle's transaction hash when the
@@ -297,17 +307,17 @@ export function registerSubmission(
   return post(
     `/swaps/${swapId}/submissions`,
     { walletAddress, callIndex, ...submission },
-    parseSubmission,
+    "parseSubmission",
     idempotencyKey
   );
 }
 
 export function fetchSwapStatus(swapId: string): Promise<SwapStatusUpdate> {
-  return request(`/swaps/${swapId}/status`, parseSwapStatus, {}, { auth: true });
+  return request(`/swaps/${swapId}/status`, "parseSwapStatus", {}, { auth: true });
 }
 
 export function fetchSwapHistory(page = 1, limit = 20): Promise<Paged<SwapDetail>> {
-  return request(`/swaps?page=${page}&limit=${limit}`, parseSwapPage, {}, { auth: true });
+  return request(`/swaps?page=${page}&limit=${limit}`, "parseSwapPage", {}, { auth: true });
 }
 
 // UUID v4 for Idempotency-Key headers. crypto.randomUUID only exists in

@@ -123,3 +123,13 @@ en, de, es, fr and pt:
 `scenario-impact: updated`: the memecoin discovery and trade scenarios now
 show neutral charts for an unpublished change, `$0` for a published zero, an
 unknown-liquidity line, and temporary/not-found states on the token read.
+
+## First-load weight
+
+The response mappers validate through zod, and importing them statically put
+zod and every route schema into the first-load payload of `/meme` and `/spot`
+(1648 → 1714 kB against a 1650 kB budget; CI failed). The browser client now
+names each route's mapper and loads `lib/meme/parse.ts` when a trade request
+runs, and `TradeShapeError` lives in its own zod-free module. Measured on a
+production build: `/meme` 1649 kB, `/spot` 1646 kB. Pinned by
+`lib/meme/api.first-load.test.ts`, which failed against the static import.

@@ -21,6 +21,7 @@ import {
   reloadInteractiveLichessRound,
   type LichessApiMove,
 } from "@/features/casino/lib/chess/lichess-round-sync";
+import { lichessRoundReviewRoute } from "@/features/casino/lib/chess/lichess-round-route";
 import {
   createLichessSound,
   isLichessSound,
@@ -34,6 +35,7 @@ import {
 } from "@/features/casino/lib/chess/lichess-assets";
 import { LichessSpectatorChat } from "@/features/casino/components/chess-app/lichess-spectator-chat";
 import { LichessSpectatorBetting } from "@/features/casino/components/chess-app/lichess-spectator-betting";
+import { countryFlag } from "@/features/casino/lib/chess/social";
 
 type LichessColor = "white" | "black";
 
@@ -49,6 +51,7 @@ type LichessController = {
   data: Record<string, unknown>;
   ply: number;
   lastPly(): number;
+  preventDrawOffer?: unknown;
   replaying(): boolean;
   reload(data: Record<string, unknown>): void;
   setLoading(value: boolean): void;
@@ -126,6 +129,11 @@ function viewerId(match: ChessMatch, viewer: ChessColor | null): string | undefi
   return undefined;
 }
 
+function playerName(name: string, countryCode: string | null | undefined): string {
+  const flag = countryFlag(countryCode);
+  return flag && !name.startsWith(flag) ? `${flag} ${name}` : name;
+}
+
 function playerData(
   player: ChessPlayer | null,
   side: LichessColor,
@@ -136,7 +144,8 @@ function playerData(
 ) {
   const computer = match.computer?.side === side ? match.computer : null;
   const lobbyBot = computer?.bot === true;
-  const name = (computer?.name ?? player?.username.trim()) || "Anonymous";
+  const plainName = (computer?.name ?? player?.username.trim()) || "Anonymous";
+  const name = playerName(plainName, computer?.countryCode ?? player?.countryCode);
   const id = player?.id ?? `${match.id}-${side}`;
   return {
     id,
@@ -157,7 +166,6 @@ function playerData(
           id,
           username: name,
           online: true,
-          title: lobbyBot ? "BOT" : undefined,
           perfs: {},
         },
   };
@@ -198,7 +206,7 @@ function roundSteps(match: ChessMatch) {
   ];
 }
 
-function roundData(
+export function roundData(
   match: ChessMatch,
   viewer: ChessColor | null,
   proxy?: Record<string, unknown>,
@@ -313,7 +321,8 @@ function syncMetaPlayer(
 ): void {
   const player = side === "white" ? match.white : match.black;
   const computer = match.computer?.side === side ? match.computer : null;
-  const name = (computer?.name ?? player?.username.trim()) || "Anonymous";
+  const plainName = (computer?.name ?? player?.username.trim()) || "Anonymous";
+  const name = playerName(plainName, computer?.countryCode ?? player?.countryCode);
   const link = host.querySelector<HTMLElement>(`.game__meta__players .player.${side} .user-link`);
   if (!link) return;
 
@@ -962,6 +971,21 @@ export function LichessRound({
       host.dataset.roundViewer = initialRound.you ?? "spectator";
     }
 
+    const routeAnalysisLink = (event: MouseEvent) => {
+      const anchor =
+        event.target instanceof Element
+          ? event.target.closest<HTMLAnchorElement>("a[href]")
+          : null;
+      const href = anchor?.getAttribute("href");
+      if (!href) return;
+      const route = lichessRoundReviewRoute(href, matchId, controllerRef.current?.ply ?? 0);
+      if (!route) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      router.push(route);
+    };
+    host?.addEventListener("click", routeAnalysisLink, true);
+
     const runAction = (
       type: string,
       payload?: { u?: unknown; role?: unknown; pos?: unknown },
@@ -1059,6 +1083,7 @@ export function LichessRound({
           element,
           onChange() {},
         });
+        if (activeRound.match.computer) controller.preventDrawOffer = true;
         // `data.local` bypasses Lichess's own WebSocket boot, but Ark games are
         // still authoritative remote rounds. Restore normal replay semantics so
         // browsing history disables moves until the user returns to the latest ply.
@@ -1111,6 +1136,7 @@ export function LichessRound({
 
     return () => {
       cancelled = true;
+      host?.removeEventListener("click", routeAnalysisLink, true);
       controllerRef.current = null;
       proxyRef.current = null;
       appliedRevisionRef.current = null;
@@ -1151,6 +1177,7 @@ export function LichessRound({
       <div
         ref={hostRef}
         id="main-wrap"
+        className="ws-chess-lichess-round-host"
         data-no-ripple-scope="true"
         aria-hidden={loading || undefined}
         style={{ display: loading ? "none" : undefined, marginTop: 0 }}

@@ -78,9 +78,9 @@ const USD_DECIMALS = 6;
 const CHART_DRAW_HEIGHT = 186;
 const CHART_AREA_HEIGHT = 248;
 
-// The chart pulls lightweight-charts (~168KB) and the panel starts collapsed,
-// so the bundle only arrives once someone opens "View Chart". Same reason the
-// spot desk and the modal host load their charts this way.
+// The chart pulls lightweight-charts (~168KB), so it loads as its own chunk
+// after the desk rather than inside the page's first bundle. The spot desk and
+// the modal host load their charts the same way.
 const AssetChart = dynamic(() => import("@/components/ui/asset-chart").then((m) => m.AssetChart), {
   ssr: false,
 });
@@ -421,7 +421,9 @@ function MemeDesk() {
   const [listPageSize, setListPageSize] = useState(MEME_LIST_PAGE_SIZE);
   const [picked, setPicked] = useState<MemeToken | null>(null);
   const [side, setSide] = useState<MemeTradeSide>("BUY");
-  const [chartOpen, setChartOpen] = useState(false);
+  // The rail opens on the chart: the price is what someone checks before a
+  // trade. Closing it still unmounts the chart (see MemeDeskChart).
+  const [chartOpen, setChartOpen] = useState(true);
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [amount, setAmount] = useState("");
   // A Solana order is finished in the sheet; see runTrade below.

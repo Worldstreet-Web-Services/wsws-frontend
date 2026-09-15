@@ -231,13 +231,15 @@ describe("the memecoin desk", () => {
     expect(screen.getByText("Balance 12,345.6789 AAA")).toBeInTheDocument();
   });
 
-  it("mounts the chart only once the rail's chart row is opened", () => {
+  // The rail opens on the chart. Closing it unmounts the chart, so a folded
+  // chart resolves no id and subscribes to no series.
+  it("opens with the chart showing, and unmounts it when the row is closed", () => {
     renderDesk();
-    expect(document.querySelector('[data-region="meme-chart"]')).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "View Chart" }));
     expect(document.querySelector('[data-region="meme-chart"]')).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Close Chart" }));
     expect(document.querySelector('[data-region="meme-chart"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View Chart" }));
+    expect(document.querySelector('[data-region="meme-chart"]')).not.toBeNull();
   });
 
   // The rail is already a bordered panel, so a bordered chart frame inside it
@@ -245,7 +247,6 @@ describe("the memecoin desk", () => {
   // draws it, and this is what stops a shell creeping back in.
   it("draws the chart area with no card around it", () => {
     renderDesk();
-    fireEvent.click(screen.getByRole("button", { name: "View Chart" }));
     const area = document.querySelector('[data-region="meme-chart"]') as HTMLElement;
     // ChartPanelShell's frame is that card: a surface fill, a hairline border
     // and a rounded corner. Nothing in the chart area may be one.

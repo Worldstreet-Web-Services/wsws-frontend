@@ -2149,6 +2149,8 @@
         "reasonAgreement": "accord mutuel",
         "reasonRepetition": "triple répétition",
         "reasonInsufficient": "matériel insuffisant",
+        "reasonFiftyMove": "règle des 50 coups",
+        "reasonTimeoutInsufficient": "temps écoulé contre matériel insuffisant",
         "howCheckmate": "Échec et mat",
         "howResignation": "Abandon",
         "howTimeout": "Temps écoulé",

@@ -24,7 +24,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-import { LichessRound, roundData } from "@/features/casino/components/chess-app/lichess-round";
+import {
+  anchoredRoundClocks,
+  LichessRound,
+  roundData,
+} from "@/features/casino/components/chess-app/lichess-round";
 
 const lobbyBotMatch: ChessMatch = {
   id: "lobby-bot-match",
@@ -114,5 +118,39 @@ describe("LichessRound host", () => {
     expect(opponent.name).toBe("🇯🇵 Haruto Sato");
     expect(opponent.user).toMatchObject({ username: "🇯🇵 Haruto Sato" });
     expect(opponent.user).not.toHaveProperty("title");
+  });
+
+  it("filters legal moves that do not belong to the authoritative FEN", () => {
+    const match: ChessMatch = {
+      ...lobbyBotMatch,
+      round: {
+        steps: [
+          {
+            ply: 1,
+            uci: "e2e3",
+            san: "e3",
+            fen: lobbyBotMatch.fen,
+            check: false,
+            byPlayer: lobbyBotMatch.white?.id ?? null,
+            clockMsRemaining: 298_000,
+            createdAt: lobbyBotMatch.clockUpdatedAt,
+          },
+        ],
+        legalMoves: ["e2e4", "e7e5"],
+        check: false,
+        serverTime: lobbyBotMatch.clockUpdatedAt,
+      },
+    };
+
+    const data = roundData(match, "b");
+
+    expect(data.possibleMoves).toEqual({ e7: "e5" });
+    expect((data.pref as { voiceMove: boolean }).voiceMove).toBe(false);
+  });
+
+  it("anchors the active clock to the server update time", () => {
+    const now = Date.parse(lobbyBotMatch.clockUpdatedAt) + 2_750;
+
+    expect(anchoredRoundClocks(lobbyBotMatch, now)).toEqual({ w: 298, b: 297.25 });
   });
 });

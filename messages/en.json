@@ -2084,6 +2084,8 @@
         "reasonAgreement": "agreement",
         "reasonRepetition": "repetition",
         "reasonInsufficient": "insufficient material",
+        "reasonFiftyMove": "50-move rule",
+        "reasonTimeoutInsufficient": "timeout versus insufficient material",
         "howCheckmate": "Checkmate",
         "howResignation": "Resignation",
         "howTimeout": "Flag fall",

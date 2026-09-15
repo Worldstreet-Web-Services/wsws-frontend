@@ -2084,6 +2084,8 @@
         "reasonAgreement": "acordo mútuo",
         "reasonRepetition": "tripla repetição",
         "reasonInsufficient": "material insuficiente",
+        "reasonFiftyMove": "regra dos 50 lances",
+        "reasonTimeoutInsufficient": "tempo esgotado contra material insuficiente",
         "howCheckmate": "Xeque-mate",
         "howResignation": "Desistência",
         "howTimeout": "Queda de bandeira",

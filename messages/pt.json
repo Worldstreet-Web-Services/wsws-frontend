@@ -695,6 +695,8 @@
     "prev": "Ant.",
     "next": "Próx.",
     "pageOf": "Página {page} de {pages}",
+    "pageNumber": "Página {page}",
+    "morePages": "Mais páginas",
     "switchMarket": "Mudar de mercado",
     "close": "Fechar",
     "signIn": "Entrar",

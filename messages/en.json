@@ -695,6 +695,8 @@
     "prev": "Prev",
     "next": "Next",
     "pageOf": "Page {page} of {pages}",
+    "pageNumber": "Page {page}",
+    "morePages": "More pages",
     "switchMarket": "Switch market",
     "close": "Close",
     "signIn": "Sign In",

@@ -376,21 +376,69 @@ describe("the memecoin desk's catalogue", () => {
     expect(screen.getByText("156 shown")).toBeInTheDocument();
   });
 
-  it("loads the next page from the list's footer", () => {
+  // The catalogue runs to thousands of coins. Rather than stopping at a "Load
+  // more", the desk fetches the next server page itself while the reader is
+  // near the end of what has loaded, and numbers the pages it has.
+  it("loads the pages ahead on its own, with no Load more to press", () => {
     catalog.total = 1_200;
     catalog.loaded = 500;
     catalog.hasMore = true;
     renderDesk();
-    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
-    expect(catalog.loadMore).toHaveBeenCalledOnce();
+    expect(catalog.loadMore).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 
-  it("offers no Load more once the pages cover the total", () => {
+  it("numbers the pages, and says more are coming while the server has them", () => {
+    catalog.tokens = Array.from({ length: 25 }, (_, i) =>
+      memeToken({ symbol: `C${String(i).padStart(2, "0")}` })
+    );
+    catalog.total = 1_200;
+    catalog.loaded = 500;
+    catalog.hasMore = true;
+    renderDesk();
+    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Page 3" })).toBeInTheDocument();
+    expect(screen.getByText("More pages")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
+    expect(screen.getAllByRole("button", { name: /coin/ })).toHaveLength(5);
+  });
+
+  it("asks for the next server page when Next is pressed on the last loaded page", () => {
+    catalog.tokens = Array.from({ length: 12 }, (_, i) =>
+      memeToken({ symbol: `C${String(i).padStart(2, "0")}` })
+    );
+    catalog.total = 1_200;
+    catalog.loaded = 500;
+    catalog.hasMore = true;
+    renderDesk();
+    fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
+    const before = catalog.loadMore.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(catalog.loadMore.mock.calls.length).toBeGreaterThan(before);
+    // The page it asked for is not here yet, so the last loaded one stays.
+    expect(screen.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("leaves the catalogue alone while a search fills the list", () => {
+    catalog.total = 1_200;
+    catalog.loaded = 500;
+    catalog.hasMore = true;
+    search.active = true;
+    search.results = [aaa];
+    renderDesk();
+    expect(catalog.loadMore).not.toHaveBeenCalled();
+    expect(screen.queryByText("More pages")).toBeNull();
+  });
+
+  it("stops at the last page once the pages cover the total", () => {
     catalog.total = 2;
     catalog.loaded = 2;
     catalog.hasMore = false;
     renderDesk();
     expect(screen.getByText("2 of 2")).toBeInTheDocument();
+    expect(catalog.loadMore).not.toHaveBeenCalled();
+    expect(screen.queryByText("More pages")).toBeNull();
     expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
 });

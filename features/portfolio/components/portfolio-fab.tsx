@@ -24,11 +24,17 @@ export function PortfolioFab({
 
   return (
     <>
-      {/* Full-screen scrim — dismisses the dial on tap-outside */}
+      {/* Full-screen scrim — dismisses the dial on tap-outside. It has to
+          outrank the chrome it is dimming: the tab bar sits at z-90 and the
+          support launcher at z-80, and under those the dial dimmed the page
+          while leaving both lit and tappable, so a tap meant to dismiss
+          navigated instead and the open dial followed the user to the next
+          page. Still under the support chat panel (95) and every modal (300). */}
       <div
         aria-hidden
+        data-testid="fab-scrim"
         className={
-          "fixed inset-0 z-[76] bg-black/55 backdrop-blur-[3px] md:hidden " +
+          "fixed inset-0 z-[91] bg-black/55 backdrop-blur-[3px] md:hidden " +
           "transition-opacity duration-200 " +
           (open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
         }
@@ -38,7 +44,7 @@ export function PortfolioFab({
       {/* Column — FAB at bottom, dial items stack above it */}
       <div
         className={
-          "fixed left-4 z-[77] flex flex-col items-start gap-3 md:hidden " +
+          "fixed left-4 z-[92] flex flex-col items-start gap-3 md:hidden " +
           "bottom-[calc(96px+env(safe-area-inset-bottom))]"
         }
       >
@@ -106,7 +112,7 @@ export function PortfolioFab({
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          aria-label={open ? "Close quick actions" : "Quick actions"}
+          aria-label={open ? t("closeQuickActions") : t("quickActions")}
           aria-expanded={open}
           className={
             "grid size-[56px] place-items-center rounded-full " +

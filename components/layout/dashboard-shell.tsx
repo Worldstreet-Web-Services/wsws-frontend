@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { markKnownUser } from "@/lib/known-user";
@@ -10,13 +11,26 @@ import { ConnectionBanner } from "@/components/layout/connection-banner";
 import { SupportButton } from "@/components/layout/support-button";
 import { BroadcastDock } from "@/components/broadcast/broadcast-dock";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { FundsModal, WithdrawModal } from "@/features/funds";
 import { PortfolioFab } from "@/features/portfolio";
 import { InviteFriendsModal, useClaimReferralFromLink } from "@/features/referrals";
 import { usePrefetchDepositCatalog } from "@/hooks/use-catalog-prefetch";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
 import type { NavItem } from "@/components/layout/nav-items";
 import type { SectionId } from "@/lib/sections";
+
+// Dynamic, for the same reason AppModalHost loads them that way: both sheets
+// carry the whole deposit and withdraw surface, and the shell mounts them on
+// every page in the app. Imported statically they cost around 60 kB gzipped
+// of first load on every route, for two sheets that render only after the
+// quick-action dial is opened.
+const FundsModal = dynamic(
+  () => import("@/features/funds/components/funds-modal").then((m) => m.FundsModal),
+  { ssr: false }
+);
+const WithdrawModal = dynamic(
+  () => import("@/features/funds/components/withdraw-modal").then((m) => m.WithdrawModal),
+  { ssr: false }
+);
 
 interface DashboardShellProps {
   nav: NavItem[];

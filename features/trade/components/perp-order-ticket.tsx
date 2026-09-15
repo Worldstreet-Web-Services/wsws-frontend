@@ -453,15 +453,20 @@ export function PerpOrderTicket({
             for it scrolled to a ref that was never attached to anything. It
             opened nothing and it moved nothing. A badge states the market,
             which is all this pill ever did. */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-[13.5px]">
+        {/* The narrowest row on the desk: at 390px the pill, the change and
+            the Limit/Market toggle have to share about 320px. Sizing them down
+            is most of the fix, but a row that can only ever fit is better than
+            one that happens to: the toggle never shrinks, and the cluster
+            beside it gives up its own width first. */}
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-[13.5px]">
             <SpotTokenBadge symbol={pair} />
-            <span className="ws-discovery-title text-[15px] whitespace-nowrap">
+            <span className="ws-discovery-title truncate text-[13px] sm:text-[15px]">
               <span className="sr-only">{tSpot("change24h")}</span>
               <span className={CHANGE_TONE[changeDirection]}>{change24h}</span>
             </span>
           </div>
-          <SpotOrderModeToggle mode={mode} onModeChange={onModeChange} />
+          <SpotOrderModeToggle mode={mode} onModeChange={onModeChange} className="shrink-0" />
         </div>
 
         <PriceCard
@@ -559,7 +564,11 @@ function ReasonLine({
 }) {
   if (text === null) return <p id={id} aria-live="polite" className="sr-only" />;
   return (
-    <p id={id} aria-live="polite" className={`text-center text-[13px] font-medium ${tone}`}>
+    <p
+      id={id}
+      aria-live="polite"
+      className={`text-center text-[12px] font-medium sm:text-[13px] ${tone}`}
+    >
       {text}
     </p>
   );
@@ -589,9 +598,11 @@ function PriceCard({
   return (
     <div className="bg-surface flex w-full items-center justify-between gap-3 rounded-2xl p-[17px]">
       <div className="flex min-w-0 flex-1 flex-col gap-2 leading-none">
-        <span className="ws-discovery-title text-[15px] text-[rgba(148,163,184,0.5)]">{label}</span>
+        <span className="ws-discovery-title text-[13px] text-[rgba(148,163,184,0.5)] sm:text-[15px]">
+          {label}
+        </span>
         {loading ? (
-          <span className="ws-chewy text-[15px] text-white">
+          <span className="ws-chewy text-[13px] text-white sm:text-[15px]">
             <SkeletonLine width="w-[5em]" />
           </span>
         ) : onPriceChange ? (
@@ -610,13 +621,13 @@ function PriceCard({
               if (!acceptsAmountInput(next, PRICE_MAX_DECIMALS)) return;
               onPriceChange(next);
             }}
-            className="ws-chewy w-full min-w-0 bg-transparent text-[15px] text-white outline-none disabled:opacity-60"
+            className="ws-chewy w-full min-w-0 bg-transparent text-[13px] text-white outline-none disabled:opacity-60 sm:text-[15px]"
           />
         ) : (
-          <span className="ws-chewy truncate text-[15px] text-white">{price}</span>
+          <span className="ws-chewy truncate text-[13px] text-white sm:text-[15px]">{price}</span>
         )}
       </div>
-      <span className="ws-discovery-title shrink-0 text-[15px] whitespace-nowrap text-white">
+      <span className="ws-discovery-title shrink-0 text-[13px] whitespace-nowrap text-white sm:text-[15px]">
         {quoteSymbol}
       </span>
     </div>
@@ -659,8 +670,10 @@ function QuantityCard({
       }`}
     >
       <div className="ws-discovery-title flex items-center justify-between gap-3 whitespace-nowrap">
-        <span className="text-[15px] text-[rgba(148,163,184,0.5)]">{label}</span>
-        <span className="text-[14px] text-[rgba(179,186,196,0.6)]">{balanceLine}</span>
+        <span className="text-[13px] text-[rgba(148,163,184,0.5)] sm:text-[15px]">{label}</span>
+        <span className="text-[12px] text-[rgba(179,186,196,0.6)] sm:text-[14px]">
+          {balanceLine}
+        </span>
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -680,7 +693,7 @@ function QuantityCard({
             if (!acceptsAmountInput(next, asset.decimals)) return;
             onQuantityChange(next);
           }}
-          className="ws-chewy min-w-0 flex-1 bg-transparent text-[31px] text-[#f8fafc] outline-none disabled:opacity-60"
+          className="ws-chewy min-w-0 flex-1 bg-transparent text-[26px] text-[#f8fafc] outline-none disabled:opacity-60 sm:text-[31px]"
         />
         <AssetPill
           symbol={asset.symbol}
@@ -710,7 +723,7 @@ function AssetPill({
   const body = (
     <>
       <AssetIcon sym={symbol} bg={tokenBg(symbol)} size={18} logo={logo} />
-      <span className="ws-discovery-title text-[15px] text-[#f8fafc]">{symbol}</span>
+      <span className="ws-discovery-title text-[13px] text-[#f8fafc] sm:text-[15px]">{symbol}</span>
       {onSelect ? (
         <ChevronLeftIcon size={9} className="shrink-0 -rotate-90 text-[#f8fafc]" />
       ) : null}
@@ -760,7 +773,7 @@ function TriggersDisclosure({
         onClick={() => triggers.onOpenChange(!triggers.open)}
         aria-expanded={triggers.open}
         aria-controls={panelId}
-        className="ws-discovery-title flex cursor-pointer items-center justify-between gap-3 rounded-md text-[14px] text-white transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none"
+        className="ws-discovery-title flex cursor-pointer items-center justify-between gap-3 rounded-md text-[13px] text-white transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none sm:text-[14px]"
       >
         {t("tpSlHeading")}
         <span
@@ -812,7 +825,9 @@ function TriggerField({
 }) {
   return (
     <div className="border-hairline bg-surface flex min-w-0 flex-col gap-2 rounded-2xl border-2 p-3 leading-none">
-      <span className="ws-discovery-title text-[13px] text-[rgba(148,163,184,0.5)]">{label}</span>
+      <span className="ws-discovery-title text-[12px] text-[rgba(148,163,184,0.5)] sm:text-[13px]">
+        {label}
+      </span>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -829,9 +844,9 @@ function TriggerField({
             if (!acceptsAmountInput(next, PRICE_MAX_DECIMALS)) return;
             field.onChange(next);
           }}
-          className="ws-chewy min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-white/30 disabled:opacity-60"
+          className="ws-chewy min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30 disabled:opacity-60 sm:text-[15px]"
         />
-        <span className="ws-discovery-title shrink-0 text-[13px] whitespace-nowrap text-white/60">
+        <span className="ws-discovery-title shrink-0 text-[12px] whitespace-nowrap text-white/60 sm:text-[13px]">
           {quoteSymbol}
         </span>
       </div>
@@ -903,7 +918,7 @@ function SummaryCard({ summary }: { summary: PerpOrderSummaryView }) {
         skeletonWidth="w-[4.5em]"
       />
       {explainMissingLiquidation ? (
-        <p className="text-[13px] font-medium whitespace-normal text-[rgba(148,163,184,0.6)]">
+        <p className="text-[12px] font-medium whitespace-normal text-[rgba(148,163,184,0.6)] sm:text-[13px]">
           {missingNote}
         </p>
       ) : null}
@@ -954,7 +969,7 @@ function SummaryRow({
   tone?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 font-[family-name:var(--font-discovery)] text-[15px] font-semibold">
+    <div className="flex items-center justify-between gap-3 font-[family-name:var(--font-discovery)] text-[13px] font-semibold sm:text-[15px]">
       <span className="text-[rgba(148,163,184,0.6)]">{label}</span>
       <span className={tone}>{loading ? <SkeletonLine width={skeletonWidth} /> : value}</span>
     </div>

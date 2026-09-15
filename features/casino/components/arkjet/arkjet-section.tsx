@@ -13,6 +13,19 @@ import styles from "./arkjet.module.css";
 
 type RailTab = "all" | "previous" | "top";
 
+function ArkjetLogo() {
+  return (
+    <svg className={styles.brandLogo} viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path className={styles.brandOrbit} d="M6.5 28.4c4.7 6.4 16.7 8.4 25.8 1.9" pathLength="1" />
+      <path
+        className={styles.brandJet}
+        d="M32.8 6.9c-2-.3-4 .4-5.4 1.8l-7.2 7.2-8.1-1.9-2.4 2.4 6.2 4.1-3.9 3.9-4.4-.6-1.7 1.7 5.6 2.9 2.9 5.6 1.7-1.7-.6-4.4 3.9-3.9 4.1 6.2 2.4-2.4-1.9-8.1 7.2-7.2a6.2 6.2 0 0 0 1.7-5.4Z"
+      />
+      <circle className={styles.brandSpark} cx="7" cy="31.8" r="1.4" />
+    </svg>
+  );
+}
+
 function orderedRounds(rounds: ArkjetRound[], tab: RailTab): ArkjetRound[] {
   const completed = rounds.filter((round) => round.crashMultiplier);
   if (tab === "top") {
@@ -136,7 +149,9 @@ function SettingsMenu({
     <div className={styles.menu}>
       <div className={styles.menuProfile}>
         <div className={styles.brandWrap}>
-          <span className={styles.avatar}>A</span>
+          <span className={`${styles.brandMark} ${styles.menuBrandMark}`}>
+            <ArkjetLogo />
+          </span>
           <strong>Arkjet player</strong>
         </div>
         <span className={styles.balance}>Settings</span>
@@ -275,7 +290,9 @@ export function ArkjetSection() {
           <Link href="/casino" className={styles.backButton} aria-label="Back to Arkade">
             ‹
           </Link>
-          <span className={styles.brandMark}>A</span>
+          <span className={styles.brandMark}>
+            <ArkjetLogo />
+          </span>
           <span className={styles.brandName}>Arkjet</span>
         </div>
         <div className={styles.topActions}>

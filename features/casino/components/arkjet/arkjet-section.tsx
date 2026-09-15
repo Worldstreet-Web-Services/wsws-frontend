@@ -70,7 +70,7 @@ function LeftRail({
             className={`${styles.tab} ${tab === item ? styles.tabActive : ""}`}
             onClick={() => setTab(item)}
           >
-            {item === "all" ? "All Bets" : item === "previous" ? "Previous" : "Top"}
+            {item === "all" ? "All Tickets" : item === "previous" ? "Previous" : "Top"}
           </button>
         ))}
       </div>
@@ -165,10 +165,10 @@ function SettingsMenu({
         <Toggle enabled={animation} />
       </button>
       <button type="button" className={styles.menuRow}>
-        <span>☆ Free Bets</span>
+        <span>☆ Free Tickets</span>
       </button>
       <button type="button" className={styles.menuRow}>
-        <span>↶ My Bet History</span>
+        <span>↶ My Ticket History</span>
       </button>
       <button type="button" className={styles.menuRow}>
         <span>▣ Game Limits</span>
@@ -251,7 +251,7 @@ export function ArkjetSection() {
       <main className={`${styles.page} ${styles.unavailable}`}>
         <div>
           <h1 className={styles.fairTitle}>Arkjet is between flights</h1>
-          <p className={styles.summaryMeta}>No bet was accepted and no balance was charged.</p>
+          <p className={styles.summaryMeta}>No ticket was accepted and no balance was charged.</p>
           <button type="button" className={styles.menuRow} onClick={() => void arkjet.refresh()}>
             Try again
           </button>
@@ -389,8 +389,8 @@ export function ArkjetSection() {
           </div>
           {!wageringEnabled ? (
             <div className={styles.wagerNotice}>
-              Live rounds and proofs are active. Bet placement remains locked until Arkjet wagering
-              and settlement are enabled.
+              Live rounds and proofs are active. Ticket submission remains locked until Arkjet
+              wagering and settlement are enabled.
             </div>
           ) : null}
         </section>

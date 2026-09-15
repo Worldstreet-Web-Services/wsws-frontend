@@ -565,7 +565,7 @@ export function ChickenSection() {
             <span className={styles.menuRow}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`${ASSET}/icons/icon-free-bets.svg`} alt="" />
-              Free Bets
+              Free Tickets
             </span>
             <button
               type="button"
@@ -613,10 +613,10 @@ export function ChickenSection() {
         <div className={styles.betWrapper}>
           <div className={styles.tabs}>
             <button type="button" className={styles.activeTab}>
-              Bet
+              Ticket
             </button>
             <button type="button" disabled>
-              Free Bet
+              Free Ticket
             </button>
           </div>
           <div className={styles.betHalf}>
@@ -683,7 +683,9 @@ export function ChickenSection() {
                     void executeStep(() => game.start({ amount, currency, difficulty }), true);
                   }}
                 >
-                  <span>{game.pending ? "WAIT..." : game.authenticated ? "BET" : "SIGN IN"}</span>
+                  <span>
+                    {game.pending ? "WAIT..." : game.authenticated ? "SUBMIT" : "SIGN IN"}
+                  </span>
                   <span>{money(amount, currency)}</span>
                 </button>
               ) : (

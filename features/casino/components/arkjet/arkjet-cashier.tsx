@@ -222,7 +222,7 @@ export function ArkjetCashier({
             </div>
 
             <div className={styles.cashierBuckets}>
-              <span>Locked in bets: {money(balance?.locked ?? "0", config.currency)}</span>
+              <span>Locked in tickets: {money(balance?.locked ?? "0", config.currency)}</span>
               <span>
                 Pending payout: {money(balance?.pendingWithdrawal ?? "0", config.currency)}
               </span>

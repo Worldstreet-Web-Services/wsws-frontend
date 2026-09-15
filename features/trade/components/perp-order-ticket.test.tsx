@@ -983,3 +983,61 @@ describe("PerpOrderTicket", () => {
     expect(screen.getByRole("textbox", { name: "Stop loss" })).toBeDisabled();
   });
 });
+
+// The desk is stacked into a single narrow column on a phone, where the design
+// sizes drawn for the two-column desk crowd the cards. Each of those sizes now
+// has a smaller phone step under an sm: restore, so nothing moves from 640px
+// up. Asserting the classes is the only way to see a breakpoint from jsdom,
+// which has no layout.
+describe("PerpOrderTicket at phone width", () => {
+  it("sets the amount field a step smaller below sm and restores it above", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    const amount = screen.getByRole("textbox", { name: "Order quantity" });
+
+    expect(amount).toHaveClass("text-[26px]");
+    expect(amount).toHaveClass("sm:text-[31px]");
+  });
+
+  it("does the same for the quantity card's labels", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    const label = screen.getByText("Quantity");
+    const balance = screen.getByText("Balance: 1,240 USDC");
+
+    expect(label).toHaveClass("text-[13px]", "sm:text-[15px]");
+    expect(balance).toHaveClass("text-[12px]", "sm:text-[14px]");
+  });
+
+  it("keeps the price card on the same two-step scale", () => {
+    renderTicket({ initialQuantity: "500", mode: "limit", onPriceChange: vi.fn() });
+
+    const price = screen.getByRole("textbox", { name: "Limit price" });
+
+    expect(price).toHaveClass("text-[13px]", "sm:text-[15px]");
+  });
+});
+
+// The top strip is the narrowest row on the desk: at 390px the pill, the 24h
+// change and the Limit/Market toggle share roughly 320px, and the toggle used
+// to be cut off at the screen edge. Type sizes are covered where those
+// components live; what is locked here is that the row cannot clip the toggle
+// whatever the pair or locale makes the cluster beside it.
+describe("PerpOrderTicket top strip", () => {
+  it("gives the order mode toggle a width it never has to yield", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    const toggle = screen.getByRole("group", { name: "Order type" });
+
+    expect(toggle).toHaveClass("shrink-0");
+  });
+
+  it("lets the change reading give up width before the row overruns", () => {
+    renderTicket({ initialQuantity: "500" });
+
+    const change = screen.getByText("-2.20%").parentElement as HTMLElement;
+
+    expect(change).toHaveClass("truncate");
+    expect(change.parentElement).toHaveClass("min-w-0");
+  });
+});

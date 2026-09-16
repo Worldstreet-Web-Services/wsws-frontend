@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Badge, badgeText, badgedName } from "./badge";
 import { usePendingCrossing } from "./crossing";
+import { useRegisterTabBar } from "./drawer-contract";
 import { TargetElement } from "./target";
 import type { ArkTab, ArkTabBarProps } from "./types";
 
@@ -38,6 +39,7 @@ export function ArkTabBar({
   hidden = false,
 }: ArkTabBarProps) {
   const reduce = useReducedMotion();
+  useRegisterTabBar(hidden);
   const crossing = usePendingCrossing(activeId);
   const litId = crossing.pendingId ?? activeId;
 

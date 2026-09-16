@@ -1,4 +1,4 @@
-import type { ComponentType, MouseEvent, ReactNode, RefObject } from "react";
+import type { ComponentType, MouseEvent, ReactNode, Ref, RefObject } from "react";
 
 /**
  * How an item is reached from the page that renders the chrome.
@@ -109,6 +109,15 @@ export type ArkSidebarClassName =
   | "rowIdle"
   | "footer";
 
+/**
+ * - `responsive` (default): a fixed rail from 768px up, a drawer below. The
+ *   host must render an `ArkDrawerTrigger` for the drawer.
+ * - `drawer`: a drawer at every width, opened by an `ArkDrawerTrigger`.
+ * - `rail`: a fixed rail from 768px up and no drawer at all: below 768px the
+ *   sidebar renders nothing. For a shell whose phones navigate by the tab bar.
+ */
+export type ArkSidebarLayout = "responsive" | "drawer" | "rail";
+
 export interface ArkSidebarProps {
   /** Rows in their final order. */
   items: readonly ChromeNavItem[];
@@ -131,10 +140,15 @@ export interface ArkSidebarProps {
   AccountMenu?: ComponentType<AccountMenuProps>;
   /** Called when the signed-in footer is pressed and there is no `AccountMenu`. */
   onProfilePress?: () => void;
-  /** Phone drawer state. Ignored from 768px up unless `layout` is `drawer`. */
-  drawer: { open: boolean; onClose: () => void };
-  /** `responsive` (default): a fixed rail from 768px up, a drawer below. `drawer`: a drawer at every width. */
-  layout?: "responsive" | "drawer";
+  /**
+   * Phone drawer state. Required for the `responsive` and `drawer` layouts,
+   * whose drawer is opened by an `ArkDrawerTrigger` the host renders; ignored
+   * from 768px up unless `layout` is `drawer`. `rail` has no drawer and takes
+   * none.
+   */
+  drawer?: { open: boolean; onClose: () => void };
+  /** Where the rail is a drawer. See `ArkSidebarLayout`. Default `responsive`. */
+  layout?: ArkSidebarLayout;
   labels: { menu: string; closeMenu: string };
   /** The aside's id. */
   id?: string;
@@ -163,4 +177,19 @@ export interface ArkTabBarProps {
   navLabel: string;
   /** Hides the bar, for a host screen that needs the bottom edge (an open composer). */
   hidden?: boolean;
+}
+
+export interface ArkDrawerTriggerProps {
+  /** Whether the drawer it controls is open. Drawn as `aria-expanded`. */
+  open: boolean;
+  /** Called on every press. The host toggles its drawer state. */
+  onPress: () => void;
+  /** The button's accessible name, such as "Menu". */
+  label: string;
+  /** The `id` of the ArkSidebar it opens. Default `ark-chrome-sidebar`, the sidebar's default. */
+  controls?: string;
+  /** The host's placement classes. The package sets no margin on the button. */
+  className?: string;
+  /** The button element, for a host that returns focus to it. */
+  ref?: Ref<HTMLButtonElement>;
 }

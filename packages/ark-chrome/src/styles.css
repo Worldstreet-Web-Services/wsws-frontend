@@ -170,6 +170,14 @@
   }
 }
 
+/* layout="rail" has no drawer. The server renders the rail without knowing the
+   viewport; on a phone this keeps it off screen until hydration removes it. */
+@media (max-width: 767.98px) {
+  .ark-chrome-aside--rail {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ark-chrome-aside--drawer,
   .ark-chrome-aside--drawer[data-open] {
@@ -212,6 +220,37 @@
   text-align: center;
   cursor: pointer;
   /* Tailwind's transition-colors list and timing, as the rail had them. */
+  transition-property:
+    color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+    --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The button that opens the drawer, drawn as the perps screen's menu button
+   (Tailwind: size-9 rounded-full border border-white/10 text-white/60
+   transition-colors, hover:border-white/25 hover:text-white). No margin, so the
+   host places it, and no opacity, so a host's own press feedback still lands. */
+.ark-chrome-drawer-trigger {
+  box-sizing: border-box;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  text-align: center;
+  border: 1px solid;
+  border-radius: 3.40282e38px;
+  border-color: #ffffff1a;
+  border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 10%, transparent);
+  background-color: #0000;
+  color: #fff9;
+  color: color-mix(in oklab, var(--ark-chrome-white, #fff) 60%, transparent);
+  cursor: pointer;
   transition-property:
     color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
     --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
@@ -312,6 +351,12 @@
 }
 
 @media (hover: hover) {
+  .ark-chrome-drawer-trigger:hover {
+    border-color: #ffffff40;
+    border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 25%, transparent);
+    color: #fff;
+  }
+
   .ark-chrome-close:hover {
     background-color: #ffffff1a;
     background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 10%, transparent);

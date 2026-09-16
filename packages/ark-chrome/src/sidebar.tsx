@@ -1,15 +1,29 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Badge, badgeText, badgedName } from "./badge";
 import { usePendingCrossing } from "./crossing";
+import { useDrawerTriggerGuard } from "./drawer-contract";
 import { ArkLogo } from "./logo";
 import { ArkRailAction } from "./rail-action";
+import { ARK_SIDEBAR_DEFAULT_ID } from "./sidebar-id";
 import { TargetElement } from "./target";
+import { isWideViewport, subscribeViewport } from "./viewport";
 import type { ArkSidebarClassName, ArkSidebarProps, ChromeNavItem, ChromePerson } from "./types";
 
 function cx(...parts: Array<string | false | undefined>): string {
   return parts.filter(Boolean).join(" ");
+}
+
+// A sidebar with no drawer has nothing to close.
+function noDrawerToClose() {}
+
+// For layouts that never drop the rail: no subscription, always drawn.
+function subscribeNothing() {
+  return () => {};
+}
+function alwaysDrawn() {
+  return true;
 }
 
 /**
@@ -37,14 +51,27 @@ export function ArkSidebar({
   drawer,
   layout = "responsive",
   labels,
-  id = "ark-chrome-sidebar",
+  id = ARK_SIDEBAR_DEFAULT_ID,
   profileDataAttributes,
   classNames = {},
 }: ArkSidebarProps) {
-  const { open, onClose } = drawer;
+  const open = drawer?.open ?? false;
+  const onClose = drawer?.onClose ?? noDrawerToClose;
   const crossing = usePendingCrossing(activeId);
   const lit = crossing.pendingId ?? activeId;
   const alwaysDrawer = layout === "drawer";
+  const railOnly = layout === "rail";
+
+  // The rail layout has no drawer, so below 768px there is nothing to render.
+  // The server cannot see the viewport and renders the rail, which styles.css
+  // keeps off a phone's screen until hydration drops it.
+  const railShown = useSyncExternalStore(
+    railOnly ? subscribeViewport : subscribeNothing,
+    railOnly ? isWideViewport : alwaysDrawn,
+    alwaysDrawn
+  );
+
+  useDrawerTriggerGuard(id, layout, drawer !== undefined);
   const marker = (name: ArkSidebarClassName) => classNames[name];
 
   const asideRef = useRef<HTMLElement>(null);
@@ -156,19 +183,23 @@ export function ArkSidebar({
     );
   };
 
+  if (!railShown) return null;
+
   return (
     <>
       {/* The dimmed page behind the drawer. */}
-      <div
-        aria-hidden
-        onClick={onClose}
-        data-open={open ? "" : undefined}
-        className={cx(
-          "ark-chrome-root ark-chrome-backdrop",
-          alwaysDrawer && "ark-chrome-backdrop--drawer",
-          marker("backdrop")
-        )}
-      />
+      {railOnly ? null : (
+        <div
+          aria-hidden
+          onClick={onClose}
+          data-open={open ? "" : undefined}
+          className={cx(
+            "ark-chrome-root ark-chrome-backdrop",
+            alwaysDrawer && "ark-chrome-backdrop--drawer",
+            marker("backdrop")
+          )}
+        />
+      )}
       <aside
         ref={asideRef}
         id={id}
@@ -177,6 +208,7 @@ export function ArkSidebar({
         className={cx(
           "ark-chrome-root ark-chrome-aside",
           alwaysDrawer && "ark-chrome-aside--drawer",
+          railOnly && "ark-chrome-aside--rail",
           marker("aside"),
           open ? marker("asideOpen") : marker("asideClosed")
         )}
@@ -193,22 +225,24 @@ export function ArkSidebar({
           >
             <ArkLogo className="ark-chrome-brand-logo" />
           </TargetElement>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label={labels.closeMenu}
-            className="ark-chrome-close"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M6 6l12 12M18 6L6 18"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          {railOnly ? null : (
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              aria-label={labels.closeMenu}
+              className="ark-chrome-close"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* The rail's primary action sits at the top, above a divider, never

@@ -46,10 +46,10 @@ function focusableIn(root: HTMLElement): HTMLElement[] {
  *
  * The rail is written for two states, a phone drawer and a fixed desktop rail,
  * and pins itself open from `md` up. Perps wants the drawer at every width, so
- * the wrapper below re-points the four `md:` utilities that would otherwise
- * pin it: the sidebar's translate, its width and its z-index, and the
- * backdrop's and close button's display. Descendant selectors, so they win on
- * specificity without the rail needing to know this screen exists.
+ * it asks for that with `drawerAtEveryWidth`. The rail is drawn by
+ * @ark/chrome, whose stylesheet is unlayered, so utilities on a wrapper here
+ * could no longer re-point it; the rail keeps its width, z-index, backdrop and
+ * close button in drawer form itself, and skips the slide under reduced motion.
  */
 export function PerpsMenuDrawer({ open, onOpenChange }: PerpsMenuDrawerProps) {
   const tSections = useTranslations("sections");
@@ -128,20 +128,14 @@ export function PerpsMenuDrawer({ open, onOpenChange }: PerpsMenuDrawerProps) {
       {/* Closed, the rail is parked off-canvas but still in the document, so
           `inert` takes it out of the tab order and off the accessibility tree
           until it is open. */}
-      <div
-        ref={drawerRef}
-        inert={!open}
-        onKeyDown={trapTab}
-        className={`motion-reduce:[&>aside]:transition-none [&>aside]:md:z-[110] [&>aside]:md:w-[280px] [&>aside>div:first-child>button]:md:grid [&>div]:md:block ${
-          open ? "[&>aside]:md:translate-x-0" : "[&>aside]:md:-translate-x-full"
-        }`}
-      >
+      <div ref={drawerRef} inert={!open} onKeyDown={trapTab}>
         <Sidebar
           items={nav}
           activeSection={activeSection}
           onNavigate={(id) => navigate(id)}
           open={open}
           onClose={close}
+          drawerAtEveryWidth
         />
       </div>
     </>

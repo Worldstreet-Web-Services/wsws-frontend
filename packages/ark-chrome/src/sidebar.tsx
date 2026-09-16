@@ -149,7 +149,8 @@ export function ArkSidebar({
         className={cx(
           "ark-chrome-root ark-chrome-aside",
           alwaysDrawer && "ark-chrome-aside--drawer",
-          marker("aside")
+          marker("aside"),
+          open ? marker("asideOpen") : marker("asideClosed")
         )}
       >
         <div className="ark-chrome-header">

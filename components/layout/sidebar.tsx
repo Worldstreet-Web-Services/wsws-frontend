@@ -33,8 +33,12 @@ interface SidebarProps {
 // where WSWS's own data goes in: the localized labels, the Privy profile, the
 // broadcast control, the account popover and the Square switch.
 //
-// The class names passed as `classNames` are markers for this app's tests and
-// tools. The package's own stylesheet is unlayered, so they restyle nothing.
+// The class names passed as `classNames` are markers for this app's older
+// tests and tools, which read Tailwind names off the rail. The package's own
+// stylesheet is unlayered, so they restyle nothing. They are fixed strings:
+// the package applies the state-dependent ones (open or closed, lit or idle)
+// from the state it draws with, and sidebar-markers.test.tsx checks each marker
+// sits where the package's real state and styles are.
 export function Sidebar({
   items,
   activeSection,
@@ -110,7 +114,8 @@ export function Sidebar({
       labels={{ menu: t("menu"), closeMenu: t("closeMenu") }}
       classNames={{
         backdrop: "fixed inset-0",
-        aside: open ? "translate-x-0" : "-translate-x-full",
+        asideOpen: "translate-x-0",
+        asideClosed: "-translate-x-full",
         nav: "flex min-h-0 flex-col gap-[3px] overflow-x-hidden overflow-y-auto",
         rowActive: "bg-accent/14 text-white",
         footer: "relative mt-auto shrink-0",

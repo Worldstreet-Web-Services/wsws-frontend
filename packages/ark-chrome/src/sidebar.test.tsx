@@ -255,6 +255,22 @@ describe("ArkSidebar", () => {
       expect(onClose).toHaveBeenCalledTimes(2);
     });
 
+    it("puts the host's open and closed markers on the aside from its own drawer state", () => {
+      const classNames = { asideOpen: "host-open", asideClosed: "host-closed" };
+      const { container, rerender, props } = renderRail({
+        classNames,
+        drawer: { open: false, onClose: vi.fn() },
+      });
+      const aside = container.querySelector(".ark-chrome-aside") as HTMLElement;
+      expect(aside.classList.contains("host-closed")).toBe(true);
+      expect(aside.classList.contains("host-open")).toBe(false);
+      expect(aside).not.toHaveAttribute("data-open");
+      rerender(<ArkSidebar {...props} drawer={{ open: true, onClose: vi.fn() }} />);
+      expect(aside.classList.contains("host-open")).toBe(true);
+      expect(aside.classList.contains("host-closed")).toBe(false);
+      expect(aside).toHaveAttribute("data-open");
+    });
+
     it("stays a drawer at every width when asked", () => {
       const { container } = renderRail({ layout: "drawer" });
       expect(container.querySelector(".ark-chrome-aside")?.className).toContain(

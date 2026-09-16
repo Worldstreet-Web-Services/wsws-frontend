@@ -79,8 +79,22 @@ export interface ArkRailActionProps {
   dataAttributes?: ChromeDataAttributes;
 }
 
+/**
+ * Where a host's marker class names go. The state-dependent ones (`asideOpen`,
+ * `asideClosed`, `rowActive`, `rowIdle`) are applied by the package from the
+ * same state it draws with, so a marker never claims a state the chrome is not
+ * showing.
+ */
 export type ArkSidebarClassName =
-  "backdrop" | "aside" | "nav" | "row" | "rowActive" | "rowIdle" | "footer";
+  | "backdrop"
+  | "aside"
+  | "asideOpen"
+  | "asideClosed"
+  | "nav"
+  | "row"
+  | "rowActive"
+  | "rowIdle"
+  | "footer";
 
 export interface ArkSidebarProps {
   /** Rows in their final order. */

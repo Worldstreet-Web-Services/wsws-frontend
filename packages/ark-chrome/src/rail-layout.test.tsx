@@ -30,12 +30,28 @@ const PROPS: ArkSidebarProps = {
   labels: { menu: "Menu", closeMenu: "Close menu" },
 };
 
-/** A matchMedia whose "(min-width: 768px)" answer the test sets and changes. */
+/**
+ * A matchMedia whose "(min-width: 768px)" answer the test sets and changes.
+ *
+ * Any other query answers "does not match" rather than throwing: the logo's
+ * motion library asks for (prefers-reduced-motion) once per test process, so a
+ * throwing stub failed the whole suite depending on which file rendered the
+ * logo first, while every test here still passed.
+ */
 function stubViewport(wide: boolean) {
   const listeners = new Set<() => void>();
   const state = { wide };
   const matchMedia = (query: string) => {
-    if (query !== "(min-width: 768px)") throw new Error(`unexpected media query ${query}`);
+    if (query !== "(min-width: 768px)") {
+      return {
+        matches: false,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+      } as unknown as MediaQueryList;
+    }
     return {
       get matches() {
         return state.wide;

@@ -47,7 +47,9 @@ export interface ChromeLinkProps {
   "aria-current"?: "page";
   "aria-busy"?: boolean;
   "aria-label"?: string;
-  children?: ReactNode;
+  // Required, so a link component that insists on children (the
+  // microfrontends Link does) is accepted as well as next/link.
+  children: ReactNode;
   [dataAttribute: `data-${string}`]: string | undefined;
 }
 

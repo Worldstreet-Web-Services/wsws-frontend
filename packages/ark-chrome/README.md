@@ -209,9 +209,9 @@ import {
   ArkTabBar,
   ArkTabIcons,
   type ArkTab,
+  type ChromeHrefTarget,
   type ChromeNavItem,
   type ChromePerson,
-  type ChromeTarget,
 } from "@ark/chrome";
 import { useSquareSession } from "@/lib/session"; // the host's own
 
@@ -222,8 +222,11 @@ export function SquareChrome({ arkOrigin }: { arkOrigin: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { ready, signedIn, displayName, avatar, login, openGoLive } = useSquareSession();
 
-  const ark = (path: string): ChromeTarget => ({ kind: "document", href: `${arkOrigin}${path}` });
-  const square: ChromeTarget = { kind: "link", href: "/square" };
+  const ark = (path: string): ChromeHrefTarget => ({
+    kind: "document",
+    href: `${arkOrigin}${path}`,
+  });
+  const square: ChromeHrefTarget = { kind: "link", href: "/square" };
   const onSquare = pathname === "/square" || pathname.startsWith("/square/");
 
   const items: ChromeNavItem[] = [

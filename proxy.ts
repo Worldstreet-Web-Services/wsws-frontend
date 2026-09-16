@@ -89,7 +89,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Static assets and any dotted file (icons, images, fonts) stay reachable —
+    // Static assets and any dotted file (icons, images, fonts) stay reachable:
     // the landing page is built from them.
     //
     // /square and everything under it belongs to the Square, a separate Vercel

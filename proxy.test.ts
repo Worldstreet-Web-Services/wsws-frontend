@@ -157,20 +157,25 @@ describe("proxy matcher", () => {
     return unstable_doesMiddlewareMatch({ config, url: `https://www.tsionark.com${path}` });
   }
 
+  // Until PR 3 of docs/plans/2026-09-16-square-microfrontend-plan.md, /square
+  // is still this app's own page (app/(session)/(app)/square) in production:
+  // no microfrontends group exists, so nothing routes it anywhere else. The
+  // gate keeps covering it, so a maintenance window or the launch clock closes
+  // it like every other page. The package flags a matcher that sees a child's
+  // paths; these two are declared as the deliberate exception, and it fails
+  // if they are declared but no longer matched. PR 3 deletes the page, empties
+  // this list, and takes /square out of the matcher.
+  const SQUARE_PATHS_GATED_UNTIL_PR_3 = ["/square", "/square/:path*"];
+
   it("agrees with microfrontends.json, as the package checks it", () => {
-    expect(() => validateMiddlewareConfig(config, MICROFRONTENDS_CONFIG)).not.toThrow();
+    expect(() =>
+      validateMiddlewareConfig(config, MICROFRONTENDS_CONFIG, SQUARE_PATHS_GATED_UNTIL_PR_3)
+    ).not.toThrow();
   });
 
-  it("never sees a Square path, which on Vercel belongs to another application", () => {
-    for (const path of [
-      "/square",
-      "/square/",
-      "/square/p/abc",
-      "/square/u/someone",
-      "/square/messages/thread/1",
-      "/square/api/kash",
-    ]) {
-      expect(reaches(path), path).toBe(false);
+  it("still gates this app's own /square page until the Square takes the path", () => {
+    for (const path of ["/square", "/square/", "/square/p/abc", "/square/u/someone"]) {
+      expect(reaches(path), path).toBe(true);
     }
   });
 

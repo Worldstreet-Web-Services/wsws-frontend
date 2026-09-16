@@ -42,7 +42,8 @@ That starts the microfrontends local proxy on port 3024 and this app's dev
 server on the port `microfrontends port` derives for it (7448). Open the proxy
 address: this app answers from your machine, and `/square` comes from the
 development fallback, `https://www.tsionark.com`. Stopping the command stops
-both. Set `MFE_DEBUG=1` to print each routing decision.
+both and frees both ports, whether by Ctrl-C, a task runner's `SIGTERM` or a
+closed terminal. Set `MFE_DEBUG=1` to print each routing decision.
 
 To route `/square` to a Square running on your machine instead, run it in its
 own repository with `next dev --port $(microfrontends port)`, pointing it at

@@ -8,6 +8,13 @@ import type { TokenBalance } from "@/lib/server/alchemy";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 
 export const SOLANA_NETWORK = "solana-mainnet";
+// Dust floor, by BALANCE not value. A wallet collects tokens holding a wei or
+// two — 0.000000000000000001 of a unit — from airdrops and rounding. They are
+// worth nothing and often revert on transfer, yet a price feed cannot be
+// trusted to say so (it may report every token as $0). So the line is drawn on
+// the balance itself: below a millionth of one whole unit is dust, whatever it
+// is priced at. A real holding never rounds this small.
+export const DUST_MIN_BALANCE = 1e-6;
 
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.
@@ -60,6 +67,10 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
     // wallet of real tokens. Anything the user holds gets swept; a worthless
     // one that reverts is caught by the per-asset retry, not by a value gate.
     if (amount <= 0n) continue;
+    // token.balance is the human-unit float; below the dust floor it is a
+    // rounding remnant, not money. Dropped before the sponsored/stranded split
+    // so it is neither swept nor listed as stuck.
+    if (token.balance < DUST_MIN_BALANCE) continue;
     const asset: SweepAsset = {
       id: sweepAssetId(token.network, token.address),
       network: token.network,

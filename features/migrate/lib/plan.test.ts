@@ -107,3 +107,15 @@ describe("sweepAssetId", () => {
     expect(sweepAssetId("base-mainnet", "0xabc")).toBe("base-mainnet:0xabc");
   });
 });
+
+describe("buildSweepPlan — dust", () => {
+  it("drops a wei-sized balance but keeps a real one, whatever the price says", () => {
+    const plan = buildSweepPlan([
+      token({ symbol: "DUST", rawBalance: "1", decimals: 18, balance: 1e-18, valueUsd: 0 }),
+      token({ symbol: "REAL", rawBalance: "716606", decimals: 6, balance: 0.716606, valueUsd: 0 }),
+    ]);
+    const swept = plan.chains.flatMap((c) => c.assets).map((a) => a.symbol);
+    expect(swept).toEqual(["REAL"]);
+    expect(plan.skipped).toEqual([]);
+  });
+});

@@ -1,6 +1,6 @@
 # The whole Market Square inside Ark on the web (plain English)
 
-**Date:** 2026-09-16 · **Status:** proposed, waiting for the maintainer's yes
+**Date:** 2026-09-16 · **Status:** approved by the maintainer; being built
 
 ## What is the problem?
 
@@ -35,8 +35,12 @@ inside itself. A website can. And copying would be expensive:
 4. **Ark's Square button opens `/square`** on both desktop and phone. Ark's
    current copy of the Square's front page is retired, because the real one
    takes its place.
-5. **Old links keep working.** `square.tsionark.com/...` sends people to the same
-   page at `www.tsionark.com/square/...`.
+5. **Both addresses keep working.** `square.tsionark.com` stays up, and every
+   page tells search engines and chat apps that `www.tsionark.com/square` is the
+   main address, so a post does not compete with itself.
+6. **Ark's menus on Square pages from day one.** The same sidebar and phone tab
+   bar people see on trading pages also appear on Square pages. They are built
+   once and shared by both apps, so they never look different.
 
 ## What does it cost?
 
@@ -56,10 +60,11 @@ inside itself. A website can. And copying would be expensive:
   repositories.
 - **Keep linking out.** That is today, and it is not "fully".
 
-## What we need from the maintainer
+## What the maintainer decided
 
-1. Should the old address redirect for good, or stay as its own site too?
-2. On Square pages, keep the Square's own menus, or show Ark's sidebar? (Ark's
-   sidebar would be a later step.)
-3. Who switches the feature on in Vercel, and is the cost fine?
-4. Should the Square's session make its changes while this session does Ark's?
+1. Keep both addresses.
+2. Show Ark's sidebar and tab bar on Square pages from the start.
+3. The Square's session changes the Square; this session changes Ark and builds
+   the shared menus.
+4. Still to confirm before going live: who switches the feature on in Vercel,
+   and the cost.

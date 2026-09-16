@@ -1,7 +1,8 @@
 # Plan: the whole Market Square at `www.tsionark.com/square`
 
-Decision: `docs/adr/ADR-2026-09-16-square-microfrontend.md` (proposed). Nothing
-here starts before the maintainer approves both records.
+Decision: `docs/adr/ADR-2026-09-16-square-microfrontend.md` (accepted
+2026-09-16: both addresses stay, Ark's chrome on Square pages from the start,
+the Square session owns the Square-side changes).
 
 ## Ownership
 
@@ -44,10 +45,26 @@ here starts before the maintainer approves both records.
 | Prefetch the Square entry where the seat is visible                                     | shell                                                                           | warm navigation measured on preview          |
 | Release note, locale check, preflight                                                   | docs                                                                            | five gates green                             |
 
+### PR 3b — WSWS: `packages/ark-chrome` (2–3 days)
+
+| Step                                                                                                                                                                                                                    | Files                                                                   | Check                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Extract the sidebar and curved tab bar into presentational components driven by props (items, active path, person, callbacks); no next-intl, Privy, TanStack Query or feature imports; scoped classes and CSS variables | `packages/ark-chrome/**`                                                | package builds alone; a test renders it with no app providers                            |
+| This app renders its chrome through the package                                                                                                                                                                         | `components/layout/sidebar.tsx`, `curved-tab-bar.tsx`, `app-chrome.tsx` | existing sidebar and tab bar tests pass unchanged; screenshots identical at 1440 and 390 |
+| Tag `ark-chrome-v1.0.0`; document the git-dependency install for the Square                                                                                                                                             | `packages/ark-chrome/README.md`                                         | the git-dependency install works in a scratch app                                        |
+
+### PR 2b — Square: render Ark's chrome (market-square-frontend session)
+
+Install the tagged package, pass English strings, nav items (Ark's items as `<a>`,
+Square items active on `/square`), the person from its session, and its Go Live
+and sign-in callbacks; hide its own dock and top bar where the chrome shows.
+Canonical and `og:url` tags on every page point at
+`https://www.tsionark.com/square/...`.
+
 ### PR 4 — Production promotion and redirect (maintainer-gated)
 
-Both apps promoted; `square.tsionark.com/*` → 301 `https://www.tsionark.com/square/*`
-after the combined production check below.
+Both apps promoted after the combined production check; `square.tsionark.com`
+stays live with canonical tags pointing at `www.tsionark.com/square`.
 
 ## How the work is run: departments
 
@@ -70,16 +87,16 @@ context. The loop repeats until the judge scores the PR at the top grade.
 
 ### Rubric (100 points)
 
-| Criterion      | Points | Top grade means                                                                                        |
-| -------------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| Routes         | 20     | all 46 Square routes load under `/square`, signed in and out, with CSS and images                      |
-| Sign-in        | 10     | one sign-in carries across both apps and back                                                          |
-| Critical flows | 25     | post with media, comment reply, DM voice note, live room audio, `$TICKER` buy, KASH action, push click |
-| No collisions  | 10     | no request reaches the wrong app; no shared `/api` name                                                |
-| Links and SEO  | 10     | old `square.tsionark.com` links redirect; share previews render                                        |
-| Crossing UX    | 10     | warm, prefetched navigation with no blank flash                                                        |
-| Governance     | 10     | ADRs, release notes, 5 locales where strings change, preflight, bundle budgets                         |
-| Rollback       | 5      | removing the child from `microfrontends.json` restores `/square` cleanly on a preview                  |
+| Criterion           | Points | Top grade means                                                                                        |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| Routes              | 20     | all 46 Square routes load under `/square`, signed in and out, with CSS and images                      |
+| Sign-in             | 10     | one sign-in carries across both apps and back                                                          |
+| Critical flows      | 25     | post with media, comment reply, DM voice note, live room audio, `$TICKER` buy, KASH action, push click |
+| No collisions       | 10     | no request reaches the wrong app; no shared `/api` name                                                |
+| Links and SEO       | 10     | both hosts serve; canonical and `og:url` point at `www.tsionark.com/square`; share previews render     |
+| Crossing UX         | 10     | warm, prefetched navigation with no blank flash                                                        |
+| Governance          | 10     | ADRs, release notes, 5 locales where strings change, preflight, bundle budgets                         |
+| Rollback and chrome | 5      | removing the child restores `/square` cleanly; both hosts render the same `ark-chrome` version         |
 
 ## Risks and how they are caught
 

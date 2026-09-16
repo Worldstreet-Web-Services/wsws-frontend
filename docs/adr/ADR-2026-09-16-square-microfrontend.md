@@ -2,10 +2,12 @@
 
 ## Status
 
-Proposed — 2026-09-16. The maintainer chose the approach in conversation ("Serve
-the real Square at /square") after the three options below were compared. This
-record and its companion (`ADR-2026-09-16-square-microfrontend-for-dummies.md`)
-await approval before any build.
+Accepted — 2026-09-16. The maintainer chose the approach ("Serve the real Square
+at /square"), approved this record and its companion
+(`ADR-2026-09-16-square-microfrontend-for-dummies.md`), and decided the three
+open questions: **both addresses stay**, **Ark's sidebar and tab bar show on
+Square pages from the start**, and **the `market-square-frontend` session makes
+the Square-side changes**. Sections 2, 4 and 6 record those decisions.
 
 Supersedes `ADR-2026-09-12-square-page-in-app.md` once the microfrontend is live
 in production: that record ported the Square's Home into this app and linked
@@ -115,9 +117,12 @@ Owned by the `market-square-frontend` session, coordinated before any write:
   `https://www.tsionark.com/square/...`.
 - Route-based shell rules (`lib/compose-surfaces.ts`, the shell's `WIDE` list)
   match the new prefix.
-- `square.tsionark.com/*` answers with a permanent redirect to
-  `https://www.tsionark.com/square/*`, so every shared link and cached preview
-  keeps working.
+- `square.tsionark.com` stays live as its own address (maintainer's decision).
+  Because the same post then exists at two URLs, every page names
+  `https://www.tsionark.com/square/...` as its canonical URL
+  (`<link rel="canonical">` and `og:url`), so search engines and chat previews
+  consolidate on one address. On the old host the app serves the same routes
+  under `/square` as well, and `/` there sends people to `/square`.
 - Its CSP keeps `frame-ancestors 'none'`; no iframe is involved.
 
 ### 3. What changes in this app
@@ -140,8 +145,34 @@ Owned by the `market-square-frontend` session, coordinated before any write:
 
 Cross-application links use `<a>`. The Square and this app each prefetch the
 other's entry points with the package's prefetch helper where a link is visible,
-so the full page load is warm. The two shells stay separate in this record; a
-shared chrome is a later decision (see the open questions).
+so the full page load is warm.
+
+### 6. Ark's chrome on Square pages, from one source
+
+The maintainer wants Ark's sidebar (desktop) and curved tab bar (phone) on
+Square pages from the start. Copying them into the Square would drift, so they
+become a package built from this repository:
+
+- `packages/ark-chrome` in this repository: the sidebar and the tab bar as
+  presentational components driven by props — the nav items (label, href, icon,
+  whether the item belongs to this application), the active path, the signed-in
+  person's name and avatar, and callbacks for the actions that need the host
+  (sign in, sign out, Go Live). No `next-intl`, no Privy, no TanStack Query and
+  no WSWS feature imports inside the package; each host passes its own strings
+  and data. Styling uses its own scoped class names and CSS variables, so
+  neither app's Tailwind tokens (15 of which share a name with different values)
+  leak into the other.
+- This app renders its sidebar and tab bar through the package, so the two can
+  never differ.
+- The Square installs it as a git dependency pinned to a tag,
+  `github:Worldstreet-Web-Services/wsws-frontend#ark-chrome-v<version>&path:packages/ark-chrome`
+  (pnpm), so no package registry is needed. A chrome change ships as a new tag
+  and a one-line version bump in the Square.
+- Nav items that belong to this application are `<a>` links from the Square;
+  the Square's own links inside its pages stay `next/link`.
+- The Square keeps its own in-page controls (composer, notifications, its
+  search); its dock and top bar are replaced by Ark's chrome on routes that
+  show it.
 
 ### 5. Local development
 
@@ -175,7 +206,11 @@ repos; the polyrepo setup pulls the group config with
   release no longer needs a WSWS release. A broken `microfrontends.json` in this
   repo can take `/square` down, so the file is guarded by a test.
 - **Share links change host.** Canonical post and profile URLs become
-  `www.tsionark.com/square/...`, with permanent redirects from the old host.
+  `www.tsionark.com/square/...`; the old host keeps serving and points its
+  canonical tags at the new one.
+- **Shared chrome is a versioned package.** A change to Ark's menus reaches the
+  Square only when the Square bumps the tag; the plan tests both hosts render
+  the same version.
 - **Push notifications.** The service worker's scope and notification URLs move
   under `/square`; existing push subscriptions registered on
   `square.tsionark.com` belong to a different origin and must re-subscribe.
@@ -184,8 +219,7 @@ repos; the polyrepo setup pulls the group config with
 - **Bundle budgets.** Each app keeps its own; this app's first-load budgets are
   unaffected.
 - **Rollback.** Removing the child from `microfrontends.json` returns `/square`
-  to this app; `square.tsionark.com` keeps working throughout if its redirect is
-  switched off.
+  to this app; `square.tsionark.com` keeps working throughout.
 
 ## Rollout
 
@@ -196,7 +230,7 @@ repos; the polyrepo setup pulls the group config with
    on its own preview at `/square/*`.
 3. This app's links and the removal of the Home port, verified on the combined
    preview.
-4. Production promotion of both, then the `square.tsionark.com` redirect.
+4. Production promotion of both; canonical tags checked on both hosts.
 
 ## Verification
 
@@ -206,19 +240,21 @@ repos; the polyrepo setup pulls the group config with
 - Posting with media, a comment with a reply, a DM with a voice note, joining a
   live room with audio, a `$TICKER` buy, a KASH action and a push notification
   click all work under the prefix.
-- Old links `square.tsionark.com/p/{id}` and `/u/{name}` land on the new URLs.
+- `square.tsionark.com/p/{id}` and `/u/{name}` still load, and their canonical
+  tags point at `www.tsionark.com/square/...`.
+- Ark's sidebar and tab bar render identically on `/portfolio` and on `/square`,
+  from the same package version.
 - Link previews for `/square/p/{id}` render in a chat app.
 
-## Open questions for the maintainer
+## Decided by the maintainer (2026-09-16)
 
-1. Does `square.tsionark.com` redirect permanently to `www.tsionark.com/square`,
-   or stay as its own site alongside it?
-2. On Square pages, keep the Square's own shell (dock, top bar), or show the Ark
-   sidebar and tab bar? The second is a separate, later piece of work.
-3. Who creates the microfrontends group on the Vercel team, and is the plan's
-   cost acceptable?
-4. Is the `market-square-frontend` session to do the Square-side move (its repo,
-   its conventions), with this session doing the WSWS side?
+1. `square.tsionark.com` stays as its own address; canonical URLs point at
+   `www.tsionark.com/square`.
+2. Ark's sidebar and tab bar show on Square pages from the start (section 6).
+3. The `market-square-frontend` session makes the Square-side changes; this
+   session makes Ark's side and the chrome package.
+4. Still to confirm before production: who creates the microfrontends group on
+   the Vercel team, and that the plan's cost is acceptable.
 
 ## Release notes
 

@@ -126,9 +126,10 @@
   border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
   translate: -100%;
   /* Parked off-canvas, the drawer is also hidden, which takes it out of the
-     tab order and the accessibility tree. Listing visibility in the
-     transition keeps a closing drawer visible until its slide has played, and
-     shows an opening one at once. */
+     tab order and the accessibility tree. A transition runs on the list of the
+     style it moves to: closing lists visibility, so the drawer stays visible
+     until its slide has played; opening does not, so it is visible at once
+     and focus can move into it. */
   visibility: hidden;
   transition-property: transform, translate, scale, rotate, visibility;
   transition-duration: 0.3s;
@@ -138,6 +139,7 @@
 .ark-chrome-aside[data-open] {
   translate: 0px;
   visibility: visible;
+  transition-property: transform, translate, scale, rotate;
 }
 
 @media (min-width: 768px) {
@@ -158,7 +160,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ark-chrome-aside--drawer {
+  .ark-chrome-aside--drawer,
+  .ark-chrome-aside--drawer[data-open] {
     transition-property: none;
   }
 }

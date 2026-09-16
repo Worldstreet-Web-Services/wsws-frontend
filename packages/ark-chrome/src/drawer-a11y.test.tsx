@@ -78,6 +78,27 @@ describe("the phone drawer, for keyboard and screen reader", () => {
     expect(rule).toMatch(/transition-property:[^;]*\bvisibility\b/);
   });
 
+  it("shows an opening drawer at once, so focus can move into it", () => {
+    // A transition runs on the destination style's list. Were visibility in
+    // the open rule's list, the drawer would start its slide at the hidden end
+    // of that transition, and the close button would refuse focus. Measured
+    // in Chrome: with visibility transitioned both ways, focus stayed behind.
+    const open = /\.ark-chrome-aside\[data-open\]\s*\{([^}]*)\}/.exec(STYLES)?.[1] ?? "";
+    expect(open).toMatch(/transition-property:/);
+    expect(open).not.toMatch(/transition-property:[^;]*\bvisibility\b/);
+  });
+
+  it("keeps a drawer under reduced motion from sliding either way", () => {
+    const reduced = [
+      ...STYLES.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+    expect(reduced).toMatch(
+      /\.ark-chrome-aside--drawer,\s*\.ark-chrome-aside--drawer\[data-open\]\s*\{\s*transition-property:\s*none/
+    );
+  });
+
   it("keeps the fixed desktop rail visible from 768px up", () => {
     const desktop = /@media \(min-width: 768px\)\s*\{([\s\S]*?)\n\}/.exec(STYLES)?.[1] ?? "";
     const rail = /\.ark-chrome-aside:not\(\.ark-chrome-aside--drawer\)\s*\{([^}]*)\}/.exec(

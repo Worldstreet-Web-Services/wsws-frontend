@@ -92,14 +92,18 @@ export const config = {
     // Static assets and any dotted file (icons, images, fonts) stay reachable:
     // the landing page is built from them.
     //
-    // /square and everything under it belongs to the Square, a separate Vercel
-    // application in the same microfrontends group, and so does its asset
-    // prefix (vc-ap- plus the package's hash of "market-square-frontend"). On
-    // Vercel those requests never reach this app; locally and before the group
-    // exists they must not be gated by it either. /squares and the like are
-    // still this app's, so the exclusion stops at a slash or the end of the path.
-    // proxy.test.ts checks this against microfrontends.json.
-    "/((?!_next/static|_next/image|square(?:/|$)|vc-ap-ce7102/|.*\\..*).*)",
+    // The Square's asset prefix (vc-ap- plus the package's hash of
+    // "market-square-frontend") is the Square's alone: this app serves nothing
+    // there, so the gate has nothing to guard under it.
+    //
+    // /square is NOT excluded yet. microfrontends.json gives it to the Square,
+    // but until PR 3 of docs/plans/2026-09-16-square-microfrontend-plan.md it
+    // is still this app's own page in production, and a closed site must close
+    // it too. Once a group routes /square to the Square those requests never
+    // reach this app, so matching it costs nothing then. PR 3 deletes the page
+    // and adds square(?:/|$) here. proxy.test.ts checks this against
+    // microfrontends.json.
+    "/((?!_next/static|_next/image|vc-ap-ce7102/|.*\\..*).*)",
     // Dotted, so the pattern above skips it.
     "/.well-known/vercel/microfrontends/client-config",
   ],

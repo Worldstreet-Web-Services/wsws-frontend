@@ -77,6 +77,13 @@ describe("proxy", () => {
       expect((await get("/api/waitlist")).status).toBe(503);
     });
 
+    // Still this app's page until PR 3 of the Square microfrontend plan.
+    it("closes this app's /square page with everything else", async () => {
+      for (const path of ["/square", "/square/p/abc"]) {
+        expect((await get(path)).status, path).toBe(503);
+      }
+    });
+
     it("closes regardless of the launch clock", async () => {
       process.env.NEXT_PUBLIC_LAUNCH_AT = new Date(Date.now() - 60_000).toISOString();
       expect((await get("/dashboard")).status).toBe(503);

@@ -109,13 +109,66 @@ describe("sweepAssetId", () => {
 });
 
 describe("buildSweepPlan — dust", () => {
-  it("drops a wei-sized balance but keeps a real one, whatever the price says", () => {
+  it("drops a wei-sized balance, whatever the price says", () => {
+    // A feed outage: both priced at $0. Balance alone decides.
     const plan = buildSweepPlan([
-      token({ symbol: "DUST", rawBalance: "1", decimals: 18, balance: 1e-18, valueUsd: 0 }),
-      token({ symbol: "REAL", rawBalance: "716606", decimals: 6, balance: 0.716606, valueUsd: 0 }),
+      token({
+        symbol: "DUST",
+        rawBalance: "1",
+        decimals: 18,
+        balance: 1e-18,
+        priceUsd: 0,
+        valueUsd: 0,
+      }),
+      token({
+        symbol: "REAL",
+        rawBalance: "716606",
+        decimals: 6,
+        balance: 0.716606,
+        priceUsd: 0,
+        valueUsd: 0,
+      }),
     ]);
-    const swept = plan.chains.flatMap((c) => c.assets).map((a) => a.symbol);
-    expect(swept).toEqual(["REAL"]);
+    expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["REAL"]);
     expect(plan.skipped).toEqual([]);
+  });
+
+  it("drops a priced-but-worthless token — the honeypot that reverts on transfer", () => {
+    // AGAI-shaped: nine whole units, a real price, worth $0.000033.
+    const plan = buildSweepPlan([
+      token({
+        symbol: "AGAI",
+        rawBalance: "9000000000",
+        decimals: 9,
+        balance: 9,
+        priceUsd: 3.6e-6,
+        valueUsd: 0.000033,
+      }),
+      token({
+        symbol: "DEGEN",
+        rawBalance: "2651720099331936191769",
+        decimals: 18,
+        balance: 2651.72,
+        priceUsd: 0.00096,
+        valueUsd: 2.55,
+      }),
+    ]);
+    expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["DEGEN"]);
+  });
+
+  it("keeps an UNPRICED token with a real balance — the feed just doesn't cover it", () => {
+    // APE on apechain: priceUsd 0 but a genuine balance. Value gate must not fire.
+    const plan = buildSweepPlan([
+      token({
+        symbol: "APE",
+        rawBalance: "3245662857820410",
+        decimals: 18,
+        balance: 0.00324,
+        priceUsd: 0,
+        valueUsd: 0,
+      }),
+    ]);
+    const all = [...plan.chains.flatMap((c) => c.assets), ...plan.skipped].map((a) => a.symbol);
+    expect(all).toEqual(["APE"]);
   });
 });

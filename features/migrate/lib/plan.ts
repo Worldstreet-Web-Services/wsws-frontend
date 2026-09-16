@@ -8,13 +8,20 @@ import type { TokenBalance } from "@/lib/server/alchemy";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 
 export const SOLANA_NETWORK = "solana-mainnet";
-// Dust floor, by BALANCE not value. A wallet collects tokens holding a wei or
-// two — 0.000000000000000001 of a unit — from airdrops and rounding. They are
-// worth nothing and often revert on transfer, yet a price feed cannot be
-// trusted to say so (it may report every token as $0). So the line is drawn on
-// the balance itself: below a millionth of one whole unit is dust, whatever it
-// is priced at. A real holding never rounds this small.
+// Two dust floors, and a token clears BOTH to be swept.
+//
+// By balance: a wallet collects tokens holding a wei or two —
+// 0.000000000000000001 of a unit — from airdrops and rounding. Below a
+// millionth of one whole unit is a rounding remnant whatever the price, so
+// this one needs no price and survives a feed outage.
 export const DUST_MIN_BALANCE = 1e-6;
+// By value, but ONLY when the token carries a price. A honeypot memecoin holds
+// a real balance (nine whole units) worth a hundredth of a cent and reverts on
+// transfer — "ERC20: transfer amount exceeds balance". When its price is known
+// and the holding is worth less than this, it is not worth attempting. The
+// price gate is the safety: a feed that reports $0 (priceUsd === 0) never
+// triggers this, so an outage cannot strand a wallet of real tokens.
+export const DUST_MIN_VALUE_USD = 0.001;
 
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.
@@ -67,10 +74,12 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
     // wallet of real tokens. Anything the user holds gets swept; a worthless
     // one that reverts is caught by the per-asset retry, not by a value gate.
     if (amount <= 0n) continue;
-    // token.balance is the human-unit float; below the dust floor it is a
-    // rounding remnant, not money. Dropped before the sponsored/stranded split
-    // so it is neither swept nor listed as stuck.
+    // A rounding remnant by balance, or — when it has a price — worth so little
+    // it is not worth attempting. Dropped before the sponsored/stranded split
+    // so it is neither swept nor listed as stuck. An unpriced token
+    // (priceUsd === 0) is kept: the feed may simply not cover it.
     if (token.balance < DUST_MIN_BALANCE) continue;
+    if (token.priceUsd > 0 && token.valueUsd < DUST_MIN_VALUE_USD) continue;
     const asset: SweepAsset = {
       id: sweepAssetId(token.network, token.address),
       network: token.network,

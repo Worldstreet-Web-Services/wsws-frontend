@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Badge, badgeText, badgedName } from "./badge";
 import { usePendingCrossing } from "./crossing";
 import { ArkLogo } from "./logo";
 import { ArkRailAction } from "./rail-action";
@@ -105,6 +106,7 @@ export function ArkSidebar({
         current={activeId === item.id}
         pending={pending}
         busy={pending && crossing.busy}
+        ariaLabel={badgedName(item.label, item.badge)}
         dataAttributes={{ "data-ark-nav": item.id, ...item.dataAttributes }}
         className={cx(
           "ark-chrome-row",
@@ -124,6 +126,7 @@ export function ArkSidebar({
           <item.icon size={20} />
         </span>
         <span className="ark-chrome-grow">{item.label}</span>
+        <Badge text={badgeText(item.badge)} className="ark-chrome-badge" />
       </TargetElement>
     );
   };

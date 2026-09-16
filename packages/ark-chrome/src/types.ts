@@ -37,6 +37,12 @@ export interface ChromeNavItem {
   icon: ChromeIcon;
   target: ChromeTarget;
   dataAttributes?: ChromeDataAttributes;
+  /**
+   * A count drawn on the item, such as unread messages. `null` or absent (the
+   * host does not know) and `0` draw nothing; above 99 it reads "99+". The
+   * count is added to the item's accessible name: "Chat, 3".
+   */
+  badge?: number | null;
 }
 
 /** The props the chrome passes to an injected link component. */

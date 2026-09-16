@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Badge, badgeText, badgedName } from "./badge";
 import { usePendingCrossing } from "./crossing";
 import { TargetElement } from "./target";
 import type { ArkTab, ArkTabBarProps } from "./types";
@@ -98,7 +99,15 @@ export function ArkTabBar({
                 ? " ark-chrome-seat--lit"
                 : " ark-chrome-seat--dim";
             const place = { left: `${seat.x}%`, top: `${seat.y}%` };
-            const icon = <tab.icon size={centreSeat ? 26 : 23} />;
+            // The count is drawn out of flow inside the seat, so the icon
+            // keeps its centre and the seat keeps its box.
+            const icon = (
+              <>
+                <tab.icon size={centreSeat ? 26 : 23} />
+                <Badge text={badgeText(tab.badge)} className="ark-chrome-seat-badge" />
+              </>
+            );
+            const name = badgedName(tab.label, tab.badge) ?? tab.label;
             // aria-current follows the page, not the seat: while a crossing
             // is pending the current page's tab has left the centre but is
             // still the page the reader is on.
@@ -109,7 +118,7 @@ export function ArkTabBar({
                   key={tab.id}
                   type="button"
                   onClick={() => onSelect?.(tab)}
-                  aria-label={tab.label}
+                  aria-label={name}
                   aria-current={tab.id === activeId ? "page" : undefined}
                   data-ark-nav={tab.id}
                   {...tab.dataAttributes}
@@ -141,7 +150,7 @@ export function ArkTabBar({
                   current={tab.id === activeId}
                   pending={pending}
                   busy={pending && crossing.busy}
-                  ariaLabel={tab.label}
+                  ariaLabel={name}
                   dataAttributes={{ "data-ark-nav": tab.id, ...tab.dataAttributes }}
                   className="ark-chrome-seat-hit"
                   onActivate={() => {}}

@@ -187,40 +187,52 @@ const UPLOAD_SOURCEMAPS = Boolean(
 // stack frame rewriting) and hangs its release and source map upload on
 // compiler.runAfterProductionCompile, beside the microfrontends define.
 // next.config.test.ts checks that all three survive.
-export default withSentryConfig(withNextIntl(withMicrofrontends(nextConfig)), {
-  // Watchtower is the upload target, not sentry.io.
-  sentryUrl: "https://watchtower-logger.vercel.app",
-  org: process.env.WATCHTOWER_ORG,
-  project: process.env.WATCHTOWER_PROJECT,
-  authToken: process.env.WATCHTOWER_AUTH_TOKEN,
-  silent: !process.env.CI,
-  // The plugin reports build metrics to Sentry's own servers by default. We do
-  // not use Sentry as a service, and our build details are not theirs to hold.
-  telemetry: false,
-  // Second belt to the opt-in above: if an upload is attempted and fails, say
-  // so and carry on. A missing source map degrades an issue; it must never
-  // fail a build.
-  errorHandler: (error: Error) => {
-    console.warn("[watchtower] source map upload failed, continuing:", error.message);
-  },
-  // Maps are uploaded, then stripped from what the browser downloads, so
-  // readers never fetch them and the app's source is not published.
-  sourcemaps: { disable: !UPLOAD_SOURCEMAPS, deleteSourcemapsAfterUpload: true },
-  // NO `tunnelRoute` here, and this is load-bearing. It looks like the right
-  // option (it proxies events through our own origin so an ad blocker cannot
-  // silence reporting), but the rewrite it generates is hardcoded to Sentry's
-  // SaaS ingest and ignores `sentryUrl` above. Verified in the build output:
-  //
-  //   destination: https://o:orgid.ingest.:region.sentry.io/api/:projectid/envelope/
-  //
-  // Enabling it would quietly forward this app's error payloads to sentry.io,
-  // a third party we have not chosen and have no agreement with, instead of to
-  // Watchtower. Do not add it back. If ad blockers ever turn out to be dropping
-  // events, the fix is our own route handler under app/api/ that forwards to
-  // Watchtower, which is what this codebase does for every other upstream
-  // anyway.
-  //
-  // No `disableLogger` either. It is deprecated in v10, and its replacement
-  // (webpack.treeshake.removeDebugLogging) is a webpack option that Turbopack
-  // does not support. This build is Turbopack, so there is nothing to set.
-});
+//
+// The application name is fixed rather than inferred. The package would take
+// it from VERCEL_PROJECT_NAME, then .vercel/project.json, and this repository
+// builds on more than one Vercel project: wsws-test deploys the staging branch.
+// Inferred there, the name is "wsws-test", which microfrontends.json does not
+// list, and the config fails to load. Whichever project builds it, this code is
+// the wsws application of the group.
+const MICROFRONTENDS_APP_NAME = "wsws";
+
+export default withSentryConfig(
+  withNextIntl(withMicrofrontends(nextConfig, { appName: MICROFRONTENDS_APP_NAME })),
+  {
+    // Watchtower is the upload target, not sentry.io.
+    sentryUrl: "https://watchtower-logger.vercel.app",
+    org: process.env.WATCHTOWER_ORG,
+    project: process.env.WATCHTOWER_PROJECT,
+    authToken: process.env.WATCHTOWER_AUTH_TOKEN,
+    silent: !process.env.CI,
+    // The plugin reports build metrics to Sentry's own servers by default. We do
+    // not use Sentry as a service, and our build details are not theirs to hold.
+    telemetry: false,
+    // Second belt to the opt-in above: if an upload is attempted and fails, say
+    // so and carry on. A missing source map degrades an issue; it must never
+    // fail a build.
+    errorHandler: (error: Error) => {
+      console.warn("[watchtower] source map upload failed, continuing:", error.message);
+    },
+    // Maps are uploaded, then stripped from what the browser downloads, so
+    // readers never fetch them and the app's source is not published.
+    sourcemaps: { disable: !UPLOAD_SOURCEMAPS, deleteSourcemapsAfterUpload: true },
+    // NO `tunnelRoute` here, and this is load-bearing. It looks like the right
+    // option (it proxies events through our own origin so an ad blocker cannot
+    // silence reporting), but the rewrite it generates is hardcoded to Sentry's
+    // SaaS ingest and ignores `sentryUrl` above. Verified in the build output:
+    //
+    //   destination: https://o:orgid.ingest.:region.sentry.io/api/:projectid/envelope/
+    //
+    // Enabling it would quietly forward this app's error payloads to sentry.io,
+    // a third party we have not chosen and have no agreement with, instead of to
+    // Watchtower. Do not add it back. If ad blockers ever turn out to be dropping
+    // events, the fix is our own route handler under app/api/ that forwards to
+    // Watchtower, which is what this codebase does for every other upstream
+    // anyway.
+    //
+    // No `disableLogger` either. It is deprecated in v10, and its replacement
+    // (webpack.treeshake.removeDebugLogging) is a webpack option that Turbopack
+    // does not support. This build is Turbopack, so there is nothing to set.
+  }
+);

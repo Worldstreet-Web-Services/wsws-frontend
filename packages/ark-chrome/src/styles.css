@@ -125,13 +125,19 @@
   border-color: #ffffff14;
   border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
   translate: -100%;
-  transition-property: transform, translate, scale, rotate;
+  /* Parked off-canvas, the drawer is also hidden, which takes it out of the
+     tab order and the accessibility tree. Listing visibility in the
+     transition keeps a closing drawer visible until its slide has played, and
+     shows an opening one at once. */
+  visibility: hidden;
+  transition-property: transform, translate, scale, rotate, visibility;
   transition-duration: 0.3s;
   transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
 .ark-chrome-aside[data-open] {
   translate: 0px;
+  visibility: visible;
 }
 
 @media (min-width: 768px) {
@@ -143,6 +149,7 @@
     z-index: var(--ark-chrome-z-rail, 100);
     width: 248px;
     translate: 0px;
+    visibility: visible;
   }
 
   .ark-chrome-aside:not(.ark-chrome-aside--drawer) .ark-chrome-close {

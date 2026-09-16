@@ -351,8 +351,16 @@ through `--ark-chrome-font-body`.
 - The rail is an `<aside>` named by `labels.menu`, holding a `<nav>` landmark.
   The tab bar is a `<nav>` named by `navLabel`.
 - The active item carries `aria-current="page"`.
-- Every item is a real `<a>` or `<button>`, so it is in the tab order. Focus is
-  drawn with a 2px white outline inside the item.
+- Every item is a real `<a>` or `<button>`, so it is in the tab order while the
+  chrome is on screen. Focus is drawn with a 2px white outline inside the item.
+- A closed drawer (below 768px, or at every width with `layout="drawer"`) is
+  `visibility: hidden` once its slide out has played, so its items are neither
+  Tab stops nor in the accessibility tree. The fixed rail from 768px up is
+  always visible.
+- When the drawer opens, focus moves to its close button; when it closes, focus
+  returns to the element that had it before, if focus is still inside the
+  drawer. The package does not trap Tab inside an open drawer: a host that
+  needs a modal trap wraps the rail in one, as the WSWS perps screen does.
 - The footer button carries `aria-haspopup="menu"` and `aria-expanded` when the
   host passes an `AccountMenu`.
 

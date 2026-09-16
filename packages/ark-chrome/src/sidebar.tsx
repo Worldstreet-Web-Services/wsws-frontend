@@ -46,6 +46,37 @@ export function ArkSidebar({
   const alwaysDrawer = layout === "drawer";
   const marker = (name: ArkSidebarClassName) => classNames[name];
 
+  const asideRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  // What had focus when the drawer opened, to hand focus back on close.
+  const openerRef = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
+
+  // An opening drawer takes focus, so a keyboard reader is not left on a
+  // control behind the backdrop; a closing one gives it back, since the
+  // element that had it is being hidden. Focus is only returned when it is
+  // still in the drawer (or nowhere): a host that moved it on purpose keeps
+  // that. A host with its own focus management runs its effect after this one
+  // and wins.
+  useEffect(() => {
+    const aside = asideRef.current;
+    if (open) {
+      wasOpen.current = true;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && aside?.contains(active)) return;
+      openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
+      closeRef.current?.focus();
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    const opener = openerRef.current;
+    openerRef.current = null;
+    const active = document.activeElement;
+    const focusInDrawer = active === null || active === document.body || aside?.contains(active);
+    if (opener?.isConnected && focusInDrawer) opener.focus();
+  }, [open]);
+
   // While the drawer is open the page behind it does not scroll, and Escape
   // closes it. Both undone on close and on unmount.
   useEffect(() => {
@@ -111,6 +142,7 @@ export function ArkSidebar({
         )}
       />
       <aside
+        ref={asideRef}
         id={id}
         aria-label={labels.menu}
         data-open={open ? "" : undefined}
@@ -133,6 +165,7 @@ export function ArkSidebar({
             <ArkLogo className="ark-chrome-brand-logo" />
           </TargetElement>
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label={labels.closeMenu}

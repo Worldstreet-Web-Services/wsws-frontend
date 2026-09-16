@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ArkDrawerTrigger } from "@ark/chrome";
 import { Sidebar } from "@/components/layout/sidebar";
 import { buildNav } from "@/components/layout/nav-items";
 import { useAppNavigate } from "@/hooks/use-app-navigate";
@@ -36,8 +37,9 @@ function focusableIn(root: HTMLElement): HTMLElement[] {
  * The perps screen's way back into the rest of the app.
  *
  * Perps is immersive: it mounts no shell, so it has no rail and no topbar.
- * This is the hamburger that stands where the Portfolio back link used to,
- * plus the app's real Sidebar mounted on its own as an overlay. Not a second
+ * This is the hamburger that stands where the Portfolio back link used to
+ * (@ark/chrome's ArkDrawerTrigger), plus the app's real Sidebar mounted on its
+ * own as an overlay. Not a second
  * drawer: the rail already behaves exactly this way as the phone drawer, so
  * it gets the same `open`/`onClose` pair here and brings its slide, its dimmed
  * backdrop, its scroll lock, its Escape handler and its close-on-choice with
@@ -106,24 +108,17 @@ export function PerpsMenuDrawer({ open, onOpenChange }: PerpsMenuDrawerProps) {
 
   return (
     <>
-      <button
+      {/* The package's drawer trigger, the control every host renders to open
+          the rail's drawer. It is drawn as this button always was; the margin
+          is the perps header's placement. */}
+      <ArkDrawerTrigger
         ref={buttonRef}
-        type="button"
-        aria-label={tTopbar("menu")}
-        aria-expanded={open}
-        aria-controls="app-sidebar"
-        onClick={() => onOpenChange(!open)}
-        className="mb-4 grid size-9 cursor-pointer place-items-center rounded-full border border-white/10 text-white/60 transition-colors hover:border-white/25 hover:text-white"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M4 7h16M4 12h16M4 17h16"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
+        label={tTopbar("menu")}
+        open={open}
+        controls="app-sidebar"
+        onPress={() => onOpenChange(!open)}
+        className="mb-4"
+      />
 
       {/* Closed, the rail is parked off-canvas but still in the document, so
           `inert` takes it out of the tab order and off the accessibility tree

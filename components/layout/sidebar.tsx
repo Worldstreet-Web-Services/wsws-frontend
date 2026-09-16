@@ -13,19 +13,31 @@ import { GoLiveControl } from "@/components/broadcast/go-live-control";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import { AccountPopover } from "@/components/layout/account-popover";
 
-interface SidebarProps {
+type SidebarProps = {
   items: NavItem[];
   activeSection: DashboardSection;
   onNavigate: (section: DashboardSection) => void;
-  /** Phone drawer state. Ignored from `md` up, where the sidebar is always shown. */
-  open: boolean;
-  onClose: () => void;
-  /**
-   * Keep the drawer at every width. The perps screen mounts no shell, so the
-   * rail is its menu at desktop widths too.
-   */
-  drawerAtEveryWidth?: boolean;
-}
+} & (
+  | {
+      /**
+       * A fixed rail from `md` up and no phone drawer at all. The dashboard
+       * shell's phones get around by the tab bar, and nothing on them opens a
+       * drawer, so none is rendered.
+       */
+      layout: "rail";
+    }
+  | {
+      layout?: undefined;
+      /** Phone drawer state. Ignored from `md` up, where the sidebar is always shown. */
+      open: boolean;
+      onClose: () => void;
+      /**
+       * Keep the drawer at every width. The perps screen mounts no shell, so the
+       * rail is its menu at desktop widths too.
+       */
+      drawerAtEveryWidth?: boolean;
+    }
+);
 
 // The app's left rail. It is drawn by @ark/chrome, the package the Square
 // installs as well, so the rail on a trading page and on a Square page is one
@@ -39,14 +51,8 @@ interface SidebarProps {
 // the package applies the state-dependent ones (open or closed, lit or idle)
 // from the state it draws with, and sidebar-markers.test.tsx checks each marker
 // sits where the package's real state and styles are.
-export function Sidebar({
-  items,
-  activeSection,
-  onNavigate,
-  open,
-  onClose,
-  drawerAtEveryWidth = false,
-}: SidebarProps) {
+export function Sidebar(props: SidebarProps) {
+  const { items, activeSection, onNavigate } = props;
   const { user } = usePrivy();
   const profile = deriveProfile(user);
   const t = useTranslations("topbar");
@@ -109,8 +115,8 @@ export function Sidebar({
       }}
       profileDataAttributes={{ "data-tour": "profile" }}
       AccountMenu={AccountPopover}
-      drawer={{ open, onClose }}
-      layout={drawerAtEveryWidth ? "drawer" : "responsive"}
+      layout={props.layout === "rail" ? "rail" : props.drawerAtEveryWidth ? "drawer" : "responsive"}
+      drawer={props.layout === "rail" ? undefined : { open: props.open, onClose: props.onClose }}
       labels={{ menu: t("menu"), closeMenu: t("closeMenu") }}
       classNames={{
         backdrop: "fixed inset-0",

@@ -91,6 +91,20 @@ describe("config wrappers", () => {
     expect(config.experimental?.optimizePackageImports).toContain("next-intl");
   });
 
+  // The package reads the application name from VERCEL_PROJECT_NAME before
+  // anything else, and this repository deploys to more than one Vercel
+  // project: wsws-test builds the staging branch. Without a fixed name that
+  // build, and any checkout `vercel link`ed to it, looks up "wsws-test" in
+  // microfrontends.json and fails to load the config at all.
+  it("loads as wsws on another Vercel project built from this repository", async () => {
+    vi.stubEnv("VERCEL_PROJECT_NAME", "wsws-test");
+    vi.stubEnv("NEXT_PUBLIC_MFE_CURRENT_APPLICATION", "");
+    const config = await buildConfig();
+
+    expect(process.env.NEXT_PUBLIC_MFE_CURRENT_APPLICATION).toBe("wsws");
+    expect(config.assetPrefix).toBeUndefined();
+  });
+
   it("keeps Sentry's release and source map hooks", async () => {
     const config = await buildConfig();
 

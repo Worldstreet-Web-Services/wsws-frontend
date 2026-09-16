@@ -1,5 +1,4 @@
 import type { LegacyHolding } from "@/lib/migration/types";
-import { worthShowing } from "@/features/migrate/lib/review";
 
 /**
  * What the old wallet still holds that the migration could move — decided
@@ -17,11 +16,9 @@ import { worthShowing } from "@/features/migrate/lib/review";
  * dust; it just cannot hold the user hostage.
  */
 export function legacyWalletMovable(holdings: readonly LegacyHolding[]): LegacyHolding[] {
-  // worthShowing uses the sweep floor, so this counts exactly what the sweep
-  // would move: sub-floor dead tokens are not "money left".
-  return holdings.filter(
-    (h) => h.settleability.state === "now" && h.amount > 0n && worthShowing(h)
-  );
+  // A balance that can move now — value plays no part, so a price outage does
+  // not read as "nothing left".
+  return holdings.filter((h) => h.settleability.state === "now" && h.amount > 0n);
 }
 
 export function legacyWalletHasFunds(holdings: readonly LegacyHolding[]): boolean {

@@ -95,27 +95,22 @@ describe("byVenue", () => {
 });
 
 describe("worthShowing", () => {
-  const at = (valueUsd: number): LegacyHolding => ({ ...holding("h", "wallet"), valueUsd });
-
-  it("hides anything that would render as $0.00", () => {
-    expect(worthShowing(at(0))).toBe(false);
-    expect(worthShowing(at(0.004))).toBe(false);
-    expect(worthShowing(at(0.0099))).toBe(false);
+  const bal = (amount: bigint, valueUsd = 0): LegacyHolding => ({
+    ...holding("h", "wallet"),
+    amount,
+    valueUsd,
   });
 
-  it("keeps the sweep floor and above, drops dead tokens below it", () => {
-    expect(worthShowing(at(0.1))).toBe(true);
-    expect(worthShowing(at(1.25))).toBe(true);
-    expect(worthShowing(at(0.09))).toBe(false);
-    expect(worthShowing(at(0.01))).toBe(false);
+  it("shows anything with a balance, whatever it is priced at", () => {
+    // The case that prompted this: a price feed drops out and every token
+    // reports $0. A held token must still show and still move.
+    expect(worthShowing(bal(1n, 0))).toBe(true);
+    expect(worthShowing(bal(1_000_000n, 0))).toBe(true);
+    expect(worthShowing(bal(5n, 12.5))).toBe(true);
   });
 
-  it("does not partition the groups — the plan still carries the dust", () => {
-    // The sweep moves an unpriced or dust balance whether or not a row for it
-    // appears; hiding it from the list must never drop it from the run.
-    const dust = { ...holding("dust", "wallet"), valueUsd: 0 };
-    const groups = reviewGroups([dust], new Set(), NOW);
-    expect(groups.automatic.map((h) => h.id)).toEqual(["dust"]);
+  it("hides only what has no balance", () => {
+    expect(worthShowing(bal(0n, 100))).toBe(false);
   });
 });
 
@@ -155,10 +150,11 @@ describe("blockingHoldings", () => {
   });
 
   // A sub-cent token that reverts on transfer must not hold the gate shut.
-  it("never blocks on dust below the display floor", () => {
-    const dust = holding("d", "wallet", { valueUsd: 0.001 });
-    const real = holding("r", "wallet", { valueUsd: 0.5 });
-    expect(blockingHoldings([dust, real], [], 0)).toEqual([real]);
-    expect(blockingHoldings([dust], [], 0)).toEqual([]);
+  it("blocks on a balance regardless of price, and not on a zero balance", () => {
+    // Priced at $0 (feed down) but held — still blocks. No balance — never.
+    const held = holding("h", "wallet", { amount: 1n, valueUsd: 0 });
+    const empty = holding("e", "wallet", { amount: 0n, valueUsd: 5 });
+    expect(blockingHoldings([held, empty], [], 0)).toEqual([held]);
+    expect(blockingHoldings([empty], [], 0)).toEqual([]);
   });
 });

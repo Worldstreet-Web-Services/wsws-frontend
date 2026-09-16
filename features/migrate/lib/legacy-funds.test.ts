@@ -33,28 +33,25 @@ describe("the old wallet, read by the frontend", () => {
 
   // The wallet that prompted this: cbXRP $0.92, CHIP $0.40, BLUESCREEN $0.12,
   // DOBBY $0.015 and 17 tokens worth less than a cent. The service saw $0.
-  // The wallet that prompted the floor: cbXRP $0.92 and CHIP $0.40 count;
-  // DOBBY $0.015 and the sub-cent memecoins are dead and skipped.
-  it("counts tokens above the sweep floor, drops the dead ones", () => {
+  // Every held token counts, whatever its price. The value is a display total,
+  // not the filter: a price feed that reports $0 must not hide real tokens.
+  it("counts every held token, and prices what it can", () => {
     const list = [
-      holding("cbXRP", { symbol: "cbXRP", valueUsd: 0.92 }),
-      holding("CHIP", { symbol: "CHIP", valueUsd: 0.4 }),
-      holding("DOBBY", { symbol: "DOBBY", valueUsd: 0.015 }),
+      holding("cbXRP", { symbol: "cbXRP", amount: 5n, valueUsd: 0.92 }),
+      holding("CHIP", { symbol: "CHIP", amount: 5n, valueUsd: 0.4 }),
+      holding("priceless", { symbol: "ZZZ", amount: 5n, valueUsd: 0 }),
     ];
     expect(legacyWalletHasFunds(list)).toBe(true);
+    expect(legacyWalletMovable(list).map((h) => h.id)).toEqual(["cbXRP", "CHIP", "priceless"]);
+    // usd is a display total; the unpriced token adds nothing to it.
     expect(legacyWalletUsd(list)).toBeCloseTo(1.32, 6);
-    expect(legacyWalletMovable(list).map((h) => h.id)).toEqual(["cbXRP", "CHIP"]);
   });
 
-  // Dust cannot hold a gate shut: one sub-cent token that reverts on transfer
-  // would otherwise keep the user here forever.
-  it("ignores dust below the review's display floor", () => {
-    const dust = [
-      holding("PPOLY", { amount: 9n, valueUsd: 6.7e-26 }),
-      holding("BRIAN", { amount: 3n, valueUsd: 6.9e-17 }),
-    ];
-    expect(legacyWalletHasFunds(dust)).toBe(false);
-    expect(legacyWalletMovable(dust)).toEqual([]);
+  // The case that prompted the switch: prices drop out, every token reads $0,
+  // but the balances are real. Money left is decided by balance, not value.
+  it("has money left when a held token has no price", () => {
+    expect(legacyWalletHasFunds([holding("held", { amount: 1n, valueUsd: 0 })])).toBe(true);
+    expect(legacyWalletHasFunds([holding("empty", { amount: 0n, valueUsd: 5 })])).toBe(false);
   });
 
   it("ignores what cannot move", () => {

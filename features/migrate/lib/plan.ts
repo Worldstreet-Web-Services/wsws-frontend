@@ -8,11 +8,6 @@ import type { TokenBalance } from "@/lib/server/alchemy";
 import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 
 export const SOLANA_NETWORK = "solana-mainnet";
-// The sweep floor. A token worth less than this is not moved at all: the
-// transfer of a worthless memecoin can cost more attention than the token is
-// worth, and some revert on transfer. Below this line a holding is dropped
-// everywhere — not swept, not shown, and never a reason to hold the gate.
-export const SWEEP_MIN_USD = 0.1;
 
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.
@@ -60,10 +55,11 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
   const skipped: SweepAsset[] = [];
   for (const token of tokens) {
     const amount = BigInt(token.rawBalance);
+    // Balance, not dollar value, decides what moves. A price feed can drop out
+    // and report every token as $0 — filtering on value would then strand a
+    // wallet of real tokens. Anything the user holds gets swept; a worthless
+    // one that reverts is caught by the per-asset retry, not by a value gate.
     if (amount <= 0n) continue;
-    // A dead token is dropped before the network split, so unsponsored dust is
-    // gone too — not moved, and not listed as stuck.
-    if (token.valueUsd < SWEEP_MIN_USD) continue;
     const asset: SweepAsset = {
       id: sweepAssetId(token.network, token.address),
       network: token.network,

@@ -3,7 +3,6 @@
 // Pure so the partition is tested.
 
 import { isSettleable, sumValueUsd } from "@/lib/migration/schedule";
-import { SWEEP_MIN_USD } from "@/features/migrate/lib/plan";
 import type { LegacyHolding, Settleability, SettleOutcome, Venue } from "@/lib/migration/types";
 
 export interface ReviewGroups {
@@ -54,8 +53,9 @@ export function blockingHoldings(
   const groups = reviewGroups(unsettled, new Set(), now);
   // Below the review's own display floor is not a reason to keep anyone here:
   // a sub-cent token that reverts on transfer would otherwise hold the gate
-  // shut. worthShowing uses the sweep's own floor, so this and buildSweepPlan
-  // agree on what counts as movable.
+  // A holding with a balance blocks; one with none does not. Value plays no
+  // part, so a price outage cannot make the gate open on a wallet that still
+  // holds tokens.
   return [...groups.automatic, ...groups.optIn].filter(worthShowing);
 }
 
@@ -78,10 +78,11 @@ export function isCoreAsset(holding: LegacyHolding): boolean {
   );
 }
 
-// A holding below the sweep floor is neither moved nor worth showing: the same
-// line the sweep draws, so what is shown is exactly what would move.
+// A holding is worth showing — and worth moving — when it has a balance. Its
+// dollar value is display only and may be missing (a broken price feed reports
+// $0), so it must never decide what moves.
 export function worthShowing(holding: LegacyHolding): boolean {
-  return holding.valueUsd >= SWEEP_MIN_USD;
+  return holding.amount > 0n;
 }
 
 // Opt-ins checked before the user touches anything. Cancelling a resting

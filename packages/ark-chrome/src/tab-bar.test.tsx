@@ -135,6 +135,22 @@ describe("ArkTabBar", () => {
     expect(screen.getByRole("link", { name: "Square" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("puts the seats back when a crossing never lands", () => {
+    vi.useFakeTimers();
+    try {
+      renderBar();
+      fireEvent.click(screen.getByRole("link", { name: "Activity" }), { button: 0 });
+      expect(seatOrder()).toEqual(["Home", "Market", "Activity", "Square", "Arkade"]);
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(seatOrder()).toEqual(["Home", "Market", "Square", "Arkade", "Activity"]);
+      expect(screen.getByRole("link", { name: "Activity" })).not.toHaveAttribute("aria-busy");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("puts the seats back when the page comes back from the back-forward cache", () => {
     renderBar();
     fireEvent.click(screen.getByRole("link", { name: "Activity" }), { button: 0 });

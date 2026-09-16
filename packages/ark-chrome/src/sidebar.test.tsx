@@ -315,6 +315,45 @@ describe("ArkSidebar", () => {
       }
     });
 
+    // A crossing can be cancelled with no event to say so: Stop, "Stay" on a
+    // leave prompt, a download or a 204. The old page stays, so after a while
+    // the rail must give the highlight back to the page it is on.
+    it("gives up on a crossing that never lands", () => {
+      vi.useFakeTimers();
+      try {
+        renderRail();
+        const spot = screen.getByRole("link", { name: "Spot" });
+        const square = screen.getByRole("link", { name: "Square" });
+        fireEvent.click(spot, { button: 0 });
+        act(() => {
+          vi.advanceTimersByTime(10_000);
+        });
+        expect(spot).not.toHaveAttribute("data-ark-pending");
+        expect(spot).not.toHaveAttribute("aria-busy");
+        expect(spot.className).not.toContain("ark-chrome-row--active");
+        expect(square.className).toContain("ark-chrome-row--active");
+        expect(square).toHaveAttribute("aria-current", "page");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps a crossing lit while it is still plausibly loading", () => {
+      vi.useFakeTimers();
+      try {
+        renderRail();
+        const spot = screen.getByRole("link", { name: "Spot" });
+        fireEvent.click(spot, { button: 0 });
+        act(() => {
+          vi.advanceTimersByTime(5_000);
+        });
+        expect(spot).toHaveAttribute("data-ark-pending");
+        expect(spot).toHaveAttribute("aria-busy", "true");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("forgets the destination when the host reports a new active item", () => {
       const { rerender, props } = renderRail();
       fireEvent.click(screen.getByRole("link", { name: "Spot" }), { button: 0 });

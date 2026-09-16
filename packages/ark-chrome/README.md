@@ -162,8 +162,11 @@ it straight away: the rail row takes the active look and the tab bar moves the
 tab into the centre seat and shows its name, while the old page waits for the
 new one. `aria-current` stays on the real active item, since the page has not
 changed yet. After 300ms the item is marked `aria-busy` and pulses (not under
-reduced motion). The pending state clears when `activeId` changes and when the
-page is restored from the back-forward cache.
+reduced motion). The pending state clears when `activeId` changes, when the
+page is restored from the back-forward cache, and after 8 seconds with neither:
+a navigation the reader stopped, a "Stay" on a leave prompt or a download
+leaves the old page in place with no event to say so, and the real active item
+is lit again.
 
 Prefetch is opt-in per item. Pass `prefetch: true` and a `DocumentLink` only for
 the doors people actually use. The microfrontends `Link` from

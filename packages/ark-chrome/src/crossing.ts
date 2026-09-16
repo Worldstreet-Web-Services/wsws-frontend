@@ -6,6 +6,13 @@ import { useEffect, useState, type MouseEvent } from "react";
 // that looks frozen does not invite a second tap.
 export const CROSSING_BUSY_MS = 300;
 
+// A crossing can be called off with nothing to say so: the reader presses
+// Stop or Escape, answers "Stay" on a leave prompt, or the response is a
+// download or a 204. The old page stays, so after this long the destination is
+// dropped and the real active item is lit again. Long enough that a slow page
+// load on a phone is not un-lit while it is still coming.
+export const CROSSING_GIVE_UP_MS = 8_000;
+
 /**
  * Whether a click on a cross-app anchor will navigate this tab. A click with a
  * modifier, a middle click, or one the host already handled opens a new tab or
@@ -56,11 +63,18 @@ export function usePendingCrossing(activeId: string | null) {
 
   useEffect(() => {
     if (pendingId === null) return;
-    const timer = window.setTimeout(
+    const busyTimer = window.setTimeout(
       () => setState((s) => (s.id === pendingId ? { ...s, busy: true } : s)),
       CROSSING_BUSY_MS
     );
-    return () => window.clearTimeout(timer);
+    const giveUpTimer = window.setTimeout(
+      () => setState((s) => (s.id === pendingId ? { ...s, id: null, busy: false } : s)),
+      CROSSING_GIVE_UP_MS
+    );
+    return () => {
+      window.clearTimeout(busyTimer);
+      window.clearTimeout(giveUpTimer);
+    };
   }, [pendingId]);
 
   useEffect(() => {

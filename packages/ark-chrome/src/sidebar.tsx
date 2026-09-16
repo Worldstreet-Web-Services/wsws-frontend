@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Badge, badgeText, badgedName } from "./badge";
 import { usePendingCrossing } from "./crossing";
 import { ArkLogo } from "./logo";
@@ -94,8 +94,12 @@ export function ArkSidebar({
     };
   }, [open, onClose]);
 
-  const renderRow = (item: ChromeNavItem) => {
-    const on = lit === item.id;
+  // An item is lit when it or one of its children is: a child's page is part
+  // of its section, so the section's row stays lit and its list stays open.
+  const litWithin = (item: ChromeNavItem) =>
+    lit === item.id || (item.children?.some((child) => child.id === lit) ?? false);
+
+  const renderRow = (item: ChromeNavItem, on: boolean, child: boolean) => {
     const pending = crossing.pendingId === item.id;
     return (
       <TargetElement
@@ -110,6 +114,7 @@ export function ArkSidebar({
         dataAttributes={{ "data-ark-nav": item.id, ...item.dataAttributes }}
         className={cx(
           "ark-chrome-row",
+          child && "ark-chrome-row--child",
           on && "ark-chrome-row--active",
           marker("row"),
           on ? marker("rowActive") : marker("rowIdle")
@@ -123,11 +128,31 @@ export function ArkSidebar({
         }}
       >
         <span className="ark-chrome-icon-slot">
-          <item.icon size={20} />
+          <item.icon size={child ? 18 : 20} />
         </span>
         <span className="ark-chrome-grow">{item.label}</span>
         <Badge text={badgeText(item.badge)} className="ark-chrome-badge" />
       </TargetElement>
+    );
+  };
+
+  // A row, and while its section is lit, the section's own pages in a list
+  // under it. One level: a child's own children are not drawn.
+  const renderItem = (item: ChromeNavItem) => {
+    const on = litWithin(item);
+    const row = renderRow(item, on, false);
+    if (!on || !item.children?.length) return row;
+    return (
+      <Fragment key={item.id}>
+        {row}
+        <ul aria-label={item.label} className="ark-chrome-subnav">
+          {item.children.map((child) => (
+            <li key={child.id} className="ark-chrome-subnav-item">
+              {renderRow(child, lit === child.id, true)}
+            </li>
+          ))}
+        </ul>
+      </Fragment>
     );
   };
 
@@ -195,7 +220,7 @@ export function ArkSidebar({
 
         {/* On a short viewport the nav list is the part that scrolls, so the
             logo above and the account footer below stay reachable. */}
-        <nav className={cx("ark-chrome-nav", marker("nav"))}>{items.map(renderRow)}</nav>
+        <nav className={cx("ark-chrome-nav", marker("nav"))}>{items.map(renderItem)}</nav>
 
         <Footer
           person={person}

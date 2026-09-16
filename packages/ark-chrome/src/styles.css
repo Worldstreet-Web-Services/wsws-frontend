@@ -63,7 +63,9 @@
 .ark-chrome-seat,
 .ark-chrome-seat-hit,
 .ark-chrome-seat-badge,
-.ark-chrome-badge {
+.ark-chrome-badge,
+.ark-chrome-subnav,
+.ark-chrome-subnav-item {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -260,6 +262,25 @@
     --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
   transition-duration: 0.15s;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* A section's own pages, under its row while it is lit. The guide line runs
+   down from the centre of the section's icon. */
+.ark-chrome-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 21px;
+  padding-left: 8px;
+  border-left-width: 1px;
+  border-color: #ffffff14;
+  border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
+  list-style: none;
+}
+
+.ark-chrome-row--child {
+  padding: 8px 10px;
+  font-size: 13.5px;
 }
 
 .ark-chrome-row--active {

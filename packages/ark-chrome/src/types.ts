@@ -43,6 +43,13 @@ export interface ChromeNavItem {
    * count is added to the item's accessible name: "Chat, 3".
    */
   badge?: number | null;
+  /**
+   * The item's own pages, listed under its row in the rail while the item or
+   * one of them is active. Each is an ordinary item with its own target, badge
+   * and current state (`activeId` may name a child). One level deep; the tab
+   * bar ignores them.
+   */
+  children?: readonly ChromeNavItem[];
 }
 
 /** The props the chrome passes to an injected link component. */

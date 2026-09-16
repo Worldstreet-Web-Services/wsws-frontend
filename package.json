@@ -8,6 +8,7 @@
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "next dev",
+    "dev:mf": "./scripts/dev-mf.sh",
     "chess:assets:audit": "node scripts/chess-r2-assets.mjs audit",
     "chess:assets:cors": "node scripts/chess-r2-assets.mjs cors",
     "chess:assets:publish": "node scripts/chess-r2-assets.mjs publish",

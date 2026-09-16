@@ -24,20 +24,47 @@ pnpm dev                  # http://localhost:3000
 `.env` is never committed. Ask a maintainer for values, or pull them from
 Vercel, where deployed secrets live.
 
+### Local development with the Square
+
+On Vercel, `www.tsionark.com` is a microfrontends group: this app is the
+default application, and the Market Square (`market-square-frontend`, its own
+repository and Vercel project) serves `/square` and everything under it.
+`microfrontends.json` at the repository root is the routing table, and
+`proxy.test.ts` and `microfrontends.test.ts` pin it.
+
+`pnpm dev` still runs this app alone on port 3000. To see the two together:
+
+```bash
+pnpm dev:mf               # http://localhost:3024
+```
+
+That starts the microfrontends local proxy on port 3024 and this app's dev
+server on the port `microfrontends port` derives for it (7448). Open the proxy
+address: this app answers from your machine, and `/square` comes from the
+development fallback, `https://www.tsionark.com`. Stopping the command stops
+both. Set `MFE_DEBUG=1` to print each routing decision.
+
+To route `/square` to a Square running on your machine instead, run it in its
+own repository with `next dev --port $(microfrontends port)`, pointing it at
+this repository's `microfrontends.json` (`VC_MICROFRONTENDS_CONFIG`, or
+`vercel microfrontends pull` once the group exists), and add
+`market-square-frontend` to `--local-apps` in `scripts/dev-mf.sh`.
+
 ## Scripts
 
-| Command             | What it does                        |
-| ------------------- | ----------------------------------- |
-| `pnpm dev`          | Dev server                          |
-| `pnpm build`        | Production build                    |
-| `pnpm start`        | Serve the production build          |
-| `pnpm format:check` | Prettier, check only                |
-| `pnpm lint`         | ESLint, including boundary rules    |
-| `pnpm typecheck`    | `tsc --noEmit`                      |
-| `pnpm test`         | Vitest, once                        |
-| `pnpm test:watch`   | Vitest, watch mode                  |
-| `pnpm format`       | Prettier, write                     |
-| `npx knip`          | Unused files, exports, dependencies |
+| Command             | What it does                          |
+| ------------------- | ------------------------------------- |
+| `pnpm dev`          | Dev server                            |
+| `pnpm dev:mf`       | Dev server behind the `/square` proxy |
+| `pnpm build`        | Production build                      |
+| `pnpm start`        | Serve the production build            |
+| `pnpm format:check` | Prettier, check only                  |
+| `pnpm lint`         | ESLint, including boundary rules      |
+| `pnpm typecheck`    | `tsc --noEmit`                        |
+| `pnpm test`         | Vitest, once                          |
+| `pnpm test:watch`   | Vitest, watch mode                    |
+| `pnpm format`       | Prettier, write                       |
+| `npx knip`          | Unused files, exports, dependencies   |
 
 The five gates from `format:check` to `build` are exactly what CI runs, in that
 order. Run them before opening a pull request.

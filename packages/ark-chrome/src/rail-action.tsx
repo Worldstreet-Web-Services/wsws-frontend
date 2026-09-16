@@ -24,7 +24,9 @@ export function ArkRailAction({
       aria-label={label}
       title={label}
       data-live={live ? "" : undefined}
-      className={`ark-chrome-rail-action${live ? "ark-chrome-rail-action--live" : ""}`}
+      className={
+        live ? "ark-chrome-rail-action ark-chrome-rail-action--live" : "ark-chrome-rail-action"
+      }
       {...dataAttributes}
     >
       <span className="ark-chrome-icon-slot">

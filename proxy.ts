@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { runMicrofrontendsMiddleware } from "@vercel/microfrontends/next/middleware";
 
 // The route guard behind the launch gate (see lib/launch-gate.ts). While the
 // site is closed, by the clock or by ALLOW_ACCESS=false, every request except
@@ -57,8 +58,24 @@ function closedResponse(request: NextRequest): NextResponse {
   return response;
 }
 
-export function proxy(request: NextRequest) {
+// Answered by @vercel/microfrontends: which paths belong to which application
+// of the group (microfrontends.json). The client reads it to tell a link into
+// another application from a link inside this one. It is routing metadata, not
+// a page, so it is served whether or not the site is open.
+const MICROFRONTENDS_CLIENT_CONFIG = "/.well-known/vercel/microfrontends/client-config";
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname === MICROFRONTENDS_CLIENT_CONFIG) {
+    // No flags: every route in microfrontends.json is unconditional. The
+    // package answers this path whenever it is asked for it, so an undefined
+    // result here means the package changed, and failing loudly beats a
+    // silent 404 on the endpoint.
+    const response = await runMicrofrontendsMiddleware({ request, flagValues: {} });
+    if (!response) throw new Error(`@vercel/microfrontends did not answer ${pathname}`);
+    return response;
+  }
 
   if (underMaintenance()) {
     if (MAINTENANCE_OPEN_PATHS.has(pathname)) return NextResponse.next();
@@ -71,7 +88,19 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Static assets and any dotted file (icons, images, fonts) stay reachable —
-  // the landing page is built from them.
-  matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
+  matcher: [
+    // Static assets and any dotted file (icons, images, fonts) stay reachable —
+    // the landing page is built from them.
+    //
+    // /square and everything under it belongs to the Square, a separate Vercel
+    // application in the same microfrontends group, and so does its asset
+    // prefix (vc-ap- plus the package's hash of "market-square-frontend"). On
+    // Vercel those requests never reach this app; locally and before the group
+    // exists they must not be gated by it either. /squares and the like are
+    // still this app's, so the exclusion stops at a slash or the end of the path.
+    // proxy.test.ts checks this against microfrontends.json.
+    "/((?!_next/static|_next/image|square(?:/|$)|vc-ap-ce7102/|.*\\..*).*)",
+    // Dotted, so the pattern above skips it.
+    "/.well-known/vercel/microfrontends/client-config",
+  ],
 };

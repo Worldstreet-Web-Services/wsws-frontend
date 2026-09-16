@@ -18,6 +18,11 @@ const shared = {
     "features/casino/components/chess-app/**",
   ],
   passWithNoTests: true,
+  // @vercel/microfrontends ships ESM that imports "next/server" without an
+  // extension. Next's bundler resolves that; Node's ESM loader, which runs
+  // externalized dependencies in tests, does not. Inlining hands the package
+  // to Vite, which resolves it the way the build does.
+  server: { deps: { inline: ["@vercel/microfrontends"] } },
 };
 
 const aliases = [

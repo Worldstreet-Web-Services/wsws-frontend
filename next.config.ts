@@ -1,6 +1,7 @@
 import packageJson from "./package.json";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withMicrofrontends } from "@vercel/microfrontends/next/config";
 // From "@sentry/nextjs/config", not "@sentry/nextjs". The root export of this
 // helper is deprecated in v10 and stops working in v11.
 import { withSentryConfig } from "@sentry/nextjs/config";
@@ -169,7 +170,24 @@ const UPLOAD_SOURCEMAPS = Boolean(
   process.env.WATCHTOWER_AUTH_TOKEN && process.env.WATCHTOWER_ORG && process.env.WATCHTOWER_PROJECT
 );
 
-export default withSentryConfig(withNextIntl(nextConfig), {
+// The wrappers, innermost first:
+//
+// withMicrofrontends makes this app the default application of the Vercel
+// microfrontends group described in microfrontends.json, where the Square is
+// served at /square by its own project. It reads that file while this config
+// loads, so a missing or invalid file fails the build here rather than on the
+// network. As the default application it sets no asset prefix. It puts the
+// routing table in the server build (compiler.defineServer), which proxy.ts
+// serves to the client, and wraps the webpack hook it is given. It returns a
+// copy of what it receives, so it goes first, before anything it should keep.
+//
+// next-intl adds its request config alias to the Turbopack config.
+//
+// Sentry goes last. It reads the finished config (the asset prefix, for its
+// stack frame rewriting) and hangs its release and source map upload on
+// compiler.runAfterProductionCompile, beside the microfrontends define.
+// next.config.test.ts checks that all three survive.
+export default withSentryConfig(withNextIntl(withMicrofrontends(nextConfig)), {
   // Watchtower is the upload target, not sentry.io.
   sentryUrl: "https://watchtower-logger.vercel.app",
   org: process.env.WATCHTOWER_ORG,

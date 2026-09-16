@@ -29,16 +29,39 @@ proxy_group=$!
 next dev --port "$port" &
 next_group=$!
 
-stop_group() {
-    if kill -0 -- "-$1" 2>/dev/null; then
-        kill -TERM -- "-$1"
-    fi
+group_running() {
+    kill -0 -- "-$1" 2>/dev/null
 }
 
+# SIGTERM first, so next dev and the proxy shut down cleanly. A command still
+# running after the grace period is killed: the script must not return while
+# either still holds its port.
 stop_all() {
-    trap - EXIT INT TERM HUP
-    stop_group "$next_group"
-    stop_group "$proxy_group"
+    # Ctrl-C under pnpm delivers several signals (the terminal's SIGINT,
+    # pnpm's own SIGINT and SIGTERM, SIGHUP when the terminal goes). Once
+    # stopping has begun, those are ignored so none can end the script halfway.
+    trap '' INT TERM HUP
+    trap - EXIT
+
+    local group
+    for group in "$next_group" "$proxy_group"; do
+        if group_running "$group"; then
+            kill -TERM -- "-$group"
+        fi
+    done
+
+    local tries=0
+    while (group_running "$next_group" || group_running "$proxy_group") && [ "$tries" -lt 50 ]; do
+        sleep 0.1
+        tries=$((tries + 1))
+    done
+
+    for group in "$next_group" "$proxy_group"; do
+        if group_running "$group"; then
+            echo "dev:mf: process group $group did not stop within 5s; killing it" >&2
+            kill -KILL -- "-$group"
+        fi
+    done
 }
 
 trap stop_all EXIT

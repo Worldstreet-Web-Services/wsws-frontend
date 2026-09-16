@@ -105,6 +105,64 @@ describe("config wrappers", () => {
     expect(config.assetPrefix).toBeUndefined();
   });
 
+  // What withMicrofrontends does to this app besides the define and
+  // transpilePackages checked above. Pinned so that a package upgrade that
+  // changes any of it fails here instead of shipping unnoticed.
+  describe("the rest of withMicrofrontends' footprint", () => {
+    // The keys it adds to a config that sets nothing at all.
+    it("touches only the keys it is known to touch", async () => {
+      const { withMicrofrontends } = await import("@vercel/microfrontends/next/config");
+      const bare = withMicrofrontends({}, { appName: "wsws" });
+
+      expect(Object.keys(bare).sort()).toEqual([
+        "compiler",
+        "experimental",
+        "rewrites",
+        "transpilePackages",
+        "turbopack",
+        "webpack",
+      ]);
+      expect(bare.experimental).toEqual({ multiZoneDraftMode: true });
+    });
+
+    // Next clears a draft-mode cookie it did not issue. With the flag on it
+    // leaves one set by another application of the group alone. This app
+    // uses no draft mode, so for it the flag changes nothing.
+    it("turns on multiZoneDraftMode", async () => {
+      const config = await buildConfig();
+
+      expect(config.experimental?.multiZoneDraftMode).toBe(true);
+    });
+
+    // A default application gets no rewrites of its own; the wrapper only
+    // reshapes the ones it is given. afterFiles comes back undefined, not [],
+    // because this config returns no afterFiles.
+    it("reshapes rewrites without adding any", async () => {
+      const config = await buildConfig();
+      const rewrites = await config.rewrites?.();
+
+      expect(rewrites).toEqual({
+        beforeFiles: [],
+        afterFiles: undefined,
+        fallback: expect.any(Array),
+      });
+      if (!rewrites || Array.isArray(rewrites)) throw new Error("Expected grouped rewrites");
+      expect(rewrites.fallback).toHaveLength(16);
+    });
+
+    // It prepends a redirect to the local proxy only inside a Turborepo task
+    // that runs the proxy (TURBO_TASK_HAS_MFE_PROXY), which this repository
+    // does not use.
+    it("adds no redirects", async () => {
+      vi.stubEnv("TURBO_TASK_HAS_MFE_PROXY", "");
+      const config = await buildConfig();
+      const redirects = (await config.redirects?.()) ?? [];
+
+      expect(redirects).toHaveLength(18);
+      expect(redirects[0]?.source).toBe("/casino/powerball");
+    });
+  });
+
   it("keeps Sentry's release and source map hooks", async () => {
     const config = await buildConfig();
 

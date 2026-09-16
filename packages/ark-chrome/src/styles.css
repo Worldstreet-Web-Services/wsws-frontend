@@ -28,6 +28,13 @@
 
   Layout a host reserves room for: the rail is 248px wide from 768px up, and
   the tab bar is calc(100vw * 90 / 402) tall below 768px.
+
+  Stable layout contract. The tab bar's default z-index (90, the fallback of
+  --ark-chrome-z-tabbar), its phone height, calc(100vw * 90 / 402), and the
+  768px breakpoint are part of the 1.x contract: hosts reserve room and stack
+  their own bars against them, so changing any of them is a major version.
+  layout-contract.ts exports them as ARK_TABBAR_Z_INDEX, arkTabBarInset() and
+  ARK_CHROME_BREAKPOINT_PX, and layout-contract.test.ts holds this file to them.
 */
 
 /* The reset a Tailwind preflight would apply, restated for a host without one. */

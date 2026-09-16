@@ -16,9 +16,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const SCRIPT = join(import.meta.dirname, "dev-mf.sh");
 const PID_FILES = ["proxy.pid", "proxy-child.pid", "next.pid", "next-child.pid"];
 
-function stub(name: string): string {
+// ignoreTerm stands in for a command that does not stop when asked, for
+// whatever reason: busy, stuck, or finishing work first.
+function stub(name: string, { ignoreTerm = false } = {}): string {
   return `#!/usr/bin/env bash
 if [ "\${1:-}" = "port" ]; then echo 7448; exit 0; fi
+${ignoreTerm ? "trap '' TERM" : ""}
 echo $$ > "$STUB_DIR/${name}.pid"
 sleep 300 &
 echo $! > "$STUB_DIR/${name}-child.pid"
@@ -53,14 +56,18 @@ describe("dev:mf", () => {
     return PID_FILES.map((file) => Number(readFileSync(join(stubDir, file), "utf8").trim()));
   }
 
-  beforeEach(() => {
-    stubDir = mkdtempSync(join(tmpdir(), "dev-mf-"));
+  function writeStubs(options: { ignoreTerm?: boolean } = {}) {
     for (const name of ["microfrontends", "next"]) {
       const bin = name === "microfrontends" ? "proxy" : "next";
       const path = join(stubDir, name);
-      writeFileSync(path, stub(bin));
+      writeFileSync(path, stub(bin, options));
       chmodSync(path, 0o755);
     }
+  }
+
+  beforeEach(() => {
+    stubDir = mkdtempSync(join(tmpdir(), "dev-mf-"));
+    writeStubs();
   });
 
   afterEach(() => {
@@ -100,4 +107,43 @@ describe("dev:mf", () => {
       expect(stopped, `still running: ${survivors.join(", ")}`).toBe(true);
     }, 15_000);
   }
+
+  // Ctrl-C under `pnpm dev:mf` signals the script more than once: the
+  // terminal sends SIGINT to the whole foreground group, pnpm passes SIGINT on
+  // and then SIGTERM as it exits, and a closing terminal adds SIGHUP. None of
+  // them may cut short a stop that is already under way.
+  it("stops both even when a second signal arrives while it is stopping", async () => {
+    script = await start();
+    const running = pids();
+
+    const exited = new Promise((resolve) => script?.once("exit", resolve));
+    script.kill("SIGINT");
+    const deadline = Date.now() + 500;
+    while (script.exitCode === null && script.signalCode === null && Date.now() < deadline) {
+      script.kill("SIGTERM");
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    await exited;
+
+    const stopped = await until(() => !running.some(alive), 3_000);
+    const survivors = PID_FILES.filter((_, i) => alive(running[i]));
+    expect(stopped, `still running: ${survivors.join(", ")}`).toBe(true);
+  }, 15_000);
+
+  // Seen by hand once: after Ctrl-C the script was gone, but next dev and the
+  // proxy were still running with ports 7448 and 3024 held, and a plain
+  // SIGTERM stopped both at once afterwards. Whatever kept them from stopping
+  // the first time, the script must not return while they still run.
+  it("does not leave behind a command that ignores the request to stop", async () => {
+    writeStubs({ ignoreTerm: true });
+    script = await start();
+    const running = pids();
+
+    const exited = new Promise((resolve) => script?.once("exit", resolve));
+    script.kill("SIGINT");
+    await exited;
+
+    const survivors = PID_FILES.filter((_, i) => alive(running[i]));
+    expect(survivors, "still running once the script has returned").toEqual([]);
+  }, 20_000);
 });

@@ -111,8 +111,7 @@ export const HEARTBEAT_MONITOR_SLUG = "wsws-frontend-heartbeat";
  * lateness against, so a check-in that never arrives, which is the entire
  * failure this is meant to catch, would simply be silence.
  */
-// Hobby deployments permit one cron invocation per day. Run at midnight UTC.
-export const HEARTBEAT_SCHEDULE = "0 0 * * *";
+export const HEARTBEAT_SCHEDULE = "0 * * * *";
 
 /**
  * Self-provisioning config sent with every check-in, so the monitor exists with
@@ -127,8 +126,8 @@ export const HEARTBEAT_MONITOR_CONFIG = {
   // The probe times out at 8s, so anything still running after two minutes is
   // wedged rather than slow.
   maxRuntime: 2,
-  // One miss is an alert. Waiting for a second daily check-in would delay an
-  // outage alert by another day.
+  // One miss is an alert. At hourly checks that is already up to an hour of
+  // silence; waiting for a second would be two.
   failureIssueThreshold: 1,
   recoveryThreshold: 1,
 } as const;

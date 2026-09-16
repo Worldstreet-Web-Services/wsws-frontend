@@ -80,7 +80,7 @@ describe("GET /api/heartbeat", () => {
 
     const config = sentryMock.captureCheckIn.mock.calls[0][1];
     expect(config).toMatchObject({
-      schedule: { type: "crontab", value: "0 0 * * *" },
+      schedule: { type: "crontab", value: "0 * * * *" },
       failureIssueThreshold: 1,
     });
   });

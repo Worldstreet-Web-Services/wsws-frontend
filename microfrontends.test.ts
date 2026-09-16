@@ -1,6 +1,15 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-import { describe, expect, it } from "vitest";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, sep } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateRouting } from "@vercel/microfrontends/next/testing";
 import { validateSchema } from "@vercel/microfrontends/validation";
 import packageJson from "./package.json";
@@ -68,7 +77,7 @@ describe("microfrontends.json", () => {
 // Once the Square owns /square on Vercel, anything this app serves under it
 // is unreachable in production and silently different in local development.
 describe("this app under /square", () => {
-  const appDir = join(import.meta.dirname, "app");
+  const root = import.meta.dirname;
 
   function routeFiles(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -81,7 +90,7 @@ describe("this app under /square", () => {
 
   // "(session)/(app)/square/page.tsx" -> "/square". Route groups and
   // parallel-route slots are folders, not URL segments.
-  function urlOf(file: string): string {
+  function urlOf(appDir: string, file: string): string {
     const segments = relative(appDir, file)
       .split(sep)
       .slice(0, -1)
@@ -89,25 +98,78 @@ describe("this app under /square", () => {
     return `/${segments.join("/")}`;
   }
 
-  it("serves nothing under /square except the in-app Home port", () => {
-    const underSquare = routeFiles(appDir)
+  // The files under projectRoot/app that can answer a request for /square or
+  // anything below it, relative to projectRoot.
+  function filesServingSquare(projectRoot: string): string[] {
+    const appDir = join(projectRoot, "app");
+    return routeFiles(appDir)
       .filter((file) => {
-        const url = urlOf(file);
+        const url = urlOf(appDir, file);
         return url === "/square" || url.startsWith("/square/");
       })
-      .map((file) =>
-        relative(import.meta.dirname, file)
-          .split(sep)
-          .join("/")
-      );
+      .map((file) => relative(projectRoot, file).split(sep).join("/"))
+      .sort();
+  }
 
+  it("serves nothing under /square except the in-app Home port", () => {
     // The one allowed exception. PR 3 of the plan
     // (docs/plans/2026-09-16-square-microfrontend-plan.md) deletes this page
     // when /square is handed to the Square; this list then becomes empty.
-    expect(underSquare).toEqual(["app/(session)/(app)/square/page.tsx"]);
+    expect(filesServingSquare(root)).toEqual(["app/(session)/(app)/square/page.tsx"]);
+  });
+
+  // The guard above is only as good as its idea of which files answer which
+  // URLs, so that idea is checked on a scratch app with every kind of file
+  // that can reach /square, next to near misses that cannot.
+  describe("finding what answers /square", () => {
+    let fixture: string;
+
+    beforeEach(() => {
+      fixture = mkdtempSync(join(tmpdir(), "square-routes-"));
+    });
+
+    afterEach(() => {
+      rmSync(fixture, { recursive: true, force: true });
+    });
+
+    function touch(...files: string[]) {
+      for (const file of files) {
+        const path = join(fixture, file);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, "");
+      }
+    }
+
+    it("finds pages, catch-alls, dynamic segments and metadata routes", () => {
+      const serving = [
+        "app/(session)/(app)/square/page.tsx",
+        "app/(session)/(app)/square/opengraph-image.tsx",
+        "app/square/p/[id]/twitter-image.png",
+        "app/square/icon.svg",
+        "app/[...slug]/page.tsx",
+        "app/(marketing)/[[...rest]]/page.tsx",
+        "app/[handle]/route.ts",
+        "app/@modal/[id]/opengraph-image.tsx",
+      ];
+      touch(
+        ...serving,
+        "app/page.tsx",
+        "app/icon.svg",
+        "app/favicon.ico",
+        "app/opengraph-image.tsx",
+        "app/squares/page.tsx",
+        "app/api/square/symbols/route.ts",
+        "app/api/market-square/[...path]/route.ts",
+        "app/trade/[symbol]/page.tsx",
+        "app/square/layout.tsx",
+        "app/square/components/card.tsx"
+      );
+
+      expect(filesServingSquare(fixture)).toEqual([...serving].sort());
+    });
   });
 
   it("ships no public files under /square", () => {
-    expect(existsSync(join(import.meta.dirname, "public", "square"))).toBe(false);
+    expect(existsSync(join(root, "public", "square"))).toBe(false);
   });
 });

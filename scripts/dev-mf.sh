@@ -62,6 +62,21 @@ stop_all() {
             kill -KILL -- "-$group"
         fi
     done
+
+    # A SIGKILL is delivered, not completed: until the kernel tears the
+    # processes down and the leaders are reaped, the groups still exist. On a
+    # busy machine the script returned in that gap and a caller found the
+    # proxy still alive (scripts/dev-mf.test.ts, seen under the full suite).
+    # Reap the two leaders, then wait out the rest of each group, so the
+    # script never returns while anything it started is still running.
+    # `wait` reports each leader's own exit status (143 or 137 here), which is
+    # the expected outcome of stopping them, not a failure of the script.
+    wait "$next_group" "$proxy_group" 2>/dev/null || true
+    tries=0
+    while (group_running "$next_group" || group_running "$proxy_group") && [ "$tries" -lt 50 ]; do
+        sleep 0.1
+        tries=$((tries + 1))
+    done
 }
 
 trap stop_all EXIT

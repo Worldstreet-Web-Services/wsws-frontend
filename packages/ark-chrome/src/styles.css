@@ -1,0 +1,531 @@
+/*
+  @ark/chrome styles. Import once, from the host's root layout.
+
+  Plain, unlayered CSS on purpose. Both hosts run Tailwind v4, which puts its
+  reset and its utilities in cascade layers, and an unlayered rule outranks a
+  layered one whatever order the stylesheets load in. So the chrome looks the
+  same in every host, and no host utility can restyle it by accident.
+
+  Every selector is an .ark-chrome-* class. Colours are written out here rather
+  than read from a host's theme: the two apps share token names with different
+  values. Where a value is a Tailwind output (a color-mix, a lab colour, the
+  transition-colors list) it is copied exactly, so the computed styles in WSWS
+  are the ones it had before the chrome moved into this package.
+
+  Host-set custom properties, all optional:
+    --ark-chrome-font-body      the rows' and footer's family (default system-ui)
+    --ark-chrome-font-display   the tab bar label's family (default "Ark Chrome Display", see fonts.css)
+    --ark-chrome-frame-inset    left offset of the fixed rail inside a centred frame (default 0px)
+    --ark-chrome-z-rail         desktop rail (default 100)
+    --ark-chrome-z-backdrop     drawer backdrop (default 105)
+    --ark-chrome-z-drawer       phone drawer (default 110)
+    --ark-chrome-z-tabbar       phone tab bar (default 90)
+
+  Tints are mixed from var(--ark-chrome-white, #fff) rather than a bare #fff.
+  A bare colour is folded to an oklab value when the CSS is built, a hair off
+  the value the browser computes from Tailwind's var(--color-white); through a
+  custom property the browser does the mix, exactly as it did before.
+
+  Layout a host reserves room for: the rail is 248px wide from 768px up, and
+  the tab bar is calc(100vw * 90 / 402) tall below 768px.
+*/
+
+/* The reset a Tailwind preflight would apply, restated for a host without one. */
+.ark-chrome-root,
+.ark-chrome-header,
+.ark-chrome-brand,
+.ark-chrome-brand-logo,
+.ark-chrome-close,
+.ark-chrome-action-slot,
+.ark-chrome-rail-action,
+.ark-chrome-icon-slot,
+.ark-chrome-grow,
+.ark-chrome-divider,
+.ark-chrome-nav,
+.ark-chrome-row,
+.ark-chrome-footer,
+.ark-chrome-profile,
+.ark-chrome-name,
+.ark-chrome-sign-in-mark,
+.ark-chrome-skeleton,
+.ark-chrome-tabbar-frame,
+.ark-chrome-tabbar-dome,
+.ark-chrome-tabbar-glow,
+.ark-chrome-tabbar-label,
+.ark-chrome-tabbar-nav,
+.ark-chrome-seat,
+.ark-chrome-seat-hit {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+}
+
+.ark-chrome-brand,
+.ark-chrome-close,
+.ark-chrome-rail-action,
+.ark-chrome-row,
+.ark-chrome-profile,
+.ark-chrome-seat,
+.ark-chrome-seat-hit {
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  opacity: 1;
+  background-color: #0000;
+  border-radius: 0;
+  text-decoration: none;
+}
+
+.ark-chrome-root {
+  color: #fff;
+  font-family: var(--ark-chrome-font-body, system-ui), sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ rail */
+
+.ark-chrome-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ark-chrome-z-backdrop, 105);
+  background-color: #0009;
+  background-color: color-mix(in oklab, var(--ark-chrome-black, #000) 60%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-duration: 0.3s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ark-chrome-backdrop[data-open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ark-chrome-aside {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--ark-chrome-frame-inset, 0px);
+  z-index: var(--ark-chrome-z-drawer, 110);
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  padding: 20px 16px;
+  background-color: #0a0a0a;
+  border-right-width: 1px;
+  border-color: #ffffff14;
+  border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
+  translate: -100%;
+  transition-property: transform, translate, scale, rotate;
+  transition-duration: 0.3s;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.ark-chrome-aside[data-open] {
+  translate: 0px;
+}
+
+@media (min-width: 768px) {
+  .ark-chrome-backdrop:not(.ark-chrome-backdrop--drawer) {
+    display: none;
+  }
+
+  .ark-chrome-aside:not(.ark-chrome-aside--drawer) {
+    z-index: var(--ark-chrome-z-rail, 100);
+    width: 248px;
+    translate: 0px;
+  }
+
+  .ark-chrome-aside:not(.ark-chrome-aside--drawer) .ark-chrome-close {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ark-chrome-aside--drawer {
+    transition-property: none;
+  }
+}
+
+.ark-chrome-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 20px;
+}
+
+.ark-chrome-brand {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.ark-chrome-brand-logo {
+  width: auto;
+  height: 21px;
+}
+
+.ark-chrome-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-width: 1px;
+  border-radius: 3.40282e38px;
+  border-color: #ffffff1f;
+  border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 12%, transparent);
+  background-color: #ffffff0d;
+  background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 5%, transparent);
+  color: #ffffffb3;
+  color: color-mix(in oklab, var(--ark-chrome-white, #fff) 70%, transparent);
+  text-align: center;
+  cursor: pointer;
+  /* Tailwind's transition-colors list and timing, as the rail had them. */
+  transition-property:
+    color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+    --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ark-chrome-action-slot {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+}
+
+.ark-chrome-divider {
+  flex-shrink: 0;
+  height: 1px;
+  margin-bottom: 12px;
+  background-color: #ffffff14;
+  background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
+}
+
+.ark-chrome-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.ark-chrome-row,
+.ark-chrome-rail-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 11px 12px;
+  text-align: left;
+  font-family: var(--ark-chrome-font-body, system-ui, sans-serif);
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #fff9;
+  color: color-mix(in oklab, var(--ark-chrome-white, #fff) 60%, transparent);
+  cursor: pointer;
+  transition-property:
+    color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+    --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ark-chrome-row--active {
+  background-color: #d4d4d824;
+  background-color: lab(85.0011% 0.545442 -1.98107 / 0.14);
+  color: #fff;
+}
+
+.ark-chrome-rail-action {
+  color: #ffffffbf;
+  color: color-mix(in oklab, var(--ark-chrome-white, #fff) 75%, transparent);
+}
+
+.ark-chrome-rail-action--live {
+  background-color: #8d54ff38;
+  background-color: color-mix(
+    in oklab,
+    var(--ark-chrome-violet, lab(49.9355% 55.1776 -81.8963)) 22%,
+    transparent
+  );
+  color: #fff;
+  box-shadow: 0 0 0 1px #a685ff80;
+  box-shadow: 0 0 0 1px
+    color-mix(
+      in oklab,
+      var(--ark-chrome-violet-ring, lab(62.8239% 34.9159 -60.0512)) 50%,
+      transparent
+    );
+}
+
+@media (hover: hover) {
+  .ark-chrome-close:hover {
+    background-color: #ffffff1a;
+    background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 10%, transparent);
+    color: #fff;
+  }
+
+  .ark-chrome-row:not(.ark-chrome-row--active):hover,
+  .ark-chrome-rail-action:not(.ark-chrome-rail-action--live):hover {
+    background-color: #ffffff0f;
+    background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 6%, transparent);
+    color: #fff;
+  }
+
+  .ark-chrome-profile:hover {
+    background-color: #ffffff0a;
+    background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 4%, transparent);
+  }
+}
+
+/* A crossing to another app that has not landed after 300ms. */
+.ark-chrome-row[aria-busy="true"],
+.ark-chrome-seat-hit[aria-busy="true"] {
+  animation: ark-chrome-pending 1.2s ease-in-out infinite;
+}
+
+@keyframes ark-chrome-pending {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ark-chrome-row[aria-busy="true"],
+  .ark-chrome-seat-hit[aria-busy="true"] {
+    animation: none;
+  }
+}
+
+/* The Square's mark in the rail. `content: url()` makes the span a replaced
+   element, so the art rasterises exactly as an <img> of the file does; an
+   inline SVG or a background image antialiases its one-pixel edges
+   differently at this size. */
+.ark-chrome-square-mark {
+  display: block;
+  overflow: clip;
+  aspect-ratio: auto 17 / 13;
+  content: url("../assets/market-square.svg");
+}
+
+.ark-chrome-icon-slot {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+}
+
+.ark-chrome-grow {
+  flex: 1;
+}
+
+.ark-chrome-min-w-0 {
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.ark-chrome-footer {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.ark-chrome-profile {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-width: 1px;
+  border-radius: 12px;
+  border-color: #ffffff14;
+  border-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
+  padding: 10px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition-property:
+    color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+    --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ark-chrome-profile--loading {
+  cursor: default;
+}
+
+.ark-chrome-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ark-chrome-font-body, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #fff;
+}
+
+.ark-chrome-sign-in-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 3.40282e38px;
+  background-color: #ffffff0f;
+  background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 6%, transparent);
+  color: #fff;
+}
+
+.ark-chrome-skeleton {
+  display: block;
+  background-color: #ffffff14;
+  background-color: color-mix(in oklab, var(--ark-chrome-white, #fff) 8%, transparent);
+}
+
+.ark-chrome-skeleton--avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 3.40282e38px;
+}
+
+.ark-chrome-skeleton--name {
+  width: 60%;
+  height: 12px;
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------- tab bar */
+
+.ark-chrome-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: var(--ark-chrome-z-tabbar, 90);
+  width: 100vw;
+  pointer-events: none;
+}
+
+.ark-chrome-tabbar[hidden] {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .ark-chrome-tabbar {
+    display: none;
+  }
+}
+
+.ark-chrome-tabbar-frame {
+  position: relative;
+  width: 100vw;
+  aspect-ratio: 402 / 90;
+}
+
+/* The dome's surface, hairline and ray texture. A background rather than an
+   <img>, so the art resolves next to this stylesheet in any host, and is only
+   fetched where the bar is displayed. */
+.ark-chrome-tabbar-dome {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: clip;
+  background: url("../assets/dome-bg.svg") center / 100% 100% no-repeat;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ark-chrome-tabbar-glow {
+  position: absolute;
+  top: 63%;
+  left: 50%;
+  width: 21.5%;
+  aspect-ratio: 86.586 / 6.25125;
+  overflow: clip;
+  translate: -50% -50%;
+  background: url("../assets/glow.svg") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 6px #d8bcff73);
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ark-chrome-tabbar-label {
+  position: absolute;
+  top: 83%;
+  left: 50%;
+  translate: -50% -50%;
+  font-family: var(--ark-chrome-font-display, "Ark Chrome Display", sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.36px;
+  white-space: nowrap;
+  color: #fff;
+  pointer-events: none;
+}
+
+.ark-chrome-tabbar-nav {
+  position: absolute;
+  inset: 0;
+}
+
+.ark-chrome-seat {
+  position: absolute;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  translate: -50% -50%;
+  text-align: center;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ark-chrome-seat--lit {
+  color: #fff;
+}
+
+.ark-chrome-seat--dim {
+  color: #ffffff80;
+  color: color-mix(in oklab, var(--ark-chrome-white, #fff) 50%, transparent);
+}
+
+.ark-chrome-seat-hit {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ----------------------------------------------------------------- focus */
+
+.ark-chrome-brand:focus-visible,
+.ark-chrome-close:focus-visible,
+.ark-chrome-rail-action:focus-visible,
+.ark-chrome-row:focus-visible,
+.ark-chrome-profile:focus-visible,
+.ark-chrome-seat:focus-visible,
+.ark-chrome-seat-hit:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}

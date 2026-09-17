@@ -4,6 +4,11 @@ Decision: `docs/adr/ADR-2026-09-16-square-microfrontend.md` (accepted
 2026-09-16: both addresses stay, Ark's chrome on Square pages from the start,
 the Square session owns the Square-side changes).
 
+**Amended 2026-09-17:** Next.js Multi-Zones replace Vercel microfrontends.
+PR 1 (microfrontends plumbing, #506) is withdrawn; PR 3 below carries the
+rewrite instead, and the Square's zone build replaces `withMicrofrontends` in
+PR 2.
+
 ## Ownership
 
 | Repository                                | Owner                                | Rule                                                                                                                 |
@@ -14,7 +19,7 @@ the Square session owns the Square-side changes).
 
 ## Pull requests, in order
 
-### PR 1 — WSWS: microfrontends plumbing (default app), no routing change (0.5 day)
+### PR 1 — WSWS: microfrontends plumbing — withdrawn 2026-09-17 (Multi-Zones)
 
 | Step                                                                                                                                                   | Files                            | Check                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,17 +38,18 @@ the Square session owns the Square-side changes).
 | Service worker at `/square/sw.js`, scope `/square/`, notification URLs prefixed                                  | push click opens `/square/...`                                    |
 | `SITE_ORIGIN` and the 10 `window.location.origin` share links → `https://www.tsionark.com/square`                | share preview for `/square/p/{id}` renders                        |
 | Shell route rules (`compose-surfaces.ts`, `WIDE`) on the prefix                                                  | composer and wide routes unchanged on the preview                 |
-| `withMicrofrontends`, `@vercel/microfrontends`                                                                   | assets served under the automatic prefix                          |
+| Zone build: `NEXT_PUBLIC_SQUARE_BASE_PATH=/square` sets `assetPrefix` and `images.path`                          | assets served under `/square/_next`                               |
 
 ### PR 3 — WSWS: hand `/square` to the Square (1 day)
 
-| Step                                                                                    | Files                                                                           | Check                                        |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| Remove the Home port route and its components/tests                                     | `app/(session)/(app)/square/`, `features/square/components/square-home*`, tests | no route under `/square` in this build       |
-| Sidebar and phone tab bar Square seat: `<a href="/square">`, active state from the path | `sidebar.tsx`, `curved-tab-bar.tsx`, tests                                      | cross-app link is an anchor, not `next/link` |
-| `lib/square/links.ts` → same-origin `/square/...`, no `target="_blank"`                 | `links.ts`, callers, tests                                                      | every deep link same-origin                  |
-| Prefetch the Square entry where the seat is visible                                     | shell                                                                           | warm navigation measured on preview          |
-| Release note, locale check, preflight                                                   | docs                                                                            | five gates green                             |
+| Step                                                                                                    | Files                                                                           | Check                                        |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| `beforeFiles` rewrite of `/square`, `/square/:path*` to `SQUARE_ZONE_URL`; request gate skips `/square` | `next.config.ts`, `proxy.ts`, tests                                             | rewrite and matcher tests                    |
+| Remove the Home port route and its components/tests                                                     | `app/(session)/(app)/square/`, `features/square/components/square-home*`, tests | no route under `/square` in this build       |
+| Sidebar and phone tab bar Square seat: `<a href="/square">`, active state from the path                 | `sidebar.tsx`, `curved-tab-bar.tsx`, tests                                      | cross-app link is an anchor, not `next/link` |
+| `lib/square/links.ts` → same-origin `/square/...`, no `target="_blank"`                                 | `links.ts`, callers, tests                                                      | every deep link same-origin                  |
+| Prefetch the Square entry where the seat is visible                                                     | shell                                                                           | warm navigation measured on preview          |
+| Release note, locale check, preflight                                                                   | docs                                                                            | five gates green                             |
 
 ### PR 3b — WSWS: `packages/ark-chrome` (2–3 days)
 
@@ -87,16 +93,16 @@ context. The loop repeats until the judge scores the PR at the top grade.
 
 ### Rubric (100 points)
 
-| Criterion           | Points | Top grade means                                                                                        |
-| ------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| Routes              | 20     | all 46 Square routes load under `/square`, signed in and out, with CSS and images                      |
-| Sign-in             | 10     | one sign-in carries across both apps and back                                                          |
-| Critical flows      | 25     | post with media, comment reply, DM voice note, live room audio, `$TICKER` buy, KASH action, push click |
-| No collisions       | 10     | no request reaches the wrong app; no shared `/api` name                                                |
-| Links and SEO       | 10     | both hosts serve; canonical and `og:url` point at `www.tsionark.com/square`; share previews render     |
-| Crossing UX         | 10     | warm, prefetched navigation with no blank flash                                                        |
-| Governance          | 10     | ADRs, release notes, 5 locales where strings change, preflight, bundle budgets                         |
-| Rollback and chrome | 5      | removing the child restores `/square` cleanly; both hosts render the same `ark-chrome` version         |
+| Criterion           | Points | Top grade means                                                                                          |
+| ------------------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| Routes              | 20     | all 46 Square routes load under `/square`, signed in and out, with CSS and images                        |
+| Sign-in             | 10     | one sign-in carries across both apps and back                                                            |
+| Critical flows      | 25     | post with media, comment reply, DM voice note, live room audio, `$TICKER` buy, KASH action, push click   |
+| No collisions       | 10     | no request reaches the wrong app; no shared `/api` name                                                  |
+| Links and SEO       | 10     | both hosts serve; canonical and `og:url` point at `www.tsionark.com/square`; share previews render       |
+| Crossing UX         | 10     | warm, prefetched navigation with no blank flash                                                          |
+| Governance          | 10     | ADRs, release notes, 5 locales where strings change, preflight, bundle budgets                           |
+| Rollback and chrome | 5      | unsetting `SQUARE_ZONE_URL` removes the rewrite cleanly; both hosts render the same `ark-chrome` version |
 
 ## Risks and how they are caught
 
@@ -105,5 +111,5 @@ context. The loop repeats until the judge scores the PR at the top grade.
 | A missed bare-root path in the Square              | lint rule + preview network log with zero 404s                                   |
 | Two `/api/kash` routes with different wallet rules | PR 2 moves the Square's to `/square/api/kash`; auditor checks no request crosses |
 | Service worker scope or old push subscriptions     | explicit re-subscribe path; push click test                                      |
-| `microfrontends.json` typo takes `/square` down    | parse test in PR 1                                                               |
+| Wrong `SQUARE_ZONE_URL` takes `/square` down       | rewrite tests; preview check of `/square` before promotion                       |
 | The Square changes during the move                 | PR 2 is one rebase-friendly branch in its own repo, owned by its session         |

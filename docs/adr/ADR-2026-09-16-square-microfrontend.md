@@ -1,4 +1,4 @@
-# ADR-2026-09-16: The whole Market Square at `www.tsionark.com/square`, as a Vercel microfrontend
+# ADR-2026-09-16: The whole Market Square at `www.tsionark.com/square`, as a Next.js Multi-Zone
 
 ## Status
 
@@ -8,6 +8,15 @@ at /square"), approved this record and its companion
 open questions: **both addresses stay**, **Ark's sidebar and tab bar show on
 Square pages from the start**, and **the `market-square-frontend` session makes
 the Square-side changes**. Sections 2, 4 and 6 record those decisions.
+
+**Amended 2026-09-17: Next.js Multi-Zones instead of Vercel microfrontends.**
+The maintainer and the Square session moved the mechanism to Multi-Zones
+(https://nextjs.org/docs/app/guides/multi-zones) and set it up on their side:
+a second deployment of the Square, `https://square-ark.vercel.app`, is built
+with `/square` prefixes, while `square.tsionark.com` stays exactly as it is.
+This app rewrites `/square` to that deployment. Sections 1, 5, "Verified
+platform facts", Consequences and Rollout below reflect the amendment; the
+microfrontends plumbing (PR #506) is withdrawn. Everything else stands.
 
 Supersedes `ADR-2026-09-12-square-page-in-app.md` once the microfrontend is live
 in production: that record ported the Square's Home into this app and linked
@@ -50,7 +59,7 @@ code changes daily: its staging took new merges on the day of this record.
 
 ### The three options
 
-|                     | A. Microfrontend at `/square`                           | B. Shared package                                    | C. Full native port                                        |
+|                     | A. Separate app at `/square` (Multi-Zone)               | B. Shared package                                    | C. Full native port                                        |
 | ------------------- | ------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------- |
 | Effort              | 1.5–3 weeks                                             | Months                                               | 8–12 engineer-weeks                                        |
 | Codebases           | One                                                     | One, plus a package boundary across two repos        | Two copies that drift                                      |
@@ -66,15 +75,17 @@ Coinbase built social into Base App and withdrew it (The Block, March 2026).
 
 - Both projects are on the same Vercel team (`emmanuels-projects-18d0cf4f`):
   `wsws` → `www.tsionark.com`, `market-square-frontend` → `square.tsionark.com`.
-  Microfrontends require one team.
-- `withMicrofrontends` sets the JS/CSS asset prefix automatically, and
-  **Next.js `basePath` is not supported**
-  (https://vercel.com/docs/microfrontends/quickstart). The Square must therefore
-  serve its pages at their shared-domain paths itself: under `app/square/`.
-- Files in `public/` are not covered by the automatic prefix; they must move
-  under a routed prefix or be listed in `microfrontends.json`.
-- Crossing between microfrontends is a hard navigation; prefetch helpers soften
-  it (https://vercel.com/docs/microfrontends/managing-microfrontends).
+- Multi-Zones need no platform feature and no shared team: the main app
+  rewrites a path to the other deployment, and that deployment is built with an
+  `assetPrefix` so its JavaScript, CSS and images load from under the same path
+  (https://nextjs.org/docs/app/guides/multi-zones). The Square's zone build
+  (`NEXT_PUBLIC_SQUARE_BASE_PATH=/square`) sets `assetPrefix: "/square"` and
+  answers its routes at `/square/...`.
+- The rewrite runs in `beforeFiles`, so nothing in this app can shadow it, and
+  keeps the `/square` prefix in the destination.
+- Crossing between zones is a hard navigation: `next/link` across zones looks
+  for the route in the wrong router (observed: the Square entry hung on
+  "Rendering"), so cross-zone links are plain `<a>`.
 - Privy keeps its session in local storage on the origin, so one origin means
   one sign-in (https://docs.privy.io/recipes/react/cookies). Both apps use the
   same Privy app.
@@ -83,11 +94,13 @@ Coinbase built social into Base App and withdrew it (The Block, March 2026).
 
 ### 1. One domain, two applications
 
-A Vercel microfrontends group on the team, with `wsws` as the **default
-application** and `market-square-frontend` as a child routed at `/square` and
-`/square/:path*`. `microfrontends.json` lives in this repository (the default
-app). Both apps add `@vercel/microfrontends` and wrap `next.config.ts` in
-`withMicrofrontends`.
+Next.js Multi-Zones. `wsws` is the main zone. Its `next.config.ts` rewrites
+`/square` and `/square/:path*` in `beforeFiles` to `${SQUARE_ZONE_URL}/square`
+and `${SQUARE_ZONE_URL}/square/:path*`, where `SQUARE_ZONE_URL` is the Square
+zone deployment (`https://square-ark.vercel.app`). With the variable unset the
+rules are absent and `/square` is a 404 here. The request gate in `proxy.ts`
+does not match `/square` or anything below it. No route in this app lives under
+`/square`; a test enforces it.
 
 ```
 www.tsionark.com
@@ -99,6 +112,7 @@ www.tsionark.com
       /square/messages     chat
       /square/gist-rooms/… live rooms
       /square/api/*        the Square's own BFF routes
+      (www rewrites these to SQUARE_ZONE_URL/square/...)
 ```
 
 ### 2. The Square moves under `/square` in its own repository
@@ -143,9 +157,10 @@ Owned by the `market-square-frontend` session, coordinated before any write:
 
 ### 4. Navigation between the two
 
-Cross-application links use `<a>`. The Square and this app each prefetch the
-other's entry points with the package's prefetch helper where a link is visible,
-so the full page load is warm.
+Cross-zone links use `<a>`: the rail's Square entry, the phone tab bar's Square
+seat (`@ark/chrome` `document` targets) and the Square pills on the dashboard's
+conversation cards (`DiscoveryCta` `document`). Each is a same-tab document
+navigation.
 
 ### 6. Ark's chrome on Square pages, from one source
 
@@ -176,9 +191,9 @@ become a package built from this repository:
 
 ### 5. Local development
 
-`microfrontends proxy` with `next dev --port $(microfrontends port)` in both
-repos; the polyrepo setup pulls the group config with
-`vercel microfrontends pull`. Each app can still run alone.
+Run this app with `SQUARE_ZONE_URL` pointing at the Square zone, either the
+deployed `https://square-ark.vercel.app` or a local zone build of the Square.
+No proxy is needed. Each app still runs alone.
 
 ## Alternatives considered
 
@@ -198,13 +213,12 @@ repos; the polyrepo setup pulls the group config with
 
 ## Consequences
 
-- **Cost.** Microfrontends are included on Pro for a limited number of projects
-  with routing billed per request (https://vercel.com/docs/microfrontends);
-  confirm on the team's plan before creating the group.
+- **Cost.** No platform feature: the rewrite is an ordinary external rewrite,
+  and the Square zone is one more Vercel project.
 - **Navigation.** Crossing between trading and Square pages reloads the page.
 - **Two deployments, one domain.** Each app deploys independently; a Square
-  release no longer needs a WSWS release. A broken `microfrontends.json` in this
-  repo can take `/square` down, so the file is guarded by a test.
+  release no longer needs a WSWS release. A wrong `SQUARE_ZONE_URL` on the
+  `wsws` project takes `/square` down; the rewrite rules are guarded by tests.
 - **Share links change host.** Canonical post and profile URLs become
   `www.tsionark.com/square/...`; the old host keeps serving and points its
   canonical tags at the new one.
@@ -218,14 +232,13 @@ repos; the polyrepo setup pulls the group config with
   `square.tsionark.com` (drafts, dismissed banners) does not carry over.
 - **Bundle budgets.** Each app keeps its own; this app's first-load budgets are
   unaffected.
-- **Rollback.** Removing the child from `microfrontends.json` returns `/square`
-  to this app; `square.tsionark.com` keeps working throughout.
+- **Rollback.** Unsetting `SQUARE_ZONE_URL` removes the rewrite;
+  `square.tsionark.com` keeps working throughout.
 
 ## Rollout
 
-1. Group created on the team; `microfrontends.json` and `withMicrofrontends` in
-   both apps, behind Preview only (production routing does not change until the
-   file is promoted).
+1. The Square zone deployment (`square-ark.vercel.app`) created by the
+   maintainer; `SQUARE_ZONE_URL` set on the `wsws` project.
 2. The Square's route, API, asset, service-worker and share-link move, verified
    on its own preview at `/square/*`.
 3. This app's links and the removal of the Home port, verified on the combined
@@ -253,8 +266,8 @@ repos; the polyrepo setup pulls the group config with
 2. Ark's sidebar and tab bar show on Square pages from the start (section 6).
 3. The `market-square-frontend` session makes the Square-side changes; this
    session makes Ark's side and the chrome package.
-4. Still to confirm before production: who creates the microfrontends group on
-   the Vercel team, and that the plan's cost is acceptable.
+4. Amended 2026-09-17: Multi-Zones, with the Square zone at
+   `square-ark.vercel.app`, set up by the maintainer.
 
 ## Release notes
 

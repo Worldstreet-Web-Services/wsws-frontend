@@ -24,10 +24,12 @@ inside itself. A website can. And copying would be expensive:
 
 ## What are we going to do?
 
-1. **Serve the real Square at `www.tsionark.com/square`.** Vercel, where both
-   sites already live on the same team, can route one part of a domain to a
-   second app. Everything under `/square` comes from the Square; everything else
-   stays Ark.
+1. **Serve the real Square at `www.tsionark.com/square`.** A second copy of
+   the Square's website runs at `square-ark.vercel.app`, set up to live under
+   `/square`. Ark passes every `/square` request to it. Everything under
+   `/square` comes from the Square; everything else stays Ark. (Updated
+   2026-09-17: this used to rely on a paid Vercel feature; the new way needs
+   none.)
 2. **One sign-in.** Both apps use the same login, and on the same address the
    browser shares it, so people sign in once.
 3. **The Square's team moves its pages under `/square`.** Its links, pictures and
@@ -48,8 +50,8 @@ inside itself. A website can. And copying would be expensive:
 - Going from a trading page to a Square page is a full page load, not an instant
   switch. Everything inside the Square, and everything inside trading, stays
   instant.
-- Vercel charges for this feature on the team's plan; to be confirmed before
-  switching it on.
+- No extra Vercel feature to pay for: the Square's second copy is one more
+  ordinary project.
 - People who allowed Square notifications on the old address will be asked again.
 
 ## What we decided not to do
@@ -66,5 +68,5 @@ inside itself. A website can. And copying would be expensive:
 2. Show Ark's sidebar and tab bar on Square pages from the start.
 3. The Square's session changes the Square; this session changes Ark and builds
    the shared menus.
-4. Still to confirm before going live: who switches the feature on in Vercel,
-   and the cost.
+4. Updated 2026-09-17: the maintainer set up the Square's second copy at
+   `square-ark.vercel.app`, and Ark sends `/square` to it.

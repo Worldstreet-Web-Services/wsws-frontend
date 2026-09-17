@@ -310,11 +310,18 @@ export function MoveOldMoneyPanel({
       }
       // Anything that landed is the user's money in their new wallet, so it
       // stops being hidden even when the run as a whole is unfinished.
-      if (outcome.movedCount > 0) markFundsMoved(session.evmAddress);
+      if (outcome.movedCount > 0) {
+        markFundsMoved(session.evmAddress);
+        // The offer re-opens for a linked account only on money PROVEN to be
+        // on the old wallet, read through this query. Re-read it now that
+        // some has left, rather than letting a stale "still holds money"
+        // keep the balance-card button up for another minute.
+        void queryClient.invalidateQueries({ queryKey: ["legacyWalletFunds"] });
+      }
       void newPortfolio.refetchUntilChanged("all");
       return outcome;
     },
-    [remaining, now, runner, newPortfolio, serverLinked, session.evmAddress]
+    [remaining, now, runner, newPortfolio, serverLinked, session.evmAddress, queryClient]
   );
 
   // A plain transfer carries no decision, so it no longer waits for one: the

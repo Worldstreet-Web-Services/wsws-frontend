@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacyAccount } from "@/features/migrate/hooks/use-legacy-account";
+import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 import { EMPTY_MIGRATION_STATUS } from "@/features/migrate/lib/api";
 import {
   markAccountLinked,
@@ -20,18 +21,17 @@ import {
 // there money in the old wallet": the re-key carries the profile, followers,
 // posts, chess ledgers, kash points and tier, none of which a balance can see.
 // A user with $0 and four years of history has the most to lose by never
-// linking. And once linked, there is nothing left to ask for — the long tail
-// of tokens is the account menu's job, never the gate's.
+// linking. Once linked, only money PROVEN to still sit on the old wallet
+// brings the offer back — see offerMigration.
 export function useOfferMigration(): boolean {
   const { profile, evmAddress } = useAuthSession();
   const email = profile.email;
-  // The device's memory of a confirmed link is authoritative. It is written
-  // only once the service has said `linked: true`, under the email and the
-  // address, and from then on this account is never offered the migration
-  // again on this device — no status wait, no directory lookup (a Privy
-  // management-API call), no on-chain probe. A live `linked: false` is the
-  // one thing that outranks it (an admin remap), and offerMigration honours
-  // that.
+  // The device's memory of a confirmed link. Written only once the service
+  // has said `linked: true`, under the email and the address. From then on
+  // the account is known linked before /status answers and the directory
+  // lookup (a Privy management-API call) is skipped. The old wallet is still
+  // probed, because proven money there is the one thing that re-opens the
+  // offer. A live `linked: false` outranks the memory (an admin remap).
   const knownLinked = useAccountLinked({ email, evmAddress });
 
   const complete = useMigrationCompleteFlag(evmAddress);
@@ -48,6 +48,16 @@ export function useOfferMigration(): boolean {
   // that is not theirs. As "could not say", the device's own signals still get
   // to decide, exactly as before the service existed.
   const statusData = status.isError ? EMPTY_MIGRATION_STATUS : status.data;
+  const linked = statusData?.linked === true || (knownLinked && statusData?.linked !== false);
+  // For a linked account, what is ACTUALLY on the old wallet. Only a complete
+  // read that saw money re-opens the offer; anything less reads as "not
+  // proven" (undefined = in flight, null = partial or failed read).
+  const walletFunds = useLegacyWalletFunds(statusData?.legacy ?? null, linked);
+  const walletFundsRead: boolean | null | undefined = walletFunds.isError
+    ? null
+    : walletFunds.data === undefined
+      ? undefined
+      : (walletFunds.data?.hasFunds ?? null);
 
   // The first time the service confirms this account is linked, remember it so
   // every later load short-circuits above. Only ever on a real `true`, never
@@ -62,12 +72,14 @@ export function useOfferMigration(): boolean {
     status: statusData,
     linked: knownLinked,
     legacyAccount: legacy.has,
+    walletFunds: walletFundsRead,
   });
   console.log(
     `[migrate] offer migrate-to-2.0: ${offer ? "YES" : "no"}` +
       ` [linked: ${knownLinked ? "yes (remembered on this device)" : status.isError ? "service errored" : statusData === undefined ? "loading" : (statusData.linked ?? "service could not say")},` +
       ` done on this device: ${complete}, privy keys here: ${localHistory},` +
       ` service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
+      ` old wallet on chain: ${!linked ? "not read (not linked)" : walletFunds.isError ? "read failed" : walletFunds.data === undefined ? "probing" : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left -> proven` : "empty"},` +
       ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : "no legacy account"}]`
   );
   return offer;

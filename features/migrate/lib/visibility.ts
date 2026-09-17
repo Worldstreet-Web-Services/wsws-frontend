@@ -188,10 +188,11 @@ export function offerMigration(input: {
    */
   legacyAccount?: boolean;
   /**
-   * The frontend's own read of the old wallet, when one exists:
-   *   true — holds money, false — confirmed empty, null / undefined — unknown.
-   * When known it outranks the service's `hasLegacyFunds`. Only consulted for
-   * an account that is not linked; a linked account never gets the offer.
+   * The frontend's own read of the old wallet:
+   *   true  — holds money,     false — confirmed empty,
+   *   null  — could not read,  undefined — the read is still in flight.
+   * For a linked account only `true` opens the offer. For an unlinked one a
+   * known value outranks the service's `hasLegacyFunds`.
    */
   walletFunds?: boolean | null;
 }): boolean {
@@ -200,15 +201,14 @@ export function offerMigration(input: {
   const linked =
     input.status?.linked === true || (input.linked === true && input.status?.linked !== false);
 
-  // Linked means the identity has moved, and that is the whole point of the
-  // offer: nothing is left to ask the user for. Residual tokens on the old
-  // wallet are the long tail, reachable through the always-open "Move money
-  // from old wallet" entry in the account menu — they never re-open the gate
-  // or the balance-card offer. In particular the service's `hasLegacyFunds`
-  // gets no say here: it also fires while a ledger re-key is pending, and an
-  // on-chain read that came back partial proves nothing either way. The
-  // device's remembered link is enough on its own — no probe is needed.
-  if (linked) return false;
+  // Linked means the identity has moved. The one thing that can still bring
+  // the offer back is money PROVEN to be sitting on the old wallet: a chain
+  // read that came back complete and saw it. Nothing weaker counts — not the
+  // service's `hasLegacyFunds` (it also fires while a ledger re-key is
+  // pending), not a partial read (it proves nothing either way), not a read
+  // still in flight, not a deposit that has not landed yet. Until the wallet
+  // is seen to hold something, a linked account is left alone.
+  if (linked) return input.walletFunds === true;
 
   // Not (yet) known linked. Until the service has answered we cannot tell a
   // migrated account from a legacy one, so we wait rather than flash the offer

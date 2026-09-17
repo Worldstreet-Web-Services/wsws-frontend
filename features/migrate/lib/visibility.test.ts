@@ -101,9 +101,9 @@ describe("offerMigration", () => {
 
   // Linking moves the identity, not the tokens. Seen live: a linked account
   // with $1 still on the old wallet, sweep failed, and the button gone.
-  // Linked is the end of the offer. Residual tokens on the old wallet are the
-  // account menu's job; they never re-open the gate or the balance-card offer.
-  it("never offers a linked account, even with funds seen on the old wallet", () => {
+  // Linked ends the offer — unless a chain read has SEEN money still on the
+  // old wallet. That, and only that, brings it back.
+  it("re-opens for a linked account once money is proven on the old wallet", () => {
     expect(
       offerMigration({
         complete: true,
@@ -111,7 +111,7 @@ describe("offerMigration", () => {
         status: status({ linked: true, hasLegacyFunds: true }),
         walletFunds: true,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   // The flash this fix removes: linked, the service says funds, but the chain
@@ -155,9 +155,9 @@ describe("offerMigration", () => {
     ).toBe(false);
   });
 
-  // The device's memory of a link is authoritative: it answers before /status
-  // does, and no probe of the old wallet is needed or consulted.
-  it("never offers when the device remembers the account as linked", () => {
+  // The device's memory of a link answers before /status does; the old wallet
+  // is still probed, and only proven money re-opens the offer.
+  it("treats a remembered link like a linked status: proven money and nothing less", () => {
     expect(
       offerMigration({ complete: false, localHistory: true, status: undefined, linked: true })
     ).toBe(false);
@@ -168,6 +168,15 @@ describe("offerMigration", () => {
         status: undefined,
         linked: true,
         walletFunds: true,
+      })
+    ).toBe(true);
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: undefined,
+        linked: true,
+        walletFunds: null,
       })
     ).toBe(false);
   });
@@ -364,7 +373,7 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
     ).toBe(false);
   });
 
-  it("does not offer a linked account whatever the old wallet holds", () => {
+  it("re-opens on proven money even when the service says the old wallet is empty", () => {
     expect(
       offerMigration({
         complete: true,
@@ -372,7 +381,7 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
         status: status({ linked: true, hasLegacyFunds: false }),
         walletFunds: true,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   // Seen live: linked, the service says funds (a pending re-key), and the chain

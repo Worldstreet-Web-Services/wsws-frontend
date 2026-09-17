@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("@/lib/analytics/mixpanel", () => ({ track: vi.fn() }));
 vi.mock("@/features/migrate/hooks/use-offer-migration", () => ({
   useOfferMigration: () => state.offer,
 }));
@@ -60,6 +61,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         remaining: 0,
         coreRemaining: 0,
         blocked: false,
+        failures: 0,
         ...p,
       });
     return (
@@ -76,6 +78,20 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         >
           link-blocked
         </button>
+        <button onClick={() => emit({ stage: "signIn", linked: false, discovered: false })}>
+          sign-in-step
+        </button>
+        <button onClick={() => emit({ linked: false, discovered: false, failures: 3 })}>
+          stuck
+        </button>
+        <button onClick={() => emit({ linked: false, discovered: false, failures: 2 })}>
+          not-yet-stuck
+        </button>
+        <button
+          onClick={() => emit({ linked: false, coreRemaining: 1, blocked: true, failures: 5 })}
+        >
+          blocked-and-stuck
+        </button>
         <button onClick={onClose}>panel-exit</button>
       </div>
     );
@@ -85,6 +101,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
 import { MigrationGate } from "@/features/migrate/components/migration-gate";
 
 const KEY = "ws.migrationGateDone:0xabc0000000000000000000000000000000000001";
+const SNOOZE_KEY = "ws.migrationGateSnooze:0xabc0000000000000000000000000000000000001";
 
 beforeEach(() => {
   state.offer = true;
@@ -156,6 +173,62 @@ describe("MigrationGate", () => {
   it("still gates a different account on the same device", () => {
     window.localStorage.setItem(KEY, "1");
     state.evm = "0xDeF0000000000000000000000000000000000002";
+    render(<MigrationGate adapters={[]} />);
+    expect(screen.getByTestId("frame")).toBeInTheDocument();
+  });
+});
+
+// The three traps. Each exit is a snooze — a delay — never the done flag.
+describe("MigrationGate — ways out of a trap", () => {
+  it("lets a user who cannot sign into the old account put the gate away, after confirming", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("sign-in-step"));
+    expect(screen.queryByText("gateNoAccessBody")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateNoAccess"));
+    expect(screen.getByText("gateNoAccessBody")).toBeInTheDocument();
+    // Changing their mind puts the link back.
+    fireEvent.click(screen.getByText("gateNoAccessBack"));
+    expect(screen.queryByText("gateNoAccessBody")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateNoAccess"));
+    fireEvent.click(screen.getByText("gateContinueLater"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("offers a way out once the current step has failed enough times in a row", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("not-yet-stuck"));
+    expect(screen.queryByText("gateStuckBody")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("stuck"));
+    expect(screen.getByText("gateStuckBody")).toBeInTheDocument();
+    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateContinueLater"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("does not offer the sign-in exit while core money is being moved", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("core-left"));
+    expect(screen.queryByText("gateNoAccess")).not.toBeInTheDocument();
+    expect(screen.getByText("gateCoreLeft")).toBeInTheDocument();
+  });
+
+  it("keeps the permanent exit for a link that can never succeed, over the snooze", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("blocked-and-stuck"));
+    expect(screen.getByText("gateBlockedBody")).toBeInTheDocument();
+    expect(screen.queryByText("gateStuckBody")).not.toBeInTheDocument();
+  });
+
+  it("stays away while snoozed and returns once the window lapses", () => {
+    window.localStorage.setItem(SNOOZE_KEY, String(Date.now() + 60_000));
+    const { unmount } = render(<MigrationGate adapters={[]} />);
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    unmount();
+    window.localStorage.setItem(SNOOZE_KEY, String(Date.now() - 1));
     render(<MigrationGate adapters={[]} />);
     expect(screen.getByTestId("frame")).toBeInTheDocument();
   });

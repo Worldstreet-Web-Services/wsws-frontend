@@ -10,8 +10,43 @@ import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration"
 // the gate's own conditions were met, so it is never a lie.
 const GATE_DONE_PREFIX = "ws.migrationGateDone:";
 
+// A second, weaker exit: the gate is put away until a point in time, not
+// finished. It never claims the migration is complete — the gate comes back
+// when the window lapses, and the balance-card offer and the account-menu
+// entry stay open the whole while. This is what ends the three traps (cannot
+// sign into the old account; discovery keeps failing; the core sweep keeps
+// failing) without letting anyone skip a migration that could still finish.
+// Stored as the expiry timestamp, per account like the done flag.
+const GATE_SNOOZE_PREFIX = "ws.migrationGateSnooze:";
+
+// How long each exit puts the gate away. Recovering access to an old login
+// takes days; an RPC or venue outage clears in hours.
+export const SNOOZE_NO_ACCESS_MS = 7 * 24 * 60 * 60_000;
+export const SNOOZE_FAILING_MS = 24 * 60 * 60_000;
+
+// How many consecutive failures (discovery, linking, or a core sweep) it takes
+// before the gate offers a way out. Not one: a transient blip must not open
+// the door.
+export const STUCK_AFTER_FAILURES = 3;
+
 export function gateDoneKey(evmAddress: string | null): string | null {
   return evmAddress ? `${GATE_DONE_PREFIX}${evmAddress.toLowerCase()}` : null;
+}
+
+export function gateSnoozeKey(evmAddress: string | null): string | null {
+  return evmAddress ? `${GATE_SNOOZE_PREFIX}${evmAddress.toLowerCase()}` : null;
+}
+
+// Whether the gate is snoozed at `now`. An unreadable or malformed value reads
+// as not snoozed, which is the safe direction.
+export function readGateSnoozed(key: string | null, now = Date.now()): boolean {
+  if (!key || typeof window === "undefined") return false;
+  try {
+    const until = Number(window.localStorage.getItem(key));
+    return Number.isFinite(until) && until > now;
+  } catch {
+    return false;
+  }
 }
 
 export function readGateDone(key: string | null): boolean {
@@ -38,6 +73,16 @@ export function writeGateDone(key: string | null): void {
   for (const l of listeners) l();
 }
 
+export function writeGateSnooze(key: string | null, untilMs: number): void {
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, String(untilMs));
+  } catch {
+    // Storage refused: the gate simply stays; the user can take the exit again.
+  }
+  for (const l of listeners) l();
+}
+
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   window.addEventListener("storage", onChange);
@@ -49,18 +94,25 @@ function subscribe(onChange: () => void): () => void {
 
 /**
  * Whether the migration gate is currently blocking the screen: the migration is
- * offered AND this account has not yet finished it. Reactive — flips to false
- * the instant the gate is completed, so anything waiting on the migration (the
- * product tour, say) can proceed without a reload.
+ * offered AND this account has not finished it AND has not put it away for now.
+ * Reactive — flips to false the instant the gate is completed or snoozed, so
+ * anything waiting on the migration (the product tour, say) can proceed
+ * without a reload.
  */
 export function useMigrationGateActive(): boolean {
   const offer = useOfferMigration();
   const { evmAddress } = useAuthSession();
-  const key = gateDoneKey(evmAddress);
+  const doneKey = gateDoneKey(evmAddress);
+  const snoozeKey = gateSnoozeKey(evmAddress);
   const done = useSyncExternalStore(
     subscribe,
-    () => readGateDone(key),
+    () => readGateDone(doneKey),
     () => false
   );
-  return offer && !done;
+  const snoozed = useSyncExternalStore(
+    subscribe,
+    () => readGateSnoozed(snoozeKey),
+    () => false
+  );
+  return offer && !done && !snoozed;
 }

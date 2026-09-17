@@ -17,7 +17,10 @@ vi.mock("@/hooks/use-auth-session", () => ({
 import {
   useMigrationGateActive,
   writeGateDone,
+  writeGateSnooze,
   gateDoneKey,
+  gateSnoozeKey,
+  readGateSnoozed,
 } from "@/features/migrate/lib/gate-state";
 
 beforeEach(() => {
@@ -50,6 +53,39 @@ describe("useMigrationGateActive", () => {
   // gate for another signed in on the same device.
   it("stays active for a different account than the one that finished", () => {
     writeGateDone(gateDoneKey("0xAbC0000000000000000000000000000000000001"));
+    state.evm = "0xDeF0000000000000000000000000000000000002";
+    const { result } = renderHook(() => useMigrationGateActive());
+    expect(result.current).toBe(true);
+  });
+});
+
+describe("snooze", () => {
+  const EVM = "0xAbC0000000000000000000000000000000000001";
+
+  it("puts the gate away until the window lapses, without marking it done", () => {
+    const { result } = renderHook(() => useMigrationGateActive());
+    expect(result.current).toBe(true);
+    act(() => writeGateSnooze(gateSnoozeKey(EVM), Date.now() + 60_000));
+    expect(result.current).toBe(false);
+    expect(window.localStorage.getItem(gateDoneKey(EVM)!)).toBeNull();
+  });
+
+  it("comes back once the window has lapsed", () => {
+    const key = gateSnoozeKey(EVM);
+    writeGateSnooze(key, Date.now() - 1);
+    expect(readGateSnoozed(key)).toBe(false);
+    const { result } = renderHook(() => useMigrationGateActive());
+    expect(result.current).toBe(true);
+  });
+
+  it("treats a malformed value as not snoozed", () => {
+    const key = gateSnoozeKey(EVM)!;
+    window.localStorage.setItem(key, "soon");
+    expect(readGateSnoozed(key)).toBe(false);
+  });
+
+  it("is per account", () => {
+    writeGateSnooze(gateSnoozeKey(EVM), Date.now() + 60_000);
     state.evm = "0xDeF0000000000000000000000000000000000002";
     const { result } = renderHook(() => useMigrationGateActive());
     expect(result.current).toBe(true);

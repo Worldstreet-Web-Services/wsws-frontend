@@ -53,6 +53,9 @@ export interface AnalyticsEvents {
   // the gate offered a way out instead of another retry. `code` is the gateway
   // error code, never an address.
   migration_link_blocked: { code: string };
+  // The user put the gate away for a while: they cannot sign into the old
+  // account, or the current step kept failing. A delay, never a completion.
+  migration_gate_snoozed: { reason: "no_access" | "failing"; stage: string };
   migration_reviewed: {
     holdings: number;
     opted_in: number;

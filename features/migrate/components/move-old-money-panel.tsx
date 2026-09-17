@@ -66,6 +66,12 @@ export interface MigrationProgress {
    * bound to a different one. The gate must offer an exit, not another retry.
    */
   blocked: boolean;
+  /**
+   * Consecutive failures of whatever step is current — linking, discovery, or
+   * a core sweep. Resets when that step succeeds. Past a threshold the gate
+   * offers a way out (see STUCK_AFTER_FAILURES) instead of looping.
+   */
+  failures: number;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -141,6 +147,9 @@ export function MoveOldMoneyPanel({
   // The deterministic sweep that runs without being asked for, kept apart from
   // the opted-in run so the summary can add the two together.
   const [autoResult, setAutoResult] = useState<RunResult | null>(null);
+  // Runs in a row that left a CORE asset unmoved. Resets the moment a run
+  // clears every core asset it attempted.
+  const [sweepFailures, setSweepFailures] = useState(0);
 
   useEffect(() => {
     track("migration_started", { entry });
@@ -159,12 +168,16 @@ export function MoveOldMoneyPanel({
   // The code of a terminal link failure (see TERMINAL_LINK_CODES), or null.
   // When set, the pairing can never land and the host must offer a way out.
   const [linkBlocked, setLinkBlocked] = useState<string | null>(null);
+  // Non-terminal link failures in a row (a network drop, a 5xx). A link that
+  // keeps failing is as much of a trap as one that can never succeed.
+  const [linkFailures, setLinkFailures] = useState(0);
   const link = useCallback(() => {
     linkLegacyAccount()
       .then(() => {
         linkLanded.current = true;
         setLinkedHere(true);
         setLinkBlocked(null);
+        setLinkFailures(0);
         track("migration_linked");
         void refetchStatus();
       })
@@ -175,7 +188,9 @@ export function MoveOldMoneyPanel({
           track("migration_link_blocked", { code });
           return;
         }
-        if (!isUnconfigured(error)) console.error("Linking the old account failed", error);
+        if (isUnconfigured(error)) return;
+        console.error("Linking the old account failed", error);
+        setLinkFailures((n) => n + 1);
       });
   }, [refetchStatus]);
   useEffect(() => {
@@ -232,6 +247,11 @@ export function MoveOldMoneyPanel({
   const finishedNow = result ?? (autoResult && groups.optIn.length === 0 ? autoResult : null);
   const stage: MigrationStage = !signer ? "signIn" : finishedNow ? "finish" : "move";
   const coreRemaining = blocking.filter(isCoreAsset).length;
+  // Fetch cycles that ended in error (each already includes the client's two
+  // retries), counted only while discovery is currently failing: a success
+  // moves the user on to the next step, which has its own counter.
+  const discoveryFailures = holdingsQuery.isError ? holdingsQuery.errorUpdateCount : 0;
+  const stuckCount = Math.max(linkFailures, discoveryFailures, sweepFailures);
   useEffect(() => {
     onProgress?.({
       stage,
@@ -240,8 +260,18 @@ export function MoveOldMoneyPanel({
       remaining: blocking.length,
       coreRemaining,
       blocked: linkBlocked !== null,
+      failures: stuckCount,
     });
-  }, [onProgress, stage, linkedNow, discovered, blocking.length, coreRemaining, linkBlocked]);
+  }, [
+    onProgress,
+    stage,
+    linkedNow,
+    discovered,
+    blocking.length,
+    coreRemaining,
+    linkBlocked,
+    stuckCount,
+  ]);
 
   const toggle = (id: string) => {
     const next = new Set(checked);
@@ -270,6 +300,11 @@ export function MoveOldMoneyPanel({
         `[migrate] moved: ${outcome.outcome}, $${outcome.movedUsd.toFixed(2)} across ${outcome.movedCount} item(s)`
       );
       track("migration_completed", { outcome: outcome.outcome, moved_usd: outcome.movedUsd });
+      const coreFailed = plan.phases
+        .flatMap((ph) => ph.holdings)
+        .filter(isCoreAsset)
+        .some((h) => outcome.results.get(h.id)?.ok === false);
+      setSweepFailures((n) => (coreFailed ? n + 1 : 0));
       if (outcome.outcome === "complete" && (linkLanded.current || serverLinked)) {
         markMigrationComplete(session.evmAddress);
       }

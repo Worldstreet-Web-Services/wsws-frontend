@@ -4,15 +4,36 @@ import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LegacyPrivyProvider } from "@/components/providers/legacy-privy-provider";
 import { useAuthSession } from "@/hooks/use-auth-session";
+import { track } from "@/lib/analytics/mixpanel";
 import type { VenueAdapter } from "@/lib/migration/types";
 import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
 import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-sheet";
 import { MigrationGateHeader } from "@/features/migrate/components/migration-gate-header";
-import { gateDoneKey, readGateDone, writeGateDone } from "@/features/migrate/lib/gate-state";
+import {
+  gateDoneKey,
+  gateSnoozeKey,
+  readGateDone,
+  readGateSnoozed,
+  SNOOZE_FAILING_MS,
+  SNOOZE_NO_ACCESS_MS,
+  STUCK_AFTER_FAILURES,
+  writeGateDone,
+  writeGateSnooze,
+} from "@/features/migrate/lib/gate-state";
 import {
   MoveOldMoneyPanel,
   type MigrationProgress,
 } from "@/features/migrate/components/move-old-money-panel";
+
+const PRIMARY =
+  "bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white";
+const SECONDARY =
+  "w-full cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-3 font-sans text-[14px] font-semibold text-white hover:bg-white/10";
+const QUIET =
+  "cursor-pointer font-sans text-[13px] text-white/45 underline-offset-2 hover:text-white/70 hover:underline";
+const NOTE = "text-[13px] leading-normal text-white/55";
+
+type SnoozeReason = "no_access" | "failing";
 
 /**
  * The migration as a gate: an overlay nobody can close until the old account
@@ -27,14 +48,27 @@ import {
  * "Core cleared" is the panel's own on-chain discovery, not the service's
  * flag, which also fires while a ledger re-key is pending — a backend queue
  * the user cannot act on.
+ *
+ * Two kinds of exit. `finish` is permanent: the gate's conditions were met, or
+ * (blocked) can never be met for this account. `snooze` is a delay, never a
+ * claim of completion: it puts the gate away for a window and it comes back.
+ * That is what stops the three traps — cannot sign into the old account,
+ * discovery keeps failing, the core sweep keeps failing — from holding the
+ * app shut forever, without letting anyone skip a migration that could still
+ * finish. The balance-card offer and the account-menu entry stay open while
+ * the gate is snoozed.
  */
 export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] }) {
   const t = useTranslations("migrate");
   const offer = useOfferMigration();
   const session = useAuthSession();
   const key = gateDoneKey(session.evmAddress);
+  const snoozeKey = gateSnoozeKey(session.evmAddress);
   const [doneHere, setDoneHere] = useState(() => readGateDone(key));
+  const [snoozedHere, setSnoozedHere] = useState(() => readGateSnoozed(snoozeKey));
   const [progress, setProgress] = useState<MigrationProgress | null>(null);
+  // The "I can't sign in" exit asks once before it acts.
+  const [confirmingNoAccess, setConfirmingNoAccess] = useState(false);
 
   const canFinish =
     progress !== null && progress.linked && progress.discovered && progress.coreRemaining === 0;
@@ -42,6 +76,10 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   // different account. There is nothing the user can do here, so the gate stops
   // being a wall and offers a way out instead of looping on "link again".
   const blocked = progress?.blocked === true;
+  // The current step has failed enough times in a row that "try again" is no
+  // longer an honest offer on its own.
+  const stuck = !blocked && !canFinish && (progress?.failures ?? 0) >= STUCK_AFTER_FAILURES;
+  const stage = progress?.stage ?? "signIn";
 
   const finish = useCallback(() => {
     if (!canFinish) return;
@@ -56,14 +94,25 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
     setDoneHere(true);
   }, [key]);
 
+  const snooze = useCallback(
+    (reason: SnoozeReason) => {
+      const span = reason === "no_access" ? SNOOZE_NO_ACCESS_MS : SNOOZE_FAILING_MS;
+      writeGateSnooze(snoozeKey, Date.now() + span);
+      track("migration_gate_snoozed", { reason, stage });
+      setSnoozedHere(true);
+    },
+    [snoozeKey, stage]
+  );
+
   const ignore = useCallback(() => {}, []);
 
-  if (!offer || doneHere) return null;
-  const coreLeft = progress?.linked === true && !canFinish;
+  if (!offer || doneHere || snoozedHere) return null;
+  const coreLeft = progress?.linked === true && !canFinish && !stuck;
+  const atSignIn = stage === "signIn" && !blocked && !stuck && !canFinish;
   return (
     <MoveOldMoneyFrame dismissible={false} onClose={ignore}>
       <LegacyPrivyProvider>
-        <MigrationGateHeader stage={progress?.stage ?? "signIn"} done={canFinish} />
+        <MigrationGateHeader stage={stage} done={canFinish} />
         <MoveOldMoneyPanel
           adapters={adapters}
           entry="gate"
@@ -73,30 +122,51 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
         />
         {blocked ? (
           <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
-            <p className="text-[13px] leading-normal text-white/55">{t("gateBlockedBody")}</p>
-            <button
-              onClick={leave}
-              className="bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white"
-            >
+            <p className={NOTE}>{t("gateBlockedBody")}</p>
+            <button onClick={leave} className={PRIMARY}>
               {t("gateBlockedExit")}
             </button>
           </div>
-        ) : (
-          (canFinish || coreLeft) && (
-            <div className="mt-5 border-t border-white/10 pt-4">
-              {canFinish ? (
-                <button
-                  onClick={finish}
-                  className="bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white"
-                >
-                  {t("gateFinish")}
+        ) : canFinish ? (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <button onClick={finish} className={PRIMARY}>
+              {t("gateFinish")}
+            </button>
+          </div>
+        ) : stuck ? (
+          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+            <p className={NOTE}>{t("gateStuckBody")}</p>
+            <button onClick={() => snooze("failing")} className={SECONDARY}>
+              {t("gateContinueLater")}
+            </button>
+          </div>
+        ) : coreLeft ? (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <p className={NOTE}>{t("gateCoreLeft")}</p>
+          </div>
+        ) : atSignIn ? (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            {confirmingNoAccess ? (
+              <div className="space-y-3">
+                <p className={NOTE}>{t("gateNoAccessBody")}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setConfirmingNoAccess(false)} className={SECONDARY}>
+                    {t("gateNoAccessBack")}
+                  </button>
+                  <button onClick={() => snooze("no_access")} className={PRIMARY}>
+                    {t("gateContinueLater")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <button onClick={() => setConfirmingNoAccess(true)} className={QUIET}>
+                  {t("gateNoAccess")}
                 </button>
-              ) : (
-                <p className="text-[13px] leading-normal text-white/55">{t("gateCoreLeft")}</p>
-              )}
-            </div>
-          )
-        )}
+              </div>
+            )}
+          </div>
+        ) : null}
       </LegacyPrivyProvider>
     </MoveOldMoneyFrame>
   );

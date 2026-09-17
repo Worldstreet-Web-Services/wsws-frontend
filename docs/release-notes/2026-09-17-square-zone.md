@@ -24,6 +24,17 @@ Next.js Multi-Zones).
   around inside either stays instant.
 - `square.tsionark.com` keeps working as before.
 
+## Relation to #512 on main
+
+`main` already has the rewrite from #512
+(`docs/release-notes/2026-09-17-square-multi-zone.md`,
+`ADR-2026-09-17-square-multi-zone`). This change brings the same
+`lib/square-zone.ts`, `next.config.ts` rewrite, `DiscoveryCta` and
+`useAppNavigate` code to staging unchanged, so promoting staging to main does
+not carry two versions. What it adds on top: the request gate skips `/square`
+(#512 left it matching), the rail and tab bar go through `@ark/chrome`, and the
+components only the old page used are removed.
+
 ## What changed here
 
 - `next.config.ts` rewrites `/square` and `/square/:path*` to
@@ -34,17 +45,18 @@ Next.js Multi-Zones).
 - Ark's copy of the Square's front page (`/square` route, `SquareHome` and the
   27 components and hooks only it used) is removed. A test fails if any route
   here answers under `/square`.
-- The rail entry, the tab-bar seat and the conversation-card pills are plain
-  anchors, since `next/link` cannot reach another zone.
+- The rail entry and the tab-bar seat are `@ark/chrome` document targets at
+  `SQUARE_ZONE_PATH`; `DiscoveryCta` renders any `/square` href as a plain
+  same-tab anchor, since `next/link` cannot reach another zone.
 
 ## Configuration
 
-`SQUARE_ZONE_URL` on the `wsws` Vercel project, for example
-`https://square-ark.vercel.app`, with no trailing slash (one is tolerated).
+`SQUARE_ZONE_URL` on the `wsws` Vercel project: a bare https origin such as
+`https://square-ark.vercel.app`. Anything else fails the build.
 
 ## Verified
 
-- Preflight: format, lint, typecheck, 5,219 tests, production build. Bundle
+- Preflight: format, lint, typecheck, 5,222 tests, production build. Bundle
   budgets green.
 - `next start` with `SQUARE_ZONE_URL` set: `/square`, `/square/houses`,
   `/square/messages` and `/square/notifications` answer as the zone does, the

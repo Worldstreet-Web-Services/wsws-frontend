@@ -12,6 +12,7 @@ import { deriveProfile } from "@/lib/user";
 import { GoLiveControl } from "@/components/broadcast/go-live-control";
 import { MARKET_SQUARE_HIDDEN } from "@/lib/market-square";
 import { AccountPopover } from "@/components/layout/account-popover";
+import { SQUARE_ZONE_PATH } from "@/lib/square-zone";
 
 type SidebarProps = {
   items: NavItem[];
@@ -90,7 +91,7 @@ export function Sidebar(props: SidebarProps) {
       id: "square",
       label: squareLabel,
       icon: ArkNavIcons.square,
-      target: { kind: "document", href: "/square" },
+      target: { kind: "document", href: SQUARE_ZONE_PATH },
       dataAttributes: { "data-tour-nav": "square" },
     };
     const arkade = sections.findIndex((n) => n.id === "casino");

@@ -220,8 +220,6 @@ export interface PillLink {
   icon: React.ReactNode;
   /** A sibling deployment, opened beside the app in a new tab. */
   external?: boolean;
-  /** A route on this domain served by another deployment, followed in the same tab. */
-  document?: boolean;
 }
 
 /**
@@ -355,7 +353,6 @@ export function ConversationCard({
             size={15}
             sizeClassName="text-[13px] md:text-[15px]"
             external={action.external}
-            document={action.document}
             padding="px-[14px] py-[9px] md:px-[20.571px] md:py-[12.857px]"
             className="tracking-[-0.15px]"
             icon={action.icon}

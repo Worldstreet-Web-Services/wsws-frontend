@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArkTabBar, ArkTabIcons, type ArkTab } from "@ark/chrome";
 import type { SectionId } from "@/lib/sections";
 import type { NavItem } from "@/components/layout/nav-items";
+import { SQUARE_ZONE_PATH } from "@/lib/square-zone";
 
 // The seat each tab lights up on. The market seat borrows the "spot" section
 // only to know when to raise its icon; its name stays its own.
@@ -29,7 +30,7 @@ const TABS: readonly [ArkTab, ArkTab, ArkTab, ArkTab, ArkTab] = [
     id: "square",
     label: "Square",
     icon: ArkTabIcons.square,
-    target: { kind: "document", href: "/square" },
+    target: { kind: "document", href: SQUARE_ZONE_PATH },
     ownColour: true,
   },
   { id: "casino", label: "Arkade", icon: ArkTabIcons.arkade, target: { kind: "action" } },

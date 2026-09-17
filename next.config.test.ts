@@ -70,6 +70,13 @@ describe("the Square zone at /square", () => {
     });
   });
 
+  it("refuses a zone URL that is not a bare https origin", async () => {
+    await expect(rewritesWith("http://square-ark.vercel.app")).rejects.toThrow(/https origin/u);
+    await expect(rewritesWith("https://square-ark.vercel.app/square")).rejects.toThrow(
+      /https origin/u
+    );
+  });
+
   it("forwards nothing when no zone is configured", async () => {
     const rewrites = await rewritesWith(undefined);
     expect(rewrites.beforeFiles ?? []).toEqual([]);

@@ -7,10 +7,10 @@ import { useLegacyAccount } from "@/features/migrate/hooks/use-legacy-account";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 import { EMPTY_MIGRATION_STATUS } from "@/features/migrate/lib/api";
 import {
-  markEmailLinked,
+  markAccountLinked,
   maskBalance,
   offerMigration,
-  useEmailLinked,
+  useAccountLinked,
   useFundsMoved,
   useLocalPrivyHistory,
   useMigrationCompleteFlag,
@@ -23,16 +23,17 @@ import {
 // A user with $0 and four years of history has the most to lose by never
 // linking.
 export function useOfferMigration(): boolean {
-  const { profile } = useAuthSession();
+  const { profile, evmAddress } = useAuthSession();
   const email = profile.email;
-  // A confirmed link is permanent (the mapping never disappears), so once this
-  // device has seen this email's account linked, we already know it is linked
-  // before /status answers — and we skip the legacy directory lookup (a Privy
-  // management-API call, the expensive "csv" check) entirely. We still probe
-  // the old wallet: a linked account can keep residual funds worth moving.
-  const knownLinked = useEmailLinked(email);
+  // A confirmed link is durable, so once this device has seen this account
+  // linked we know it before /status answers — and skip the legacy directory
+  // lookup (a Privy management-API call, the expensive "csv" check) entirely.
+  // Remembered under the email AND the address, so an X-only or passkey
+  // account (no email) gets the same shortcut. We still probe the old wallet:
+  // a linked account can keep residual funds worth moving.
+  const knownLinked = useAccountLinked({ email, evmAddress });
 
-  const complete = useMigrationCompleteFlag();
+  const complete = useMigrationCompleteFlag(evmAddress);
   const localHistory = useLocalPrivyHistory();
   const status = useMigrationStatus();
   // Skip the directory call when we already know the account is linked — its
@@ -57,8 +58,8 @@ export function useOfferMigration(): boolean {
   // email so the next load takes the shortcut above. Only ever on a real
   // `true`, never on false or "could not say".
   useEffect(() => {
-    if (status.data?.linked === true) markEmailLinked(email);
-  }, [status.data?.linked, email]);
+    if (status.data?.linked === true) markAccountLinked({ email, evmAddress });
+  }, [status.data?.linked, email, evmAddress]);
 
   // undefined = the read is still in flight (offerMigration waits);
   // null = it ran and could not tell — a partial read OR a hard failure, both
@@ -92,5 +93,6 @@ export function useOfferMigration(): boolean {
 // moves anything, so a partial migration shows the money that has arrived
 // while the button stays for whatever is left.
 export function useMaskBalance(): boolean {
-  return maskBalance({ offer: useOfferMigration(), moved: useFundsMoved() });
+  const { evmAddress } = useAuthSession();
+  return maskBalance({ offer: useOfferMigration(), moved: useFundsMoved(evmAddress) });
 }

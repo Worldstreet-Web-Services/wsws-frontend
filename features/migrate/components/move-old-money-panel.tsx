@@ -271,15 +271,15 @@ export function MoveOldMoneyPanel({
       );
       track("migration_completed", { outcome: outcome.outcome, moved_usd: outcome.movedUsd });
       if (outcome.outcome === "complete" && (linkLanded.current || serverLinked)) {
-        markMigrationComplete();
+        markMigrationComplete(session.evmAddress);
       }
       // Anything that landed is the user's money in their new wallet, so it
       // stops being hidden even when the run as a whole is unfinished.
-      if (outcome.movedCount > 0) markFundsMoved();
+      if (outcome.movedCount > 0) markFundsMoved(session.evmAddress);
       void newPortfolio.refetchUntilChanged("all");
       return outcome;
     },
-    [remaining, now, runner, newPortfolio, serverLinked]
+    [remaining, now, runner, newPortfolio, serverLinked, session.evmAddress]
   );
 
   // A plain transfer carries no decision, so it no longer waits for one: the

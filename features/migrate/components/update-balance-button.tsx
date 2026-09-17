@@ -121,7 +121,7 @@ function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] })
       // Part of it may still have landed even on failure. Unmask what arrived
       // and pull it into view before saying the rest needs another go.
       if (movedCount > 0) {
-        markFundsMoved();
+        markFundsMoved(session.evmAddress);
         void newPortfolio.refetchUntilChanged("all");
       } else {
         // Nothing moved, but the user asked for an update and deserves one.
@@ -137,7 +137,7 @@ function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] })
       // And only for an account the service confirms is linked: a device flag
       // written without a link is a lie the next user of this browser inherits.
       if (!hasReviewWork && sweepError === null && pendingOnramps === 0 && migrationLinked) {
-        markMigrationComplete();
+        markMigrationComplete(session.evmAddress);
       }
 
       if (sweepError !== null) {
@@ -187,6 +187,7 @@ function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] })
     newPortfolio,
     t,
     migrationLinked,
+    session.evmAddress,
   ]);
 
   useEffect(() => {

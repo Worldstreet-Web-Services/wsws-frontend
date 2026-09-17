@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { readDisplayProfile } from "@/lib/display-profile";
 
 // Whether the address this browser signed in with had a Privy account holding
@@ -10,9 +11,12 @@ import { readDisplayProfile } from "@/lib/display-profile";
 // device: there are no `privy:` keys in a fresh browser, and /status knows
 // nothing until a mapping exists.
 //
-// Asked once per page load, not per render: it costs a Privy management-API
-// call on the server. Cached at module scope so a remount or a soft navigation
-// reuses the answer.
+// Asked once per identity per page load, not per render: it costs a Privy
+// management-API call on the server. Cached at module scope so a remount or a
+// soft navigation reuses the answer — keyed on the identifiers it was asked
+// with, so a second account signing in on the same tab (sign-out is a
+// client-side route, so module state survives it) asks afresh instead of
+// inheriting the first account's answer.
 //
 // False is "no reason to offer it", never "you have nothing" — the route
 // answers false for an outage too. Callers must OR this with their other
@@ -27,31 +31,49 @@ export interface LegacyAccount {
 
 const UNKNOWN: LegacyAccount = { has: false, fundsUsd: null };
 
-let cached: LegacyAccount | null = null;
-let inFlight: Promise<LegacyAccount> | null = null;
+interface Identifiers {
+  email?: string;
+  xId?: string;
+  xHandle?: string;
+}
 
-async function ask(): Promise<LegacyAccount> {
-  // Whatever this browser knows about who signed in. Self-reported and
-  // unverifiable — see lib/display-profile — so it is good enough to decide
-  // whether to show a button and never enough to key anything on.
-  //
-  // Both, because not every legacy user has an address: Privy allowed signing
-  // in with Twitter, and those accounts carry a handle and nothing else.
-  // Asking only for an email would strand every one of them.
+// Found answers, and lookups in flight, by the identifiers they were asked
+// with. A "not found" is never cached (see the effect): it may be an outage.
+const answers = new Map<string, LegacyAccount>();
+const inFlight = new Map<string, Promise<LegacyAccount>>();
+
+// Whatever this browser knows about who signed in. Self-reported and
+// unverifiable — see lib/display-profile — so it is good enough to decide
+// whether to show a button and never enough to key anything on.
+//
+// Both, because not every legacy user has an address: Privy allowed signing
+// in with Twitter, and those accounts carry a handle and nothing else.
+// Asking only for an email would strand every one of them.
+function identifiers(): Identifiers {
   const profile = readDisplayProfile();
+  return {
+    email: profile?.email || undefined,
+    xId: profile?.providerSubject || undefined,
+    // The handle as well as the id: the Privy export carries only handles, so
+    // for an X user it is the one that actually matches.
+    xHandle: profile?.username || undefined,
+  };
+}
+
+function cacheKey(ids: Identifiers): string {
+  return [ids.email ?? "", ids.xId ?? "", ids.xHandle ?? ""].join("|");
+}
+
+async function ask(ids: Identifiers): Promise<LegacyAccount> {
   // Which identifiers this browser can offer. Kinds only — the values are the
   // user's own and have no business in a console.
   console.log(
     "[migrate] identifiers known to this browser:",
-    [profile?.email && "email", profile?.providerSubject && "x-id", profile?.username && "x-handle"]
+    [ids.email && "email", ids.xId && "x-id", ids.xHandle && "x-handle"]
       .filter(Boolean)
       .join(" + ") || "none"
   );
-  const email = profile?.email;
-  const xId = profile?.providerSubject;
-  // The handle as well as the id: the Privy export carries only handles, so
-  // for an X user it is the one that actually matches.
-  const xHandle = profile?.username;
+  const { email, xId, xHandle } = ids;
   if (!email && !xId && !xHandle) return UNKNOWN;
   try {
     const res = await apiFetch(
@@ -89,28 +111,50 @@ async function ask(): Promise<LegacyAccount> {
 }
 
 export function useLegacyAccount(enabled = true): LegacyAccount {
-  const [state, setState] = useState<LegacyAccount>(cached ?? UNKNOWN);
+  // Re-run when the signed-in account changes, not only on mount: the account
+  // switch happens without a reload, and the display profile this asks with
+  // changes with it.
+  const { evmAddress, profile } = useAuthSession();
+  // What a lookup resolved, tagged with the identity it was for, so a stale
+  // resolution from the previous account is never shown for this one.
+  const [resolved, setResolved] = useState<{ key: string; answer: LegacyAccount } | null>(null);
+
+  // Derived, not set in an effect: whatever is already known for THIS identity.
+  // readDisplayProfile is null on the server and memoises its parse, so this
+  // is safe and cheap to read every render.
+  const ids = identifiers();
+  const key = cacheKey(ids);
+  const state = resolved?.key === key ? resolved.answer : (answers.get(key) ?? UNKNOWN);
 
   useEffect(() => {
     // Disabled means a caller already knows the answer it would give (e.g. the
     // account is known-linked), so the Privy management-API call is skipped.
-    if (!enabled || cached !== null) return;
+    if (!enabled) return;
+    const ids = identifiers();
+    const key = cacheKey(ids);
+    if (answers.has(key) || (!ids.email && !ids.xId && !ids.xHandle)) return;
     let live = true;
     void (async () => {
-      inFlight ??= ask();
-      const answer = await inFlight;
+      let pending = inFlight.get(key);
+      if (!pending) {
+        pending = ask(ids);
+        inFlight.set(key, pending);
+      }
+      const answer = await pending;
       // An answer that found nothing may be an outage rather than a verdict,
       // so it is not cached and the next mount asks again. A found account is
       // settled; its balance is re-read on the next page load, which is often
       // enough for a figure that only changes when the user sweeps.
-      if (answer.has) cached = answer;
-      else inFlight = null;
-      if (live && answer.has) setState(answer);
+      if (answer.has) answers.set(key, answer);
+      else inFlight.delete(key);
+      if (live && answer.has) setResolved({ key, answer });
     })();
     return () => {
       live = false;
     };
-  }, [enabled]);
+    // evmAddress and the profile email are the signals that the identity
+    // changed; the identifiers themselves are read fresh inside.
+  }, [enabled, evmAddress, profile.email]);
 
   return state;
 }

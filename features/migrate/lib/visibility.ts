@@ -27,24 +27,29 @@ const PRIVY_SESSION_KEYS = [
   "privy:connections",
 ];
 
-const MIGRATION_COMPLETE_KEY = "ws.migrationComplete";
+// Every flag below is kept PER ACCOUNT, keyed by the Decane EVM address the
+// same way the gate's own done flag is (gate-state.ts). A device-wide flag is
+// what let one user's finish hide the migration from the next user of the same
+// browser. With no account to key on, a flag reads false and writes nothing.
+const MIGRATION_COMPLETE_PREFIX = "ws.migrationComplete:";
 
 // Set the first time a run actually moves something. The migration can stay
 // unfinished for days (challenge windows, keeper fills, a venue that was
 // down), and masking a balance that already holds the user's money is worse
 // than showing a figure that is not final yet.
-const FUNDS_MOVED_KEY = "ws.migrationMoved";
+const FUNDS_MOVED_PREFIX = "ws.migrationMoved:";
 
-// Set once this device has CONFIRMED the signed-in email's account is linked —
-// either the service answered `linked: true`, or a link landed here. Being
-// linked is a permanent, monotonic fact (the mapping never disappears), so this
-// is a safe thing to cache: a later load with the same email can treat the
-// account as migrated without re-running the status call, the legacy directory
-// lookup, and the on-chain read again. Keyed by email so it never leaks between
-// accounts on a shared browser. Any residual old-wallet funds stay reachable
-// through the always-open "Move money from old wallet" entry in the account
-// menu, which this flag does not touch.
+// Set once this device has CONFIRMED the signed-in account is linked — the
+// service answered `linked: true`. A confirmed link is durable (only an admin
+// remap undoes it, and a live `linked: false` outranks this memory), so it is
+// safe to cache: a later load knows the account is linked before /status
+// answers and skips the legacy directory lookup. Written under BOTH the email
+// and the address, and read from either: an X-only or passkey account has no
+// email, and would otherwise re-run the lookup every load. Any residual
+// old-wallet funds stay reachable through the always-open "Move money from old
+// wallet" entry, which this flag does not touch.
 const LINKED_EMAIL_PREFIX = "ws.migrationLinkedEmail:";
+const LINKED_ACCOUNT_PREFIX = "ws.migrationLinkedAccount:";
 
 // The storage event only fires in OTHER tabs, so same-tab completion notifies
 // subscribers directly.
@@ -54,49 +59,60 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
-export function markMigrationComplete(): void {
+function accountKey(prefix: string, evmAddress: string | null | undefined): string | null {
+  return evmAddress ? `${prefix}${evmAddress.toLowerCase()}` : null;
+}
+
+function readFlag(key: string | null): boolean {
+  if (!key) return false;
   try {
-    window.localStorage.setItem(MIGRATION_COMPLETE_KEY, "1");
+    return window.localStorage.getItem(key) === "1";
   } catch {
-    // Storage unavailable: the banner keeps showing, the sweep still worked.
+    return false;
+  }
+}
+
+function writeFlag(key: string | null): void {
+  if (!key) return;
+  try {
+    window.localStorage.setItem(key, "1");
+  } catch {
+    // Storage refused (private mode, quota). Whatever this flag would have
+    // hidden simply shows once more, which is the safe direction.
   }
   notify();
 }
 
-// Re-opens the one-click door, for when a later bank deposit or a settled
-// window puts money back in the old wallet.
-export function clearMigrationComplete(): void {
+function clearFlag(key: string | null): void {
+  if (!key) return;
   try {
-    window.localStorage.removeItem(MIGRATION_COMPLETE_KEY);
+    window.localStorage.removeItem(key);
   } catch {
     // Storage unavailable: nothing was stored to clear.
   }
   notify();
 }
 
-export function markFundsMoved(): void {
-  try {
-    window.localStorage.setItem(FUNDS_MOVED_KEY, "1");
-  } catch {
-    // Storage unavailable: the balance stays masked, the money still moved.
-  }
-  notify();
+export function markMigrationComplete(evmAddress: string | null | undefined): void {
+  writeFlag(accountKey(MIGRATION_COMPLETE_PREFIX, evmAddress));
 }
 
-export function hasMovedFunds(): boolean {
-  try {
-    return window.localStorage.getItem(FUNDS_MOVED_KEY) === "1";
-  } catch {
-    return false;
-  }
+// Re-opens the one-click door, for when a later bank deposit or a settled
+// window puts money back in the old wallet.
+export function clearMigrationComplete(evmAddress: string | null | undefined): void {
+  clearFlag(accountKey(MIGRATION_COMPLETE_PREFIX, evmAddress));
 }
 
-export function isMigrationComplete(): boolean {
-  try {
-    return window.localStorage.getItem(MIGRATION_COMPLETE_KEY) === "1";
-  } catch {
-    return false;
-  }
+export function isMigrationComplete(evmAddress: string | null | undefined): boolean {
+  return readFlag(accountKey(MIGRATION_COMPLETE_PREFIX, evmAddress));
+}
+
+export function markFundsMoved(evmAddress: string | null | undefined): void {
+  writeFlag(accountKey(FUNDS_MOVED_PREFIX, evmAddress));
+}
+
+export function hasMovedFunds(evmAddress: string | null | undefined): boolean {
+  return readFlag(accountKey(FUNDS_MOVED_PREFIX, evmAddress));
 }
 
 export function hasLocalPrivyHistory(): boolean {
@@ -108,38 +124,47 @@ export function hasLocalPrivyHistory(): boolean {
 }
 
 // The device-only decision, with no server knowledge.
-export function shouldOfferMigration(): boolean {
-  return !isMigrationComplete() && hasLocalPrivyHistory();
+export function shouldOfferMigration(evmAddress: string | null | undefined): boolean {
+  return !isMigrationComplete(evmAddress) && hasLocalPrivyHistory();
 }
 
-function linkedEmailKey(email: string | null | undefined): string | null {
-  const normalised = email?.trim().toLowerCase();
-  return normalised ? `${LINKED_EMAIL_PREFIX}${normalised}` : null;
+/** What a signed-in account can be recognised by. Either half may be absent. */
+export interface LinkedIdentity {
+  email?: string | null;
+  evmAddress?: string | null;
 }
 
-// Has this device already confirmed the given email's account is linked. False
-// for a missing email, or when storage is unavailable — either way the caller
-// falls back to asking the service, which is never wrong, only slower.
-export function isEmailLinked(email: string | null | undefined): boolean {
-  const key = linkedEmailKey(email);
-  if (!key) return false;
-  try {
-    return window.localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
+function linkedKeys(identity: LinkedIdentity): string[] {
+  const email = identity.email?.trim().toLowerCase();
+  return [
+    ...(email ? [`${LINKED_EMAIL_PREFIX}${email}`] : []),
+    ...(identity.evmAddress
+      ? [`${LINKED_ACCOUNT_PREFIX}${identity.evmAddress.toLowerCase()}`]
+      : []),
+  ];
 }
 
-// Record that this email's account is linked. Only ever called once the fact is
-// confirmed (see the note on LINKED_EMAIL_PREFIX), never speculatively.
-export function markEmailLinked(email: string | null | undefined): void {
-  const key = linkedEmailKey(email);
-  if (!key) return;
-  try {
-    window.localStorage.setItem(key, "1");
-  } catch {
-    // Storage refused (private mode, quota): the account is simply re-checked
-    // next load, which is correct, just not free.
+// Has this device already confirmed this account is linked, by any identifier
+// it has. False with nothing to key on, or when storage is unavailable —
+// either way the caller falls back to asking the service, which is never
+// wrong, only slower.
+export function isAccountLinked(identity: LinkedIdentity): boolean {
+  return linkedKeys(identity).some(readFlag);
+}
+
+// Record that this account is linked, under every identifier it has. Only ever
+// called once the fact is confirmed (see LINKED_EMAIL_PREFIX), never
+// speculatively.
+export function markAccountLinked(identity: LinkedIdentity): void {
+  const keys = linkedKeys(identity);
+  if (keys.length === 0) return;
+  for (const key of keys) {
+    try {
+      window.localStorage.setItem(key, "1");
+    } catch {
+      // Storage refused: the account is simply re-checked next load, which is
+      // correct, just not free.
+    }
   }
   notify();
 }
@@ -150,7 +175,7 @@ export function offerMigration(input: {
   localHistory: boolean;
   status: MigrationStatus | undefined;
   /**
-   * The device remembers this email's account as linked (see markEmailLinked),
+   * The device remembers this account as linked (see markAccountLinked),
    * so it can be known before /status returns. It is a memory, not authority:
    * a live `linked: false` from the service outranks it, the same way it
    * outranks the device's "complete" flag — an admin remap can undo a link.
@@ -237,26 +262,35 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-// SSR sees neither flag; the store corrects it on hydration.
-export function useMigrationCompleteFlag(): boolean {
-  return useSyncExternalStore(subscribe, isMigrationComplete, () => false);
+// SSR sees no flag; the store corrects it on hydration.
+export function useMigrationCompleteFlag(evmAddress: string | null | undefined): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => isMigrationComplete(evmAddress),
+    () => false
+  );
 }
 
 export function useLocalPrivyHistory(): boolean {
   return useSyncExternalStore(subscribe, hasLocalPrivyHistory, () => false);
 }
 
-export function useFundsMoved(): boolean {
-  return useSyncExternalStore(subscribe, hasMovedFunds, () => false);
-}
-
-// Reactive read of the per-email linked flag. Flips to true the moment
-// markEmailLinked runs (same tab), so the offer can short-circuit without a
-// reload. SSR sees false and hydration corrects it.
-export function useEmailLinked(email: string | null | undefined): boolean {
+export function useFundsMoved(evmAddress: string | null | undefined): boolean {
   return useSyncExternalStore(
     subscribe,
-    () => isEmailLinked(email),
+    () => hasMovedFunds(evmAddress),
+    () => false
+  );
+}
+
+// Reactive read of the remembered-linked flag. Flips to true the moment
+// markAccountLinked runs (same tab), so the offer can short-circuit without a
+// reload.
+export function useAccountLinked(identity: LinkedIdentity): boolean {
+  const { email, evmAddress } = identity;
+  return useSyncExternalStore(
+    subscribe,
+    () => isAccountLinked({ email, evmAddress }),
     () => false
   );
 }

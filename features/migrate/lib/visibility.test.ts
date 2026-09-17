@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   clearMigrationComplete,
   hasMovedFunds,
+  isAccountLinked,
+  markAccountLinked,
   markFundsMoved,
   markMigrationComplete,
   maskBalance,
@@ -11,29 +13,32 @@ import {
 } from "@/features/migrate/lib/visibility";
 import { EMPTY_MIGRATION_STATUS } from "@/features/migrate/lib/api";
 
+const EVM = "0xAbC0000000000000000000000000000000000001";
+const OTHER = "0xDeF0000000000000000000000000000000000002";
+
 afterEach(() => {
   window.localStorage.clear();
 });
 
 describe("shouldOfferMigration", () => {
   it("stays hidden for a browser with no Privy history", () => {
-    expect(shouldOfferMigration()).toBe(false);
+    expect(shouldOfferMigration(EVM)).toBe(false);
   });
 
   it("offers when a Privy session key exists", () => {
     window.localStorage.setItem("privy:token", "jwt");
-    expect(shouldOfferMigration()).toBe(true);
+    expect(shouldOfferMigration(EVM)).toBe(true);
   });
 
   it("offers for a lapsed session that still holds any auth key", () => {
     window.localStorage.setItem("privy:connections", "[]");
-    expect(shouldOfferMigration()).toBe(true);
+    expect(shouldOfferMigration(EVM)).toBe(true);
   });
 
   it("retires after the migration completed", () => {
     window.localStorage.setItem("privy:token", "jwt");
-    markMigrationComplete();
-    expect(shouldOfferMigration()).toBe(false);
+    markMigrationComplete(EVM);
+    expect(shouldOfferMigration(EVM)).toBe(false);
   });
 });
 
@@ -224,10 +229,10 @@ describe("offerMigration", () => {
 describe("clearMigrationComplete", () => {
   it("re-opens the door", () => {
     window.localStorage.setItem("privy:token", "jwt");
-    markMigrationComplete();
-    expect(shouldOfferMigration()).toBe(false);
-    clearMigrationComplete();
-    expect(shouldOfferMigration()).toBe(true);
+    markMigrationComplete(EVM);
+    expect(shouldOfferMigration(EVM)).toBe(false);
+    clearMigrationComplete(EVM);
+    expect(shouldOfferMigration(EVM)).toBe(true);
   });
 });
 
@@ -248,11 +253,11 @@ describe("maskBalance", () => {
 describe("markFundsMoved", () => {
   it("records that money landed, independently of completion", () => {
     window.localStorage.setItem("privy:token", "jwt");
-    expect(hasMovedFunds()).toBe(false);
-    markFundsMoved();
-    expect(hasMovedFunds()).toBe(true);
+    expect(hasMovedFunds(EVM)).toBe(false);
+    markFundsMoved(EVM);
+    expect(hasMovedFunds(EVM)).toBe(true);
     // The migration is still on offer: more may be left behind.
-    expect(shouldOfferMigration()).toBe(true);
+    expect(shouldOfferMigration(EVM)).toBe(true);
   });
 });
 
@@ -377,5 +382,54 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
     expect(offerMigration({ ...base, walletFunds: null })).toBe(true);
     // undefined = the read is still in flight → wait, do not flash the offer on.
     expect(offerMigration({ ...base, walletFunds: undefined })).toBe(false);
+  });
+});
+
+describe("flags are per account", () => {
+  it("one account finishing does not retire the offer for another on the same device", () => {
+    window.localStorage.setItem("privy:token", "jwt");
+    markMigrationComplete(EVM);
+    expect(shouldOfferMigration(EVM)).toBe(false);
+    expect(shouldOfferMigration(OTHER)).toBe(true);
+  });
+
+  it("funds moved for one account says nothing about another", () => {
+    markFundsMoved(EVM);
+    expect(hasMovedFunds(EVM)).toBe(true);
+    expect(hasMovedFunds(OTHER)).toBe(false);
+  });
+
+  it("is case-insensitive on the address", () => {
+    markMigrationComplete(EVM.toLowerCase());
+    expect(shouldOfferMigration(EVM.toUpperCase().replace("0X", "0x"))).toBe(false);
+  });
+
+  it("writes nothing and reads false with no account to key on", () => {
+    markMigrationComplete(null);
+    expect(window.localStorage.length).toBe(0);
+    expect(hasMovedFunds(null)).toBe(false);
+  });
+});
+
+describe("remembered link", () => {
+  it("is found by either the email or the address it was written under", () => {
+    markAccountLinked({ email: "Someone@Example.com ", evmAddress: EVM });
+    expect(isAccountLinked({ email: "someone@example.com" })).toBe(true);
+    expect(isAccountLinked({ evmAddress: EVM.toLowerCase() })).toBe(true);
+    expect(isAccountLinked({ email: "other@example.com" })).toBe(false);
+    expect(isAccountLinked({ evmAddress: OTHER })).toBe(false);
+  });
+
+  // An X-only or passkey account has no email; the address alone must be
+  // enough to remember it, or it re-runs the directory lookup every load.
+  it("remembers an account with no email by its address", () => {
+    markAccountLinked({ email: "", evmAddress: EVM });
+    expect(isAccountLinked({ email: "", evmAddress: EVM })).toBe(true);
+  });
+
+  it("does nothing with no identifier at all", () => {
+    markAccountLinked({ email: "", evmAddress: null });
+    expect(window.localStorage.length).toBe(0);
+    expect(isAccountLinked({})).toBe(false);
   });
 });

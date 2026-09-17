@@ -5,6 +5,7 @@
 // sponsored transaction per asset. A failure marks its assets and moves on.
 
 import { encodeErc20Transfer } from "@/lib/deposit";
+import { isSubmittedEvmOperationError } from "@/lib/trade/sponsor";
 import { getSponsoredEvmChainByNetwork } from "@/lib/trade/sponsored-evm";
 import type { EvmBatchCall, LegacySigner, SettleOutcome } from "@/lib/migration/types";
 import type { ChainSweep, SweepAsset } from "@/features/migrate/lib/plan";
@@ -16,6 +17,14 @@ export interface SweepDestinations {
   evm: string | null;
   solana: string | null;
 }
+
+// The bundler accepted the operation but no receipt arrived inside the
+// 45s window (lib/trade/sponsor). The transfer has very likely LANDED, so it
+// must not be re-sent: the next discovery reads the chain and says whether it
+// did. Retryable, because a re-read that still shows the balance will offer
+// it again.
+const SUBMITTED_NOT_CONFIRMED =
+  "Sent, but it hasn't confirmed yet. Give it a minute, then check again.";
 
 const NO_EVM_DESTINATION = "Your new EVM wallet is not ready.";
 const NO_SOLANA_DESTINATION = "Your new Solana wallet is not ready.";
@@ -68,6 +77,17 @@ export async function runSweep(
         const hash = await signer.sendBatch(chain.assets.map(callFor), chainId);
         for (const id of ids) outcomes.set(id, { ok: true, txHashes: [hash] });
       } catch (error) {
+        // Submitted, receipt not seen yet. Retrying the same transfers now
+        // would send the money TWICE (the first operation is already with the
+        // bundler and usually lands), and on a wallet swept to zero the second
+        // attempt reverts and reports failure for money that did move. Leave
+        // it to the next read of the chain.
+        if (isSubmittedEvmOperationError(error)) {
+          for (const id of ids) {
+            outcomes.set(id, { ok: false, error: SUBMITTED_NOT_CONFIRMED, retryable: true });
+          }
+          continue;
+        }
         // The batch is ATOMIC: one call reverting takes every other transfer
         // down with it. A wallet holding real money beside a dust or hostile
         // token therefore moved nothing at all — the token could be paused,
@@ -89,7 +109,9 @@ export async function runSweep(
           } catch (individual) {
             outcomes.set(asset.id, {
               ok: false,
-              error: errorMessage(individual),
+              error: isSubmittedEvmOperationError(individual)
+                ? SUBMITTED_NOT_CONFIRMED
+                : errorMessage(individual),
               retryable: true,
             });
           }
@@ -112,7 +134,13 @@ export async function runSweep(
         });
         outcomes.set(asset.id, { ok: true, txHashes: [signature] });
       } catch (error) {
-        outcomes.set(asset.id, { ok: false, error: errorMessage(error), retryable: true });
+        outcomes.set(asset.id, {
+          ok: false,
+          error: isSubmittedEvmOperationError(error)
+            ? SUBMITTED_NOT_CONFIRMED
+            : errorMessage(error),
+          retryable: true,
+        });
       }
     }
   }

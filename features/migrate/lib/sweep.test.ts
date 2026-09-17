@@ -124,3 +124,73 @@ describe("when one token in the batch reverts", () => {
     for (const a of chain.assets) expect(out.get(a.id)?.ok).toBe(false);
   });
 });
+
+// The bundler took the operation but no receipt arrived in 45s. The money is
+// almost certainly on its way; sending it again is the one thing that must
+// not happen.
+class SubmittedError extends Error {
+  readonly code = "EVM_OPERATION_SUBMITTED";
+}
+
+describe("when the batch was submitted but never confirmed", () => {
+  it("does not re-send the transfers", async () => {
+    const s = signer();
+    s.sendBatch = vi.fn(async () => {
+      throw new SubmittedError("submitted");
+    });
+    const chain: ChainSweep = {
+      network: "base-mainnet",
+      kind: "evm-batch",
+      assets: [asset("a", "base-mainnet", USDC_BASE), asset("b", "base-mainnet")],
+    };
+
+    const out = await runSweep([chain], { evm: NEW_EVM, solana: null }, s);
+
+    // One attempt only — no per-asset retry loop behind it.
+    expect(s.sendBatch).toHaveBeenCalledTimes(1);
+    for (const id of ["a", "b"]) {
+      expect(out.get(id)).toEqual({
+        ok: false,
+        error: expect.stringContaining("hasn't confirmed"),
+        retryable: true,
+      });
+    }
+  });
+
+  it("still retries individually when the batch genuinely reverted", async () => {
+    const s = signer();
+    let call = 0;
+    s.sendBatch = vi.fn(async () => {
+      call += 1;
+      if (call === 1) throw new Error("execution reverted");
+      return "0xhash" as `0x${string}`;
+    });
+    const chain: ChainSweep = {
+      network: "base-mainnet",
+      kind: "evm-batch",
+      assets: [asset("a", "base-mainnet", USDC_BASE), asset("b", "base-mainnet")],
+    };
+
+    const out = await runSweep([chain], { evm: NEW_EVM, solana: null }, s);
+
+    expect(s.sendBatch).toHaveBeenCalledTimes(3); // the batch, then each asset
+    expect(out.get("a")?.ok).toBe(true);
+    expect(out.get("b")?.ok).toBe(true);
+  });
+
+  it("treats a submitted-but-unconfirmed error the same way on the Solana path", async () => {
+    const s = signer();
+    s.sendToken = vi.fn(async () => {
+      throw new SubmittedError("submitted");
+    });
+
+    const out = await runSweep([solanaChain], { evm: null, solana: "SoLnew" }, s);
+
+    expect(s.sendToken).toHaveBeenCalledTimes(1);
+    expect(out.get("sol")).toEqual({
+      ok: false,
+      error: expect.stringContaining("hasn't confirmed"),
+      retryable: true,
+    });
+  });
+});

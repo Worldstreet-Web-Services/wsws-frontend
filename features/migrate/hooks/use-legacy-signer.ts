@@ -72,8 +72,14 @@ export function useLegacySigner(): LegacySigner | null {
     if (evm && !wallets.some(matchesChosen)) return null;
     return {
       addresses: { evm, solana },
-      sendBatch,
-      sendToken,
+      // Bound to the wallets resolved above, so a send can never go out from
+      // a different embedded wallet than the one discovery read.
+      sendBatch: (calls, chainId) => sendBatch(calls, chainId, evm ?? undefined),
+      sendToken: (params) =>
+        sendToken({
+          ...params,
+          from: (params.network === "solana-mainnet" ? solana : evm) ?? undefined,
+        }),
       async getEthereumProvider() {
         const wallet = wallets.find(matchesChosen);
         if (!wallet) throw new Error("Your old wallet is not connected. Sign in again.");

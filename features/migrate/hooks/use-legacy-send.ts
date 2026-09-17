@@ -46,13 +46,22 @@ export function useLegacyEvmSendBatch() {
   const { wallets } = useWallets();
 
   return useCallback(
-    async (calls: EvmBatchCall[], chainId: number): Promise<`0x${string}`> => {
+    // `from` names the embedded wallet to sign with. An account can carry
+    // more than one, and the migration signer resolves the FUNDED one
+    // (use-legacy-signer); without this the batch went out from whichever
+    // Privy listed first, and a sweep from the wrong wallet moves nothing —
+    // every transfer reverts on a balance that is not there.
+    async (calls: EvmBatchCall[], chainId: number, from?: string): Promise<`0x${string}`> => {
       if (!isSponsoredEvmChainId(chainId)) {
         throw new Error("Batched transactions are only supported on sponsored EVM chains.");
       }
       if (calls.length === 0) throw new Error("Nothing to send.");
-      const wallet = wallets.find((w) => w.walletClientType === "privy");
-      if (!wallet) throw new Error("No EVM wallet is connected.");
+      const wallet = wallets.find(
+        (w) =>
+          w.walletClientType === "privy" &&
+          (from === undefined || w.address.toLowerCase() === from.toLowerCase())
+      );
+      if (!wallet) throw new Error("Your old wallet is not connected. Sign in again.");
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error("Your old session expired. Sign in again.");
       const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
@@ -77,6 +86,10 @@ export interface LegacySendTokenParams {
   decimals: number;
   to: string;
   amount: bigint;
+  // The old wallet to spend from, when the caller has resolved which one
+  // (see useLegacyEvmSendBatch). Defaults to the account's first wallet on
+  // that chain.
+  from?: string;
 }
 
 // The old any-token send, Privy-signed: EVM through the legacy batch (one
@@ -94,9 +107,10 @@ export function useLegacySendToken() {
       decimals,
       to,
       amount,
+      from: chosen,
     }: LegacySendTokenParams): Promise<string> => {
       const isSolana = network === "solana-mainnet";
-      const from = getWalletAddress(user, isSolana ? "solana" : "ethereum");
+      const from = chosen ?? getWalletAddress(user, isSolana ? "solana" : "ethereum");
       if (!from) throw new Error("Your old wallet is not connected. Sign in again.");
 
       if (!isSolana) {
@@ -106,7 +120,7 @@ export function useLegacySendToken() {
           tokenAddress === null
             ? { to: to as `0x${string}`, value: amount }
             : { to: tokenAddress as `0x${string}`, data: encodeErc20Transfer(to, amount) };
-        return sendBatch([call], chainId);
+        return sendBatch([call], chainId, from);
       }
 
       const wallet = solanaWallets.find((w) => w.address === from);

@@ -51,6 +51,9 @@ export type MigrationStage = "signIn" | "move" | "finish";
 // user whose old wallet belongs to another account is not trapped behind the
 // overlay forever.
 const TERMINAL_LINK_CODES = new Set(["LEGACY_ALREADY_LINKED"]);
+// Link attempts per mount, and the pauses between them.
+const LINK_ATTEMPTS = 3;
+const LINK_RETRY_MS = [1_500, 4_000] as const;
 
 /** What a host needs to decide whether the user may leave, and to show where the user is. */
 export interface MigrationProgress {
@@ -192,33 +195,57 @@ export function MoveOldMoneyPanel({
   // Non-terminal link failures in a row (a network drop, a 5xx). A link that
   // keeps failing is as much of a trap as one that can never succeed.
   const [linkFailures, setLinkFailures] = useState(0);
+  // A link that fails for a passing reason is tried again, with a pause, up
+  // to LINK_ATTEMPTS times. One attempt per mount was a trap: a single
+  // dropped request left the account unlinked, the gate cannot finish
+  // without the link, and one failure never reached the "keep failing" exit
+  // — so the only way out was a reload. Each failure still counts, so the
+  // exit does open once the attempts are spent.
+  const linkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const link = useCallback(() => {
-    linkLegacyAccount()
-      .then(() => {
-        linkLanded.current = true;
-        setLinkedHere(true);
-        setLinkBlocked(null);
-        setLinkFailures(0);
-        track("migration_linked");
-        void refetchStatus();
-      })
-      .catch((error: unknown) => {
-        const code = errorCode(error);
-        if (code && TERMINAL_LINK_CODES.has(code)) {
-          setLinkBlocked(code);
-          track("migration_link_blocked", { code });
-          return;
-        }
-        if (isUnconfigured(error)) return;
-        console.error("Linking the old account failed", error);
-        setLinkFailures((n) => n + 1);
-      });
+    // Named inner function so the retry can recurse without the callback
+    // referring to itself before it is declared.
+    const attemptLink = (attempt: number) => {
+      linkLegacyAccount()
+        .then(() => {
+          linkLanded.current = true;
+          setLinkedHere(true);
+          setLinkBlocked(null);
+          setLinkFailures(0);
+          track("migration_linked");
+          void refetchStatus();
+        })
+        .catch((error: unknown) => {
+          const code = errorCode(error);
+          if (code && TERMINAL_LINK_CODES.has(code)) {
+            setLinkBlocked(code);
+            track("migration_link_blocked", { code });
+            return;
+          }
+          if (isUnconfigured(error)) return;
+          console.error(`Linking the old account failed (attempt ${attempt})`, error);
+          setLinkFailures((n) => n + 1);
+          if (attempt < LINK_ATTEMPTS) {
+            linkTimer.current = setTimeout(
+              () => attemptLink(attempt + 1),
+              LINK_RETRY_MS[attempt - 1]
+            );
+          }
+        });
+    };
+    attemptLink(1);
   }, [refetchStatus]);
   useEffect(() => {
     if (!signer || linked.current) return;
     linked.current = true;
     link();
   }, [signer, link]);
+  useEffect(
+    () => () => {
+      if (linkTimer.current) clearTimeout(linkTimer.current);
+    },
+    []
+  );
 
   // Old-identity data never outlives the panel.
   useEffect(
@@ -375,6 +402,9 @@ export function MoveOldMoneyPanel({
     setAutoResult(null);
     autoRan.current = false;
     setOptIn(null);
+    // "Try again" means the link too: money that moves without it lands in
+    // the new wallet, but the identity stays behind and the gate stays shut.
+    if (!linkLanded.current && linkBlocked === null) link();
     void holdingsQuery.refetch();
   };
 

@@ -78,9 +78,10 @@ export function isCoreAsset(holding: LegacyHolding): boolean {
   );
 }
 
-// A holding is worth showing — and worth moving — when it has a balance. Its
-// dollar value is display only and may be missing (a broken price feed reports
-// $0), so it must never decide what moves.
+// A holding is worth showing when it has a balance. What is worth MOVING was
+// already decided upstream, by the plan's dust floor (DUST_MIN_VALUE_USD):
+// anything that reaches here cleared it, so this asks only about the balance
+// and never re-applies a value test of its own.
 export function worthShowing(holding: LegacyHolding): boolean {
   return holding.amount > 0n;
 }

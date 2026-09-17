@@ -44,12 +44,11 @@ export default function AuthPage() {
   const useAnotherAccount = () => {
     clearDisplayProfile();
     clearLastAuthMethod();
-    // decane-connect-kit ≥ 2.22 also remembers WHO signed out, so it can offer
-    // that account's own passkey or password back even with several accounts
-    // enrolled on this browser. "Use a different account" must drop that too,
-    // or the previous account keeps being offered. Optional until the
-    // dependency is on 2.22.
-    (wallet as { forgetLastUser?: () => void }).forgetLastUser?.();
+    // The kit also remembers WHO signed out, so it can offer that account's own
+    // passkey or password back even with several accounts enrolled on this
+    // browser. "Use a different account" must drop that too, or the previous
+    // account keeps being offered.
+    wallet.forgetLastUser();
     setUseAnother(true);
   };
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSocialAuth } from "decane-connect-kit";
+import { useSocialAuth, useSocialWallet } from "decane-connect-kit";
 import { useTranslations } from "next-intl";
 import { Wordmark } from "@/components/ui/wordmark";
 import { BRAND } from "@/lib/brand";
@@ -39,10 +39,17 @@ export default function AuthPage() {
   // is not that user says so.
   const { offer, checking } = useUnlockOffer();
   const remembered = useDisplayProfile() !== null;
+  const wallet = useSocialWallet();
   const [useAnother, setUseAnother] = useState(false);
   const useAnotherAccount = () => {
     clearDisplayProfile();
     clearLastAuthMethod();
+    // decane-connect-kit ≥ 2.22 also remembers WHO signed out, so it can offer
+    // that account's own passkey or password back even with several accounts
+    // enrolled on this browser. "Use a different account" must drop that too,
+    // or the previous account keeps being offered. Optional until the
+    // dependency is on 2.22.
+    (wallet as { forgetLastUser?: () => void }).forgetLastUser?.();
     setUseAnother(true);
   };
 

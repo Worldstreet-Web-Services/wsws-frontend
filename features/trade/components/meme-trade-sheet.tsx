@@ -1,4 +1,5 @@
 "use client";
+import { useAuthSession } from "@/hooks/use-auth-session";
 
 import { SOLANA_CHAIN_ID, chainSlug, networkOf } from "@/lib/meme/chain";
 import { scopeOf } from "@/lib/portfolio/fresh-scope";
@@ -30,7 +31,6 @@ import {
 import { useRiskConsent } from "@/features/trade/hooks/use-risk-consent";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useReroutedWithdraw } from "@/hooks/use-withdraw";
-import { usePrivy } from "@privy-io/react-auth";
 import { BRAND } from "@/lib/brand";
 import { displaySymbol } from "@/lib/buy";
 import { settlementFor } from "@/lib/deposit";
@@ -49,7 +49,6 @@ import {
   type PendingRwaSettlement,
 } from "@/lib/trade/pending-settlement";
 import { fetchConfirmedSolanaBalance } from "@/lib/trade/solana-balance";
-import { getWalletAddress } from "@/lib/user";
 
 const DECIMAL_INPUT = /^\d*\.?\d*$/;
 const PREVIEW_DEBOUNCE_MS = 600;
@@ -202,7 +201,9 @@ export function MemeTradeSheet({
   // The USD side is always Base; the coin side is the token's chain.
   const tradedNetworks = scopeOf("base-mainnet", network);
   const portfolio = usePortfolio();
-  const { user } = usePrivy();
+  const linkTriedRef = useRef(false);
+  const { ready, authenticated, evmAddress, solanaAddress, profile } = useAuthSession();
+  const addressFor = (chain: string) => (chain === "solana" ? solanaAddress : evmAddress);
   const { withdraw: routeUsdc } = useReroutedWithdraw("trade");
   const [funding, setFunding] = useState<FundingStep>("idle");
   const [fundError, setFundError] = useState<unknown>(null);
@@ -402,8 +403,8 @@ export function MemeTradeSheet({
   // sheet's part is over at that point, and it says so rather than vanishing.
   async function fundAndQueue() {
     if (submitDisabled) return;
-    const baseWallet = getWalletAddress(user, "ethereum");
-    const solanaWallet = getWalletAddress(user, "solana");
+    const baseWallet = evmAddress;
+    const solanaWallet = solanaAddress;
     if (!baseWallet || !solanaWallet) {
       setFundError(new Error(t("connectWallet")));
       toast.error(t("connectWallet"));

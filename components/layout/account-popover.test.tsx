@@ -9,18 +9,43 @@ vi.mock("next-intl", () => ({
 const mockLogout = vi.fn();
 const mockLinkWithPasskey = vi.fn();
 
-vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({
-    user: {
-      id: "did:privy:test",
-      email: { address: "test@example.com" },
-      linkedAccounts: [],
-    },
+// The popover reads the session through the Decane-backed seam and the kit's
+// own hooks (passkey linking), replacing Privy's usePrivy/useLogout/useLinkWithPasskey.
+vi.mock("@/hooks/use-auth-session", () => ({
+  useAuthSession: () => ({
+    ready: true,
+    authenticated: true,
+    evmAddress: "0x0000000000000000000000000000000000000001",
+    solanaAddress: null,
+    profile: { name: "Test User", email: "test@example.com", avatarSeed: "did:privy:test" },
+    logout: mockLogout,
   }),
-  useLogout: () => ({ logout: mockLogout }),
-  useLinkWithPasskey: () => ({ linkWithPasskey: mockLinkWithPasskey }),
-  getAccessToken: vi.fn(),
-  getIdentityToken: vi.fn(),
+}));
+
+vi.mock("decane-connect-kit", () => ({
+  useSocialAuth: () => ({ canUsePasskey: false }),
+  useSocialWallet: () => ({ addPasskey: mockLinkWithPasskey }),
+}));
+
+// The migration door needs a query client and the whole venue-adapter graph;
+// neither is what this test is about.
+// Deep-imported now, not through the @/features/migrate barrel: that barrel
+// re-exports UpdateBalanceButton, which mounts the whole Privy SDK, and this
+// popover renders on every signed-in route.
+vi.mock("@/features/migrate/components/move-old-money-entry", () => ({
+  MoveOldMoneyButton: ({ onClick }: { onClick: () => void }) => (
+    <button onClick={onClick}>open-migration</button>
+  ),
+}));
+// The sheet is behind next/dynamic; the host is what the popover renders.
+vi.mock("@/components/layout/migration-sheet-host", () => ({
+  __esModule: true,
+  default: ({ open }: { open: boolean }) => (open ? <div data-testid="migration-sheet" /> : null),
+  MigrationSheetHost: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="migration-sheet" /> : null,
+}));
+vi.mock("@/components/layout/migration-adapters", () => ({
+  MIGRATION_ADAPTERS: [],
 }));
 
 vi.mock("next/navigation", () => ({
@@ -81,5 +106,29 @@ describe("AccountPopover", () => {
 
     rerender(<AccountPopover open={false} onClose={() => {}} triggerRef={triggerRef} />);
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+  });
+});
+
+describe("the migration sheet's lifetime", () => {
+  // The sheet portals to document.body, so every click inside it reads as
+  // "outside the popover" and closes it. Rendered within the popover body it
+  // was therefore unmounted by the very click it was handling: Sign in and
+  // Move both did nothing on desktop, while the phone's modal door was fine.
+  it("survives the popover closing", async () => {
+    const triggerRef = { current: null };
+    const { rerender } = render(
+      <AccountPopover open={true} onClose={() => {}} triggerRef={triggerRef} />
+    );
+
+    fireEvent.click(screen.getByText("open-migration"));
+    // findBy, not getBy: the sheet is behind next/dynamic and resolves a tick
+    // later — which is the point, it is not in the initial payload.
+    expect(await screen.findByTestId("migration-sheet")).toBeInTheDocument();
+
+    // What a click inside the sheet does to the popover.
+    rerender(<AccountPopover open={false} onClose={() => {}} triggerRef={triggerRef} />);
+
+    await waitFor(() => expect(screen.queryByText("open-migration")).not.toBeInTheDocument());
+    expect(screen.getByTestId("migration-sheet")).toBeInTheDocument();
   });
 });

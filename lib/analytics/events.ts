@@ -46,6 +46,25 @@ export type PageName =
  * do not break.
  */
 export interface AnalyticsEvents {
+  // Migration of money out of the old Privy wallets. Never carries addresses.
+  migration_started: { entry: "balance_card" | "account_modal" | "gate" };
+  migration_linked: void;
+  // Linking failed terminally (the old wallet is bound to another account), so
+  // the gate offered a way out instead of another retry. `code` is the gateway
+  // error code, never an address.
+  migration_link_blocked: { code: string };
+  // The user put the gate away for a while: they cannot sign into the old
+  // account, or the current step kept failing. A delay, never a completion.
+  migration_gate_snoozed: { reason: "no_access" | "failing" | "browser"; stage: string };
+  migration_reviewed: {
+    holdings: number;
+    opted_in: number;
+    settle_later: number;
+    value_usd: number;
+  };
+  migration_step_completed: { venue: string; kind: string };
+  migration_step_failed: { venue: string; kind: string; retryable: boolean };
+  migration_completed: { outcome: "complete" | "partial" | "blocked"; moved_usd: number };
   // Auth and onboarding
   auth_started: void;
   signup_completed: { method: SignupMethod };

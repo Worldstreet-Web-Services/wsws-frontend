@@ -68,6 +68,11 @@ interface PortfolioViewProps {
   /** Replays the walkthrough; owned by the route, wired into the balance card. */
   onTakeTour: () => void;
   crossBorderSlot: ReactNode;
+  /** The migration's sweep button, and whether to hide the figure while the
+      money is still in the old wallet. Both owned by the route: they belong to
+      another feature, and features never import each other. */
+  updateBalanceSlot?: ReactNode;
+  maskForMigration?: boolean;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -86,6 +91,8 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   onTakeTour,
+  updateBalanceSlot,
+  maskForMigration,
   // crossBorderSlot is unused while the section below is commented out.
   onOpenDetail,
   onOpenBuy,
@@ -334,6 +341,8 @@ export function PortfolioView({
             onOpenFunds={onOpenFunds}
             onOpenWithdraw={onOpenWithdraw}
             onTakeTour={onTakeTour}
+            updateBalanceSlot={updateBalanceSlot}
+            maskForMigration={maskForMigration}
           />
           <KashCardMobile
             onBuy={() => setKashModal("buy")}
@@ -368,6 +377,8 @@ export function PortfolioView({
           onOpenFunds={onOpenFunds}
           onOpenWithdraw={onOpenWithdraw}
           onTakeTour={onTakeTour}
+          updateBalanceSlot={updateBalanceSlot}
+          maskForMigration={maskForMigration}
         />
         <KashCard
           onBuy={() => setKashModal("buy")}

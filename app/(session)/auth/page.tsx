@@ -11,7 +11,8 @@ import { MarketLogo } from "@/components/ui/market-logo";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { EmailForm } from "@/components/auth/email-form";
 import { UnlockPanel, useUnlockOffer } from "@/components/auth/unlock-panel";
-import { promotePending } from "@/lib/last-auth-method";
+import { clearLastAuthMethod, promotePending } from "@/lib/last-auth-method";
+import { clearDisplayProfile, useDisplayProfile } from "@/lib/display-profile";
 import { PasskeyStep } from "@/components/auth/passkey-step";
 import { useDevicePasskey } from "@/hooks/use-device-passkey";
 import { usePasskeyNudgeDue } from "@/lib/passkey-nudge";
@@ -32,9 +33,18 @@ export default function AuthPage() {
 
   // What this browser can offer a returning visitor in place of the full
   // method list — a passkey unlock, or a one-tap repeat of their last method.
-  // "Use a different account" falls back to the list for the rest of the visit.
-  const offer = useUnlockOffer();
+  // "Use a different account" falls back to the list for the rest of the visit,
+  // and is the one place the remembered account is forgotten: sign-out keeps
+  // it on purpose, so the way back in is one tap, and this is how someone who
+  // is not that user says so.
+  const { offer, checking } = useUnlockOffer();
+  const remembered = useDisplayProfile() !== null;
   const [useAnother, setUseAnother] = useState(false);
+  const useAnotherAccount = () => {
+    clearDisplayProfile();
+    clearLastAuthMethod();
+    setUseAnother(true);
+  };
 
   // A device on a PIN gets one chance to become a passkey device before it is
   // sent on. canAdd is null until the check resolves, so the redirect waits on
@@ -49,6 +59,14 @@ export default function AuthPage() {
   }, []);
 
   const nudgeDue = usePasskeyNudgeDue();
+
+  // Right after a sign-out the kit re-checks the passkey and the password
+  // asynchronously, and the offer reads as null until they answer. For a
+  // visitor we remember, hold the method list back for that moment rather
+  // than flash it and then swap it for the unlock panel. A first-time visitor
+  // has nothing to wait for and gets the list at once. Bounded by the same
+  // grace as the passkey check, so a stalled read never strands the screen.
+  const settling = checking && remembered && !useAnother && !checkTimedOut;
 
   const signedIn = ready && authenticated && !stepDone;
   const passkeyCheckPending = signedIn && canAdd === null && !checkTimedOut;
@@ -97,7 +115,7 @@ export default function AuthPage() {
               furniture. The mobile design names the task and goes straight to
               the sign-in methods. */}
           <h1 className="ws-display text-center text-[28px] leading-tight tracking-[-0.02em] md:hidden">
-            {offer && !useAnother ? t("unlockTitle") : t("createAccountTitle")}
+            {(offer || settling) && !useAnother ? t("unlockTitle") : t("createAccountTitle")}
           </h1>
           <h1 className="ws-display hidden text-[clamp(38px,4.6vw,56px)] leading-none tracking-[-0.03em] md:block">
             {t("welcome")}
@@ -116,9 +134,11 @@ export default function AuthPage() {
                 {creating ? t("creatingAccount") : t("signingIn")}
               </span>
             </div>
+          ) : settling ? (
+            <div className="mt-7 min-h-[132px] md:mt-[34px]" aria-busy="true" />
           ) : offer && !useAnother ? (
             <div className="mt-7 md:mt-[34px]">
-              <UnlockPanel offer={offer} onUseAnother={() => setUseAnother(true)} />
+              <UnlockPanel offer={offer} onUseAnother={useAnotherAccount} />
             </div>
           ) : (
             <>

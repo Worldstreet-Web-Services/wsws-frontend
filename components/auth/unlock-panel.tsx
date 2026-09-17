@@ -36,40 +36,59 @@ import { UserIcon } from "@/components/ui/icons";
 export type UnlockOffer =
   { kind: "passkey" } | { kind: "password" } | { kind: "google" } | { kind: "kingschat" };
 
+/** The returning-visitor shortcut, and whether it is still being worked out. */
+export interface UnlockOfferState {
+  /** What to offer, or null for the full list of sign-in methods. */
+  offer: UnlockOffer | null;
+  /**
+   * The device checks behind the offer have not all answered yet. On the
+   * screen after a sign-out the kit re-checks the passkey and the password
+   * asynchronously, and a null offer during that window means "not yet", not
+   * "no". A caller that shows the full list on null flashes it at exactly the
+   * user this shortcut exists for.
+   */
+  checking: boolean;
+}
+
 /**
  * What this browser can offer a returning user, or null to show the full list
  * of sign-in methods. Email is never offered: it needs a mailed code, so a
  * shortcut would save no steps.
  */
-export function useUnlockOffer(): UnlockOffer | null {
+export function useUnlockOffer(): UnlockOfferState {
   const { canUsePasskey } = useSocialAuth();
   const { canUnlockWithPassword } = useSocialWallet();
   const last = useLastAuthMethod();
   const profile = useDisplayProfile();
 
   // Async, unlike canUsePasskey, because it reads the share store directly.
-  const [hasPassword, setHasPassword] = useState(false);
+  // Both checks read the same store, so the password answer landing is a fair
+  // signal that the passkey one has too.
+  const [password, setPassword] = useState<boolean | null>(null);
   useEffect(() => {
     let live = true;
     canUnlockWithPassword()
       .then((can) => {
-        if (live) setHasPassword(can);
+        if (live) setPassword(can);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setPassword(false);
+      });
     return () => {
       live = false;
     };
   }, [canUnlockWithPassword]);
 
+  const checking = password === null;
   // A passkey outranks a password: one biometric beats typing a password.
-  if (canUsePasskey) return { kind: "passkey" };
-  if (hasPassword) return { kind: "password" };
+  if (canUsePasskey) return { offer: { kind: "passkey" }, checking: false };
+  if (password) return { offer: { kind: "password" }, checking: false };
   // Only shortcut someone we can actually name — an unattributed "Continue"
   // button is worse than the ordinary method list.
-  if (!profile) return null;
-  if (last === "google") return { kind: "google" };
-  if (last === "kingschat") return { kind: "kingschat" };
-  return null;
+  if (!profile) return { offer: null, checking };
+  if (last === "google") return { offer: { kind: "google" }, checking };
+  if (last === "kingschat") return { offer: { kind: "kingschat" }, checking };
+  return { offer: null, checking };
 }
 
 // The kit reports a wrong password distinctly from a token the server refused,

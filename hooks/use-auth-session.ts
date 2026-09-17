@@ -2,11 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSocialAuth } from "decane-connect-kit";
-import {
-  clearDisplayProfile,
-  rememberDisplayProfile,
-  useDisplayProfile,
-} from "@/lib/display-profile";
+import { rememberDisplayProfile, useDisplayProfile } from "@/lib/display-profile";
 import type { Profile } from "@/lib/user";
 
 // The app's one auth seam. Everything that used to read Privy's usePrivy()
@@ -102,8 +98,14 @@ export function useAuthSession(): AuthSession {
       avatarSeed: evmAddress ?? "worldstreet",
     },
     logout: async () => {
-      // Before disconnect, so an interrupted sign-out still forgets the name.
-      clearDisplayProfile();
+      // The display profile is deliberately KEPT. Signing out ends the session
+      // (the kit revokes the JWT and drops it), but it does not mean "forget
+      // me": the auth screen greets the returning user by name and offers the
+      // account's own way back in — a passkey, or the unlock password — in
+      // place of the full method list. Someone who is not that user taps "Use
+      // a different account", which is where the profile is forgotten (see
+      // the auth page). The session cache guard separately clears anything
+      // private the moment the session is gone.
       await social.disconnect();
     },
   };

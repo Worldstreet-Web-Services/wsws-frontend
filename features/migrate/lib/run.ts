@@ -77,7 +77,7 @@ export async function runSettlement(
     if (phase.phase === "sweep") {
       const wallet = byVenue.get("wallet");
       if (wallet && !ctx.signal.aborted) {
-        ctx.onProgress("Checking the old wallet's balances");
+        ctx.onProgress("Checking your old account");
         try {
           const fresh = await wallet.discover(ctx);
           holdings = fresh.filter((h) => isSettleable(h, Date.now()));

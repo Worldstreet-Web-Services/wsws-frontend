@@ -61,7 +61,7 @@ export function useLegacyEvmSendBatch() {
           w.walletClientType === "privy" &&
           (from === undefined || w.address.toLowerCase() === from.toLowerCase())
       );
-      if (!wallet) throw new Error("Your old wallet is not connected. Sign in again.");
+      if (!wallet) throw new Error("Your old account isn't connected. Sign in again.");
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error("Your old session expired. Sign in again.");
       const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
@@ -111,7 +111,7 @@ export function useLegacySendToken() {
     }: LegacySendTokenParams): Promise<string> => {
       const isSolana = network === "solana-mainnet";
       const from = chosen ?? getWalletAddress(user, isSolana ? "solana" : "ethereum");
-      if (!from) throw new Error("Your old wallet is not connected. Sign in again.");
+      if (!from) throw new Error("Your old account isn't connected. Sign in again.");
 
       if (!isSolana) {
         const chainId = EVM_CHAIN_ID[network];
@@ -124,7 +124,7 @@ export function useLegacySendToken() {
       }
 
       const wallet = solanaWallets.find((w) => w.address === from);
-      if (!wallet) throw new Error("Your old Solana wallet is not ready. Sign in again.");
+      if (!wallet) throw new Error("Your old account isn't ready on Solana. Sign in again.");
       const transaction =
         tokenAddress === null
           ? await buildSolanaSolTransfer(from, to, amount)

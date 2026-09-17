@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { WalletIcon } from "@/components/ui/icons";
 import type { VenueAdapter } from "@/lib/migration/types";
-import { formatUsd } from "@/lib/currency";
 import { MoveOldMoneySheet } from "@/features/migrate/components/move-old-money-sheet";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
@@ -34,7 +33,7 @@ export function MoveOldMoneyButton({
       <span className="min-w-0 flex-1 truncate">{t("entry")}</span>
       {left > 0 ? (
         <span className="tnum bg-accent/20 text-accent shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold">
-          {t("entryBadge", { amount: formatUsd(left) })}
+          {t("entryBadge")}
         </span>
       ) : null}
     </button>

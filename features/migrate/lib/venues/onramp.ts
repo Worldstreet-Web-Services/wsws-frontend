@@ -46,7 +46,7 @@ export function onrampHoldings(input: {
     holdings.push(
       pendingHolding(
         { source: "ramping-account", id: input.cachedAccountOrderId },
-        "Bank deposit account still pointing at the old wallet"
+        "Bank transfers still pointing at your old account"
       )
     );
   }

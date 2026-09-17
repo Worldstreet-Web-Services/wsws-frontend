@@ -446,11 +446,7 @@ export function MoveOldMoneyPanel({
       <Step
         title={signedInElsewhere ? t("wrongAccountTitle") : t("signInTitle")}
         body={
-          signedInElsewhere
-            ? t("wrongAccountBody")
-            : known > 0
-              ? t("signInKnown", { amount: formatUsd(known) })
-              : t("signInBody")
+          signedInElsewhere ? t("wrongAccountBody") : known > 0 ? t("signInKnown") : t("signInBody")
         }
       >
         <button
@@ -500,7 +496,9 @@ export function MoveOldMoneyPanel({
       ).values(),
     ];
     const failed = attempted.filter((h) => !runs.some((r) => r.results.get(h.id)?.ok));
-    const movedUsd = runs.reduce((sum, r) => sum + r.movedUsd, 0);
+    // Counted, not totalled: the upgrade is about the account carrying over,
+    // and a figure here would frame it as a transfer instead.
+    const movedCount = runs.reduce((sum, r) => sum + r.movedCount, 0);
     // Counted the way the review lists them, so "1 left" never sends the user
     // looking for a row worth nothing.
     const left = finished.plan.settleLater.filter(worthShowing).length;
@@ -510,7 +508,7 @@ export function MoveOldMoneyPanel({
         body={t(locked ? "gateSummaryBody" : "summaryBody")}
       >
         <div className="ws-inset flex flex-col gap-2 p-3.5 text-[13px]">
-          <Row label={t("moved")} value={formatUsd(movedUsd)} />
+          <Row label={t("moved")} value={String(movedCount)} />
           <Row label={t("left")} value={String(left)} />
           <Row
             label={t("failed")}
@@ -602,7 +600,7 @@ export function MoveOldMoneyPanel({
       ) : null}
       {autoResult && autoResult.movedUsd > 0 ? (
         <div className="border-accent/25 bg-accent/8 mb-4 rounded-xl border px-3 py-2.5 text-[12.5px] text-white/75">
-          {t("autoMoved", { amount: formatUsd(autoResult.movedUsd) })}
+          {t("autoMoved")}
         </div>
       ) : null}
       <Section title={t("automaticHeading")} holdings={shownAutomatic} t={t} />
@@ -620,7 +618,7 @@ export function MoveOldMoneyPanel({
       ) : null}
       <div className="mt-5 grid gap-2.5">
         <button onClick={start} disabled={nothing} className={PRIMARY}>
-          {t("moveButton", { amount: formatUsd(groups.movingUsd) })}
+          {t("moveButton")}
         </button>
         {locked ? null : (
           <button onClick={onClose} className={SECONDARY}>
@@ -748,9 +746,6 @@ function Section({
                         {t("irreversibleWarning")}
                       </span>
                     ) : null}
-                  </span>
-                  <span className="tnum shrink-0 text-[13.5px] font-medium text-white">
-                    {formatUsd(h.valueUsd)}
                   </span>
                 </>
               );

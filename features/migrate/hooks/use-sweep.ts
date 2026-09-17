@@ -23,7 +23,7 @@ export function useSweep() {
 
   return useCallback(
     async (plan: ChainSweep[], destinations: SweepDestinations): Promise<SweepResult> => {
-      if (!signer) throw new Error("Your old wallet is not connected. Sign in again.");
+      if (!signer) throw new Error("Your old account isn't connected. Sign in again.");
       const outcomes = await runSweep(plan, destinations, signer);
       let done = 0;
       let failed = 0;

@@ -20,6 +20,9 @@ export function MigrationGateHeader({ stage, done }: { stage: MigrationStage; do
   const at = STAGES.indexOf(stage);
   return (
     <header className="mb-5 border-b border-white/10 pb-5">
+      {/* The announcement, not a label: sentence case in the accent, so it
+          reads as a line of the page rather than a tracked-out eyebrow. */}
+      <p className="text-accent mb-1.5 text-[12.5px] font-medium">{t("gateEyebrow")}</p>
       <h2 className="ws-display text-[28px] leading-[1.1] tracking-[-0.015em] md:text-[30px]">
         {t("gateTitle")}
       </h2>

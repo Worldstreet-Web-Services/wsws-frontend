@@ -64,7 +64,7 @@ export const walletAdapter: VenueAdapter<SweepAsset> = {
     // be seen here, or it is never moved.
     params.set("scope", "legacy");
     const res = await apiFetch(`/api/portfolio?${params.toString()}`, {}, { requireAuth: true });
-    if (!res.ok) throw new Error("Couldn't read the old wallet's balances.");
+    if (!res.ok) throw new Error("Couldn't check your old account.");
     const portfolio = (await res.json()) as Portfolio;
     return walletHoldings(portfolio.tokens);
   },

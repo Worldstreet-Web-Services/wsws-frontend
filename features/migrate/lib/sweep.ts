@@ -26,8 +26,8 @@ export interface SweepDestinations {
 const SUBMITTED_NOT_CONFIRMED =
   "Sent, but it hasn't confirmed yet. Give it a minute, then check again.";
 
-const NO_EVM_DESTINATION = "Your new EVM wallet is not ready.";
-const NO_SOLANA_DESTINATION = "Your new Solana wallet is not ready.";
+const NO_EVM_DESTINATION = "Your new account isn't ready on this network yet.";
+const NO_SOLANA_DESTINATION = "Your new account isn't ready on Solana yet.";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Transfer failed";

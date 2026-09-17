@@ -82,7 +82,7 @@ export function useLegacySigner(): LegacySigner | null {
         }),
       async getEthereumProvider() {
         const wallet = wallets.find(matchesChosen);
-        if (!wallet) throw new Error("Your old wallet is not connected. Sign in again.");
+        if (!wallet) throw new Error("Your old account isn't connected. Sign in again.");
         return (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
       },
     };

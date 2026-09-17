@@ -44,7 +44,11 @@ export function legacyWalletWorthMoving(holdings: readonly LegacyHolding[]): boo
   return legacyWalletUsd(holdings) >= WORTH_MOVING_MIN_USD;
 }
 
-/** Display total of what could move — the figure "$X still in your old wallet" should show. */
+/**
+ * Display total of what could move. Not shown to the user any more — the
+ * upgrade copy carries no figures — but it is what legacyWalletWorthMoving
+ * measures against the one-cent floor.
+ */
 export function legacyWalletUsd(holdings: readonly LegacyHolding[]): number {
   return legacyWalletMovable(holdings).reduce((sum, h) => sum + h.valueUsd, 0);
 }

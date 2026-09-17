@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacyAccount } from "@/features/migrate/hooks/use-legacy-account";
-import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 import { EMPTY_MIGRATION_STATUS } from "@/features/migrate/lib/api";
 import {
   markAccountLinked,
@@ -21,16 +20,18 @@ import {
 // there money in the old wallet": the re-key carries the profile, followers,
 // posts, chess ledgers, kash points and tier, none of which a balance can see.
 // A user with $0 and four years of history has the most to lose by never
-// linking.
+// linking. And once linked, there is nothing left to ask for — the long tail
+// of tokens is the account menu's job, never the gate's.
 export function useOfferMigration(): boolean {
   const { profile, evmAddress } = useAuthSession();
   const email = profile.email;
-  // A confirmed link is durable, so once this device has seen this account
-  // linked we know it before /status answers — and skip the legacy directory
-  // lookup (a Privy management-API call, the expensive "csv" check) entirely.
-  // Remembered under the email AND the address, so an X-only or passkey
-  // account (no email) gets the same shortcut. We still probe the old wallet:
-  // a linked account can keep residual funds worth moving.
+  // The device's memory of a confirmed link is authoritative. It is written
+  // only once the service has said `linked: true`, under the email and the
+  // address, and from then on this account is never offered the migration
+  // again on this device — no status wait, no directory lookup (a Privy
+  // management-API call), no on-chain probe. A live `linked: false` is the
+  // one thing that outranks it (an admin remap), and offerMigration honours
+  // that.
   const knownLinked = useAccountLinked({ email, evmAddress });
 
   const complete = useMigrationCompleteFlag(evmAddress);
@@ -47,29 +48,13 @@ export function useOfferMigration(): boolean {
   // that is not theirs. As "could not say", the device's own signals still get
   // to decide, exactly as before the service existed.
   const statusData = status.isError ? EMPTY_MIGRATION_STATUS : status.data;
-  // The same precedence offerMigration applies: a live answer outranks the
-  // device's memory, which only fills the gap it leaves.
-  const linked = statusData?.linked === true || (knownLinked && statusData?.linked !== false);
-  // For a linked account, what is ACTUALLY on the old wallet — read here, not
-  // taken from the service, whose flag also fires on pending ledger re-keys.
-  const walletFunds = useLegacyWalletFunds(statusData?.legacy ?? null, linked);
 
-  // The first time the service confirms this account is linked, remember it by
-  // email so the next load takes the shortcut above. Only ever on a real
-  // `true`, never on false or "could not say".
+  // The first time the service confirms this account is linked, remember it so
+  // every later load short-circuits above. Only ever on a real `true`, never
+  // on false or "could not say".
   useEffect(() => {
     if (status.data?.linked === true) markAccountLinked({ email, evmAddress });
   }, [status.data?.linked, email, evmAddress]);
-
-  // undefined = the read is still in flight (offerMigration waits);
-  // null = it ran and could not tell — a partial read OR a hard failure, both
-  // of which fall back to the service flag rather than hiding real money for
-  // as long as the RPC is down.
-  const walletFundsRead: boolean | null | undefined = walletFunds.isError
-    ? null
-    : walletFunds.data === undefined
-      ? undefined
-      : (walletFunds.data?.hasFunds ?? null);
 
   const offer = offerMigration({
     complete,
@@ -77,13 +62,12 @@ export function useOfferMigration(): boolean {
     status: statusData,
     linked: knownLinked,
     legacyAccount: legacy.has,
-    walletFunds: walletFundsRead,
   });
   console.log(
     `[migrate] offer migrate-to-2.0: ${offer ? "YES" : "no"}` +
-      ` [linked: ${linked ? (statusData?.linked === true ? "yes" : "yes (remembered on this device)") : status.isError ? "service errored" : statusData === undefined ? "loading" : (statusData.linked ?? "service could not say")}, done on this device: ${complete},` +
-      ` privy keys here: ${localHistory}, service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
-      ` old wallet on chain: ${walletFunds.isError ? "read failed" : walletFunds.data === undefined ? (linked ? "probing" : "not read") : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left` : "empty"},` +
+      ` [linked: ${knownLinked ? "yes (remembered on this device)" : status.isError ? "service errored" : statusData === undefined ? "loading" : (statusData.linked ?? "service could not say")},` +
+      ` done on this device: ${complete}, privy keys here: ${localHistory},` +
+      ` service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
       ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : "no legacy account"}]`
   );
   return offer;

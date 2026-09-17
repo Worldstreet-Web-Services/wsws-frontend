@@ -188,12 +188,10 @@ export function offerMigration(input: {
    */
   legacyAccount?: boolean;
   /**
-   * The frontend's own read of the old wallet, for a linked account:
-   *   true  — holds money,     false — confirmed empty,
-   *   null  — could not read,  undefined — the read is still in flight.
-   * For a linked account the chain read is the sole judge; the service's
-   * `hasLegacyFunds` is only a fallback for a definite "could not read",
-   * because it also says "yes" while a ledger re-key is pending.
+   * The frontend's own read of the old wallet, when one exists:
+   *   true — holds money, false — confirmed empty, null / undefined — unknown.
+   * When known it outranks the service's `hasLegacyFunds`. Only consulted for
+   * an account that is not linked; a linked account never gets the offer.
    */
   walletFunds?: boolean | null;
 }): boolean {
@@ -202,20 +200,15 @@ export function offerMigration(input: {
   const linked =
     input.status?.linked === true || (input.linked === true && input.status?.linked !== false);
 
-  if (linked) {
-    // On the new identity already. The one reason to keep the move open is
-    // money physically left on the old wallet, judged by the chain read — never
-    // the service flag, which also fires on a pending ledger re-key. While that
-    // read is still in flight (undefined) we show nothing, so the gate never
-    // flashes open on the service's optimistic guess and then closes; it opens
-    // only once the wallet is CONFIRMED to still hold something. A definite
-    // "could not read" (null) is the only case that falls back to the service.
-    if (input.status?.pendingOnramps.length) return true;
-    if (input.walletFunds === true) return true;
-    if (input.walletFunds === false) return false;
-    if (input.walletFunds === null) return Boolean(input.status?.hasLegacyFunds);
-    return false;
-  }
+  // Linked means the identity has moved, and that is the whole point of the
+  // offer: nothing is left to ask the user for. Residual tokens on the old
+  // wallet are the long tail, reachable through the always-open "Move money
+  // from old wallet" entry in the account menu — they never re-open the gate
+  // or the balance-card offer. In particular the service's `hasLegacyFunds`
+  // gets no say here: it also fires while a ledger re-key is pending, and an
+  // on-chain read that came back partial proves nothing either way. The
+  // device's remembered link is enough on its own — no probe is needed.
+  if (linked) return false;
 
   // Not (yet) known linked. Until the service has answered we cannot tell a
   // migrated account from a legacy one, so we wait rather than flash the offer

@@ -101,7 +101,9 @@ describe("offerMigration", () => {
 
   // Linking moves the identity, not the tokens. Seen live: a linked account
   // with $1 still on the old wallet, sweep failed, and the button gone.
-  it("keeps offering a linked account while the old wallet still holds funds", () => {
+  // Linked is the end of the offer. Residual tokens on the old wallet are the
+  // account menu's job; they never re-open the gate or the balance-card offer.
+  it("never offers a linked account, even with funds seen on the old wallet", () => {
     expect(
       offerMigration({
         complete: true,
@@ -109,7 +111,7 @@ describe("offerMigration", () => {
         status: status({ linked: true, hasLegacyFunds: true }),
         walletFunds: true,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   // The flash this fix removes: linked, the service says funds, but the chain
@@ -153,9 +155,9 @@ describe("offerMigration", () => {
     ).toBe(false);
   });
 
-  // A device that remembers this email is linked knows it before /status
-  // answers, and still waits for the chain read before opening the offer.
-  it("treats a remembered link like a linked status: waits for the chain read", () => {
+  // The device's memory of a link is authoritative: it answers before /status
+  // does, and no probe of the old wallet is needed or consulted.
+  it("never offers when the device remembers the account as linked", () => {
     expect(
       offerMigration({ complete: false, localHistory: true, status: undefined, linked: true })
     ).toBe(false);
@@ -167,26 +169,27 @@ describe("offerMigration", () => {
         linked: true,
         walletFunds: true,
       })
-    ).toBe(true);
-    expect(
-      offerMigration({
-        complete: false,
-        localHistory: true,
-        status: undefined,
-        linked: true,
-        walletFunds: false,
-      })
     ).toBe(false);
   });
 
-  it("keeps offering while a deposit is still landing on the old wallet", () => {
+  it("keeps offering an UNLINKED account while a deposit is still landing on the old wallet", () => {
+    expect(
+      offerMigration({
+        complete: true,
+        localHistory: false,
+        status: status({ linked: false, pendingOnramps: ["onramp-1"] }),
+      })
+    ).toBe(true);
+  });
+
+  it("does not re-open for a linked account on a pending deposit", () => {
     expect(
       offerMigration({
         complete: true,
         localHistory: false,
         status: status({ linked: true, pendingOnramps: ["onramp-1"] }),
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("offers on local history once the status has loaded and says not linked", () => {
@@ -361,7 +364,7 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
     ).toBe(false);
   });
 
-  it("offers a linked account whose old wallet still holds something, even if the service says not", () => {
+  it("does not offer a linked account whatever the old wallet holds", () => {
     expect(
       offerMigration({
         complete: true,
@@ -369,18 +372,20 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
         status: status({ linked: true, hasLegacyFunds: false }),
         walletFunds: true,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("falls back to the service only when the wallet definitely could not be read", () => {
+  // Seen live: linked, the service says funds (a pending re-key), and the chain
+  // read came back partial. That used to fall back to the service flag and
+  // open the gate on nothing verified. A partial read proves nothing, and for a
+  // linked account the service flag gets no say.
+  it("never falls back to the service flag for a linked account, partial read or not", () => {
     const base = {
       complete: true,
       localHistory: false,
       status: status({ linked: true, hasLegacyFunds: true }),
     };
-    // null = the read ran and could not tell → trust the service flag.
-    expect(offerMigration({ ...base, walletFunds: null })).toBe(true);
-    // undefined = the read is still in flight → wait, do not flash the offer on.
+    expect(offerMigration({ ...base, walletFunds: null })).toBe(false);
     expect(offerMigration({ ...base, walletFunds: undefined })).toBe(false);
   });
 });

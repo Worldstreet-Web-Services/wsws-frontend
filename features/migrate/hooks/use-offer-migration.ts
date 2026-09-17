@@ -50,14 +50,17 @@ export function useOfferMigration(): boolean {
   const statusData = status.isError ? EMPTY_MIGRATION_STATUS : status.data;
   const linked = statusData?.linked === true || (knownLinked && statusData?.linked !== false);
   // For a linked account, what is ACTUALLY on the old wallet. Only a complete
-  // read that saw money re-opens the offer; anything less reads as "not
-  // proven" (undefined = in flight, null = partial or failed read).
+  // read that saw money WORTH MOVING re-opens the offer; anything less reads
+  // as "not proven" (undefined = in flight, null = partial or failed read).
+  // `hasFunds` is deliberately not the bar here: an unpriced sub-cent token
+  // is "funds" to the sweep but not a reason to re-open the door on an
+  // account that has already moved — seen live as "$0.00 left -> proven".
   const walletFunds = useLegacyWalletFunds(statusData?.legacy ?? null, linked);
   const walletFundsRead: boolean | null | undefined = walletFunds.isError
     ? null
     : walletFunds.data === undefined
       ? undefined
-      : (walletFunds.data?.hasFunds ?? null);
+      : (walletFunds.data?.worthMoving ?? null);
 
   // The first time the service confirms this account is linked, remember it so
   // every later load short-circuits above. Only ever on a real `true`, never
@@ -80,7 +83,7 @@ export function useOfferMigration(): boolean {
       ` [linked: ${knownLinked ? "yes (remembered on this device)" : status.isError ? "service errored" : statusData === undefined ? "loading" : (statusData.linked ?? "service could not say")},` +
       ` done on this device: ${complete}, privy keys here: ${localHistory},` +
       ` service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
-      ` old wallet on chain: ${!linked ? "not read (not linked)" : walletFunds.isError ? "read failed" : walletFunds.data === undefined ? "probing" : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left -> proven` : "empty"},` +
+      ` old wallet on chain: ${!linked ? "not read (not linked)" : walletFunds.isError ? "read failed" : walletFunds.data === undefined ? "probing" : walletFunds.data === null ? "partial read" : walletFunds.data.worthMoving ? `$${walletFunds.data.usd.toFixed(2)} left -> proven` : walletFunds.data.hasFunds ? `dust only ($${walletFunds.data.usd.toFixed(2)}) -> not proven` : "empty"},` +
       ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : legacy.certain ? "definitely no legacy account" : "no legacy account (unconfirmed)"}]`
   );
   return offer;

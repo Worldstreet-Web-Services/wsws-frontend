@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import type { Portfolio } from "@/lib/server/alchemy";
 import { walletHoldings } from "@/features/migrate/lib/venues/wallet";
-import { legacyWalletHasFunds, legacyWalletUsd } from "@/features/migrate/lib/legacy-funds";
+import {
+  legacyWalletHasFunds,
+  legacyWalletUsd,
+  legacyWalletWorthMoving,
+} from "@/features/migrate/lib/legacy-funds";
 
 interface Addresses {
   evm: string | null;
@@ -12,8 +16,14 @@ interface Addresses {
 }
 
 export interface LegacyWalletFunds {
-  /** Anything sweepable and worth a cent is still there. */
+  /** Anything sweepable is still there, whatever it is worth. */
   hasFunds: boolean;
+  /**
+   * Something sweepable AND worth at least a cent (or an unpriced native
+   * coin) is still there — the bar for re-offering a linked account. See
+   * legacyWalletWorthMoving.
+   */
+  worthMoving: boolean;
   /** Display total of what could move. */
   usd: number;
 }
@@ -47,7 +57,11 @@ export function useLegacyWalletFunds(legacy: Addresses | null, enabled: boolean)
       const portfolio = (await res.json()) as Portfolio;
       if (portfolio.missing?.length) return null;
       const holdings = walletHoldings(portfolio.tokens);
-      return { hasFunds: legacyWalletHasFunds(holdings), usd: legacyWalletUsd(holdings) };
+      return {
+        hasFunds: legacyWalletHasFunds(holdings),
+        worthMoving: legacyWalletWorthMoving(holdings),
+        usd: legacyWalletUsd(holdings),
+      };
     },
   });
 }

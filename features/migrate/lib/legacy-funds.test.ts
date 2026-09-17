@@ -3,6 +3,7 @@ import {
   legacyWalletHasFunds,
   legacyWalletMovable,
   legacyWalletUsd,
+  legacyWalletWorthMoving,
 } from "@/features/migrate/lib/legacy-funds";
 import type { LegacyHolding } from "@/lib/migration/types";
 
@@ -58,6 +59,40 @@ describe("the old wallet, read by the frontend", () => {
     expect(
       legacyWalletHasFunds([
         holding("stuck", { settleability: { state: "stranded", reason: "unsponsoredNetwork" } }),
+      ])
+    ).toBe(false);
+  });
+});
+
+// The bar for re-offering a LINKED account. The wallet that prompted this:
+// linked, every real balance moved, one unpriced token left — and the offer
+// came back on "$0.00 left -> proven".
+describe("money worth bringing a linked account back for", () => {
+  it("needs a cent, or an unpriced native coin", () => {
+    expect(legacyWalletWorthMoving([holding("usdc", { valueUsd: 0.92 })])).toBe(true);
+    expect(legacyWalletWorthMoving([holding("cent", { valueUsd: 0.01 })])).toBe(true);
+    expect(legacyWalletWorthMoving([holding("sub-cent", { valueUsd: 0.004 })])).toBe(false);
+    // Unpriced token: the feed does not cover it; the account-menu door remains.
+    expect(legacyWalletWorthMoving([holding("priceless", { valueUsd: 0 })])).toBe(false);
+    // Unpriced NATIVE coin: the feed is out, the balance is real money.
+    expect(
+      legacyWalletWorthMoving([holding("eth", { kind: "native", symbol: "ETH", valueUsd: 0 })])
+    ).toBe(true);
+  });
+
+  it("is still 'funds' to the sweep even when not worth a re-offer", () => {
+    const dust = [holding("priceless", { valueUsd: 0 })];
+    expect(legacyWalletHasFunds(dust)).toBe(true);
+    expect(legacyWalletWorthMoving(dust)).toBe(false);
+  });
+
+  it("ignores what cannot move, whatever it is worth", () => {
+    expect(
+      legacyWalletWorthMoving([
+        holding("stuck", {
+          valueUsd: 50,
+          settleability: { state: "stranded", reason: "unsponsoredNetwork" },
+        }),
       ])
     ).toBe(false);
   });

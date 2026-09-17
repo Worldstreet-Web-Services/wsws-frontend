@@ -25,6 +25,28 @@ export function legacyWalletHasFunds(holdings: readonly LegacyHolding[]): boolea
   return legacyWalletMovable(holdings).length > 0;
 }
 
+// The re-offer floor for a LINKED account. Below this a holding is dust: the
+// review's own display shows it as $0.00, and the sweep may never manage to
+// move it (a sub-cent memecoin that reverts on transfer). Such a remnant
+// must not keep re-opening "Move to Market 2.0" for an account that has
+// already moved.
+export const WORTH_MOVING_MIN_USD = 0.01;
+
+/**
+ * Whether the old wallet holds money worth bringing a linked account back
+ * for. Stricter than "has funds": a movable holding counts only when it is
+ * worth at least a cent, OR it is the chain's native coin with no price at
+ * all — the one case where $0 means the price feed is out, not that the
+ * balance is worthless. An unpriced TOKEN is not that case: the feed simply
+ * does not cover it, and it is the long tail the always-open account-menu
+ * entry exists for. Seen live: a linked account re-offered on "$0.00 left".
+ */
+export function legacyWalletWorthMoving(holdings: readonly LegacyHolding[]): boolean {
+  return legacyWalletMovable(holdings).some(
+    (h) => h.valueUsd >= WORTH_MOVING_MIN_USD || (h.kind === "native" && h.valueUsd === 0)
+  );
+}
+
 /** Display total of what could move — the figure "$X still in your old wallet" should show. */
 export function legacyWalletUsd(holdings: readonly LegacyHolding[]): number {
   return legacyWalletMovable(holdings).reduce((sum, h) => sum + h.valueUsd, 0);

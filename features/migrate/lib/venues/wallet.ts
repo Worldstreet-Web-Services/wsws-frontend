@@ -59,6 +59,10 @@ export const walletAdapter: VenueAdapter<SweepAsset> = {
     // fresh=1 skips the shared server cache: a review must see balances that
     // moved seconds ago, not a snapshot from before the last step.
     params.set("fresh", "1");
+    // The whole old wallet, not just the contracts on the live portfolio's
+    // allowlist — a held token the ranked catalogue never reached must still
+    // be seen here, or it is never moved.
+    params.set("scope", "legacy");
     const res = await apiFetch(`/api/portfolio?${params.toString()}`, {}, { requireAuth: true });
     if (!res.ok) throw new Error("Couldn't read the old wallet's balances.");
     const portfolio = (await res.json()) as Portfolio;

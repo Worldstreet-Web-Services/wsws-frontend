@@ -51,6 +51,10 @@ export function useLegacyWalletFunds(legacy: Addresses | null, enabled: boolean)
       // fresh=1 skips the shared server cache: money that moved seconds ago
       // must not still count as left.
       params.set("fresh", "1");
+      // The whole old wallet, not just the contracts on the live portfolio's
+      // allowlist — a held token the ranked catalogue never reached must still
+      // be seen here, or it is never moved.
+      params.set("scope", "legacy");
       const res = await apiFetch(`/api/portfolio?${params.toString()}`, {}, { requireAuth: true });
       if (!res.ok) throw new Error("Couldn't read the old wallet's balances.");
       const portfolio = (await res.json()) as Portfolio;

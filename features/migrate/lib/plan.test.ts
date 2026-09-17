@@ -110,23 +110,24 @@ describe("sweepAssetId", () => {
 
 describe("buildSweepPlan — dust", () => {
   it("drops a wei-sized balance, whatever the price says", () => {
-    // A feed outage: both priced at $0. Balance alone decides.
+    // A wei of a token priced like ETH is still worth nothing; the real
+    // holding beside it moves.
     const plan = buildSweepPlan([
       token({
         symbol: "DUST",
         rawBalance: "1",
         decimals: 18,
         balance: 1e-18,
-        priceUsd: 0,
-        valueUsd: 0,
+        priceUsd: 2450,
+        valueUsd: 2.45e-15,
       }),
       token({
         symbol: "REAL",
         rawBalance: "716606",
         decimals: 6,
         balance: 0.716606,
-        priceUsd: 0,
-        valueUsd: 0,
+        priceUsd: 1,
+        valueUsd: 0.716606,
       }),
     ]);
     expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["REAL"]);
@@ -156,11 +157,27 @@ describe("buildSweepPlan — dust", () => {
     expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["DEGEN"]);
   });
 
-  it("keeps an UNPRICED token with a real balance — the feed just doesn't cover it", () => {
-    // APE on apechain: priceUsd 0 but a genuine balance. Value gate must not fire.
+  it("drops an unpriced TOKEN — $0.00 is nothing, whatever the balance says", () => {
+    const plan = buildSweepPlan([
+      token({
+        symbol: "ZZZ",
+        rawBalance: "5000000000000000000",
+        decimals: 18,
+        balance: 5,
+        priceUsd: 0,
+        valueUsd: 0,
+      }),
+    ]);
+    expect([...plan.chains.flatMap((c) => c.assets), ...plan.skipped]).toEqual([]);
+  });
+
+  it("keeps an unpriced NATIVE coin — a feed gap, not a worthless balance", () => {
+    // APE on apechain: priceUsd 0 but a genuine balance of the chain's gas coin.
     const plan = buildSweepPlan([
       token({
         symbol: "APE",
+        address: null,
+        network: "apechain-mainnet",
         rawBalance: "3245662857820410",
         decimals: 18,
         balance: 0.00324,
@@ -170,5 +187,27 @@ describe("buildSweepPlan — dust", () => {
     ]);
     const all = [...plan.chains.flatMap((c) => c.assets), ...plan.skipped].map((a) => a.symbol);
     expect(all).toEqual(["APE"]);
+  });
+
+  it("sweeps from a cent up, and not below", () => {
+    const plan = buildSweepPlan([
+      token({
+        symbol: "CENT",
+        rawBalance: "10000",
+        decimals: 6,
+        balance: 0.01,
+        priceUsd: 1,
+        valueUsd: 0.01,
+      }),
+      token({
+        symbol: "SUB",
+        rawBalance: "9000",
+        decimals: 6,
+        balance: 0.009,
+        priceUsd: 1,
+        valueUsd: 0.009,
+      }),
+    ]);
+    expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["CENT"]);
   });
 });

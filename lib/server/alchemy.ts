@@ -2,7 +2,9 @@ import "server-only";
 import { alchemyFetch } from "@/lib/server/alchemy-keys";
 import { cached } from "@/lib/server/response-cache";
 import { fetchRwaRegistry, type RwaTokenInfo } from "@/lib/server/rwa-registry";
+import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
 import {
+  confirmBaseTokens,
   fetchBuyableRegistry,
   type BuyableRegistry,
   type MemeRegistry,
@@ -59,7 +61,18 @@ export const EVM_NETWORKS = [
 ];
 export const SOLANA_NETWORK = "solana-mainnet";
 const BASE_PORTFOLIO_NETWORKS = ["base-mainnet"] as const;
-export type PortfolioScope = "all" | "base";
+// "legacy" is the migration's read of the OLD wallet: the EVM side comes from
+// Alchemy's Portfolio API (every token the wallet holds, not just the
+// allowlist's contracts), and a held Base token the paged catalogue never
+// reached is admitted when the platform can sell and price it (see
+// confirmBaseTokens). Only the sponsored networks, since only those can be
+// swept. Costlier per call than "all" — the old wallet is read a handful of
+// times per user, ever, not every 30 seconds.
+export type PortfolioScope = "all" | "base" | "legacy";
+const LEGACY_EVM_NETWORKS = EVM_NETWORKS.filter(isSponsoredEvmNetwork);
+// A held token below this is dust to the migration: neither swept nor a
+// reason to bring anyone back (features/migrate/lib/plan.ts, legacy-funds.ts).
+const LEGACY_MIN_USD = 0.01;
 
 // How a holding is classified for display: a native coin (ETH/POL/SOL), a
 // stablecoin (USDC/USDT), a real-world asset (from the RWA registry), or any
@@ -512,6 +525,15 @@ const MAX_PAGES = 10;
 async function fetchTokensByAddress(
   addresses: { address: string; networks: string[] }[]
 ): Promise<AlchemyToken[]> {
+  return (await fetchTokensByAddressPaged(addresses)).tokens;
+}
+
+// Same read, but says when the page budget ran out before the wallet did:
+// a holding can sit on any page, so a truncated read is a floor, not the
+// balance, and the caller must not present it as complete.
+async function fetchTokensByAddressPaged(
+  addresses: { address: string; networks: string[] }[]
+): Promise<{ tokens: AlchemyToken[]; truncated: boolean }> {
   const out: AlchemyToken[] = [];
   let pageKey: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
@@ -532,7 +554,7 @@ async function fetchTokensByAddress(
     pageKey = data?.data?.pageKey ?? undefined;
     if (!pageKey) break;
   }
-  return out;
+  return { tokens: out, truncated: pageKey !== undefined };
 }
 
 // `fresh` names the networks a caller must see re-read from the chain
@@ -544,11 +566,18 @@ export async function fetchPortfolio(
   fresh: FreshScope | null = null,
   scope: PortfolioScope = "all"
 ): Promise<Portfolio> {
-  const includeSolana = scope === "all" && Boolean(solana);
+  const includeSolana = scope !== "base" && Boolean(solana);
   if (!evm && !includeSolana) return { totalUsd: 0, tokens: [] };
-  const evmNetworks = scope === "base" ? BASE_PORTFOLIO_NETWORKS : EVM_NETWORKS;
+  const evmNetworks =
+    scope === "base"
+      ? BASE_PORTFOLIO_NETWORKS
+      : scope === "legacy"
+        ? LEGACY_EVM_NETWORKS
+        : EVM_NETWORKS;
   const cacheKey =
-    scope === "base" ? `portfolio:base:${evm ?? ""}` : `portfolio:${evm ?? ""}:${solana ?? ""}`;
+    scope === "base"
+      ? `portfolio:base:${evm ?? ""}`
+      : `portfolio:${scope === "legacy" ? "legacy:" : ""}${evm ?? ""}:${solana ?? ""}`;
   const skipCache = fresh !== null;
   return cached(
     cacheKey,
@@ -570,7 +599,17 @@ export async function fetchPortfolio(
       // until its own change.
       const requests: Promise<AlchemyToken[]>[] = [];
       let missing: string[] = [];
-      if (evm) {
+      if (evm && scope === "legacy") {
+        // The whole wallet, so a token outside the allowlist's contract list
+        // is still seen. `fresh` is always set by the migration callers, so
+        // this is not cached separately from the portfolio entry itself.
+        requests.push(
+          fetchTokensByAddressPaged([{ address: evm, networks: [...evmNetworks] }]).then((read) => {
+            if (read.truncated) missing = [...missing, ...evmNetworks];
+            return read.tokens;
+          })
+        );
+      } else if (evm) {
         requests.push(
           readEvmPortfolioTokens(
             evm,
@@ -614,6 +653,35 @@ export async function fetchPortfolio(
       const tokensFromBatches = batchResults
         .filter((r): r is PromiseFulfilledResult<AlchemyToken[]> => r.status === "fulfilled")
         .flatMap((r) => r.value);
+      if (scope === "legacy") {
+        // Held Base tokens the paged catalogue never reached: ask about each by
+        // address, and treat the ones the platform can sell exactly like a
+        // listed coin. Only worth asking for a token Alchemy already prices at
+        // a cent or more — the sweep floor — so spam with no market costs no
+        // lookup at all.
+        const unknown = tokensFromBatches.filter((t) => {
+          if (t.network !== "base-mainnet" || !t.tokenAddress) return false;
+          const address = t.tokenAddress.toLowerCase();
+          if (isAllowedHolding(t.network, address, false, rwa, registries.buyable)) return false;
+          const usd = t.tokenPrices?.find((p) => p.currency === "usd");
+          const price = usd ? parseFloat(usd.value) : 0;
+          const decimals = t.tokenMetadata?.decimals ?? 18;
+          return (
+            price > 0 && toNumber(toRawUnits(t.tokenBalance), decimals) * price >= LEGACY_MIN_USD
+          );
+        });
+        const confirmed = await confirmBaseTokens(
+          unknown.map((t) => t.tokenAddress!.toLowerCase())
+        );
+        if (confirmed.size > 0) {
+          const buyable = (registries.buyable["base-mainnet"] ??= new Set());
+          const meme = (registries.meme["base-mainnet"] ??= new Map());
+          for (const [address, info] of confirmed) {
+            buyable.add(address);
+            if (!meme.has(address)) meme.set(address, info);
+          }
+        }
+      }
       const held = normalize(tokensFromBatches, rwa, registries.buyable, registries.meme);
       // Only baseline the chains the user actually has a wallet on.
       const networks = [...(evm ? evmNetworks : []), ...(includeSolana ? [SOLANA_NETWORK] : [])];

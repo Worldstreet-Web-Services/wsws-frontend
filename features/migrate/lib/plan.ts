@@ -15,13 +15,14 @@ export const SOLANA_NETWORK = "solana-mainnet";
 // millionth of one whole unit is a rounding remnant whatever the price, so
 // this one needs no price and survives a feed outage.
 export const DUST_MIN_BALANCE = 1e-6;
-// By value, but ONLY when the token carries a price. A honeypot memecoin holds
-// a real balance (nine whole units) worth a hundredth of a cent and reverts on
-// transfer — "ERC20: transfer amount exceeds balance". When its price is known
-// and the holding is worth less than this, it is not worth attempting. The
-// price gate is the safety: a feed that reports $0 (priceUsd === 0) never
-// triggers this, so an outage cannot strand a wallet of real tokens.
-export const DUST_MIN_VALUE_USD = 0.001;
+// By value: a token worth less than a cent is dust, whatever its balance
+// says, and whether or not it carries a price. A honeypot memecoin holds a
+// real balance (nine whole units) worth a hundredth of a cent and reverts on
+// transfer — "ERC20: transfer amount exceeds balance"; an unpriced one is
+// "$0.00" to the user and not worth a sponsored transaction either. The one
+// exception is a chain's NATIVE coin with no price at all: that is a feed
+// gap, not a worthless balance, and native is the money the gate exists for.
+export const DUST_MIN_VALUE_USD = 0.01;
 
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.
@@ -79,7 +80,8 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
     // so it is neither swept nor listed as stuck. An unpriced token
     // (priceUsd === 0) is kept: the feed may simply not cover it.
     if (token.balance < DUST_MIN_BALANCE) continue;
-    if (token.priceUsd > 0 && token.valueUsd < DUST_MIN_VALUE_USD) continue;
+    const unpricedNative = token.address === null && token.priceUsd === 0;
+    if (!unpricedNative && token.valueUsd < DUST_MIN_VALUE_USD) continue;
     const asset: SweepAsset = {
       id: sweepAssetId(token.network, token.address),
       network: token.network,

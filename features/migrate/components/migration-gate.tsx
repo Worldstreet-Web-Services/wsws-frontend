@@ -38,12 +38,23 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
 
   const canFinish =
     progress !== null && progress.linked && progress.discovered && progress.coreRemaining === 0;
+  // Linking failed in a way no retry can fix — the old wallet belongs to a
+  // different account. There is nothing the user can do here, so the gate stops
+  // being a wall and offers a way out instead of looping on "link again".
+  const blocked = progress?.blocked === true;
 
   const finish = useCallback(() => {
     if (!canFinish) return;
     writeGateDone(key);
     setDoneHere(true);
   }, [canFinish, key]);
+
+  // Exit a gate that can never be completed. Unlike finish, this is not gated on
+  // canFinish — it only runs when linking is terminally blocked.
+  const leave = useCallback(() => {
+    writeGateDone(key);
+    setDoneHere(true);
+  }, [key]);
 
   const ignore = useCallback(() => {}, []);
 
@@ -60,19 +71,31 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
           onProgress={setProgress}
           onClose={finish}
         />
-        {(canFinish || coreLeft) && (
-          <div className="mt-5 border-t border-white/10 pt-4">
-            {canFinish ? (
-              <button
-                onClick={finish}
-                className="bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white"
-              >
-                {t("gateFinish")}
-              </button>
-            ) : (
-              <p className="text-[13px] leading-normal text-white/55">{t("gateCoreLeft")}</p>
-            )}
+        {blocked ? (
+          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+            <p className="text-[13px] leading-normal text-white/55">{t("gateBlockedBody")}</p>
+            <button
+              onClick={leave}
+              className="bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white"
+            >
+              {t("gateBlockedExit")}
+            </button>
           </div>
+        ) : (
+          (canFinish || coreLeft) && (
+            <div className="mt-5 border-t border-white/10 pt-4">
+              {canFinish ? (
+                <button
+                  onClick={finish}
+                  className="bg-accent/15 border-accent/40 hover:bg-accent/25 w-full cursor-pointer rounded-xl border px-4 py-3 font-sans text-[14px] font-semibold text-white"
+                >
+                  {t("gateFinish")}
+                </button>
+              ) : (
+                <p className="text-[13px] leading-normal text-white/55">{t("gateCoreLeft")}</p>
+              )}
+            </div>
+          )
         )}
       </LegacyPrivyProvider>
     </MoveOldMoneyFrame>

@@ -59,6 +59,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         discovered: true,
         remaining: 0,
         coreRemaining: 0,
+        blocked: false,
         ...p,
       });
     return (
@@ -69,6 +70,11 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         </button>
         <button onClick={() => emit({ coreRemaining: 0, remaining: 3 })}>
           core-done-tail-left
+        </button>
+        <button
+          onClick={() => emit({ linked: false, coreRemaining: 1, remaining: 1, blocked: true })}
+        >
+          link-blocked
         </button>
         <button onClick={onClose}>panel-exit</button>
       </div>
@@ -123,6 +129,20 @@ describe("MigrationGate", () => {
     expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("panel-exit"));
     expect(screen.getByTestId("frame")).toBeInTheDocument();
+  });
+
+  // A link that can never land (the old wallet belongs to another account)
+  // must not trap the user. The gate offers an explicit way out even though
+  // the account is not linked and core money is still reported.
+  it("offers a way out when linking is terminally blocked", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("link-blocked"));
+    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    expect(screen.queryByText("gateCoreLeft")).not.toBeInTheDocument();
+    expect(screen.getByText("gateBlockedBody")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateBlockedExit"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(KEY)).toBe("1");
   });
 
   it("does not return for an account that finished, even while the service still reports funds", () => {

@@ -10,7 +10,7 @@ import { CheckIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { track } from "@/lib/analytics/mixpanel";
-import { isUnconfigured } from "@/lib/api/envelope";
+import { errorCode, isUnconfigured } from "@/lib/api/envelope";
 import { formatUsd } from "@/lib/currency";
 import { scheduleSettlement, sumValueUsd } from "@/lib/migration/schedule";
 import type { LegacyHolding, SettleOutcome, VenueAdapter } from "@/lib/migration/types";
@@ -42,6 +42,13 @@ export type MigrationEntry = "balance_card" | "account_modal" | "gate";
 
 export type MigrationStage = "signIn" | "move" | "finish";
 
+// Link failures that no retry can fix for THIS account: the old wallet is
+// already mapped to a different Decane account, so the pairing can never land
+// here. The gate treats these as terminal — a way out, not "link again" — so a
+// user whose old wallet belongs to another account is not trapped behind the
+// overlay forever.
+const TERMINAL_LINK_CODES = new Set(["LEGACY_ALREADY_LINKED"]);
+
 /** What a host needs to decide whether the user may leave, and to show where the user is. */
 export interface MigrationProgress {
   /** Which of the three steps is on screen. */
@@ -54,6 +61,11 @@ export interface MigrationProgress {
   remaining: number;
   /** Of those, the core assets (native, stablecoins, KSH) — what the gate waits on. */
   coreRemaining: number;
+  /**
+   * Linking can never succeed for this account — the old wallet is already
+   * bound to a different one. The gate must offer an exit, not another retry.
+   */
+  blocked: boolean;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -144,15 +156,25 @@ export function MoveOldMoneyPanel({
   const linkLanded = useRef(false);
   // The same fact as state, for anything that renders on it.
   const [linkedHere, setLinkedHere] = useState(false);
+  // The code of a terminal link failure (see TERMINAL_LINK_CODES), or null.
+  // When set, the pairing can never land and the host must offer a way out.
+  const [linkBlocked, setLinkBlocked] = useState<string | null>(null);
   const link = useCallback(() => {
     linkLegacyAccount()
       .then(() => {
         linkLanded.current = true;
         setLinkedHere(true);
+        setLinkBlocked(null);
         track("migration_linked");
         void refetchStatus();
       })
       .catch((error: unknown) => {
+        const code = errorCode(error);
+        if (code && TERMINAL_LINK_CODES.has(code)) {
+          setLinkBlocked(code);
+          track("migration_link_blocked", { code });
+          return;
+        }
         if (!isUnconfigured(error)) console.error("Linking the old account failed", error);
       });
   }, [refetchStatus]);
@@ -210,8 +232,9 @@ export function MoveOldMoneyPanel({
       discovered,
       remaining: blocking.length,
       coreRemaining,
+      blocked: linkBlocked !== null,
     });
-  }, [onProgress, stage, linkedNow, discovered, blocking.length, coreRemaining]);
+  }, [onProgress, stage, linkedNow, discovered, blocking.length, coreRemaining, linkBlocked]);
 
   const toggle = (id: string) => {
     const next = new Set(checked);

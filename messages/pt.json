@@ -3207,6 +3207,8 @@
     "skippedHeading": "Não dá para mover daqui",
     "irreversibleWarning": "Fecha ao preço atual. Não pode ser desfeito.",
     "nothingToMove": "Não sobrou nada para mover.",
+    "gateBlockedBody": "Esta carteira antiga já está vinculada a outra conta, então o dinheiro dela não pode ser transferido para cá. O que está nela permanece seguro onde está. Fale com o suporte para descobrir a que conta ela pertence.",
+    "gateBlockedExit": "Continuar mesmo assim",
     "gateFinish": "Continuar para o Market 2.0",
     "gateCoreLeft": "Mova os seus USDC, ETH e KSH para continuar. O resto pode esperar — encontra-o em «Mover dinheiro da carteira antiga» no menu da sua conta.",
     "gateTitle": "Mudar para o Market 2.0",

@@ -60,6 +60,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   // Privy -> Decane migration (ADR-0009)
   migration_started: [shape({ entry: "string" })],
   migration_linked: NOTHING,
+  migration_link_blocked: [shape({ code: "string" })],
   migration_reviewed: [
     shape({
       holdings: "number",

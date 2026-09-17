@@ -49,6 +49,10 @@ export interface AnalyticsEvents {
   // Migration of money out of the old Privy wallets. Never carries addresses.
   migration_started: { entry: "balance_card" | "account_modal" | "gate" };
   migration_linked: void;
+  // Linking failed terminally (the old wallet is bound to another account), so
+  // the gate offered a way out instead of another retry. `code` is the gateway
+  // error code, never an address.
+  migration_link_blocked: { code: string };
   migration_reviewed: {
     holdings: number;
     opted_in: number;

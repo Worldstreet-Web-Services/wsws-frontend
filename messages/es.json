@@ -3207,6 +3207,8 @@
     "skippedHeading": "No se puede mover desde aquí",
     "irreversibleWarning": "Se cierra al precio actual. No se puede deshacer.",
     "nothingToMove": "No queda nada por mover.",
+    "gateBlockedBody": "Esta billetera antigua ya está vinculada a otra cuenta, así que su dinero no puede transferirse aquí. Lo que contiene permanece seguro donde está. Contacta con soporte para aclarar a qué cuenta pertenece.",
+    "gateBlockedExit": "Continuar de todos modos",
     "gateFinish": "Continuar a Market 2.0",
     "gateCoreLeft": "Mueve tus USDC, ETH y KSH para continuar. Lo demás puede esperar — lo encontrarás en «Mover dinero de la billetera antigua» en el menú de tu cuenta.",
     "gateTitle": "Pasar a Market 2.0",

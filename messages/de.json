@@ -41,7 +41,7 @@
     "loading": "Wird geladen…",
     "searching": "Suche…",
     "noResults": "Keine passenden Token.",
-    "searchPlaceholder": "Nach Name, Symbol oder Contract-Adresse suchen",
+    "searchPlaceholder": "Nach Name, Symbol, Adresse, Marktkapitalisierung, Preis oder Alter suchen",
     "colToken": "Token",
     "colPrice": "Preis",
     "col24h": "24 h",
@@ -108,11 +108,6 @@
     "viewLabel": "Welche Memecoins angezeigt werden",
     "viewCurated": "Kuratiert",
     "viewAll": "Alle",
-    "catalogCount": "{loaded} von {total}",
-    "catalogShown": "{shown} angezeigt",
-    "catalogMore": "Mehr laden",
-    "catalogLoadingMore": "Weitere werden geladen…",
-    "catalogMoreFailed": "Weitere konnten nicht geladen werden.",
     "filters": "Filter",
     "retry": "Erneut versuchen",
     "connectWallet": "Verbinden Sie Ihr Wallet, um zu handeln",
@@ -258,7 +253,9 @@
     "ageHours": "{count} Std.",
     "ageDays": "{count} T.",
     "listUnavailable": "Diese Coins lassen sich gerade nicht filtern.",
-    "noMatches": "Keine Coins passen zu diesen Filtern. Erweitere einen Bereich."
+    "noMatches": "Keine Coins passen zu diesen Filtern. Erweitere einen Bereich.",
+    "trendingRefresh": "Trends aktualisieren",
+    "trendingRefreshing": "Trends werden aktualisiert"
   },
   "spot": {
     "balance": "Guthaben {amount} {symbol}",
@@ -782,7 +779,11 @@
     "switchMarket": "Markt wechseln",
     "close": "Schließen",
     "signIn": "Anmelden",
-    "openDashboard": "Dashboard öffnen"
+    "openDashboard": "Dashboard öffnen",
+    "moreLoading": "Mehr wird geladen…",
+    "moreStalled": "Einige Coins fehlen noch.",
+    "moreWaiting": "Warten auf den Rest…",
+    "moreResume": "Rest laden"
   },
   "portfolio": {
     "valuationUnavailable": "Bewertung nicht verfügbar",

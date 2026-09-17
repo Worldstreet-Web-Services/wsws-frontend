@@ -143,6 +143,24 @@ describe("useMemePortfolioSummary polling", () => {
     expect(api.fetchPortfolioSummary).toHaveBeenCalledTimes(2);
   });
 
+  it("asks less often once the service stops answering", async () => {
+    api.fetchPortfolioSummary.mockRejectedValue(new Error("Can't reach the server right now"));
+    const { result } = renderHook(() => useMemePortfolioSummary(), { wrapper });
+    await flush();
+    expect(api.fetchPortfolioSummary).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeTruthy();
+
+    // The healthy minute passes with nothing asked: a service that has stopped
+    // answering is not asked at the rate a healthy one is.
+    await act(() => vi.advanceTimersByTimeAsync(MEME_PORTFOLIO_POLL_MS));
+    expect(api.fetchPortfolioSummary).toHaveBeenCalledTimes(1);
+
+    // It backs off rather than stopping, so a service that recovers is noticed
+    // without the user reloading the page.
+    await act(() => vi.advanceTimersByTimeAsync(MEME_PORTFOLIO_POLL_MS));
+    expect(api.fetchPortfolioSummary).toHaveBeenCalledTimes(2);
+  });
+
   it("does not poll while the section is off screen, and reads once it scrolls into view", async () => {
     api.fetchPortfolioSummary.mockResolvedValue(PORTFOLIO_SUMMARY);
     section.active = false;

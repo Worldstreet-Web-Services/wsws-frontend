@@ -41,7 +41,7 @@
     "loading": "Chargement…",
     "searching": "Recherche…",
     "noResults": "Aucun token trouvé.",
-    "searchPlaceholder": "Cherchez par nom, symbole ou adresse de contrat",
+    "searchPlaceholder": "Rechercher par nom, symbole, adresse, capitalisation, prix ou ancienneté",
     "colToken": "Token",
     "colPrice": "Prix",
     "col24h": "24 h",
@@ -108,11 +108,6 @@
     "viewLabel": "Quelles memecoins afficher",
     "viewCurated": "Sélection",
     "viewAll": "Toutes",
-    "catalogCount": "{loaded} sur {total}",
-    "catalogShown": "{shown} affichées",
-    "catalogMore": "Charger plus",
-    "catalogLoadingMore": "Chargement…",
-    "catalogMoreFailed": "Impossible d'en charger plus.",
     "filters": "Filtres",
     "retry": "Réessayer",
     "connectWallet": "Connectez votre portefeuille pour trader",
@@ -258,7 +253,9 @@
     "ageHours": "{count} h",
     "ageDays": "{count} j",
     "listUnavailable": "Impossible de filtrer ces coins pour le moment.",
-    "noMatches": "Aucun coin ne correspond à ces filtres. Élargis une plage."
+    "noMatches": "Aucun coin ne correspond à ces filtres. Élargis une plage.",
+    "trendingRefresh": "Actualiser les tendances",
+    "trendingRefreshing": "Actualisation des tendances"
   },
   "spot": {
     "balance": "Solde {amount} {symbol}",
@@ -782,7 +779,11 @@
     "switchMarket": "Changer de marché",
     "close": "Fermer",
     "signIn": "Se connecter",
-    "openDashboard": "Ouvrir le tableau de bord"
+    "openDashboard": "Ouvrir le tableau de bord",
+    "moreLoading": "Chargement de la suite…",
+    "moreStalled": "Certaines pièces manquent encore.",
+    "moreWaiting": "En attente du reste…",
+    "moreResume": "Charger la suite"
   },
   "portfolio": {
     "valuationUnavailable": "Valorisation indisponible",

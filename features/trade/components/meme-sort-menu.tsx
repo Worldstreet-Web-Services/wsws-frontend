@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckIcon } from "@/components/ui/icons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -17,6 +16,10 @@ import {
 // once a sort is in force, the two directions for it. A menu rather than a
 // radio group because picking a metric closes it, and a radio group would
 // commit a new sort on every arrow press.
+//
+// The menu lives in a modal on the desk as well as on the phone, so the two
+// surfaces read the same way and a long list of metrics is never clipped by
+// the toolbar it hangs off.
 
 export const METRIC_KEYS: Record<ScreenerMetric, string> = {
   marketCap: "metricMarketCap",
@@ -40,15 +43,51 @@ export function directionKey(by: ScreenerMetric, order: SortOrder): string {
 }
 
 /**
- * Open state for a toolbar popover or sheet. Escape closes it and hands focus
- * back to the trigger. On the desk a press outside closes it too, without
- * moving focus, since the press has already put focus where the reader wanted
- * it. The phone sheet's backdrop does that job there.
+ * Marks the ModalShell panel that a `useModalTrigger` focus trap belongs to.
+ *
+ * The shell owns its own chrome, the close button included, and renders our
+ * content one level deeper. Tagging the panel through the shell's public
+ * `panelClassName` prop lets the trap find the whole dialog, so Tab reaches
+ * the close button instead of cycling only the content we passed in. The class
+ * carries no styles; it exists to be found.
  */
-export function useScreenerPanel(variant: "desk" | "phone") {
+export const MODAL_PANEL_CLASS = "ws-meme-modal";
+
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]",
+].join(",");
+
+/**
+ * The elements Tab visits inside the dialog, in document order.
+ *
+ * The tabIndex check is the load-bearing part: the sort menu parks every item
+ * but the current one at -1, so the whole menu is one stop and the arrow keys
+ * move within it. Matching on the tag alone would put all eight metrics in the
+ * cycle.
+ */
+function tabStops(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.tabIndex >= 0);
+}
+
+/**
+ * Open state for a toolbar modal. Escape closes it and hands focus back to the
+ * trigger, and Tab cycles inside the dialog rather than walking out into the
+ * page behind it. A press on the backdrop is the shell's job, and the caller
+ * decides whether that returns focus.
+ *
+ * `panelRef` goes on the dialog element inside the shell. The trap works from
+ * the marked shell panel when there is one, so the shell's close button counts
+ * as a stop, and falls back to the dialog itself otherwise.
+ */
+export function useModalTrigger() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const refocus = useRef(false);
 
   const close = useCallback((returnFocus: boolean) => {
@@ -65,21 +104,39 @@ export function useScreenerPanel(variant: "desk" | "phone") {
       return;
     }
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") close(true);
-    };
-    const onDown = (e: MouseEvent) => {
-      if (e.target instanceof Node && wrapRef.current?.contains(e.target)) return;
-      close(false);
+      if (e.key === "Escape") {
+        close(true);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const dialog = panelRef.current;
+      if (dialog === null) return;
+      const trap = dialog.closest<HTMLElement>(`.${MODAL_PANEL_CLASS}`) ?? dialog;
+      const stops = tabStops(trap);
+      if (stops.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const active = document.activeElement;
+      const inside = active instanceof Node && trap.contains(active);
+      if (!inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    if (variant === "desk") document.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
-    };
-  }, [open, close, variant]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
 
-  return { open, show: () => setOpen(true), close, triggerRef, wrapRef };
+  return { open, show: () => setOpen(true), close, triggerRef, panelRef };
 }
 
 function SortIcon() {
@@ -110,18 +167,16 @@ interface MemeSortMenuProps {
 
 export function MemeSortMenu({ variant, sort, onSortChange }: MemeSortMenuProps) {
   const t = useTranslations("memeScreener");
-  const reduce = useReducedMotion();
-  const { open, show: showPanel, close, triggerRef, wrapRef } = useScreenerPanel(variant);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
+  const { open, show, close, triggerRef, panelRef } = useModalTrigger();
+  const dialogId = useId();
   const titleId = useId();
   const directionId = useId();
   const phone = variant === "phone";
 
   // Focus lands on the sort in force, so Enter on an unchanged menu is a no-op.
   useEffect(() => {
-    if (open) menuRef.current?.querySelector<HTMLElement>("[data-current]")?.focus();
-  }, [open]);
+    if (open) panelRef.current?.querySelector<HTMLElement>("[data-current]")?.focus();
+  }, [open, panelRef]);
 
   const pick = (next: ScreenerSort | null) => {
     const same = next === null ? sort === null : sort?.by === next.by && sort.order === next.order;
@@ -139,18 +194,13 @@ export function MemeSortMenu({ variant, sort, onSortChange }: MemeSortMenuProps)
     else if (e.key === "ArrowUp") next = at <= 0 ? items.length - 1 : at - 1;
     else if (e.key === "Home") next = 0;
     else if (e.key === "End") next = items.length - 1;
-    else {
-      // Tab leaves a menu. The desk popover goes with it; the sheet stays,
-      // since tabbing inside a sheet is moving around it, not away from it.
-      if (e.key === "Tab" && !phone) close(false);
-      return;
-    }
+    else return;
     e.preventDefault();
     items[next]?.focus();
   };
 
   const row = `flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left font-sans font-medium outline-none transition-colors hover:bg-white/6 focus-visible:bg-white/6 aria-checked:text-white ${
-    phone ? "py-3 text-[14px] text-white/70" : "py-2 text-[13px] text-white/70"
+    phone ? "py-3 text-[14px] text-white/70" : "py-2.5 text-[13.5px] text-white/70"
   }`;
   const groupLabel =
     "px-3 pt-2 pb-1 text-[10.5px] font-medium tracking-[0.1em] text-white/35 uppercase";
@@ -181,49 +231,15 @@ export function MemeSortMenu({ variant, sort, onSortChange }: MemeSortMenuProps)
     </button>
   );
 
-  const menu = (
-    <div
-      ref={menuRef}
-      id={menuId}
-      role="menu"
-      aria-labelledby={titleId}
-      onKeyDown={onMenuKey}
-      className="flex flex-col"
-    >
-      {item("none", t("sortNone"), sort === null, sort === null, () => pick(null))}
-      {SCREENER_METRICS.map((metric) =>
-        item(metric, t(METRIC_KEYS[metric]), sort?.by === metric, sort?.by === metric, () =>
-          pick({ by: metric, order: defaultOrder(metric) })
-        )
-      )}
-      {sort !== null ? (
-        <>
-          <div role="separator" className="my-1.5 h-px bg-white/8" />
-          <div role="group" aria-labelledby={directionId}>
-            <div id={directionId} className={groupLabel}>
-              {t(METRIC_KEYS[sort.by])}
-            </div>
-            {directionsFor(sort.by).map((order) =>
-              // A direction keeps the menu open, so the reader sees the flip land.
-              item(order, t(directionKey(sort.by, order)), sort.order === order, false, () => {
-                if (sort.order !== order) onSortChange({ by: sort.by, order });
-              })
-            )}
-          </div>
-        </>
-      ) : null}
-    </div>
-  );
-
   return (
-    <div ref={wrapRef} className="relative shrink-0">
+    <div className="shrink-0">
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => (open ? close(false) : showPanel())}
-        aria-haspopup="menu"
+        onClick={() => (open ? close(false) : show())}
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
+        aria-controls={open ? dialogId : undefined}
         className={`flex h-[36px] cursor-pointer items-center gap-1.5 rounded-full border px-3 font-sans text-[12px] font-semibold transition-colors ${
           // The phone row shares its width with the timeframe track; the sort
           // chip under it carries the full wording.
@@ -248,33 +264,56 @@ export function MemeSortMenu({ variant, sort, onSortChange }: MemeSortMenuProps)
         )}
       </button>
 
-      {phone ? (
-        <ModalShell open={open} onClose={() => close(true)}>
-          <div role="dialog" aria-modal="true" aria-labelledby={titleId}>
-            <div id={titleId} className="ws-display mb-3 pr-10 text-[20px]">
-              {t("sortTitle")}
-            </div>
-            {menu}
+      <ModalShell open={open} onClose={() => close(true)} panelClassName={MODAL_PANEL_CLASS}>
+        <div
+          ref={panelRef}
+          id={dialogId}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="outline-none"
+        >
+          {/* Padded past the shell's close button so a long title never runs under it. */}
+          <div id={titleId} className="ws-display mb-3 pr-10 text-[20px]">
+            {t("sortTitle")}
           </div>
-        </ModalShell>
-      ) : (
-        <AnimatePresence>
-          {open ? (
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="bg-panel absolute left-0 z-30 mt-2 w-[240px] rounded-[16px] border border-white/12 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
-            >
-              <div id={titleId} className={groupLabel}>
-                {t("sortTitle")}
-              </div>
-              {menu}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      )}
+          <div
+            role="menu"
+            aria-labelledby={titleId}
+            onKeyDown={onMenuKey}
+            className="flex flex-col"
+          >
+            {item("none", t("sortNone"), sort === null, sort === null, () => pick(null))}
+            {SCREENER_METRICS.map((metric) =>
+              item(metric, t(METRIC_KEYS[metric]), sort?.by === metric, sort?.by === metric, () =>
+                pick({ by: metric, order: defaultOrder(metric) })
+              )
+            )}
+            {sort !== null ? (
+              <>
+                <div role="separator" className="my-1.5 h-px bg-white/8" />
+                <div role="group" aria-labelledby={directionId}>
+                  <div id={directionId} className={groupLabel}>
+                    {t(METRIC_KEYS[sort.by])}
+                  </div>
+                  {directionsFor(sort.by).map((order) =>
+                    // A direction keeps the modal open, so the reader sees the flip land.
+                    item(
+                      order,
+                      t(directionKey(sort.by, order)),
+                      sort.order === order,
+                      false,
+                      () => {
+                        if (sort.order !== order) onSortChange({ by: sort.by, order });
+                      }
+                    )
+                  )}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </ModalShell>
     </div>
   );
 }

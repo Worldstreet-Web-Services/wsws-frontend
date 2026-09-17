@@ -41,7 +41,7 @@
     "loading": "Carregando…",
     "searching": "Buscando…",
     "noResults": "Nenhum token corresponde.",
-    "searchPlaceholder": "Busque por nome, símbolo ou endereço do contrato",
+    "searchPlaceholder": "Pesquisar por nome, símbolo, endereço, capitalização, preço ou idade",
     "colToken": "Token",
     "colPrice": "Preço",
     "col24h": "24 h",
@@ -108,11 +108,6 @@
     "viewLabel": "Quais memecoins listar",
     "viewCurated": "Selecionadas",
     "viewAll": "Todas",
-    "catalogCount": "{loaded} de {total}",
-    "catalogShown": "{shown} exibidas",
-    "catalogMore": "Carregar mais",
-    "catalogLoadingMore": "Carregando mais…",
-    "catalogMoreFailed": "Não foi possível carregar mais.",
     "filters": "Filtros",
     "retry": "Tentar novamente",
     "connectWallet": "Conecte sua carteira para negociar",
@@ -258,7 +253,9 @@
     "ageHours": "{count} h",
     "ageDays": "{count} d",
     "listUnavailable": "Não dá para filtrar estas moedas agora.",
-    "noMatches": "Nenhuma moeda bate com estes filtros. Tente ampliar um intervalo."
+    "noMatches": "Nenhuma moeda bate com estes filtros. Tente ampliar um intervalo.",
+    "trendingRefresh": "Atualizar tendências",
+    "trendingRefreshing": "A atualizar tendências"
   },
   "spot": {
     "balance": "Saldo {amount} {symbol}",
@@ -782,7 +779,11 @@
     "switchMarket": "Mudar de mercado",
     "close": "Fechar",
     "signIn": "Entrar",
-    "openDashboard": "Abrir painel"
+    "openDashboard": "Abrir painel",
+    "moreLoading": "A carregar mais…",
+    "moreStalled": "Ainda faltam algumas moedas.",
+    "moreWaiting": "A aguardar para carregar o resto…",
+    "moreResume": "Carregar o resto"
   },
   "portfolio": {
     "valuationUnavailable": "Avaliação indisponível",

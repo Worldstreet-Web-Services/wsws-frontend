@@ -41,7 +41,7 @@
     "loading": "Loading…",
     "searching": "Searching…",
     "noResults": "No tokens match.",
-    "searchPlaceholder": "Search by name, symbol or contract address",
+    "searchPlaceholder": "Search by name, symbol, address, market cap, price or age",
     "colToken": "Token",
     "colPrice": "Price",
     "col24h": "24h",
@@ -109,11 +109,6 @@
     "viewLabel": "Which memecoins to list",
     "viewCurated": "Curated",
     "viewAll": "All",
-    "catalogCount": "{loaded} of {total}",
-    "catalogShown": "{shown} shown",
-    "catalogMore": "Load more",
-    "catalogLoadingMore": "Loading more…",
-    "catalogMoreFailed": "Couldn't load more.",
     "filters": "Filters",
     "retry": "Try again",
     "connectWallet": "Connect your wallet to trade",
@@ -258,7 +253,9 @@
     "ageHours": "{count}h",
     "ageDays": "{count}d",
     "listUnavailable": "These coins can't be filtered right now.",
-    "noMatches": "No coins match these filters. Try widening a range."
+    "noMatches": "No coins match these filters. Try widening a range.",
+    "trendingRefresh": "Refresh trending",
+    "trendingRefreshing": "Refreshing trending"
   },
   "spot": {
     "balance": "Balance {amount} {symbol}",
@@ -782,7 +779,11 @@
     "switchMarket": "Switch market",
     "close": "Close",
     "signIn": "Sign In",
-    "openDashboard": "Open dashboard"
+    "openDashboard": "Open dashboard",
+    "moreLoading": "Loading more…",
+    "moreStalled": "Some coins are still missing.",
+    "moreWaiting": "Waiting to load the rest…",
+    "moreResume": "Load the rest"
   },
   "portfolio": {
     "valuationUnavailable": "Valuation unavailable",

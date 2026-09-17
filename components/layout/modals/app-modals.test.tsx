@@ -1,6 +1,6 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { memeToken } from "@/features/trade/lib/meme-fixture";
+import { memeToken } from "@/lib/meme/fixture";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
 
 // The dynamic import in app-modals.tsx resolves this real module, so mocking

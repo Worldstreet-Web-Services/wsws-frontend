@@ -2,7 +2,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "@/messages/en.json";
-import { memeToken } from "@/features/trade/lib/meme-fixture";
+import { memeToken } from "@/lib/meme/fixture";
 
 const WALLET = "0xabc0000000000000000000000000000000000001";
 const state = vi.hoisted(() => ({ phase: "idle" as string }));

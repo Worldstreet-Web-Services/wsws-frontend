@@ -1,5 +1,15 @@
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// next/link is marked so a pill can be told apart from a plain anchor: /square
+// is another zone, which a client-side link cannot reach.
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...rest }: { children: ReactNode; href: string }) => (
+    <a href={href} {...rest} data-next-link="">
+      {children}
+    </a>
+  ),
+}));
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "@/messages/en.json";
@@ -60,6 +70,7 @@ describe("Market Square card", () => {
     const open = link(/Open Square/);
     expect(open).toHaveAttribute("href", "/square");
     expect(open).not.toHaveAttribute("target");
+    expect(open).not.toHaveAttribute("data-next-link");
     expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(container.querySelector('img[src="/market/convo-avatar-4.png"]')).not.toBeNull();
   });
@@ -88,6 +99,7 @@ describe("Feed card", () => {
     const open = link(/Open the feed/);
     expect(open).toHaveAttribute("href", "/square");
     expect(open).not.toHaveAttribute("target");
+    expect(open).not.toHaveAttribute("data-next-link");
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import nextConfig from "./next.config";
 
 describe("chess R2 routing", () => {
@@ -31,5 +31,52 @@ describe("chess R2 routing", () => {
         },
       ])
     );
+  });
+});
+
+// The Market Square is served at /square as a Next.js Multi-Zone
+// (docs/adr/ADR-2026-09-16-square-microfrontend.md, amended 2026-09-17): a
+// second deployment of the Square answers everything under /square, and this
+// app forwards those requests before its own files are consulted.
+describe("the Square zone at /square", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function rewritesWith(zoneUrl: string | undefined) {
+    vi.resetModules();
+    if (zoneUrl === undefined) vi.stubEnv("SQUARE_ZONE_URL", "");
+    else vi.stubEnv("SQUARE_ZONE_URL", zoneUrl);
+    const { default: config } = await import("./next.config");
+    const rewrites = await config.rewrites?.();
+    if (!rewrites || Array.isArray(rewrites)) throw new Error("Expected grouped Next.js rewrites");
+    return rewrites;
+  }
+
+  it("forwards /square and everything below it to the zone before any file, keeping the prefix", async () => {
+    const rewrites = await rewritesWith("https://square-ark.vercel.app");
+    expect(rewrites.beforeFiles).toEqual([
+      { source: "/square", destination: "https://square-ark.vercel.app/square" },
+      { source: "/square/:path*", destination: "https://square-ark.vercel.app/square/:path*" },
+    ]);
+  });
+
+  it("tolerates a trailing slash on the zone URL", async () => {
+    const rewrites = await rewritesWith("https://square-ark.vercel.app/");
+    expect(rewrites.beforeFiles?.[0]).toEqual({
+      source: "/square",
+      destination: "https://square-ark.vercel.app/square",
+    });
+  });
+
+  it("forwards nothing when no zone is configured", async () => {
+    const rewrites = await rewritesWith(undefined);
+    expect(rewrites.beforeFiles ?? []).toEqual([]);
+  });
+
+  it("keeps the chess fallback rewrites alongside the zone", async () => {
+    const rewrites = await rewritesWith("https://square-ark.vercel.app");
+    expect(rewrites.fallback?.length ?? 0).toBeGreaterThan(0);
   });
 });

@@ -46,6 +46,15 @@ if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_PRIVY_APP_
   );
 }
 
+function squareZoneRewrites(zoneUrl: string | undefined) {
+  const origin = zoneUrl?.trim().replace(/\/+$/u, "");
+  if (!origin) return [];
+  return [
+    { source: "/square", destination: `${origin}/square` },
+    { source: "/square/:path*", destination: `${origin}/square/:path*` },
+  ];
+}
+
 const nextConfig: NextConfig = {
   // @ark/chrome, the rail and tab bar shared with the Square, ships as
   // TypeScript source rather than a build, so this app compiles it the way the
@@ -78,6 +87,14 @@ const nextConfig: NextConfig = {
   // as fallback aliases because the upstream CSS and runtime build them.
   async rewrites() {
     return {
+      // The Market Square is a Next.js Multi-Zone at /square
+      // (docs/adr/ADR-2026-09-16-square-microfrontend.md): its own deployment,
+      // built with basePath-style prefixes, answers everything under /square.
+      // beforeFiles, so nothing in this app can shadow it. The destination
+      // keeps the /square prefix, which is where that build serves its pages
+      // and assets. Unset in an environment with no zone: /square is then a
+      // plain 404 here rather than a proxy to nowhere.
+      beforeFiles: squareZoneRewrites(process.env.SQUARE_ZONE_URL),
       fallback: [
         {
           source: "/npm/:path*",

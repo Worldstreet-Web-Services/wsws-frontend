@@ -71,6 +71,12 @@ interface DiscoveryCtaBase {
    */
   external?: boolean;
   /**
+   * A route on this domain that another deployment serves, such as the Square
+   * zone at /square: a plain anchor in the same tab. `next/link` would look for
+   * the route in this app's router, which has no such page, and hang.
+   */
+  document?: boolean;
+  /**
    * Padding classes, for the few pills the design draws to its own numbers
    * rather than to the size scale. Passing this replaces the derived padding
    * outright; the gap between glyph and label still comes from the scale.
@@ -111,6 +117,7 @@ export function DiscoveryCta({
   size = 14,
   sizeClassName,
   external,
+  document,
   padding,
   className = "",
 }: DiscoveryCtaProps) {
@@ -140,8 +147,15 @@ export function DiscoveryCta({
       </button>
     );
   }
-  return external ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={style} className={classes}>
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" style={style} className={classes}>
+        {content}
+      </a>
+    );
+  }
+  return document ? (
+    <a href={href} style={style} className={classes}>
       {content}
     </a>
   ) : (

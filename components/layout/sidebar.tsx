@@ -81,15 +81,16 @@ export function Sidebar(props: SidebarProps) {
     // to the Arkade entry keeps that relationship when an onboarding interest
     // reorders the sections; with no Arkade entry it falls to the end.
     //
-    // Market Square has a page of its own at /square
-    // (ADR-2026-09-12-square-page-in-app), so it is a same-app link rather
-    // than a section: the square is not in the reorderable section list, so
-    // it is seated here by hand.
+    // /square is served by the Square app on this domain
+    // (ADR-2026-09-16-square-microfrontend), so the entry is a document
+    // navigation: a client-side link would look for the route in this app's
+    // router and never render. The square is not in the reorderable section
+    // list, so it is seated here by hand.
     const square: ChromeNavItem = {
       id: "square",
       label: squareLabel,
       icon: ArkNavIcons.square,
-      target: { kind: "link", href: "/square" },
+      target: { kind: "document", href: "/square" },
       dataAttributes: { "data-tour-nav": "square" },
     };
     const arkade = sections.findIndex((n) => n.id === "casino");

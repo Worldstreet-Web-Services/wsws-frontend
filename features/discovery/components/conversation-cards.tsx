@@ -53,7 +53,10 @@ function ArrowOut() {
 /** The gold-to-bark fill the Marathon wordmark is lettered in. */
 const WORDMARK_INK = "bg-gradient-to-r from-[#ac6900] to-[#462b00] bg-clip-text text-transparent";
 
-/** The Square page in this app, where a pill that only opens the Square goes. */
+/**
+ * The Square on this domain, where a pill that only opens the Square goes. It
+ * is the Square zone, a separate deployment, so the pill is a document link.
+ */
 const SQUARE_PAGE = "/square";
 
 export interface SquareCardProps {
@@ -99,7 +102,7 @@ export function SquareCard({ room, avatars, onHold }: SquareCardProps) {
               icon: <ArrowOut />,
               external: true,
             }
-          : { href: SQUARE_PAGE, label: t("squareOpen"), icon: <Chevron /> }
+          : { href: SQUARE_PAGE, document: true, label: t("squareOpen"), icon: <Chevron /> }
       }
       onHold={onHold}
     />
@@ -196,7 +199,7 @@ export function FeedCard({ onHold }: { onHold?: (held: boolean) => void }) {
       }
       kicker={{ icon: <KickerGlyph glyph="✦" />, label: t("feedKicker") }}
       headline={t("feedHeadline")}
-      action={{ href: SQUARE_PAGE, label: t("feedOpen"), icon: <Chevron /> }}
+      action={{ href: SQUARE_PAGE, document: true, label: t("feedOpen"), icon: <Chevron /> }}
       onHold={onHold}
     />
   );

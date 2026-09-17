@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
-import { proxy } from "@/proxy";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import { config, proxy } from "@/proxy";
 
 function get(path: string) {
   return proxy(new NextRequest(new URL(`https://tsionark.com${path}`)));
@@ -92,5 +93,31 @@ describe("proxy", () => {
       expect(get("/").status).toBe(200);
       expect(get("/api/waitlist").status).toBe(200);
     });
+  });
+});
+
+// /square belongs to the Square zone (a separate deployment this app rewrites
+// to), so the launch gate, which only runs here, must never intercept it.
+describe("proxy matcher and the Square zone", () => {
+  function reaches(path: string): boolean {
+    return unstable_doesMiddlewareMatch({ config, url: `https://www.tsionark.com${path}` });
+  }
+
+  it("never sees /square or anything below it", () => {
+    for (const path of [
+      "/square",
+      "/square/",
+      "/square/p/abc",
+      "/square/api/market-square/me",
+      "/square/_next/static/chunks/x",
+    ]) {
+      expect(reaches(path), path).toBe(false);
+    }
+  });
+
+  it("still sees this app's routes, including ones that only start with the word square", () => {
+    for (const path of ["/", "/portfolio", "/squares", "/squarely/x", "/api/square/symbols"]) {
+      expect(reaches(path), path).toBe(true);
+    }
   });
 });

@@ -22,14 +22,14 @@ const SECTION_OF_TAB: Record<string, SectionId> = {
 const TABS: readonly [ArkTab, ArkTab, ArkTab, ArkTab, ArkTab] = [
   { id: "portfolio", label: "Home", icon: ArkTabIcons.home, target: { kind: "action" } },
   { id: "market", label: "Market", icon: ArkTabIcons.market, target: { kind: "action" } },
-  // Its own page in the app (/square, ADR-2026-09-12), so it takes the
-  // "square" section and rides to the centre while the reader is there, the
-  // same seat logic as every other tab.
+  // Served by the Square app at /square on this domain
+  // (ADR-2026-09-16-square-microfrontend), so the seat is a document
+  // navigation the browser follows, never a push into this app's router.
   {
     id: "square",
     label: "Square",
     icon: ArkTabIcons.square,
-    target: { kind: "action" },
+    target: { kind: "document", href: "/square" },
     ownColour: true,
   },
   { id: "casino", label: "Arkade", icon: ArkTabIcons.arkade, target: { kind: "action" } },
@@ -53,10 +53,6 @@ export function CurvedTabBar({ items, activeSection, onNavigate }: CurvedTabBarP
   const onSelect = (tab: ArkTab) => {
     if (tab.id === "portfolio") onNavigate("portfolio");
     else if (tab.id === "market") router.push("/market");
-    // The Square seat opens the app's own Square page, exactly as the desktop
-    // rail's entry does; it used to open the Square's deployment in a new tab
-    // (ogazboiz, 2026-09-13). "Open the Square" on that page is the way out.
-    else if (tab.id === "square") router.push("/square");
     else if (tab.id === "casino") onNavigate("casino");
     else router.push("/activity");
   };

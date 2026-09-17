@@ -68,15 +68,21 @@ describe("the old wallet, read by the frontend", () => {
 // linked, every real balance moved, one unpriced token left — and the offer
 // came back on "$0.00 left -> proven".
 describe("money worth bringing a linked account back for", () => {
-  it("needs a cent, or an unpriced native coin", () => {
+  it("needs a cent by the badge's own total; $0.00 is nothing", () => {
     expect(legacyWalletWorthMoving([holding("usdc", { valueUsd: 0.92 })])).toBe(true);
     expect(legacyWalletWorthMoving([holding("cent", { valueUsd: 0.01 })])).toBe(true);
     expect(legacyWalletWorthMoving([holding("sub-cent", { valueUsd: 0.004 })])).toBe(false);
-    // Unpriced token: the feed does not cover it; the account-menu door remains.
+    // Unpriced, native or not: the figure reads $0.00, so nothing is offered.
     expect(legacyWalletWorthMoving([holding("priceless", { valueUsd: 0 })])).toBe(false);
-    // Unpriced NATIVE coin: the feed is out, the balance is real money.
     expect(
       legacyWalletWorthMoving([holding("eth", { kind: "native", symbol: "ETH", valueUsd: 0 })])
+    ).toBe(false);
+    // Several sub-cent holdings add up like the badge does.
+    expect(
+      legacyWalletWorthMoving([
+        holding("a", { valueUsd: 0.006 }),
+        holding("b", { valueUsd: 0.006 }),
+      ])
     ).toBe(true);
   });
 

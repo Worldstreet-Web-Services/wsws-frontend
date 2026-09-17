@@ -19,9 +19,8 @@ export interface LegacyWalletFunds {
   /** Anything sweepable is still there, whatever it is worth. */
   hasFunds: boolean;
   /**
-   * Something sweepable AND worth at least a cent (or an unpriced native
-   * coin) is still there — the bar for re-offering a linked account. See
-   * legacyWalletWorthMoving.
+   * Something sweepable worth at least a cent is still there — the bar for
+   * re-offering a linked account. $0.00 is nothing. See legacyWalletWorthMoving.
    */
   worthMoving: boolean;
   /** Display total of what could move. */

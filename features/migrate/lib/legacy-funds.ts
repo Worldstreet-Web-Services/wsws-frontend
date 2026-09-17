@@ -34,17 +34,14 @@ export const WORTH_MOVING_MIN_USD = 0.01;
 
 /**
  * Whether the old wallet holds money worth bringing a linked account back
- * for. Stricter than "has funds": a movable holding counts only when it is
- * worth at least a cent, OR it is the chain's native coin with no price at
- * all — the one case where $0 means the price feed is out, not that the
- * balance is worthless. An unpriced TOKEN is not that case: the feed simply
- * does not cover it, and it is the long tail the always-open account-menu
- * entry exists for. Seen live: a linked account re-offered on "$0.00 left".
+ * for: something movable AND worth at least a cent, by the same total the
+ * badge shows. No exceptions — if the figure reads $0.00 there is nothing to
+ * offer, whatever balances sit behind it. An unpriced token is not "money
+ * left", it is the long tail the always-open account-menu entry exists for.
+ * Seen live: a linked account re-offered on "$0.00 left -> proven".
  */
 export function legacyWalletWorthMoving(holdings: readonly LegacyHolding[]): boolean {
-  return legacyWalletMovable(holdings).some(
-    (h) => h.valueUsd >= WORTH_MOVING_MIN_USD || (h.kind === "native" && h.valueUsd === 0)
-  );
+  return legacyWalletUsd(holdings) >= WORTH_MOVING_MIN_USD;
 }
 
 /** Display total of what could move — the figure "$X still in your old wallet" should show. */

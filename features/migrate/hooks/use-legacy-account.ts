@@ -88,11 +88,13 @@ async function ask(): Promise<LegacyAccount> {
   }
 }
 
-export function useLegacyAccount(): LegacyAccount {
+export function useLegacyAccount(enabled = true): LegacyAccount {
   const [state, setState] = useState<LegacyAccount>(cached ?? UNKNOWN);
 
   useEffect(() => {
-    if (cached !== null) return;
+    // Disabled means a caller already knows the answer it would give (e.g. the
+    // account is known-linked), so the Privy management-API call is skipped.
+    if (!enabled || cached !== null) return;
     let live = true;
     void (async () => {
       inFlight ??= ask();
@@ -108,7 +110,7 @@ export function useLegacyAccount(): LegacyAccount {
     return () => {
       live = false;
     };
-  }, []);
+  }, [enabled]);
 
   return state;
 }

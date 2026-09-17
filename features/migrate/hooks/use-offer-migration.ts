@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
+import { useAuthSession } from "@/hooks/use-auth-session";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacyAccount } from "@/features/migrate/hooks/use-legacy-account";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 import {
+  markEmailLinked,
   maskBalance,
   offerMigration,
+  useEmailLinked,
   useFundsMoved,
   useLocalPrivyHistory,
   useMigrationCompleteFlag,
@@ -18,31 +22,48 @@ import {
 // A user with $0 and four years of history has the most to lose by never
 // linking.
 export function useOfferMigration(): boolean {
+  const { profile } = useAuthSession();
+  const email = profile.email;
+  // A confirmed link is permanent (the mapping never disappears), so once this
+  // device has seen this email's account linked, we already know it is linked
+  // before /status answers — and we skip the legacy directory lookup (a Privy
+  // management-API call, the expensive "csv" check) entirely. We still probe
+  // the old wallet: a linked account can keep residual funds worth moving.
+  const knownLinked = useEmailLinked(email);
+
   const complete = useMigrationCompleteFlag();
   const localHistory = useLocalPrivyHistory();
   const status = useMigrationStatus();
-  // Does this identity belong to a legacy account at all. The wallet balance it
-  // also returns is deliberately unused here — see the note above.
-  const legacy = useLegacyAccount();
+  // Skip the directory call when we already know the account is linked — its
+  // only job is to spot a legacy account we have NOT linked yet.
+  const legacy = useLegacyAccount(!knownLinked);
+
+  const linked = knownLinked || status.data?.linked === true;
   // For a linked account, what is ACTUALLY on the old wallet — read here, not
   // taken from the service, whose flag also fires on pending ledger re-keys.
-  const walletFunds = useLegacyWalletFunds(
-    status.data?.legacy ?? null,
-    status.data?.linked === true
-  );
+  const walletFunds = useLegacyWalletFunds(status.data?.legacy ?? null, linked);
+
+  // The first time the service confirms this account is linked, remember it by
+  // email so the next load takes the shortcut above. Only ever on a real
+  // `true`, never on false or "could not say".
+  useEffect(() => {
+    if (status.data?.linked === true) markEmailLinked(email);
+  }, [status.data?.linked, email]);
+
   const offer = offerMigration({
     complete,
     localHistory,
     status: status.data,
+    linked,
     legacyAccount: legacy.has,
     walletFunds: walletFunds.data === undefined ? undefined : (walletFunds.data?.hasFunds ?? null),
   });
   console.log(
     `[migrate] offer migrate-to-2.0: ${offer ? "YES" : "no"}` +
-      ` [already linked: ${status.data === undefined ? "loading" : (status.data.linked ?? "service could not say")}, done on this device: ${complete},` +
+      ` [linked: ${linked ? (knownLinked ? "yes (remembered on this device)" : "yes") : status.data === undefined ? "loading" : (status.data.linked ?? "service could not say")}, done on this device: ${complete},` +
       ` privy keys here: ${localHistory}, service reports funds: ${status.data?.hasLegacyFunds ?? "unknown"},` +
-      ` old wallet on chain: ${walletFunds.data === undefined ? "not read" : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left` : "empty"},` +
-      ` directory: ${legacy.has ? "legacy account found" : "no legacy account"}]`
+      ` old wallet on chain: ${walletFunds.data === undefined ? (linked ? "probing" : "not read") : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left` : "empty"},` +
+      ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : "no legacy account"}]`
   );
   return offer;
 }

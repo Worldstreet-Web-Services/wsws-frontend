@@ -35,6 +35,17 @@ const MIGRATION_COMPLETE_KEY = "ws.migrationComplete";
 // than showing a figure that is not final yet.
 const FUNDS_MOVED_KEY = "ws.migrationMoved";
 
+// Set once this device has CONFIRMED the signed-in email's account is linked —
+// either the service answered `linked: true`, or a link landed here. Being
+// linked is a permanent, monotonic fact (the mapping never disappears), so this
+// is a safe thing to cache: a later load with the same email can treat the
+// account as migrated without re-running the status call, the legacy directory
+// lookup, and the on-chain read again. Keyed by email so it never leaks between
+// accounts on a shared browser. Any residual old-wallet funds stay reachable
+// through the always-open "Move money from old wallet" entry in the account
+// menu, which this flag does not touch.
+const LINKED_EMAIL_PREFIX = "ws.migrationLinkedEmail:";
+
 // The storage event only fires in OTHER tabs, so same-tab completion notifies
 // subscribers directly.
 const listeners = new Set<() => void>();
@@ -101,11 +112,50 @@ export function shouldOfferMigration(): boolean {
   return !isMigrationComplete() && hasLocalPrivyHistory();
 }
 
+function linkedEmailKey(email: string | null | undefined): string | null {
+  const normalised = email?.trim().toLowerCase();
+  return normalised ? `${LINKED_EMAIL_PREFIX}${normalised}` : null;
+}
+
+// Has this device already confirmed the given email's account is linked. False
+// for a missing email, or when storage is unavailable — either way the caller
+// falls back to asking the service, which is never wrong, only slower.
+export function isEmailLinked(email: string | null | undefined): boolean {
+  const key = linkedEmailKey(email);
+  if (!key) return false;
+  try {
+    return window.localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// Record that this email's account is linked. Only ever called once the fact is
+// confirmed (see the note on LINKED_EMAIL_PREFIX), never speculatively.
+export function markEmailLinked(email: string | null | undefined): void {
+  const key = linkedEmailKey(email);
+  if (!key) return;
+  try {
+    window.localStorage.setItem(key, "1");
+  } catch {
+    // Storage refused (private mode, quota): the account is simply re-checked
+    // next load, which is correct, just not free.
+  }
+  notify();
+}
+
 // The full decision. Pure, so every arm is tested.
 export function offerMigration(input: {
   complete: boolean;
   localHistory: boolean;
   status: MigrationStatus | undefined;
+  /**
+   * This account is already on the new identity. Passed in because it can be
+   * known before /status returns — a device that has confirmed this email
+   * linked once remembers it (see markEmailLinked). Defaults to the service's
+   * own answer.
+   */
+  linked?: boolean;
   /**
    * The signed-in identity belongs to a legacy account — see useLegacyAccount.
    * Whether that account's WALLET holds anything is deliberately not part of
@@ -113,42 +163,56 @@ export function offerMigration(input: {
    */
   legacyAccount?: boolean;
   /**
-   * The frontend's own read of the old wallet, for a linked account: true /
-   * false, or null (undefined) when it could not tell. When known it outranks
-   * the service's `hasLegacyFunds`, which also says "yes" while a ledger
-   * re-key is pending — a queue the user cannot act on.
+   * The frontend's own read of the old wallet, for a linked account:
+   *   true  — holds money,     false — confirmed empty,
+   *   null  — could not read,  undefined — the read is still in flight.
+   * For a linked account the chain read is the sole judge; the service's
+   * `hasLegacyFunds` is only a fallback for a definite "could not read",
+   * because it also says "yes" while a ledger re-key is pending.
    */
   walletFunds?: boolean | null;
 }): boolean {
-  // Money still on the old wallet, or a deposit still landing there, keeps
-  // the offer open no matter what else is true — linked or not, flagged done
-  // on this device or not. Linking moves the identity; it does not move the
-  // tokens, and a linked account with $1 still sitting on the old address is
-  // exactly who this button is for. (The service also reports this while a
-  // ledger re-key is unfinished; re-pressing re-drives it, which is the
-  // documented retry.)
+  const linked = input.linked ?? input.status?.linked === true;
+
+  if (linked) {
+    // On the new identity already. The one reason to keep the move open is
+    // money physically left on the old wallet, judged by the chain read — never
+    // the service flag, which also fires on a pending ledger re-key. While that
+    // read is still in flight (undefined) we show nothing, so the gate never
+    // flashes open on the service's optimistic guess and then closes; it opens
+    // only once the wallet is CONFIRMED to still hold something. A definite
+    // "could not read" (null) is the only case that falls back to the service.
+    if (input.status?.pendingOnramps.length) return true;
+    if (input.walletFunds === true) return true;
+    if (input.walletFunds === false) return false;
+    if (input.walletFunds === null) return Boolean(input.status?.hasLegacyFunds);
+    return false;
+  }
+
+  // Not (yet) known linked. Until the service has answered we cannot tell a
+  // migrated account from a legacy one, so we wait rather than flash the offer
+  // on and then off once the answer lands.
+  if (input.status === undefined) return false;
+
+  // ── the account is not linked ──
+  //
+  // Money still on the old wallet, or a deposit still landing there, keeps the
+  // offer open no matter what else is true.
   const fundsOnChain = input.walletFunds ?? null;
-  const fundsLeft = fundsOnChain !== null ? fundsOnChain : Boolean(input.status?.hasLegacyFunds);
-  if (fundsLeft || input.status?.pendingOnramps.length) return true;
-  // Already linked and nothing left on the old side: the mapping exists, the
-  // ledgers re-key themselves, and there is nothing left to ask the user for.
-  if (input.status?.linked === true) return false;
-  // Marked done on this device. That flag only fills the gap the service
-  // leaves (not loaded, or could not say): when the service has answered
-  // "not linked", its answer wins. The flag is per DEVICE, not per user — an
-  // earlier account finishing on this browser says nothing about the one
-  // signed in now — and it can be set by a sweep whose link never landed.
-  // Either way the service, not localStorage, knows whether THIS account is
-  // still on the old identity.
-  if (input.complete && input.status?.linked !== false) return false;
+  const fundsLeft = fundsOnChain !== null ? fundsOnChain : Boolean(input.status.hasLegacyFunds);
+  if (fundsLeft || input.status.pendingOnramps.length) return true;
+  // Marked done on this device. That flag only fills the gap the service leaves
+  // (could not say): when the service has answered "not linked", its answer
+  // wins. The flag is per DEVICE, not per user, and can be set by a sweep whose
+  // link never landed — so localStorage never gets to overrule a live "no".
+  if (input.complete && input.status.linked !== false) return false;
 
   // Anything below means "still on the old identity".
   //
   // An empty wallet is NOT a reason to stay quiet. The sweep moves tokens; the
   // re-key moves the profile, the followers, the posts, the chess ledgers, the
   // kash points and tier — none of which a balance can see. A user with $0 and
-  // four years of history has the most to lose by never linking, and used to
-  // be the one this stayed silent for.
+  // four years of history has the most to lose by never linking.
   if (input.localHistory) return true;
   if (input.legacyAccount) return true;
   return false;
@@ -181,4 +245,15 @@ export function useLocalPrivyHistory(): boolean {
 
 export function useFundsMoved(): boolean {
   return useSyncExternalStore(subscribe, hasMovedFunds, () => false);
+}
+
+// Reactive read of the per-email linked flag. Flips to true the moment
+// markEmailLinked runs (same tab), so the offer can short-circuit without a
+// reload. SSR sees false and hydration corrects it.
+export function useEmailLinked(email: string | null | undefined): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => isEmailLinked(email),
+    () => false
+  );
 }

@@ -102,8 +102,49 @@ describe("offerMigration", () => {
         complete: true,
         localHistory: false,
         status: status({ linked: true, hasLegacyFunds: true }),
+        walletFunds: true,
       })
     ).toBe(true);
+  });
+
+  // The flash this fix removes: linked, the service says funds, but the chain
+  // read has not returned yet. The offer waits for the read instead of opening
+  // on the service's optimistic flag and then closing.
+  it("shows nothing for a linked account while the old wallet read is still in flight", () => {
+    expect(
+      offerMigration({
+        complete: true,
+        localHistory: true,
+        status: status({ linked: true, hasLegacyFunds: true }),
+        walletFunds: undefined,
+      })
+    ).toBe(false);
+  });
+
+  // A device that remembers this email is linked knows it before /status
+  // answers, and still waits for the chain read before opening the offer.
+  it("treats a remembered link like a linked status: waits for the chain read", () => {
+    expect(
+      offerMigration({ complete: false, localHistory: true, status: undefined, linked: true })
+    ).toBe(false);
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: undefined,
+        linked: true,
+        walletFunds: true,
+      })
+    ).toBe(true);
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: undefined,
+        linked: true,
+        walletFunds: false,
+      })
+    ).toBe(false);
   });
 
   it("keeps offering while a deposit is still landing on the old wallet", () => {
@@ -116,8 +157,16 @@ describe("offerMigration", () => {
     ).toBe(true);
   });
 
-  it("offers on local history alone", () => {
-    expect(offerMigration({ complete: false, localHistory: true, status: undefined })).toBe(true);
+  it("offers on local history once the status has loaded and says not linked", () => {
+    expect(
+      offerMigration({ complete: false, localHistory: true, status: status({ linked: false }) })
+    ).toBe(true);
+  });
+
+  // While the status is still loading we can't tell a migrated account from a
+  // legacy one, so the UI waits rather than flashing on and off.
+  it("shows nothing on local history while the status is still loading", () => {
+    expect(offerMigration({ complete: false, localHistory: true, status: undefined })).toBe(false);
   });
 
   it("offers on a fresh device when the server sees money or a deposit in flight", () => {
@@ -183,8 +232,10 @@ describe("markFundsMoved", () => {
 describe("offerMigration on a device with no Privy history", () => {
   // The case nothing else reaches: a migrated user on a new phone. No `privy:`
   // keys to find, and /status answers nothing until a mapping exists — so they
-  // sign in, see 0.00, and are offered no way to explain it.
-  const base = { complete: false, localHistory: false, status: undefined };
+  // sign in, see 0.00, and are offered no way to explain it. `status` is the
+  // loaded empty answer, not `undefined`: undefined means "still loading", when
+  // we deliberately show nothing.
+  const base = { complete: false, localHistory: false, status: EMPTY_MIGRATION_STATUS };
 
   it("offers the sweep when the signed-in address had a Privy wallet", () => {
     expect(offerMigration({ ...base, legacyAccount: true })).toBe(true);
@@ -229,12 +280,12 @@ describe("offerMigration once the account is linked", () => {
     expect(offerMigration({ ...base, status, legacyAccount: true })).toBe(true);
   });
 
-  it("offers on the directory alone, with no device history and no service", () => {
+  it("offers on the directory alone, once the status has loaded with no mapping", () => {
     expect(
       offerMigration({
         complete: false,
         localHistory: false,
-        status: undefined,
+        status: EMPTY_MIGRATION_STATUS,
         legacyAccount: true,
       })
     ).toBe(true);
@@ -289,13 +340,15 @@ describe("offerMigration — the frontend's read of the old wallet", () => {
     ).toBe(true);
   });
 
-  it("falls back to the service when the wallet could not be read", () => {
+  it("falls back to the service only when the wallet definitely could not be read", () => {
     const base = {
       complete: true,
       localHistory: false,
       status: status({ linked: true, hasLegacyFunds: true }),
     };
+    // null = the read ran and could not tell → trust the service flag.
     expect(offerMigration({ ...base, walletFunds: null })).toBe(true);
-    expect(offerMigration({ ...base, walletFunds: undefined })).toBe(true);
+    // undefined = the read is still in flight → wait, do not flash the offer on.
+    expect(offerMigration({ ...base, walletFunds: undefined })).toBe(false);
   });
 });

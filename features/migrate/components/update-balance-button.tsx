@@ -45,17 +45,30 @@ function isPlainTransfer(h: LegacyHolding): boolean {
 // itself when nothing is left anywhere.
 export function UpdateBalanceButton({ adapters }: { adapters: readonly VenueAdapter[] }) {
   const offer = useOfferMigration();
+  // Held while a run is in flight or its review is open. The offer flips to
+  // "no" the moment the service reports the link — before the sweep has moved
+  // the money — and unmounting then tears down the Privy iframe the sweep is
+  // signing with ("iframe did not initialize"). Released once idle, so the
+  // button still retires itself when nothing is left.
+  const [held, setHeld] = useState(false);
   // Mounting Privy is not free and writes its own storage; only devices with
   // an unfinished migration ever load it here.
-  if (!offer) return null;
+  if (!offer && !held) return null;
   return (
     <LegacyPrivyProvider>
-      <UpdateBalanceInner adapters={adapters} />
+      <UpdateBalanceInner adapters={adapters} onActive={setHeld} />
     </LegacyPrivyProvider>
   );
 }
 
-function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] }) {
+function UpdateBalanceInner({
+  adapters,
+  onActive,
+}: {
+  adapters: readonly VenueAdapter[];
+  /** Reports whether a run is in flight or the review is open — see the host. */
+  onActive: (active: boolean) => void;
+}) {
   const t = useTranslations("migrate");
   const privy = usePrivy();
   const signer = useLegacySigner();
@@ -67,6 +80,9 @@ function UpdateBalanceInner({ adapters }: { adapters: readonly VenueAdapter[] })
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  useEffect(() => {
+    onActive(busy || reviewOpen);
+  }, [busy, reviewOpen, onActive]);
   // Set when the click had to detour through the Privy login modal first; the
   // effect below resumes the update the moment that session lands.
   const resumeAfterLogin = useRef(false);

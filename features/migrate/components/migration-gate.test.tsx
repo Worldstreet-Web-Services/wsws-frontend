@@ -233,3 +233,30 @@ describe("MigrationGate — ways out of a trap", () => {
     expect(screen.getByTestId("frame")).toBeInTheDocument();
   });
 });
+
+// Seen live: the panel linked the account, the service reported it, the offer
+// flipped to "no", and the gate unmounted — tearing down the Privy iframe the
+// automatic sweep was signing with ("iframe did not initialize"). The link was
+// then cached, so the gate never came back to retry from. The money stayed
+// behind. The offer may open the gate; only the gate's own exits may close it.
+describe("MigrationGate — stays open once opened", () => {
+  it("does not unmount when the offer flips to no mid-flow, and still finishes on its own exit", () => {
+    const { rerender } = render(<MigrationGate adapters={[]} />);
+    expect(screen.getByTestId("frame")).toBeInTheDocument();
+    // The link lands: the offer is now "no". The sweep is still running.
+    state.offer = false;
+    rerender(<MigrationGate adapters={[]} />);
+    expect(screen.getByTestId("frame")).toBeInTheDocument();
+    // The sweep completes; the gate's own exit closes it.
+    fireEvent.click(screen.getByText("core-done-tail-left"));
+    fireEvent.click(screen.getByText("gateFinish"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(KEY)).toBe("1");
+  });
+
+  it("never opens for an account that was already linked before it mounted", () => {
+    state.offer = false;
+    render(<MigrationGate adapters={[]} />);
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+  });
+});

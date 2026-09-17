@@ -69,6 +69,16 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const [progress, setProgress] = useState<MigrationProgress | null>(null);
   // The "I can't sign in" exit asks once before it acts.
   const [confirmingNoAccess, setConfirmingNoAccess] = useState(false);
+  // The offer is consulted only to OPEN the gate. Once open it stays until one
+  // of its own exits closes it, whatever the offer says next — because the
+  // offer flips to "no" the moment the service reports the link, which is
+  // BEFORE the sweep has moved the money, and unmounting here tears down the
+  // Privy iframe the in-flight sweep is signing with ("iframe did not
+  // initialize"). Seen live: linked, sweep failed, money left behind, and no
+  // gate ever again to retry from. (Adjusting state during render is the
+  // documented pattern for a latch; it re-renders before commit.)
+  const [opened, setOpened] = useState(false);
+  if (offer && !opened) setOpened(true);
 
   const canFinish =
     progress !== null && progress.linked && progress.discovered && progress.coreRemaining === 0;
@@ -106,7 +116,7 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
 
   const ignore = useCallback(() => {}, []);
 
-  if (!offer || doneHere || snoozedHere) return null;
+  if (!opened || doneHere || snoozedHere) return null;
   const coreLeft = progress?.linked === true && !canFinish && !stuck;
   const atSignIn = stage === "signIn" && !blocked && !stuck && !canFinish;
   return (

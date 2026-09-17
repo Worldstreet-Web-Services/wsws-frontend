@@ -29,6 +29,8 @@ import {
 } from "@/features/migrate/lib/review";
 import { markFundsMoved, markMigrationComplete } from "@/features/migrate/lib/visibility";
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
+import { useWalletWindowBlocked } from "@/features/migrate/hooks/use-wallet-window-blocked";
+import { isWalletWindowError } from "@/features/migrate/lib/wallet-window";
 import { useFreshLegacySession } from "@/features/migrate/hooks/use-fresh-legacy-session";
 import {
   MIGRATION_QUERY_PREFIX,
@@ -72,6 +74,13 @@ export interface MigrationProgress {
    * offers a way out (see STUCK_AFTER_FAILURES) instead of looping.
    */
   failures: number;
+  /**
+   * This browser is refusing to load Privy's wallet window (an ad or tracker
+   * blocker, third-party storage off), so nothing can be signed here. Known
+   * before a sweep is tried, or from a sweep that failed that way. Not
+   * something retrying fixes: the gate offers a way out at once.
+   */
+  walletBlocked: boolean;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -109,6 +118,8 @@ export function MoveOldMoneyPanel({
   const locale = useLocale();
   const privy = usePrivy();
   const signer = useLegacySigner();
+  // The wallet window never came up after sign-in — see the hook.
+  const walletWindowBlocked = useWalletWindowBlocked();
   // Same boolean the signer gates on; the sign-in button must not be live
   // while an inherited session is still being cleared away.
   const fresh = useFreshLegacySession();
@@ -150,6 +161,12 @@ export function MoveOldMoneyPanel({
   // Runs in a row that left a CORE asset unmoved. Resets the moment a run
   // clears every core asset it attempted.
   const [sweepFailures, setSweepFailures] = useState(0);
+  // A run that failed BECAUSE the wallet window is blocked, as opposed to a
+  // transfer that reverted: the raw error is replaced with what to do about it.
+  const runBlocked = [autoResult, result].some(
+    (r) => r !== null && [...r.results.values()].some((o) => !o.ok && isWalletWindowError(o.error))
+  );
+  const walletBlocked = walletWindowBlocked || runBlocked;
 
   useEffect(() => {
     track("migration_started", { entry });
@@ -261,6 +278,7 @@ export function MoveOldMoneyPanel({
       coreRemaining,
       blocked: linkBlocked !== null,
       failures: stuckCount,
+      walletBlocked,
     });
   }, [
     onProgress,
@@ -271,6 +289,7 @@ export function MoveOldMoneyPanel({
     coreRemaining,
     linkBlocked,
     stuckCount,
+    walletBlocked,
   ]);
 
   const toggle = (id: string) => {
@@ -366,6 +385,10 @@ export function MoveOldMoneyPanel({
     // and this provider creates no wallets on login, so an account with none
     // here will not grow one.
     const signedInElsewhere = fresh && privy.authenticated && privy.user !== null;
+    // Signed in to the right account, which has a wallet — and the wallet
+    // window never came up. Say so, before the "wrong account" reading below
+    // sends this user off to sign in as someone else.
+    if (walletWindowBlocked) return <WalletWindowBlocked t={t} />;
     return (
       <Step
         title={signedInElsewhere ? t("wrongAccountTitle") : t("signInTitle")}
@@ -442,7 +465,9 @@ export function MoveOldMoneyPanel({
             tone={failed.length ? "down" : undefined}
           />
         </div>
-        {failed.length > 0 ? (
+        {runBlocked ? (
+          <p className="mt-3 text-[13px] leading-normal text-white/65">{t("walletBlockedBody")}</p>
+        ) : failed.length > 0 ? (
           <ul className="mt-3 flex flex-col gap-1.5 text-[12.5px] text-white/60">
             {failed.map((h) => {
               // The last run that attempted it holds the error worth showing.
@@ -460,7 +485,13 @@ export function MoveOldMoneyPanel({
           </ul>
         ) : null}
         <div className="mt-4 grid gap-2.5">
-          {failed.length > 0 || left > 0 ? (
+          {runBlocked ? (
+            // A changed blocker setting only takes effect on a reload, so
+            // "try again" without one would fail the same way.
+            <button onClick={() => window.location.reload()} className={PRIMARY}>
+              {t("walletBlockedReload")}
+            </button>
+          ) : failed.length > 0 || left > 0 ? (
             <button onClick={retry} className={PRIMARY}>
               {t("retry")}
             </button>
@@ -556,6 +587,19 @@ export function MoveOldMoneyPanel({
           onContinue={() => void execute(checked).then(setResult)}
         />
       ) : null}
+    </Step>
+  );
+}
+
+// The wallet window is blocked and nothing has been tried yet. Reload is the
+// only action worth offering: after allowing Privy's domain or pausing the
+// blocker, the iframe only loads on a fresh page.
+function WalletWindowBlocked({ t }: { t: Translate }) {
+  return (
+    <Step title={t("walletBlockedTitle")} body={t("walletBlockedBody")}>
+      <button onClick={() => window.location.reload()} className={PRIMARY}>
+        {t("walletBlockedReload")}
+      </button>
     </Step>
   );
 }

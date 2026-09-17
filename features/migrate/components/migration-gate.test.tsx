@@ -62,6 +62,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         coreRemaining: 0,
         blocked: false,
         failures: 0,
+        walletBlocked: false,
         ...p,
       });
     return (
@@ -91,6 +92,9 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
           onClick={() => emit({ linked: false, coreRemaining: 1, blocked: true, failures: 5 })}
         >
           blocked-and-stuck
+        </button>
+        <button onClick={() => emit({ linked: false, discovered: false, walletBlocked: true })}>
+          wallet-blocked
         </button>
         <button onClick={onClose}>panel-exit</button>
       </div>
@@ -258,5 +262,21 @@ describe("MigrationGate — stays open once opened", () => {
     state.offer = false;
     render(<MigrationGate adapters={[]} />);
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+  });
+});
+
+// A browser that will not load Privy's wallet window cannot be fixed by
+// retrying, so the user is not made to fail three times before the way out.
+describe("MigrationGate — blocked wallet window", () => {
+  it("offers a way out at once, without waiting for three failures", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("wallet-blocked"));
+    expect(screen.getByText("gateWalletBlockedBody")).toBeInTheDocument();
+    expect(screen.queryByText("gateStuckBody")).not.toBeInTheDocument();
+    expect(screen.queryByText("gateNoAccess")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateContinueLater"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 });

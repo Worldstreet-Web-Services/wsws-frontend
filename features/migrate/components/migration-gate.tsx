@@ -33,7 +33,7 @@ const QUIET =
   "cursor-pointer font-sans text-[13px] text-white/45 underline-offset-2 hover:text-white/70 hover:underline";
 const NOTE = "text-[13px] leading-normal text-white/55";
 
-type SnoozeReason = "no_access" | "failing";
+type SnoozeReason = "no_access" | "failing" | "browser";
 
 /**
  * The migration as a gate: an overlay nobody can close until the old account
@@ -86,9 +86,14 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   // different account. There is nothing the user can do here, so the gate stops
   // being a wall and offers a way out instead of looping on "link again".
   const blocked = progress?.blocked === true;
+  // This browser will not load the wallet window at all (ad blocker,
+  // third-party storage off). Retrying cannot fix it, so there is no reason to
+  // make the user fail three times first: the way out is offered at once.
+  const walletBlocked = !blocked && !canFinish && progress?.walletBlocked === true;
   // The current step has failed enough times in a row that "try again" is no
   // longer an honest offer on its own.
-  const stuck = !blocked && !canFinish && (progress?.failures ?? 0) >= STUCK_AFTER_FAILURES;
+  const stuck =
+    !blocked && !canFinish && !walletBlocked && (progress?.failures ?? 0) >= STUCK_AFTER_FAILURES;
   const stage = progress?.stage ?? "signIn";
 
   const finish = useCallback(() => {
@@ -117,8 +122,8 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const ignore = useCallback(() => {}, []);
 
   if (!opened || doneHere || snoozedHere) return null;
-  const coreLeft = progress?.linked === true && !canFinish && !stuck;
-  const atSignIn = stage === "signIn" && !blocked && !stuck && !canFinish;
+  const coreLeft = progress?.linked === true && !canFinish && !stuck && !walletBlocked;
+  const atSignIn = stage === "signIn" && !blocked && !stuck && !walletBlocked && !canFinish;
   return (
     <MoveOldMoneyFrame dismissible={false} onClose={ignore}>
       <LegacyPrivyProvider>
@@ -141,6 +146,13 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
           <div className="mt-5 border-t border-white/10 pt-4">
             <button onClick={finish} className={PRIMARY}>
               {t("gateFinish")}
+            </button>
+          </div>
+        ) : walletBlocked ? (
+          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+            <p className={NOTE}>{t("gateWalletBlockedBody")}</p>
+            <button onClick={() => snooze("browser")} className={SECONDARY}>
+              {t("gateContinueLater")}
             </button>
           </div>
         ) : stuck ? (

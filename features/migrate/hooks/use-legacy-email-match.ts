@@ -1,48 +1,80 @@
 "use client";
 
 import { usePrivy, type User } from "@privy-io/react-auth";
-import { useAuthSession } from "@/hooks/use-auth-session";
+import { useDisplayProfile } from "@/lib/display-profile";
 
 // The old account must be the SAME PERSON's. The backend already demands a
 // live token from both sides, so nobody can link an account they do not
 // control — but someone who controls two old accounts can link the wrong one,
-// and then the sweep moves the wrong money. The cheapest proof of "same
-// person" is the email: what the Decane session signed in with must be what
-// the old (Privy) account signed in with.
+// and then the sweep moves the wrong money. So whatever the two sides have in
+// common must agree:
 //
-// Only enforced when BOTH sides have an email. Privy allowed signing in with
-// X, and those accounts carry a handle and no address; a rule that demanded an
-// email would strand every one of them. Case-insensitive: providers disagree
-// on capitalisation and Gmail ignores it.
+//   email     — Google or email sign-in on both sides. Case-insensitive:
+//               providers disagree on capitalisation and Gmail ignores it.
+//   X user id — X sign-in on both sides. The numeric id, not the handle: a
+//               handle can be released and re-registered, an id cannot.
+//   X handle  — only when an id is missing on either side (an older record).
+//
+// Only enforced when BOTH sides carry the same kind of identifier. Signing in
+// to Decane with Google and to the old account with X is legitimate — the
+// migration flow says "the same Google, X, email or passkey you used before"
+// — and there is nothing to compare, so it is allowed through.
 
-/** The email the old account signed in with, or "" when it has none. */
-export function legacyEmail(user: User | null): string {
-  return user?.google?.email ?? user?.email?.address ?? "";
+/** What one side can be recognised by. Any field may be empty. */
+export interface Identity {
+  email: string;
+  xId: string;
+  xHandle: string;
 }
 
-function normalise(email: string): string {
-  return email.trim().toLowerCase();
+/** The old (Privy) account's identifiers, all "" before sign-in. */
+export function legacyIdentity(user: User | null): Identity {
+  return {
+    email: user?.google?.email ?? user?.email?.address ?? "",
+    xId: user?.twitter?.subject ?? "",
+    xHandle: user?.twitter?.username ?? "",
+  };
 }
 
-/** The pure rule: true only when both are known and differ. */
-export function emailsMismatch(expected: string, actual: string): boolean {
-  const a = normalise(expected);
-  const b = normalise(actual);
-  return Boolean(a && b && a !== b);
+const norm = (s: string) => s.trim().toLowerCase();
+const handle = (s: string) => norm(s).replace(/^@/, "");
+
+/** The pure rule: true only when a shared kind of identifier is known on both sides and differs. */
+export function identitiesMismatch(expected: Identity, actual: Identity): boolean {
+  if (expected.email && actual.email) return norm(expected.email) !== norm(actual.email);
+  if (expected.xId && actual.xId) return expected.xId.trim() !== actual.xId.trim();
+  if (expected.xHandle && actual.xHandle)
+    return handle(expected.xHandle) !== handle(actual.xHandle);
+  return false;
+}
+
+/** How to name a side to the user: the email, else the handle. */
+export function identityLabel(identity: Identity): string {
+  if (identity.email) return identity.email;
+  if (identity.xHandle) return `@${handle(identity.xHandle)}`;
+  return "";
 }
 
 export interface LegacyEmailMatch {
-  /** What the Decane session signed in with — what the old account must match. */
+  /** The Decane session's identifier, as the user would recognise it. */
   expected: string;
-  /** What the old account signed in with, or "" before sign-in or with no email. */
+  /** The old account's, or "" before sign-in. */
   actual: string;
   mismatch: boolean;
 }
 
 export function useLegacyEmailMatch(): LegacyEmailMatch {
   const { authenticated, user } = usePrivy();
-  const { profile } = useAuthSession();
-  const expected = profile.email;
-  const actual = authenticated ? legacyEmail(user) : "";
-  return { expected, actual, mismatch: emailsMismatch(expected, actual) };
+  const profile = useDisplayProfile();
+  const expected: Identity = {
+    email: profile?.email ?? "",
+    xId: profile?.providerSubject ?? "",
+    xHandle: profile?.username ?? "",
+  };
+  const actual = authenticated ? legacyIdentity(user) : { email: "", xId: "", xHandle: "" };
+  return {
+    expected: identityLabel(expected),
+    actual: identityLabel(actual),
+    mismatch: identitiesMismatch(expected, actual),
+  };
 }

@@ -48,7 +48,7 @@ export function ArkjetCashier({
   const [mode, setMode] = useState<CashierMode>("deposit");
   const [amount, setAmount] = useState("");
   const [awaitingCredit, setAwaitingCredit] = useState(false);
-  const [recoveryHash, setRecoveryHash] = useState("");
+  const [recoveryInput, setRecoveryInput] = useState<string | null>(null);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -58,11 +58,8 @@ export function ArkjetCashier({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
-  useEffect(() => {
-    if (funding.pendingDepositHash) setRecoveryHash(funding.pendingDepositHash);
-  }, [funding.pendingDepositHash]);
-
   const config = funding.config;
+  const recoveryHash = recoveryInput ?? funding.pendingDepositHash ?? "";
   const token = config
     ? portfolio.tokens.find(
         (item) =>
@@ -166,7 +163,7 @@ export function ArkjetCashier({
         toast.success(`${money(result.credited, config.currency)} confirmed for ${productName}.`, {
           id: toastId,
         });
-        setRecoveryHash("");
+        setRecoveryInput("");
         setAwaitingCredit(false);
       } else {
         toast.dismiss(toastId);
@@ -337,7 +334,7 @@ export function ArkjetCashier({
                     autoCapitalize="none"
                     placeholder="0x…"
                     aria-label="Base transaction hash"
-                    onChange={(event) => setRecoveryHash(event.target.value.trim())}
+                    onChange={(event) => setRecoveryInput(event.target.value.trim())}
                   />
                   <button
                     type="button"

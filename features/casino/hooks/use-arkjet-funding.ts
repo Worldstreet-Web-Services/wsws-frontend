@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,6 +20,7 @@ const CONFIG_STALE_MS = 5 * 60_000;
 const CONFIRM_ATTEMPTS = 5;
 const CONFIRM_DELAY_MS = 3_000;
 const PENDING_DEPOSIT_PREFIX = "arkjet:pending-deposit:v1";
+const PENDING_DEPOSIT_EVENT = "arkjet:pending-deposit-change";
 const WITHDRAWAL_ATTEMPT_PREFIX = "arkjet:withdrawal-attempt:v1";
 const TRANSACTION_HASH = /^0x[0-9a-fA-F]{64}$/;
 
@@ -50,6 +51,7 @@ function readPendingDeposit(wallet: string): string | null {
 function writePendingDeposit(wallet: string, txHash: string): void {
   try {
     localStorage.setItem(pendingDepositStorageKey(wallet), txHash);
+    window.dispatchEvent(new Event(PENDING_DEPOSIT_EVENT));
   } catch {
     // Recovery remains available through manual transaction-hash entry.
   }
@@ -60,10 +62,20 @@ function removePendingDeposit(wallet: string, txHash: string): void {
     const storageKey = pendingDepositStorageKey(wallet);
     if (localStorage.getItem(storageKey)?.toLowerCase() === txHash.toLowerCase()) {
       localStorage.removeItem(storageKey);
+      window.dispatchEvent(new Event(PENDING_DEPOSIT_EVENT));
     }
   } catch {
     // Storage can be unavailable in privacy-restricted browser contexts.
   }
+}
+
+function subscribePendingDeposit(onStoreChange: () => void): () => void {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(PENDING_DEPOSIT_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(PENDING_DEPOSIT_EVENT, onStoreChange);
+  };
 }
 
 function isFundingUnavailable(error: unknown): boolean {
@@ -120,11 +132,11 @@ export function useArkjetFunding() {
   const queryClient = useQueryClient();
   const { sendToken } = useSendToken();
   const [depositPhase, setDepositPhase] = useState<ArkjetDepositPhase>("idle");
-  const [pendingDepositHash, setPendingDepositHash] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPendingDepositHash(wallet ? readPendingDeposit(wallet) : null);
-  }, [wallet]);
+  const pendingDepositHash = useSyncExternalStore(
+    subscribePendingDeposit,
+    () => (wallet ? readPendingDeposit(wallet) : null),
+    () => null
+  );
 
   const config = useQuery({
     queryKey: ARKJET_KEYS.funding,
@@ -154,9 +166,6 @@ export function useArkjetFunding() {
         try {
           const confirmed = await confirmArkjetDeposit(normalizedHash);
           removePendingDeposit(wallet, normalizedHash);
-          setPendingDepositHash((current) =>
-            current?.toLowerCase() === normalizedHash.toLowerCase() ? null : current
-          );
           return { txHash: normalizedHash, credited: confirmed.creditedAmount };
         } catch (error) {
           if (!isDepositStillConfirming(error)) throw error;
@@ -194,7 +203,6 @@ export function useArkjetFunding() {
         });
 
         writePendingDeposit(wallet, txHash);
-        setPendingDepositHash(txHash);
         try {
           return await confirmDeposit(txHash);
         } catch {

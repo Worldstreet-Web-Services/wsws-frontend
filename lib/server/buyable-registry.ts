@@ -203,11 +203,13 @@ export async function fetchBuyableRegistry(): Promise<{
 // only for a non-contract), so "known" is not the bar — a token is admitted
 // when the platform would let the user SELL it and quotes a price for it.
 // Spam and honeypots have neither. Bounded: at most CONFIRM_MAX addresses per
-// read, each answer cached for ten minutes either way.
-const CONFIRM_MAX = 50;
+// read (an old wallet that traded memecoins carries a hundred-odd airdrops
+// beside them), each answer cached for ten minutes either way, so a repeat
+// read costs nothing.
+const CONFIRM_MAX = 200;
 const CONFIRM_TTL_MS = 600_000;
 const CONFIRM_TIMEOUT_MS = 5_000;
-const CONFIRM_CONCURRENCY = 8;
+const CONFIRM_CONCURRENCY = 10;
 
 const confirmCache = new Map<string, { at: number; value: MemeTokenInfo | null }>();
 

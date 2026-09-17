@@ -70,9 +70,9 @@ const BASE_PORTFOLIO_NETWORKS = ["base-mainnet"] as const;
 // times per user, ever, not every 30 seconds.
 export type PortfolioScope = "all" | "base" | "legacy";
 const LEGACY_EVM_NETWORKS = EVM_NETWORKS.filter(isSponsoredEvmNetwork);
-// A held token below this is dust to the migration: neither swept nor a
-// reason to bring anyone back (features/migrate/lib/plan.ts, legacy-funds.ts).
-const LEGACY_MIN_USD = 0.01;
+// A balance below this is a rounding remnant the migration never asks about
+// (the same floor as DUST_MIN_BALANCE in features/migrate/lib/plan.ts).
+const LEGACY_MIN_BALANCE = 1e-6;
 
 // How a holding is classified for display: a native coin (ETH/POL/SOL), a
 // stablecoin (USDC/USDT), a real-world asset (from the RWA registry), or any
@@ -656,19 +656,17 @@ export async function fetchPortfolio(
       if (scope === "legacy") {
         // Held Base tokens the paged catalogue never reached: ask about each by
         // address, and treat the ones the platform can sell exactly like a
-        // listed coin. Only worth asking for a token Alchemy already prices at
-        // a cent or more — the sweep floor — so spam with no market costs no
-        // lookup at all.
+        // listed coin. Alchemy prices almost none of these (verified live: 82
+        // held memecoins, not one with a price), so the catalogue's own price
+        // is the only one there is — which is also what decides whether the
+        // holding clears the sweep floor. Spam that the platform cannot sell
+        // comes back empty and is remembered as such for ten minutes.
         const unknown = tokensFromBatches.filter((t) => {
           if (t.network !== "base-mainnet" || !t.tokenAddress) return false;
           const address = t.tokenAddress.toLowerCase();
           if (isAllowedHolding(t.network, address, false, rwa, registries.buyable)) return false;
-          const usd = t.tokenPrices?.find((p) => p.currency === "usd");
-          const price = usd ? parseFloat(usd.value) : 0;
           const decimals = t.tokenMetadata?.decimals ?? 18;
-          return (
-            price > 0 && toNumber(toRawUnits(t.tokenBalance), decimals) * price >= LEGACY_MIN_USD
-          );
+          return toNumber(toRawUnits(t.tokenBalance), decimals) >= LEGACY_MIN_BALANCE;
         });
         const confirmed = await confirmBaseTokens(
           unknown.map((t) => t.tokenAddress!.toLowerCase())

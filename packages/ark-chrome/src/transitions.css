@@ -1,0 +1,27 @@
+/* Opt-in, and only useful when every app the reader moves between imports it:
+   a cross-document view transition needs both documents to opt in. The rail
+   (from 768px up) and the dome (below it) then hold still while the page
+   content cross-fades. A progressive enhancement: browsers without cross-
+   document view transitions navigate exactly as before. The off-canvas drawer
+   never carries a name, because a transition name must be unique on a page. */
+@view-transition {
+  navigation: auto;
+}
+
+@media (min-width: 768px) {
+  .ark-chrome-aside:not(.ark-chrome-aside--drawer) {
+    view-transition-name: ark-chrome-rail;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ark-chrome-tabbar {
+    view-transition-name: ark-chrome-tabbar;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

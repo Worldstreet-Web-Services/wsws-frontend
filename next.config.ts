@@ -47,6 +47,10 @@ if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_PRIVY_APP_
 }
 
 const nextConfig: NextConfig = {
+  // @ark/chrome, the rail and tab bar shared with the Square, ships as
+  // TypeScript source rather than a build, so this app compiles it the way the
+  // Square does (packages/ark-chrome/README.md).
+  transpilePackages: ["@ark/chrome"],
   // Stamped into the client bundle so analytics can attribute an event to the
   // release it came from. Read from package.json, so it moves with a version
   // bump instead of being maintained by hand.

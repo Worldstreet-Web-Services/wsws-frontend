@@ -1,0 +1,40 @@
+{
+  "name": "@ark/chrome",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ark's desktop sidebar and phone tab bar as presentational React components, shared by every app on www.tsionark.com.",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./icons": {
+      "types": "./src/icons.tsx",
+      "default": "./src/icons.tsx"
+    },
+    "./logo": {
+      "types": "./src/logo.tsx",
+      "default": "./src/logo.tsx"
+    },
+    "./styles.css": "./src/styles.css",
+    "./fonts.css": "./src/fonts.css",
+    "./transitions.css": "./src/transitions.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "assets",
+    "README.md",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx"
+  ],
+  "peerDependencies": {
+    "motion": "^12.42.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

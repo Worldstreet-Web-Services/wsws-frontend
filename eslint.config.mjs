@@ -34,8 +34,18 @@ const eslintConfig = defineConfig([
     files: ["**/*.{ts,tsx}"],
     plugins: { boundaries },
     settings: {
-      "boundaries/include": ["app/**", "features/**", "components/**", "hooks/**", "lib/**"],
+      "boundaries/include": [
+        "app/**",
+        "features/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "packages/**",
+      ],
       "boundaries/elements": [
+        // Workspace packages installed by other apps (the Square installs
+        // @ark/chrome from this repository). They sit below everything here.
+        { type: "package", pattern: "packages/*", capture: ["name"], partialMatch: false },
         { type: "feature", pattern: "features/*", capture: ["name"], partialMatch: false },
         { type: "app", pattern: "app/**", partialMatch: false },
         { type: "ui", pattern: "components/ui/**", partialMatch: false },
@@ -59,10 +69,59 @@ const eslintConfig = defineConfig([
               message: "A feature may not import another feature. Use its index.",
             },
             {
+              from: [{ element: { type: "package" } }],
+              disallow: [
+                {
+                  to: {
+                    element: {
+                      type: ["app", "feature", "layout", "shared-ui", "ui", "hooks", "lib"],
+                    },
+                  },
+                },
+              ],
+              message:
+                "A workspace package is installed by other apps and must not import this app's code.",
+            },
+            {
               from: [{ element: { type: ["lib", "ui", "hooks", "shared-ui"] } }],
               disallow: [{ to: { element: { type: ["feature", "app", "layout"] } } }],
               message:
                 "lib, components/ui and hooks sit below features and must not import upward.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // @ark/chrome renders in the Square too, which has no next-intl, no Privy,
+    // no TanStack Query and no @/ alias, and may run a different Next. The
+    // boundaries rule above cannot see bare package imports, and @/ resolves
+    // here, so a slip would compile in this app and only break in the Square.
+    // Links and strings come in as props instead.
+    files: ["packages/ark-chrome/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/*",
+                "next",
+                "next/*",
+                "next-intl",
+                "next-intl/*",
+                "@privy-io/*",
+                "@tanstack/*",
+                "@vercel/*",
+              ],
+              message:
+                "@ark/chrome is installed by other apps: take links, strings and data as props instead.",
+            },
+            {
+              group: ["../../*"],
+              message: "@ark/chrome may not reach outside its own package.",
             },
           ],
         },

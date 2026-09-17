@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   embedded: [] as Array<{ chainType: string; address: string }>,
   recordedEvm: null as string | null,
   recordedSol: null as string | null,
+  // The old account's email vs the Decane session's — see use-legacy-email-match.
+  mismatch: false,
 }));
 
 vi.mock("@privy-io/react-auth", () => ({
@@ -36,10 +38,18 @@ vi.mock("@/features/migrate/hooks/use-legacy-send", () => ({
 vi.mock("@/features/migrate/hooks/use-fresh-legacy-session", () => ({
   useFreshLegacySession: () => true,
 }));
+vi.mock("@/features/migrate/hooks/use-legacy-email-match", () => ({
+  useLegacyEmailMatch: () => ({
+    expected: "korode@gmail.com",
+    actual: state.mismatch ? "demitchy@gmail.com" : "korode@gmail.com",
+    mismatch: state.mismatch,
+  }),
+}));
 
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
 
 beforeEach(() => {
+  state.mismatch = false;
   state.wallets = [];
   state.embedded = [{ chainType: "ethereum", address: FIRST }];
   state.recordedEvm = null;
@@ -115,6 +125,18 @@ describe("useLegacySigner", () => {
     ];
     state.recordedEvm = RECORDED;
     state.wallets = [{ walletClientType: "privy", address: FIRST }];
+    const { result } = renderHook(() => useLegacySigner());
+    expect(result.current).toBeNull();
+  });
+});
+
+// The old account must be this person's. Signed in to the old side as someone
+// else, no signer is handed out at all — so nothing links and nothing moves,
+// on every path that spends from it.
+describe("useLegacySigner — the old account must match the Decane one", () => {
+  it("hands out no signer when the old account's email differs, even with the wallet present", () => {
+    state.wallets = [{ walletClientType: "privy", address: FIRST }];
+    state.mismatch = true;
     const { result } = renderHook(() => useLegacySigner());
     expect(result.current).toBeNull();
   });

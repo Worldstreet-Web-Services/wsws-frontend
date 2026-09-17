@@ -10,6 +10,7 @@ import {
   useLegacySendToken,
 } from "@/features/migrate/hooks/use-legacy-send";
 import { useFreshLegacySession } from "@/features/migrate/hooks/use-fresh-legacy-session";
+import { useLegacyEmailMatch } from "@/features/migrate/hooks/use-legacy-email-match";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 
 // The old Privy wallets as a plain signer object, so venue adapters (which
@@ -35,9 +36,12 @@ export function useLegacySigner(): LegacySigner | null {
   // this account's own wallets; otherwise the account simply differs, and the
   // first wallet is the right fallback.
   const recorded = useMigrationStatus().data?.legacy ?? null;
+  // The old account must belong to the person signed in to Decane — see the
+  // hook. No signer means nothing links and nothing moves, on every path.
+  const { mismatch } = useLegacyEmailMatch();
 
   return useMemo(() => {
-    if (!fresh || !ready || !authenticated) return null;
+    if (!fresh || !ready || !authenticated || mismatch) return null;
     // Prefer the wallet the backend recorded at link time — the one that
     // provably holds the funds — over getWalletAddress's "first embedded",
     // but only when it is one of THIS account's own wallets. Same reasoning on
@@ -80,6 +84,7 @@ export function useLegacySigner(): LegacySigner | null {
     fresh,
     ready,
     authenticated,
+    mismatch,
     user,
     wallets,
     recorded?.evm,

@@ -16,6 +16,7 @@ import { markFundsMoved, markMigrationComplete } from "@/features/migrate/lib/vi
 import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
+import { useLegacyEmailMatch } from "@/features/migrate/hooks/use-legacy-email-match";
 import { legacyHoldingsKey } from "@/features/migrate/hooks/use-legacy-holdings";
 import { useMigrationRun } from "@/features/migrate/hooks/use-migration-run";
 import { MoveOldMoneyPanel } from "@/features/migrate/components/move-old-money-panel";
@@ -72,6 +73,7 @@ function UpdateBalanceInner({
   const t = useTranslations("migrate");
   const privy = usePrivy();
   const signer = useLegacySigner();
+  const emailMatch = useLegacyEmailMatch();
   const session = useAuthSession();
   const migrationStatus = useMigrationStatus();
   // A real "linked" from the service, never the device's memory of one.
@@ -215,6 +217,16 @@ function UpdateBalanceInner({
 
   const click = () => {
     if (!privy.ready || busy) return;
+    if (emailMatch.mismatch) {
+      // Privy is signed in as the wrong person, so login() alone would open
+      // nothing. Say which email, sign that account out, and open the sign-in.
+      toast.error(
+        t("wrongEmailBody", { expected: emailMatch.expected, actual: emailMatch.actual })
+      );
+      resumeAfterLogin.current = true;
+      void privy.logout().then(() => privy.login());
+      return;
+    }
     if (!signer) {
       resumeAfterLogin.current = true;
       privy.login();

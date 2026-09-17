@@ -30,6 +30,7 @@ import {
 import { markFundsMoved, markMigrationComplete } from "@/features/migrate/lib/visibility";
 import { useLegacySigner } from "@/features/migrate/hooks/use-legacy-signer";
 import { useWalletWindowBlocked } from "@/features/migrate/hooks/use-wallet-window-blocked";
+import { useLegacyEmailMatch } from "@/features/migrate/hooks/use-legacy-email-match";
 import { isWalletWindowError } from "@/features/migrate/lib/wallet-window";
 import { useFreshLegacySession } from "@/features/migrate/hooks/use-fresh-legacy-session";
 import {
@@ -120,6 +121,9 @@ export function MoveOldMoneyPanel({
   const signer = useLegacySigner();
   // The wallet window never came up after sign-in — see the hook.
   const walletWindowBlocked = useWalletWindowBlocked();
+  // The old account signed in is not this person's — see the hook. The signer
+  // is already null for it; this is what the screen says instead.
+  const emailMatch = useLegacyEmailMatch();
   // Same boolean the signer gates on; the sign-in button must not be live
   // while an inherited session is still being cleared away.
   const fresh = useFreshLegacySession();
@@ -385,6 +389,25 @@ export function MoveOldMoneyPanel({
     // and this provider creates no wallets on login, so an account with none
     // here will not grow one.
     const signedInElsewhere = fresh && privy.authenticated && privy.user !== null;
+    // Signed in to the old account as somebody else. Nothing links or moves
+    // until the old sign-in matches the Decane one; say which email, and put
+    // the right sign-in one tap away.
+    if (emailMatch.mismatch) {
+      return (
+        <Step
+          title={t("wrongEmailTitle")}
+          body={t("wrongEmailBody", { expected: emailMatch.expected, actual: emailMatch.actual })}
+        >
+          <button
+            onClick={() => void privy.logout().then(() => privy.login())}
+            disabled={!privy.ready}
+            className={PRIMARY}
+          >
+            {t("wrongEmailButton", { expected: emailMatch.expected })}
+          </button>
+        </Step>
+      );
+    }
     // Signed in to the right account, which has a wallet — and the wallet
     // window never came up. Say so, before the "wrong account" reading below
     // sends this user off to sign in as someone else.

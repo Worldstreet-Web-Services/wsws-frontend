@@ -209,7 +209,14 @@ export function MoveOldMoneyPanel({
   // refetches the status, which is a dep here, so the report catches up.
   const serverLinked = status.data?.linked === true;
   const linkedNow = serverLinked || linkedHere;
-  const discovered = holdingsQuery.dataUpdatedAt > 0;
+  // "Discovered" must mean we actually enumerated the OLD account, which needs
+  // the legacy session. Without a signer the holdings query still runs on the
+  // server-recorded addresses (enabled on addresses alone), but it cannot see
+  // venue-held balances that require authentication — so a no-signer run that
+  // finds "nothing core left" is not proof the account is clear. Gating on the
+  // signer stops the gate from offering "Continue to Market 2.0" on the sign-in
+  // step for an already-linked account before it has been signed into.
+  const discovered = signer !== null && holdingsQuery.dataUpdatedAt > 0;
   const blocking = useMemo(
     () =>
       blockingHoldings(

@@ -27,9 +27,16 @@ export interface LegacyAccount {
   has: boolean;
   /** What that wallet still holds, or null for "could not read it". */
   fundsUsd: number | null;
+  /**
+   * `has` is a verdict, not a shrug: the directory answered, or Privy found
+   * a real user without a wallet. False for an outage or before the lookup
+   * ran. A definite "no" retires the offer even on a browser carrying
+   * someone else's `privy:` keys.
+   */
+  certain: boolean;
 }
 
-const UNKNOWN: LegacyAccount = { has: false, fundsUsd: null };
+const UNKNOWN: LegacyAccount = { has: false, fundsUsd: null, certain: false };
 
 interface Identifiers {
   email?: string;
@@ -92,10 +99,15 @@ async function ask(ids: Identifiers): Promise<LegacyAccount> {
       console.warn("[migrate] legacy check failed:", res.status, "- treating as unknown");
       return UNKNOWN;
     }
-    const body = (await res.json()) as { hasLegacyAccount?: unknown; legacyFundsUsd?: unknown };
+    const body = (await res.json()) as {
+      hasLegacyAccount?: unknown;
+      legacyFundsUsd?: unknown;
+      certain?: unknown;
+    };
     const answer = {
       has: body.hasLegacyAccount === true,
       fundsUsd: typeof body.legacyFundsUsd === "number" ? body.legacyFundsUsd : null,
+      certain: body.certain === true,
     };
     console.log(
       `[migrate] legacy check: ${answer.has ? "account found" : "no account"}` +
@@ -141,13 +153,14 @@ export function useLegacyAccount(enabled = true): LegacyAccount {
         inFlight.set(key, pending);
       }
       const answer = await pending;
-      // An answer that found nothing may be an outage rather than a verdict,
-      // so it is not cached and the next mount asks again. A found account is
-      // settled; its balance is re-read on the next page load, which is often
-      // enough for a figure that only changes when the user sweeps.
-      if (answer.has) answers.set(key, answer);
+      // An uncertain "nothing" may be an outage rather than a verdict, so it
+      // is not cached and the next mount asks again. A found account, or a
+      // definite no, is settled; a balance is re-read on the next page load,
+      // which is often enough for a figure that only changes on a sweep.
+      const settled = answer.has || answer.certain;
+      if (settled) answers.set(key, answer);
       else inFlight.delete(key);
-      if (live && answer.has) setResolved({ key, answer });
+      if (live && settled) setResolved({ key, answer });
     })();
     return () => {
       live = false;

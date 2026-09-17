@@ -42,9 +42,22 @@ export const dynamic = "force-dynamic";
  * keys, and null must never do that — a failed read would take the door away
  * from someone whose money is sitting right there.
  */
-function answer(hasLegacyAccount: boolean, legacyFundsUsd: number | null = null) {
+/**
+ * `certain` says whether a `false` is a verdict or a shrug. The directory is
+ * believed completely (see lib/server/legacy-directory), so its "no" is
+ * definite, and a Privy user found without an embedded wallet definitely never
+ * held money here. A Privy lookup that errors is not: "no such user" and an
+ * outage arrive the same way. The client uses a definite "no" to retire the
+ * offer even on a browser that still carries someone else's `privy:` keys —
+ * a brand-new user must never be told to move to Market 2.0.
+ */
+function answer(
+  hasLegacyAccount: boolean,
+  legacyFundsUsd: number | null = null,
+  certain = hasLegacyAccount
+) {
   return NextResponse.json(
-    { hasLegacyAccount, legacyFundsUsd },
+    { hasLegacyAccount, legacyFundsUsd, certain },
     { headers: { "cache-control": "no-store" } }
   );
 }
@@ -119,7 +132,7 @@ export async function POST(req: NextRequest) {
   }
   if (directory.known === false) {
     console.log("[migrate] result: no legacy account for this user");
-    return answer(false);
+    return answer(false, null, true);
   }
 
   try {
@@ -145,7 +158,8 @@ export async function POST(req: NextRequest) {
     };
     const evm = wallet("ethereum");
     const solana = wallet("solana");
-    if (!evm && !solana) return answer(false);
+    // A real user with no embedded wallet: definitely never held money here.
+    if (!evm && !solana) return answer(false, null, true);
 
     const usd = await fundsAt(evm, solana);
     console.log(

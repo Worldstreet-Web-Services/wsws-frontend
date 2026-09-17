@@ -188,6 +188,13 @@ export function offerMigration(input: {
    */
   legacyAccount?: boolean;
   /**
+   * The directory answered, definitely, that this identity was never a legacy
+   * user. Outranks the device's `privy:` keys, which belong to the browser,
+   * not the person: a brand-new user on a browser someone else used with the
+   * old app must never be told to move to Market 2.0.
+   */
+  legacyKnownAbsent?: boolean;
+  /**
    * The frontend's own read of the old wallet:
    *   true  — holds money,     false — confirmed empty,
    *   null  — could not read,  undefined — the read is still in flight.
@@ -222,6 +229,8 @@ export function offerMigration(input: {
   const fundsOnChain = input.walletFunds ?? null;
   const fundsLeft = fundsOnChain !== null ? fundsOnChain : Boolean(input.status.hasLegacyFunds);
   if (fundsLeft || input.status.pendingOnramps.length) return true;
+  // Definitely never a legacy user. Nothing below can be a reason.
+  if (input.legacyKnownAbsent) return false;
   // Marked done on this device. That flag only fills the gap the service leaves
   // (could not say): when the service has answered "not linked", its answer
   // wins. The flag is per DEVICE, not per user, and can be set by a sweep whose

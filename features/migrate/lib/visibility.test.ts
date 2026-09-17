@@ -447,3 +447,48 @@ describe("remembered link", () => {
     expect(isAccountLinked({})).toBe(false);
   });
 });
+
+// The question asked last: a brand-new user, not in the directory, signs in.
+// They must never see "Move to Market 2.0" — including on a browser that
+// someone else used with the old app and left `privy:` keys in.
+describe("a brand-new user is never offered the migration", () => {
+  const notLinked = { ...EMPTY_MIGRATION_STATUS, linked: false };
+
+  it("on their own device: no signal at all", () => {
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: false,
+        status: notLinked,
+        legacyAccount: false,
+        legacyKnownAbsent: true,
+      })
+    ).toBe(false);
+  });
+
+  it("on a shared browser with someone else's old-app keys: the directory's definite no wins", () => {
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: notLinked,
+        legacyAccount: false,
+        legacyKnownAbsent: true,
+      })
+    ).toBe(false);
+  });
+
+  // The lookup answers false for an outage too. An UNCERTAIN no must not take
+  // the offer away from a real legacy user whose browser has the keys.
+  it("but an uncertain no still defers to the device's own history", () => {
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: notLinked,
+        legacyAccount: false,
+        legacyKnownAbsent: false,
+      })
+    ).toBe(true);
+  });
+});

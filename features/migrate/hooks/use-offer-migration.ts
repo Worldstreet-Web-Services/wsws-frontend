@@ -72,6 +72,7 @@ export function useOfferMigration(): boolean {
     status: statusData,
     linked: knownLinked,
     legacyAccount: legacy.has,
+    legacyKnownAbsent: legacy.certain && !legacy.has,
     walletFunds: walletFundsRead,
   });
   console.log(
@@ -80,7 +81,7 @@ export function useOfferMigration(): boolean {
       ` done on this device: ${complete}, privy keys here: ${localHistory},` +
       ` service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
       ` old wallet on chain: ${!linked ? "not read (not linked)" : walletFunds.isError ? "read failed" : walletFunds.data === undefined ? "probing" : walletFunds.data === null ? "partial read" : walletFunds.data.hasFunds ? `$${walletFunds.data.usd.toFixed(2)} left -> proven` : "empty"},` +
-      ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : "no legacy account"}]`
+      ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : legacy.certain ? "definitely no legacy account" : "no legacy account (unconfirmed)"}]`
   );
   return offer;
 }

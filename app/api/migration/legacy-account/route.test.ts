@@ -53,7 +53,11 @@ describe("POST /api/migration/legacy-account", () => {
     privy.getByEmailAddress.mockResolvedValue(walletUser);
     const res = await POST(req({ email: "A@B.com" }));
     // No balance read is attempted in this test's mock, so it stays unknown.
-    await expect(res.json()).resolves.toEqual({ hasLegacyAccount: true, legacyFundsUsd: null });
+    await expect(res.json()).resolves.toEqual({
+      hasLegacyAccount: true,
+      legacyFundsUsd: null,
+      certain: true,
+    });
     // Normalised, so a capitalised address is not a different user.
     expect(privy.getByEmailAddress).toHaveBeenCalledWith({ address: "a@b.com" });
   });
@@ -63,6 +67,7 @@ describe("POST /api/migration/legacy-account", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: false,
       legacyFundsUsd: null,
+      certain: true,
     });
   });
 
@@ -71,6 +76,7 @@ describe("POST /api/migration/legacy-account", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: false,
       legacyFundsUsd: null,
+      certain: false,
     });
   });
 
@@ -101,6 +107,7 @@ describe("the balance behind the offer", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: 12.5,
+      certain: true,
     });
   });
 
@@ -111,6 +118,7 @@ describe("the balance behind the offer", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: 0,
+      certain: true,
     });
   });
 
@@ -125,6 +133,7 @@ describe("the balance behind the offer", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: null,
+      certain: true,
     });
   });
 
@@ -133,6 +142,7 @@ describe("the balance behind the offer", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: null,
+      certain: true,
     });
   });
 });
@@ -150,6 +160,7 @@ describe("the directory comes first", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: 3,
+      certain: true,
     });
     // The point of the snapshot: it keeps answering after Privy is gone.
     expect(privy.getByEmailAddress).not.toHaveBeenCalled();
@@ -161,6 +172,7 @@ describe("the directory comes first", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: false,
       legacyFundsUsd: null,
+      certain: true,
     });
     expect(privy.getByEmailAddress).not.toHaveBeenCalled();
   });
@@ -175,6 +187,7 @@ describe("the directory comes first", () => {
     await expect((await POST(req({ email: "a@b.com" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: 7,
+      certain: true,
     });
     expect(privy.getByEmailAddress).toHaveBeenCalled();
   });
@@ -201,6 +214,7 @@ describe("a legacy user who never had an email", () => {
     await expect((await POST(req({ xId: "1234567890" }))).json()).resolves.toEqual({
       hasLegacyAccount: true,
       legacyFundsUsd: 5,
+      certain: true,
     });
     // Namespaced, so an X id cannot collide with anything else in the file.
     expect(directory.lookupLegacyIdentifiers).toHaveBeenCalledWith(["x:1234567890"]);
@@ -228,6 +242,7 @@ describe("a legacy user who never had an email", () => {
     await expect((await POST(req({ xId: "not-an-id" }))).json()).resolves.toEqual({
       hasLegacyAccount: false,
       legacyFundsUsd: null,
+      certain: false,
     });
     expect(directory.lookupLegacyIdentifiers).not.toHaveBeenCalled();
   });

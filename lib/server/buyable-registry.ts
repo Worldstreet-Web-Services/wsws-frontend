@@ -252,11 +252,17 @@ async function lookupBaseToken(address: string): Promise<MemeTokenInfo | null> {
  * decorates them exactly like a catalogue-listed coin.
  */
 export async function confirmBaseTokens(
-  addresses: readonly string[]
+  addresses: readonly string[],
+  // How many addresses this caller may spend. The migration reads a wallet a
+  // handful of times ever and wants the long tail; the portfolio reads every
+  // wallet on the app's slow clock and wants the bill bounded, so it asks for
+  // less. Either way the answers are cached per address, so the second caller
+  // of the same wallet pays almost nothing.
+  max: number = CONFIRM_MAX
 ): Promise<Map<string, MemeTokenInfo>> {
   const out = new Map<string, MemeTokenInfo>();
   if (!TRADE_BASE) return out;
-  const queue = [...new Set(addresses)].slice(0, CONFIRM_MAX);
+  const queue = [...new Set(addresses)].slice(0, max);
   const workers = Array.from({ length: Math.min(CONFIRM_CONCURRENCY, queue.length) }, async () => {
     for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
       const confirmed = await lookupBaseToken(next);

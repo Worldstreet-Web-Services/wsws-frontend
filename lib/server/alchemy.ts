@@ -8,6 +8,7 @@ import {
   fetchBuyableRegistry,
   type BuyableRegistry,
   type MemeRegistry,
+  type MemeTokenInfo,
 } from "@/lib/server/buyable-registry";
 import { displaySymbol } from "@/lib/buy";
 import { CONTRACTS, isPolymarketCollateral } from "@/lib/polymarket/config";
@@ -70,9 +71,119 @@ const BASE_PORTFOLIO_NETWORKS = ["base-mainnet"] as const;
 // times per user, ever, not every 30 seconds.
 export type PortfolioScope = "all" | "base" | "legacy";
 const LEGACY_EVM_NETWORKS = EVM_NETWORKS.filter(isSponsoredEvmNetwork);
-// A balance below this is a rounding remnant the migration never asks about
+// A balance below this is a rounding remnant we never ask the catalogue about
 // (the same floor as DUST_MIN_BALANCE in features/migrate/lib/plan.ts).
 const LEGACY_MIN_BALANCE = 1e-6;
+
+// ── Discovering what a wallet actually holds ─────────────────────────────────
+//
+// The balance read only asks about contracts on the allowlist, and the
+// allowlist's memecoin half is the TOP of a volume-ranked catalogue, walked
+// page by page until a page times out. So whether you can see a token you own
+// depends on where it ranked when the pages were walked: measured on staging,
+// USWR sat at rank 35 one hour and ~7,839 the next, and a holding worth $0.96
+// simply vanished from the portfolio in between.
+//
+// So the wallet is enumerated directly, and every held contract the allowlist
+// does not already cover is confirmed with the catalogue by ADDRESS, where
+// rank cannot reach it. That read is far heavier than a balance read (it pages
+// through every airdrop the wallet has ever received), so it runs on its own
+// slow clock and the fast balance polls reuse its answer.
+const DISCOVERY_TTL_MS = 600_000;
+// A cold discovery must not hold up the balances behind it: it enumerates
+// every airdrop a wallet ever received, and the balance reads it delays have
+// their own deadline — made to wait, they drop networks and the portfolio
+// comes back EMPTIER than it would have without discovery at all. So the
+// request waits only long enough for an answer that is essentially ready, and
+// otherwise leaves the walk running in the background to fill the cache for
+// the next poll (30s later). One refresh late beats a blank portfolio now.
+const DISCOVERY_BUDGET_MS = 1_200;
+
+// Base is the only chain the trade catalogue covers, so it is the only chain
+// where an unlisted holding can be confirmed.
+const DISCOVERY_NETWORK = "base-mainnet";
+// Unknown contracts one discovery may ask the catalogue about. Every wallet
+// in the app runs this, so it is deliberately below the migration's own cap:
+// a wallet carrying hundreds of airdrops resolves its largest holdings and
+// leaves the rest to later passes, rather than firing hundreds of lookups.
+const DISCOVERY_MAX_LOOKUPS = 60;
+
+async function discoverHeldBaseTokens(
+  wallet: string,
+  rwa: RwaRegistry,
+  buyable: BuyableRegistry
+): Promise<Map<string, MemeTokenInfo>> {
+  const read = await fetchTokensByAddressPaged([
+    { address: wallet, networks: [DISCOVERY_NETWORK] },
+  ]);
+  const unknown = read.tokens.filter((t) => {
+    if (t.network !== DISCOVERY_NETWORK || !t.tokenAddress) return false;
+    const address = t.tokenAddress.toLowerCase();
+    if (isAllowedHolding(t.network, address, false, rwa, buyable)) return false;
+    const decimals = t.tokenMetadata?.decimals ?? 18;
+    return toNumber(toRawUnits(t.tokenBalance), decimals) >= LEGACY_MIN_BALANCE;
+  });
+  // Largest balance first, so a capped pass spends its lookups on the
+  // holdings most likely to matter rather than on whatever Alchemy listed
+  // first. Balance, not value: Alchemy prices almost none of these (that is
+  // what the catalogue is for), so value would sort them all at zero.
+  const byBalance = unknown
+    .map((t) => ({
+      address: t.tokenAddress!.toLowerCase(),
+      balance: toNumber(toRawUnits(t.tokenBalance), t.tokenMetadata?.decimals ?? 18),
+    }))
+    .sort((a, b) => b.balance - a.balance);
+  return confirmBaseTokens(
+    byBalance.map((t) => t.address),
+    DISCOVERY_MAX_LOOKUPS
+  );
+}
+
+/**
+ * Contracts this wallet holds that the allowlist does not already know, as
+ * the catalogue describes them. Cached per wallet on the slow clock, and
+ * abandoned (not failed) when it cannot answer inside the budget: an empty
+ * answer costs the user a rank-dependent token for one more refresh, where
+ * waiting costs them the whole portfolio.
+ */
+async function heldBeyondAllowlist(
+  wallet: string,
+  rwa: RwaRegistry,
+  buyable: BuyableRegistry
+): Promise<Map<string, MemeTokenInfo>> {
+  // Not awaited past the budget: the walk carries on and writes the cache
+  // whatever this request does with it.
+  const discovery = cached(
+    `portfolio:held:${wallet.toLowerCase()}`,
+    () => discoverHeldBaseTokens(wallet, rwa, buyable),
+    DISCOVERY_TTL_MS
+  ).catch((error) => {
+    console.error("Discovering held tokens failed", error);
+    return new Map<string, MemeTokenInfo>();
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const budget = new Promise<Map<string, MemeTokenInfo>>((resolve) => {
+    timer = setTimeout(() => resolve(new Map()), DISCOVERY_BUDGET_MS);
+    timer.unref?.();
+  });
+  return Promise.race([discovery, budget]).finally(() => clearTimeout(timer));
+}
+
+// Folds discovered contracts into the registries the read and the normaliser
+// both consult, so a confirmed holding is fetched, priced and labelled
+// exactly like a catalogue-listed one.
+function admit(
+  confirmed: ReadonlyMap<string, MemeTokenInfo>,
+  registries: { buyable: BuyableRegistry; meme: MemeRegistry }
+): void {
+  if (confirmed.size === 0) return;
+  const buyable = (registries.buyable[DISCOVERY_NETWORK] ??= new Set());
+  const meme = (registries.meme[DISCOVERY_NETWORK] ??= new Map());
+  for (const [address, info] of confirmed) {
+    buyable.add(address);
+    if (!meme.has(address)) meme.set(address, info);
+  }
+}
 
 // How a holding is classified for display: a native coin (ETH/POL/SOL), a
 // stablecoin (USDC/USDT), a real-world asset (from the RWA registry), or any
@@ -597,6 +708,15 @@ export async function fetchPortfolio(
       // EVM balances come from the chain through the read pool (see
       // lib/server/portfolio-holdings); Solana still uses the Portfolio API
       // until its own change.
+      // What the wallet holds beyond the allowlist, resolved BEFORE the read
+      // below asks for contracts — the balance read only fetches what the
+      // allowlist names, so a contract admitted afterwards would have no
+      // balance to show. The legacy scope enumerates the wallet itself and
+      // admits from that, so it does not need this.
+      if (evm && scope !== "legacy" && evmNetworks.includes(DISCOVERY_NETWORK)) {
+        admit(await heldBeyondAllowlist(evm, rwa, registries.buyable), registries);
+      }
+
       const requests: Promise<AlchemyToken[]>[] = [];
       let missing: string[] = [];
       if (evm && scope === "legacy") {

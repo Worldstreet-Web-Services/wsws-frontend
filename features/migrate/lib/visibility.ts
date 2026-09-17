@@ -150,10 +150,10 @@ export function offerMigration(input: {
   localHistory: boolean;
   status: MigrationStatus | undefined;
   /**
-   * This account is already on the new identity. Passed in because it can be
-   * known before /status returns — a device that has confirmed this email
-   * linked once remembers it (see markEmailLinked). Defaults to the service's
-   * own answer.
+   * The device remembers this email's account as linked (see markEmailLinked),
+   * so it can be known before /status returns. It is a memory, not authority:
+   * a live `linked: false` from the service outranks it, the same way it
+   * outranks the device's "complete" flag — an admin remap can undo a link.
    */
   linked?: boolean;
   /**
@@ -172,7 +172,10 @@ export function offerMigration(input: {
    */
   walletFunds?: boolean | null;
 }): boolean {
-  const linked = input.linked ?? input.status?.linked === true;
+  // The service's own answer wins whenever it gives one. The device's memory
+  // only fills the gap it leaves (not loaded, or could not say).
+  const linked =
+    input.status?.linked === true || (input.linked === true && input.status?.linked !== false);
 
   if (linked) {
     // On the new identity already. The one reason to keep the move open is

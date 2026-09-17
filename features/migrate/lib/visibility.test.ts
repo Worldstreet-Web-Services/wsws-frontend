@@ -121,6 +121,33 @@ describe("offerMigration", () => {
     ).toBe(false);
   });
 
+  // The device's memory is not authority. A live "not linked" from the
+  // service — an admin remap, say — outranks a stale remembered link, the same
+  // way it outranks the device's "complete" flag.
+  it("lets a live not-linked answer outrank a remembered link", () => {
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: status({ linked: false }),
+        linked: true,
+      })
+    ).toBe(true);
+  });
+
+  // "Could not say" (linked: null) is the gap the memory exists to fill.
+  it("keeps a remembered link when the service could not say", () => {
+    expect(
+      offerMigration({
+        complete: false,
+        localHistory: true,
+        status: status({ linked: null, hasLegacyFunds: false }),
+        linked: true,
+        walletFunds: false,
+      })
+    ).toBe(false);
+  });
+
   // A device that remembers this email is linked knows it before /status
   // answers, and still waits for the chain read before opening the offer.
   it("treats a remembered link like a linked status: waits for the chain read", () => {

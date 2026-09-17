@@ -48,6 +48,7 @@ import { useSpotMarkets } from "@/features/trade/hooks/use-spot-markets";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useDepositPrefill } from "@/hooks/use-deposit-prefill";
 import { startDashboardTour, useDashboardTour } from "@/features/tour";
+import { useMigrationGateActive } from "@/features/migrate/lib/gate-state";
 // This page reads the square's SECTIONS switch, not the rail's. The rail links
 // out to the square's own deployment and follows MARKET_SQUARE_HIDDEN; what
 // renders here is the square's content, which is off on its own switch.
@@ -218,7 +219,9 @@ export function DashboardPage() {
     // Otherwise the tab changes off-screen and the tap reads as doing nothing.
     document.getElementById("market-square")?.scrollIntoView({ behavior: "smooth" });
   }, []);
-  useDashboardTour();
+  // Hold the product tour until the migration gate is finished — it is a
+  // full-screen overlay and the tour must not open on top of it.
+  useDashboardTour({ suppressed: useMigrationGateActive() });
 
   // The balance card carries the walkthrough's replay button in the phone
   // design. The steps live on this page, so starting it here is a direct call;

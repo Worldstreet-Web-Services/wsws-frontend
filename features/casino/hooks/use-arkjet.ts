@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-"use client";
+("use client");
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/use-auth-session";
 

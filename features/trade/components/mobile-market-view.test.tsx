@@ -414,7 +414,6 @@ describe("MobileMarketView chrome", () => {
     renderView();
     fireEvent.click(tabs()[RWA]);
     expect(screen.queryAllByRole("searchbox")).toHaveLength(0);
-
   });
 
   // Gap 6: no user-facing literals left in the file.

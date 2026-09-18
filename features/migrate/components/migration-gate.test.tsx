@@ -308,12 +308,7 @@ describe("MigrationGate — blocked wallet window", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("running"));
 
-    for (const label of [
-      "gateFinish",
-      "gateBlockedExit",
-      "gateContinueLater",
-      "gateNoAccess",
-    ]) {
+    for (const label of ["gateFinish", "gateBlockedExit", "gateContinueLater", "gateNoAccess"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
   });

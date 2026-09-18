@@ -3200,6 +3200,7 @@
     "reviewTitle": "Noch auf deinem alten Konto",
     "reviewBody": "Alles hier unten liegt noch auf deinem alten Konto. Hake an, was jetzt abgeschlossen werden soll; der Rest wartet.",
     "checking": "Wir prüfen überall, wo dein altes Konto hinreicht…",
+    "checkingNote": "Das kann einen Moment dauern — wir prüfen jede Stelle, die dein altes Konto berührt.",
     "checkFailed": "Wir konnten dein altes Konto nicht prüfen. Versuche es erneut.",
     "automaticHeading": "Kommt von selbst mit",
     "autoMoved": "Ein Teil deines alten Kontos ist schon herüber. Für den Rest brauchen wir dein Okay.",

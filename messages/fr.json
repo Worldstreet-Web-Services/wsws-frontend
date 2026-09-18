@@ -3200,6 +3200,7 @@
     "reviewTitle": "Encore sur votre ancien compte",
     "reviewBody": "Tout ce qui suit se trouve encore sur votre ancien compte. Cochez ce que vous voulez clôturer maintenant ; le reste attend.",
     "checking": "Nous regardons partout où votre ancien compte s'étend…",
+    "checkingNote": "Cela peut prendre un moment — nous vérifions chaque endroit que votre ancien compte touche.",
     "checkFailed": "Nous n'avons pas pu vérifier votre ancien compte. Réessayez.",
     "automaticHeading": "Suit tout seul",
     "autoMoved": "Une partie de votre ancien compte est déjà arrivée. Le reste attend votre feu vert.",

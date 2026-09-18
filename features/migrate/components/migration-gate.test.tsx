@@ -63,6 +63,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         blocked: false,
         failures: 0,
         walletBlocked: false,
+        running: false,
         ...p,
       });
     return (
@@ -95,6 +96,22 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         </button>
         <button onClick={() => emit({ linked: false, discovered: false, walletBlocked: true })}>
           wallet-blocked
+        </button>
+        {/* A run in flight, with every other exit condition simultaneously
+            true — nothing may be offered while a step is being signed. */}
+        <button
+          onClick={() =>
+            emit({
+              running: true,
+              coreRemaining: 0,
+              blocked: true,
+              walletBlocked: true,
+              failures: 5,
+              stage: "signIn",
+            })
+          }
+        >
+          running
         </button>
         <button onClick={onClose}>panel-exit</button>
       </div>
@@ -278,5 +295,26 @@ describe("MigrationGate — blocked wallet window", () => {
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
     expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
     expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  /*
+    The header promises the app waits until it is done, and a sweep is a
+    signature followed by a wait for it to land. Every exit on this screen —
+    Continue, the blocked exit, the stuck snooze, "I can't sign in" — was
+    reachable mid-run, which is how somebody walks away between signing a
+    transfer and seeing it arrive.
+  */
+  it("offers no way out at all while a step is in flight", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("running"));
+
+    for (const label of [
+      "gateFinish",
+      "gateBlockedExit",
+      "gateContinueLater",
+      "gateNoAccess",
+    ]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
   });
 });

@@ -85,6 +85,13 @@ export interface MigrationProgress {
    * something retrying fixes: the gate offers a way out at once.
    */
   walletBlocked: boolean;
+  /**
+   * A run is in flight right now. The gate hides its exits while this is true:
+   * the header promises the app waits until it is done, and offering "Continue"
+   * mid-sweep invites somebody to walk away between signing a transfer and
+   * seeing it land.
+   */
+  running: boolean;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -310,6 +317,7 @@ export function MoveOldMoneyPanel({
       blocked: linkBlocked !== null,
       failures: stuckCount,
       walletBlocked,
+      running: runner.running,
     });
   }, [
     onProgress,
@@ -321,6 +329,7 @@ export function MoveOldMoneyPanel({
     linkBlocked,
     stuckCount,
     walletBlocked,
+    runner.running,
   ]);
 
   const toggle = (id: string) => {
@@ -470,12 +479,14 @@ export function MoveOldMoneyPanel({
     return (
       <Step title={t("runningTitle")} body={message || t("runningBody")}>
         <ProgressBar pct={total === 0 ? 0 : Math.round((done / total) * 100)} />
-        <p className="tnum mt-2 text-[12.5px] text-white/55">
+        <p className="tnum mt-2 flex items-center gap-2 text-[12.5px] text-white/55">
+          <Spinner />
           {t("runningCount", { done, total })}
         </p>
-        <button onClick={runner.cancel} className={`${SECONDARY} mt-4`}>
-          {t("cancelRun")}
-        </button>
+        {/* No "stop" and no "continue" while a step is in flight. Both used to
+            sit here, and both invited the one thing this screen exists to
+            prevent: leaving between a transfer being signed and it landing.
+            The run is short and the header says the app waits for it. */}
       </Step>
     );
   }
@@ -558,7 +569,14 @@ export function MoveOldMoneyPanel({
   }
 
   if (holdingsQuery.isPending) {
-    return <Step title={t("reviewTitle")} body={t("checking")} />;
+    return (
+      <Step title={t("reviewTitle")} body={t("checking")}>
+        <div className="flex items-center gap-2 text-[12.5px] text-white/45">
+          <Spinner />
+          {t("checkingNote")}
+        </div>
+      </Step>
+    );
   }
   if (holdingsQuery.isError) {
     return (
@@ -652,6 +670,24 @@ function WalletWindowBlocked({ t }: { t: Translate }) {
         {t("walletBlockedReload")}
       </button>
     </Step>
+  );
+}
+
+/**
+ * Something is happening. Shown wherever the panel is waiting on work the user
+ * cannot hurry — discovery reading five venues, a sweep being signed — because
+ * a paragraph that never changes reads as a hang, and this screen can sit on
+ * one line for twenty seconds.
+ *
+ * `aria-hidden` with the label carried by the copy beside it: a screen reader
+ * hears the sentence, not "image".
+ */
+function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`border-accent/70 inline-block size-3.5 shrink-0 animate-spin rounded-full border-[1.5px] border-r-transparent motion-reduce:animate-none ${className}`}
+    />
   );
 }
 

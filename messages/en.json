@@ -3200,6 +3200,7 @@
     "reviewTitle": "Still on your old account",
     "reviewBody": "Everything below still sits on your old account. Tick what you want settled now; the rest waits.",
     "checking": "Checking everywhere your old account reaches…",
+    "checkingNote": "This can take a moment — we check every place your old account reaches.",
     "checkFailed": "We couldn't check your old account. Try again.",
     "automaticHeading": "Carries across on its own",
     "autoMoved": "Part of your old account is across already. The rest needs your say-so.",

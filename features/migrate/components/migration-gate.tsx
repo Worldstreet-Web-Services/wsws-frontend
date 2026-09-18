@@ -80,20 +80,33 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const [opened, setOpened] = useState(false);
   if (offer && !opened) setOpened(true);
 
+  // A step is being signed or mined right now. Every exit below is withheld
+  // while it is: the header promises the app waits until it is done, and a
+  // "Continue" offered between a transfer being signed and it landing is how
+  // somebody walks away mid-sweep.
+  const running = progress?.running === true;
   const canFinish =
-    progress !== null && progress.linked && progress.discovered && progress.coreRemaining === 0;
+    progress !== null &&
+    !running &&
+    progress.linked &&
+    progress.discovered &&
+    progress.coreRemaining === 0;
   // Linking failed in a way no retry can fix — the old wallet belongs to a
   // different account. There is nothing the user can do here, so the gate stops
   // being a wall and offers a way out instead of looping on "link again".
-  const blocked = progress?.blocked === true;
+  const blocked = !running && progress?.blocked === true;
   // This browser will not load the wallet window at all (ad blocker,
   // third-party storage off). Retrying cannot fix it, so there is no reason to
   // make the user fail three times first: the way out is offered at once.
-  const walletBlocked = !blocked && !canFinish && progress?.walletBlocked === true;
+  const walletBlocked = !running && !blocked && !canFinish && progress?.walletBlocked === true;
   // The current step has failed enough times in a row that "try again" is no
   // longer an honest offer on its own.
   const stuck =
-    !blocked && !canFinish && !walletBlocked && (progress?.failures ?? 0) >= STUCK_AFTER_FAILURES;
+    !running &&
+    !blocked &&
+    !canFinish &&
+    !walletBlocked &&
+    (progress?.failures ?? 0) >= STUCK_AFTER_FAILURES;
   const stage = progress?.stage ?? "signIn";
 
   const finish = useCallback(() => {
@@ -123,7 +136,8 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
 
   if (!opened || doneHere || snoozedHere) return null;
   const coreLeft = progress?.linked === true && !canFinish && !stuck && !walletBlocked;
-  const atSignIn = stage === "signIn" && !blocked && !stuck && !walletBlocked && !canFinish;
+  const atSignIn =
+    !running && stage === "signIn" && !blocked && !stuck && !walletBlocked && !canFinish;
   return (
     <MoveOldMoneyFrame dismissible={false} onClose={ignore}>
       <LegacyPrivyProvider>

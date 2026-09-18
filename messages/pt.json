@@ -3200,6 +3200,7 @@
     "reviewTitle": "Ainda na sua conta antiga",
     "reviewBody": "Tudo o que está abaixo continua na sua conta antiga. Marque o que quer fechar agora; o resto espera.",
     "checking": "A verificar todos os sítios onde a sua conta antiga chega…",
+    "checkingNote": "Isto pode demorar um momento — verificamos todos os sítios onde a sua conta antiga chega.",
     "checkFailed": "Não conseguimos verificar a sua conta antiga. Tente de novo.",
     "automaticHeading": "Vem sozinho",
     "autoMoved": "Uma parte da sua conta antiga já veio. O resto precisa do seu aval.",

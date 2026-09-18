@@ -73,5 +73,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Static assets and any dotted file (icons, images, fonts) stay reachable —
   // the landing page is built from them.
-  matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
+  //
+  // /square belongs to the Square zone, a separate deployment next.config
+  // rewrites to (ADR-2026-09-16-square-microfrontend); the gate must never
+  // answer for it. The `(?:/|$)` keeps /squares and the like in this app.
+  matcher: ["/((?!_next/static|_next/image|square(?:/|$)|.*\\..*).*)"],
 };

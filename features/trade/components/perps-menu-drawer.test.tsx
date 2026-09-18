@@ -110,21 +110,30 @@ describe("PerpsMenuDrawer", () => {
     expect(rail?.contains(document.activeElement)).toBe(true);
   });
 
-  it("lights the entry for the page the user is on", () => {
+  // The perps screen's own section is Perpetuals, which this build no longer
+  // offers — so the rail lights nothing rather than lighting an entry that is
+  // not there. sectionForPathname still derives the section from /perps;
+  // buildNav simply has no entry to mark.
+  it("lights no entry when the page's own section is not offered", () => {
     render(<PerpsScreen />);
     fireEvent.click(hamburger());
-    // sectionForPathname derives this from /perps; nothing is hardcoded.
-    expect(screen.getByRole("button", { name: "Perpetuals" }).className).toContain("bg-accent/14");
+    const rail = document.getElementById("app-sidebar") as HTMLElement;
+    const lit = Array.from(rail.querySelectorAll("button")).filter((b) =>
+      b.className.includes("bg-accent/14")
+    );
+    expect(lit).toHaveLength(0);
   });
 
   // buildNav is the single reader of the nav switches, so the drawer offers
   // exactly what the rail offers: Real assets since they returned on
-  // 2026-09-09, and Perpetuals, which staging keeps in the nav.
+  // 2026-09-09, and neither Perpetuals nor Prediction. Prediction was offered
+  // on 2026-09-16 and withdrawn again on 2026-09-17 until it relaunches.
   it("offers the same sections as the rail", () => {
     render(<PerpsScreen />);
     fireEvent.click(hamburger());
     expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Perpetuals" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Perpetuals" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Prediction" })).toBeNull();
   });
 
   it("closes and navigates when a section is chosen", () => {

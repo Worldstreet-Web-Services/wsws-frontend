@@ -2,7 +2,14 @@
 
 import { resolveAuthTokens, type AuthIdentity } from "@/lib/auth-token";
 import { LegacySessionError } from "@/lib/errors";
-import { circuitAllows, recordCircuitFailure, recordCircuitSuccess } from "@/lib/api/circuit-store";
+import {
+  circuitAllows,
+  readRetryAt,
+  recordCircuitFailure,
+  recordCircuitSuccess,
+  recordReadRateLimit,
+} from "@/lib/api/circuit-store";
+import { apiError } from "@/lib/api/envelope";
 import { reportUpstreamFailure } from "@/lib/analytics/watchtower";
 
 export interface ApiFetchOptions {
@@ -48,6 +55,14 @@ export async function apiFetch(
 ): Promise<Response> {
   const identity = opts.identity ?? "current";
   const headers = new Headers(init.headers);
+  const method = (init.method ?? "GET").toUpperCase();
+  const isRead = method === "GET" || method === "HEAD";
+  const retryAt = isRead ? readRetryAt(path) : null;
+  if (retryAt) {
+    throw apiError("TOO_MANY_REQUESTS", "Too many requests. Waiting before retrying.", 429, {
+      retryAt,
+    });
+  }
 
   // `anonymous` sends no credentials at all, for reads that are the same for
   // everyone. It exists so a public read can still sit behind the breaker
@@ -84,8 +99,7 @@ export async function apiFetch(
    * when it did not. Those go out and fail honestly, and their failure still
    * informs the breaker.
    */
-  const method = (init.method ?? "GET").toUpperCase();
-  if ((method === "GET" || method === "HEAD") && !circuitAllows(path)) {
+  if (isRead && !circuitAllows(path)) {
     throw new Error("Can't reach the server right now");
   }
 
@@ -100,6 +114,7 @@ export async function apiFetch(
   }
   if (response.ok) recordCircuitSuccess(path);
   else {
+    if (response.status === 429) recordReadRateLimit(path, response.headers.get("retry-after"));
     recordCircuitFailure(path, response.status);
     // The reason error reporting sits HERE and not in each caller.
     //

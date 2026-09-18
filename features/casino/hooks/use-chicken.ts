@@ -4,6 +4,8 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ARKJET_KEYS } from "@/features/casino/hooks/use-arkjet";
+import { pollUnlessFailing } from "@/lib/query-poll";
 import {
   cashoutChicken,
   fetchActiveChicken,
@@ -19,10 +21,10 @@ import {
 
 const KEYS = {
   rules: ["casino", "chicken", "rules"] as const,
-  risk: ["casino", "arkjet", "risk", "rules"] as const,
+  risk: ARKJET_KEYS.riskRules,
   active: ["casino", "chicken", "active"] as const,
   history: ["casino", "chicken", "history"] as const,
-  balance: ["casino", "arkjet", "balance"] as const,
+  balance: ARKJET_KEYS.balance,
 };
 
 function action(session: ChickenSession) {
@@ -39,7 +41,7 @@ export function useChicken() {
   const login = () => router.push("/auth");
   const queryClient = useQueryClient();
   const [terminalResult, setTerminalResult] = useState<ChickenSession | null>(null);
-  const hasSession = ready && authenticated;
+  const hasSession = ready && authenticated && Boolean(evmAddress);
   const rules = useQuery({
     queryKey: KEYS.rules,
     queryFn: fetchChickenRules,
@@ -58,11 +60,12 @@ export function useChicken() {
     refetchOnWindowFocus: false,
   });
   const balance = useQuery({
-    queryKey: KEYS.balance,
+    queryKey: [...KEYS.balance, evmAddress ?? null],
     queryFn: fetchArkjetBalance,
     enabled: hasSession,
-    refetchInterval: hasSession ? 2_000 : false,
-    staleTime: 500,
+    refetchInterval: pollUnlessFailing(30_000),
+    staleTime: 30_000,
+    retry: false,
   });
   const history = useQuery({
     queryKey: KEYS.history,
@@ -125,7 +128,7 @@ export function useChicken() {
     rules: rules.data ?? null,
     risk: risk.data ?? null,
     session: active.data ?? terminalResult,
-    balance: balance.data ?? null,
+    balance: hasSession ? (balance.data ?? null) : null,
     history: history.data?.items ?? [],
     authenticated,
     authReady: ready,

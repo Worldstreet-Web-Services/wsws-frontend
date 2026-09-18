@@ -721,7 +721,8 @@
     "switchMarket": "Mudar de mercado",
     "close": "Fechar",
     "signIn": "Entrar",
-    "openDashboard": "Abrir painel"
+    "openDashboard": "Abrir painel",
+    "loading": "A carregar…"
   },
   "portfolio": {
     "eyebrow": "Portfólio",
@@ -3396,6 +3397,13 @@
     "statusExpired": "Expirada",
     "statusCancelled": "Cancelada",
     "pendingNote": "Não entra nas suas posições até ser confirmada."
+  },
+  "arkjetFunding": {
+    "disabled": "Os depósitos da carteira estão desativados neste ambiente. {product} não movimentará fundos até que o cofre USDC seja configurado.",
+    "temporary": "Os depósitos da carteira estão temporariamente indisponíveis.",
+    "retry": "Tentar novamente",
+    "settlement": "Os saldos de {product} são liquidados 1:1 em Base USDC.",
+    "fee": "Taxa: {amount} USDC."
   },
   "tradeErrors": {
     "tokenBlocked": "Este token foi bloqueado pela nossa equipe, então não pode ser negociado.",

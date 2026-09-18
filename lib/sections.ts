@@ -61,11 +61,20 @@ const REORDERABLE: SectionId[] = [
  * desktop rail, the phone drawer, the marquee and the dashboard's brief order
  * all drop a hidden section together.
  *
- * Empty since 2026-09-09: Real assets returned once the gateway's rwa and
- * gas-sponsor services were confirmed live in production. To hide a section
- * again, list its id here; nothing else needs to change.
+ * Real assets returned on 2026-09-09 once the gateway's rwa and gas-sponsor
+ * services were confirmed live in production.
+ *
+ * Perpetuals and Prediction are listed on 2026-09-16. Perps is a product
+ * decision: the desk is exercised on staging and is not offered here yet.
+ * Prediction is not a choice at all, it is what production can serve. The
+ * gateway's `prediction` service answers 502 on api.tsionark.com, so the
+ * sportsbook and combo routes behind /prediction have nothing to call. Note
+ * that `prediction-market`, a different service, IS live; it is unaffected.
+ *
+ * To offer a section again, take its id out of this list; nothing else
+ * changes.
  */
-export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = [];
+export const HIDDEN_NAV_SECTIONS: readonly SectionId[] = ["perps", "prediction"];
 
 // Sections that are their own page rather than an anchor.
 export const SECTION_ROUTES: Partial<Record<SectionId, string>> = {

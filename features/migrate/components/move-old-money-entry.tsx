@@ -47,14 +47,23 @@ export function MoveOldMoneyButton({
     behind this row, and offering it tells them they have unfinished business
     they have never had.
 
-    So it needs a positive reason to appear, rather than appearing by default:
-    the account is linked, this device carries the old app's session keys, or
-    the directory found them. Nothing showing while the directory is still
-    answering is deliberate — a row that appears a moment late for a legacy
-    user on a new device is better than one that appears for everybody and
-    then vanishes.
+    So it needs a positive reason to appear, rather than appearing by default.
+    In order of authority, which is the same order offerMigration uses:
+
+      1. Linked — they demonstrably had one. Nothing outranks this.
+      2. The directory answered DEFINITELY NO — hide, whatever else says.
+         Those `privy:` keys belong to the BROWSER, not the person: somebody
+         else used this machine with the old app, and the new owner of the
+         session must not be told they have an account to finish moving.
+      3. The directory found them, or this device carries the old app's keys
+         and the directory has not ruled it out.
+
+    Nothing showing while the directory is still answering is deliberate — a
+    row that appears a moment late for a legacy user on a new device is better
+    than one that appears for everybody and then vanishes.
   */
-  if (!linked && !localHistory && !legacy.has) return null;
+  const knownAbsent = legacy.certain && !legacy.has;
+  if (!linked && (knownAbsent || (!localHistory && !legacy.has))) return null;
 
   return (
     <button onClick={onClick} className={`${className} text-white`}>

@@ -62,8 +62,22 @@ describe("the always-open door into the migration", () => {
 
   it("is offered when this device carries the old app's session keys", () => {
     state.localHistory = true;
+    state.legacyCertain = false; // the directory has not ruled it out
     render(<MoveOldMoneyButton onClick={vi.fn()} className="" />);
     expect(door()).not.toBeNull();
+  });
+
+  /*
+    The `privy:` keys belong to the BROWSER, not the person. Somebody else
+    used this machine with the old app; whoever is signed in now is not them,
+    and the directory says so definitely. Same precedence offerMigration uses.
+  */
+  it("is not offered on a shared browser when the directory says definitely not", () => {
+    state.localHistory = true;
+    state.legacyCertain = true;
+    state.legacyHas = false;
+    render(<MoveOldMoneyButton onClick={vi.fn()} className="" />);
+    expect(door()).toBeNull();
   });
 
   it("is offered when the directory found a legacy account", () => {

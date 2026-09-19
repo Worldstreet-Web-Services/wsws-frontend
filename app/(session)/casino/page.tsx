@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArkadeDesktop, ArkadeMobile, CasinoPage } from "@/features/casino";
 import { AppModalHost, useAppModals } from "@/components/layout/modals/app-modals";
+import { ArkadeDesktop } from "@/features/casino/components/arkade-desktop";
+import { ArkadeMobile } from "@/features/casino/components/arkade-mobile";
+import { CasinoPage } from "@/features/casino/components/casino-page";
 import { TRACKED_GAMES, type CasinoGame } from "@/features/casino/lib/games";
 import { useCasinoPresence } from "@/features/casino/hooks/use-casino-presence";
 import { track } from "@/lib/analytics/mixpanel";

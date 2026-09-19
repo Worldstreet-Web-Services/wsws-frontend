@@ -34,6 +34,7 @@ function forwardedCalls(): [string, RequestInit][] {
 
 describe("arkjet proxy route", () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     auth.verifyRequest.mockReset();
     global.fetch = vi.fn(
       async () =>
@@ -53,6 +54,39 @@ describe("arkjet proxy route", () => {
     expect(response.status).toBe(200);
     expect(auth.verifyRequest).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("uses an explicit Arkjet upstream in development", async () => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ARKJET_API_URL", "https://api.example.test/v1/arkjet");
+    const { GET } = await import("@/app/api/arkjet/[...path]/route");
+
+    await GET(makeReq("https://app.test/api/arkjet/funding/config"), {
+      params: Promise.resolve({ path: ["funding", "config"] }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://api.example.test/v1/arkjet/funding/config",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("defaults to the local Arkjet worker in development", async () => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ARKJET_API_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_ARKJET_API_URL", "");
+    const { GET } = await import("@/app/api/arkjet/[...path]/route");
+
+    await GET(makeReq("https://app.test/api/arkjet/funding/config"), {
+      params: Promise.resolve({ path: ["funding", "config"] }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:8096/funding/config",
+      expect.objectContaining({ method: "GET" })
+    );
   });
 
   it("keeps the published risk and minimum-bet contract public", async () => {

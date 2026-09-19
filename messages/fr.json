@@ -3147,7 +3147,9 @@
     "reconnecting": "Reconnexion…"
   },
   "carousel": {
-    "goToSlide": "Aller à la diapositive {index}"
+    "goToSlide": "Aller à la diapositive {index}",
+    "pause": "Mettre les bannières en pause",
+    "play": "Lancer les bannières"
   },
   "discovery": {
     "promoRailCarousel": "Promotions",

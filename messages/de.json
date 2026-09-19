@@ -3147,7 +3147,9 @@
     "reconnecting": "Verbinde neu…"
   },
   "carousel": {
-    "goToSlide": "Zu Folie {index}"
+    "goToSlide": "Zu Folie {index}",
+    "pause": "Banner anhalten",
+    "play": "Banner abspielen"
   },
   "discovery": {
     "promoRailCarousel": "Angebote",

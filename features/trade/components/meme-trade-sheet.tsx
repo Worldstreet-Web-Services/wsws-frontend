@@ -31,7 +31,6 @@ import {
 import { useRiskConsent } from "@/features/trade/hooks/use-risk-consent";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useReroutedWithdraw } from "@/hooks/use-withdraw";
-import { BRAND } from "@/lib/brand";
 import { displaySymbol } from "@/lib/buy";
 import { settlementFor } from "@/lib/deposit";
 import { friendlyError } from "@/lib/errors";
@@ -609,8 +608,10 @@ export function MemeTradeSheet({
   const moving = funding === "moving";
   const queued = funding === "queued";
   const tracking = busy || finished || queued;
-  // What support will ask for on a delivered or pending trade.
+  // What support will ask for on a delivered or pending trade. tradeRef yields
+  // an em dash when the service named neither id, and there is nothing to show.
   const ref = tradeRef(swapId, requestId);
+  const showRef = (deliveredOnly || pending) && ref !== "—";
   const trackTitle = queued
     ? t("queuedTitle")
     : moving
@@ -638,12 +639,10 @@ export function MemeTradeSheet({
             ? t("deliveredReceivedBody", {
                 amount: received.amount,
                 symbol: displaySymbol(received.symbol),
-                brand: BRAND,
-                ref,
               })
-            : t("deliveredBody", { brand: BRAND, ref })
+            : t("deliveredBody")
           : pending
-            ? t("pendingBody", { brand: BRAND, ref })
+            ? t("pendingBody")
             : received
               ? t("receivedBody")
               : phase !== "confirming"
@@ -728,6 +727,16 @@ export function MemeTradeSheet({
                 <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/60">
                   {trackBody}
                 </p>
+                {/* Support asks for this, the reader never does: it sits under
+                    the outcome as fine print instead of interrupting it. */}
+                {showRef ? (
+                  <p
+                    data-testid="meme-trade-ref"
+                    className="mt-2 text-[11.5px] font-normal text-white/40"
+                  >
+                    {t("refNote", { ref })}
+                  </p>
+                ) : null}
                 {/* Once a Solana quote is in hand, the fee it states, in USDC. */}
                 {quotedFee ? (
                   <div className="mt-3 flex justify-between text-[12.5px] font-normal">

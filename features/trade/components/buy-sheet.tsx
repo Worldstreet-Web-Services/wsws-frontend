@@ -28,7 +28,6 @@ import { useMoney } from "@/components/ui/currency-select";
 import { ShareToSquare } from "@/components/share/share-to-square";
 import { track } from "@/lib/analytics/mixpanel";
 import { useSpotMode } from "@/features/trade/components/spot-mode";
-import { BRAND } from "@/lib/brand";
 import { friendlyError } from "@/lib/errors";
 import type { BuyPayload } from "@/lib/modal-types";
 
@@ -357,6 +356,8 @@ export function BuySheet({ payload, onClose, onTopUp }: BuySheetProps) {
     const failed = stage === "failed" || stage === "refunded";
     const done = stage === "settled";
     const unrecorded = isSwapMarket && swapUnrecorded;
+    // The support reference for a trade the service has not recorded yet.
+    const unrecordedRef = tradeRef(memeTrade.swapId, memeTrade.requestId);
     // Whichever path settled. Null means the trade cannot be pointed at, and
     // then no share is offered at all.
     const settlement = isSwapMarket ? memeTrade.settled : settledTx;
@@ -387,15 +388,20 @@ export function BuySheet({ payload, onClose, onTopUp }: BuySheetProps) {
           </div>
           <ProgressBar pct={progress.pct} color={color} />
           {unrecorded ? (
-            <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
-              {boughtAmount
-                ? `${t("amountInAccount", { amount: boughtAmount, symbol: payload.symbol })} `
-                : ""}
-              {t("deliveredBody", {
-                brand: BRAND,
-                ref: tradeRef(memeTrade.swapId, memeTrade.requestId),
-              })}
-            </p>
+            <>
+              <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
+                {boughtAmount
+                  ? `${t("amountInAccount", { amount: boughtAmount, symbol: payload.symbol })} `
+                  : ""}
+                {t("deliveredBody")}
+              </p>
+              {/* Support asks for this, the reader never does. */}
+              {unrecordedRef !== "—" ? (
+                <p className="mt-2 text-[11.5px] font-normal text-white/40">
+                  {t("refNote", { ref: unrecordedRef })}
+                </p>
+              ) : null}
+            </>
           ) : done ? (
             <p className="mt-3 text-[13px] leading-[1.5] font-normal text-white/70">
               {boughtAmount

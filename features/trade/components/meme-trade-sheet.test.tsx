@@ -445,8 +445,12 @@ describe("the outcome is the service's word, not the receipt's", () => {
     tradeHook.requestId = "req-1";
     rerender();
     expect(screen.getByTestId("meme-phase-title")).toHaveTextContent("Delivered on-chain");
-    expect(screen.getByRole("dialog")).toHaveTextContent(/still recording this trade/i);
-    expect(screen.getByRole("dialog")).toHaveTextContent("swap-1 · req-1");
+    // The amount is the news; the eyebrow already carries the recording state,
+    // so the body no longer repeats it.
+    expect(screen.getByRole("dialog")).toHaveTextContent("4.0651 PEPE is in your wallet");
+    expect(screen.getByRole("dialog")).toHaveTextContent(/appear in your transactions/i);
+    // The reference support asks for, as fine print rather than mid-sentence.
+    expect(screen.getByTestId("meme-trade-ref")).toHaveTextContent("swap-1 · req-1");
     expect(screen.getByRole("dialog")).not.toHaveTextContent(/trade confirmed/i);
     expect(screen.getByRole("button", { name: messages.meme.done })).toBeEnabled();
   });

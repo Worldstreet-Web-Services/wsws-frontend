@@ -733,6 +733,19 @@ describe("useMemeTrade on Solana", () => {
     const result = await runSolanaBuy();
     expect(result.current.quotedFee).toBeNull();
   });
+
+  /*
+    A swap that opens an associated token account names its rent payer inside
+    that instruction, and the sponsor taking the fee-payer seat does not change
+    it. Without prefundRent the rent falls on the taker's own wallet, which for
+    somebody selling a token is the wallet with no SOL in it — seen live as
+    "Transfer: insufficient lamports 861525, need 1488440" on a USDC sell.
+  */
+  it("asks the sponsor to cover token-account rent, not the taker", async () => {
+    api.quoteSolanaSwap.mockResolvedValue(solanaQuote());
+    await runSolanaBuy();
+    expect(solana.send).toHaveBeenCalledWith(expect.objectContaining({ prefundRent: true }));
+  });
 });
 
 // The contract: "refresh summary and open positions after a swap reaches

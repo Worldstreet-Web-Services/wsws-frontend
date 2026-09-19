@@ -359,9 +359,17 @@ export function useMemeTrade() {
       setPhase("signing");
       // The sponsor reseats itself as fee payer BEFORE the user signs, and
       // nothing touches the transaction after; that order is the contract.
+      //
+      // prefundRent also reseats the rent payer named INSIDE an associated
+      // token account creation, which the fee-payer seat does not cover. A
+      // swap that opens an account the taker does not have yet — the output
+      // mint, or wrapped SOL — otherwise bills that rent to the taker's own
+      // wallet. Selling a token is exactly when that wallet is empty of SOL,
+      // which is the case sponsorship exists for, so it is always on here.
+      // Same rule the withdraw, migration and RWA paths already follow.
       const signature = await sendSponsoredSolana({
         transaction: quote.unsignedTransactionBase64,
-        prefundRent: false,
+        prefundRent: true,
       });
       await registerSolanaSubmission(quote.swapId, body.walletAddress, signature);
       setSettled({ txHash: signature, chainId: SOLANA_CHAIN_ID });

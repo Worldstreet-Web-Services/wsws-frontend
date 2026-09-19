@@ -682,7 +682,7 @@ function WalletWindowBlocked({ t }: { t: Translate }) {
  * `aria-hidden` with the label carried by the copy beside it: a screen reader
  * hears the sentence, not "image".
  */
-function Spinner({ className = "" }: { className?: string }) {
+export function Spinner({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden

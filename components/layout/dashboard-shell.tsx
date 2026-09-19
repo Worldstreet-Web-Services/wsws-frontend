@@ -38,8 +38,9 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-// The persistent chrome around every top-level app screen: sidebar (a drawer
-// on phones), topbar, the phone tab bar, and the account modal. Shared by /dashboard
+// The persistent chrome around every top-level app screen: sidebar (a fixed
+// rail from md up; phones have the tab bar instead), topbar, the phone tab
+// bar, and the account modal. Shared by /dashboard
 // (the scroll-spy sections) and any standalone section page like /casino, so
 // moving between them feels like one app, not a different shell per page.
 //
@@ -49,7 +50,6 @@ interface DashboardShellProps {
 // there and otherwise navigates to /dashboard#id first.
 export function DashboardShell({ nav, activeSection, children }: DashboardShellProps) {
   const [accountOpen, setAccountOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   // Funding from the phone tab bar's round button. The shell owns this one so
   // the action works on every page, not just the dashboard, which keeps its own
   // copy for the balance card and the empty states.
@@ -79,12 +79,15 @@ export function DashboardShell({ nav, activeSection, children }: DashboardShellP
 
   return (
     <div className="min-h-screen bg-black">
+      {/* No phone drawer: nothing in this shell opens one (the 2.0 interface
+          took the phone menu button out, and the top bar's avatar opens the
+          account sheet), so the rail layout renders none below md rather
+          than a drawer nobody can reach. */}
       <Sidebar
         items={nav}
         activeSection={activeSection}
         onNavigate={(id) => navigate(id)}
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        layout="rail"
       />
 
       {/* The tab bar sits at the bottom on a phone, so the last section needs

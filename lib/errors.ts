@@ -102,13 +102,6 @@ export function requestIdOf(e: unknown): string | null {
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
-// The support reference, as it is shown beside a message and in fine print.
-// "Ref:" is left untranslated on purpose: it is a token support searches for.
-function withRef(copy: string, e: unknown): string {
-  const id = requestIdOf(e);
-  return id ? `${copy} Ref: ${id}` : copy;
-}
-
 function looksSafeServerMessage(message: string): boolean {
   const trimmed = message.trim();
   if (!trimmed || trimmed.length > 160) return false;
@@ -210,8 +203,12 @@ export function friendlyError(
 ): string {
   // Trade service failures are decided by code, before any text rule below
   // could keep a "safe-looking" upstream sentence.
+  // The message is the sentence alone. The request id is a support token, not
+  // something to read: it already rides to Watchtower on every upstream
+  // failure, and the surfaces that want it on screen render it as fine print
+  // through supportDetail rather than inside the sentence.
   const tradeKey = tradeErrorKey(e);
-  if (tradeKey) return withRef(translate ? translate(tradeKey) : fallback, e);
+  if (tradeKey) return translate ? translate(tradeKey) : fallback;
 
   const raw = text(e).trim();
   const m = raw.toLowerCase();

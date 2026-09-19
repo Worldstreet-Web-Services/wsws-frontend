@@ -497,8 +497,8 @@ describe("the outcome is the service's word, not the receipt's", () => {
   });
 });
 
-describe("a trade service failure reads as our copy with the reference", () => {
-  it("shows the mapped copy and the requestId, never the upstream wording", () => {
+describe("a trade service failure reads as our copy, and only that", () => {
+  it("shows the mapped copy alone: no upstream wording, no request id", () => {
     tradeHook.phase = "failed";
     tradeHook.error = Object.assign(new Error("route table miss in 0x"), {
       name: "TradeApiError",
@@ -509,8 +509,11 @@ describe("a trade service failure reads as our copy with the reference", () => {
     renderSheet();
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(messages.tradeErrors.noSwapRoute);
-    expect(alert).toHaveTextContent("Ref: req-x1");
+    // The service's own wording is written for its logs.
     expect(alert).not.toHaveTextContent("route table miss");
+    // And the request id is a support token, not something to read: it reaches
+    // support through Watchtower, not through the middle of this sentence.
+    expect(alert).not.toHaveTextContent("req-x1");
   });
 });
 

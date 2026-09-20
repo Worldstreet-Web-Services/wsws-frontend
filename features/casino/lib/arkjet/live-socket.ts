@@ -5,10 +5,18 @@ import { apiError } from "@/lib/api/envelope";
 import { resolveAuthTokens } from "@/lib/privy-token";
 
 const LOCAL_WS_URL = "ws://127.0.0.1:8100";
-const DEPLOYED_WS_URL = "wss://ws-staging.tsionark.com";
+// The live gateway, not the retired staging host, for a deployment that names
+// none of its own.
+const DEPLOYED_WS_URL = "wss://ws.tsionark.com";
+// A variable set to nothing is a variable nobody set: it must not resolve to
+// an empty address.
+const NAMED_WS_URL = process.env.NEXT_PUBLIC_CHESS_WS_URL?.trim();
 const WS_URL =
-  process.env.NEXT_PUBLIC_CHESS_WS_URL ??
-  (process.env.NODE_ENV === "production" ? DEPLOYED_WS_URL : LOCAL_WS_URL);
+  NAMED_WS_URL !== undefined && NAMED_WS_URL !== ""
+    ? NAMED_WS_URL
+    : process.env.NODE_ENV === "production"
+      ? DEPLOYED_WS_URL
+      : LOCAL_WS_URL;
 const COMMAND_RETRY_MS = 2_500;
 const COMMAND_DEADLINE_MS = 15_000;
 const IDLE_KEEPALIVE_MS = 8_000;

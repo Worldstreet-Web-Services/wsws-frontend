@@ -125,6 +125,22 @@ describe("Chicken live socket", () => {
     await vi.advanceTimersByTimeAsync(8_000);
   });
 
+  // A deployed site is told which gateway to use. Ignoring that in production
+  // sent Chicken to a host that no longer accepts connections, where it
+  // reconnected forever behind the HTTP fallback.
+  it("uses the gateway the deployment names, in production too", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    const { subscribeChickenTopic } = await import("./live-socket");
+    const unsubscribe = subscribeChickenTopic("user-1", () => {});
+    await flush();
+
+    expect(FakeSocket.instances[0]!.url).toContain("wss://games.test/");
+
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(8_000);
+  });
+
   it("fails fast so an old gateway can use the HTTP fallback", async () => {
     const { sendChickenCommand } = await import("./live-socket");
     const response = sendChickenCommand({ commandId: "command-old", action: "start" });

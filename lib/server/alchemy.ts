@@ -11,6 +11,7 @@ import { displaySymbol } from "@/lib/buy";
 import { CONTRACTS, isPolymarketCollateral } from "@/lib/polymarket/config";
 import { HOT_NETWORKS, readEvmPortfolioTokens } from "@/lib/server/portfolio-holdings";
 import { freshFor, type FreshScope } from "@/lib/portfolio/fresh-scope";
+import { fetchMemePositions } from "@/lib/server/meme-positions";
 
 // Alchemy Portfolio API. One call returns native + ERC-20 + SPL balances with
 // USD prices across every requested network. Key stays server-side.
@@ -538,11 +539,44 @@ async function fetchTokensByAddress(
 // `fresh` names the networks a caller must see re-read from the chain
 // because it just changed them; every other network answers from its own
 // cache. "all" is the legacy sweep (ADR-2026-09-09-portfolio-refresh-scope).
+/**
+ * Folds the caller's own trade positions into the shared registries.
+ *
+ * The shared ones are global and cached across users; these are one user's and
+ * must never be written back into them, so both sides are copied. A coin in
+ * both keeps the catalogue's entry, since that is the one the price and logo
+ * were already resolved from.
+ */
+function withOwnPositions(
+  shared: { buyable: BuyableRegistry; meme: MemeRegistry },
+  own: { buyable: BuyableRegistry; meme: MemeRegistry }
+): { buyable: BuyableRegistry; meme: MemeRegistry } {
+  const buyable: BuyableRegistry = {};
+  for (const [network, addresses] of Object.entries(shared.buyable)) {
+    buyable[network] = new Set(addresses);
+  }
+  for (const [network, addresses] of Object.entries(own.buyable)) {
+    const into = (buyable[network] ??= new Set());
+    for (const address of addresses) into.add(address);
+  }
+
+  const meme: MemeRegistry = {};
+  for (const [network, rows] of Object.entries(own.meme)) {
+    meme[network] = new Map(rows);
+  }
+  for (const [network, rows] of Object.entries(shared.meme)) {
+    const into = (meme[network] ??= new Map());
+    for (const [address, info] of rows) into.set(address, info);
+  }
+  return { buyable, meme };
+}
+
 export async function fetchPortfolio(
   evm?: string,
   solana?: string,
   fresh: FreshScope | null = null,
-  scope: PortfolioScope = "all"
+  scope: PortfolioScope = "all",
+  bearer: string | null = null
 ): Promise<Portfolio> {
   const includeSolana = scope === "all" && Boolean(solana);
   if (!evm && !includeSolana) return { totalUsd: 0, tokens: [] };
@@ -562,7 +596,16 @@ export async function fetchPortfolio(
         // Dynamic catalogs are part of the complete portfolio. Chess only
         // needs Base gas and its fixed funding assets, so its fast path does
         // not wait on these unrelated services.
-        [rwa, registries] = await Promise.all([fetchRwaRegistry(), fetchBuyableRegistry()]);
+        // The caller's own positions are read alongside the shared registries:
+        // the catalogue page cannot name a coin bought outside it, and this is
+        // what makes it a holding the owner can see. See lib/server/meme-positions.
+        const [rwaRegistry, shared, own] = await Promise.all([
+          fetchRwaRegistry(),
+          fetchBuyableRegistry(),
+          fetchMemePositions(bearer),
+        ]);
+        rwa = rwaRegistry;
+        registries = withOwnPositions(shared, own);
       }
 
       // EVM balances come from the chain through the read pool (see

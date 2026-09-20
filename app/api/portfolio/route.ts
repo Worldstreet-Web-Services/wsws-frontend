@@ -35,9 +35,12 @@ export async function GET(req: NextRequest) {
   );
 
   try {
+    // The caller's bearer goes on to the trade service so the memecoins they
+    // bought are recognised as holdings. Without it the allowlist only knows
+    // the public catalogue's first page.
     const portfolio = baseOnly
       ? await fetchPortfolio(evm, undefined, fresh, "base")
-      : await fetchPortfolio(evm, solana, fresh);
+      : await fetchPortfolio(evm, solana, fresh, "all", req.headers.get("authorization"));
     return NextResponse.json(portfolio, {
       headers: {
         // `private`, never `s-maxage`: this is one wallet's data, and a

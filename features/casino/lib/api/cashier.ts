@@ -147,6 +147,15 @@ export function cashierLockBuckets(balance: CashierBalance | null | undefined): 
   };
 }
 
+// The in-play balance is everything still held by the Chess ledger. Derive it
+// from the authoritative buckets so an available balance cannot disappear
+// because an older response supplied an incorrect total field.
+export function cashierTotalUsdc(balance: CashierBalance | null | undefined): string {
+  const available = toBaseUnits(balance?.availableUsdc ?? "0", USDC_DECIMALS);
+  const locked = toBaseUnits(balance?.lockedUsdc ?? "0", USDC_DECIMALS);
+  return fromBaseUnits(available + locked, USDC_DECIMALS);
+}
+
 export function hasPositiveUsdc(value: string): boolean {
   return toBaseUnits(value, USDC_DECIMALS) > 0n;
 }
@@ -181,6 +190,35 @@ export function exceedsUsdcBalance(amount: string, balance: string): boolean {
   const units = parseUsdcAmount(amount);
   if (units === null) return false;
   return units > toBaseUnits(balance, USDC_DECIMALS);
+}
+
+export interface CashierFundingPlan {
+  depositUsdc: string;
+  totalAvailableUsdc: string;
+  sufficient: boolean;
+}
+
+// A wager consumes the existing cashier ledger before asking the wallet for
+// more. This prevents every wager from sending a second on-chain deposit and
+// leaves the chain involved only when the ledger has a real shortfall.
+export function cashierFundingPlan(
+  stakeUsdc: string,
+  ledgerUsdc: string,
+  walletUsdc: string
+): CashierFundingPlan | null {
+  const stake = parseUsdcAmount(stakeUsdc);
+  if (stake === null) return null;
+  const ledger = toBaseUnits(ledgerUsdc || "0", USDC_DECIMALS);
+  const wallet = toBaseUnits(walletUsdc || "0", USDC_DECIMALS);
+  const nonNegativeLedger = ledger > 0n ? ledger : 0n;
+  const nonNegativeWallet = wallet > 0n ? wallet : 0n;
+  const total = nonNegativeLedger + nonNegativeWallet;
+  const shortfall = stake > nonNegativeLedger ? stake - nonNegativeLedger : 0n;
+  return {
+    depositUsdc: fromBaseUnits(shortfall, USDC_DECIMALS),
+    totalAvailableUsdc: fromBaseUnits(total, USDC_DECIMALS),
+    sufficient: stake <= total,
+  };
 }
 
 export interface ComputerWagerBreakdown {

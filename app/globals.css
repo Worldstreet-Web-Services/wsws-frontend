@@ -1155,6 +1155,44 @@ body:has([data-chess-setup-open]) [data-support-launcher] {
   }
 }
 
+/* The upgrade modal's border light: the house beam above, in the brand's two
+   money colours instead of white — Kash gold chasing mint. It is reserved for
+   the one surface that is an announcement ("New economy unveiling"), so it
+   stays a signal rather than becoming decoration the eye learns to ignore.
+   Brighter and a touch quicker than the monochrome beam, because it is the
+   only moving thing on a surface that otherwise holds still. */
+.ws-beam-upgrade::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--ws-beam-angle),
+    transparent 0%,
+    rgba(255, 214, 47, 0.95) 8%,
+    rgba(124, 231, 176, 0.95) 18%,
+    transparent 30%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: ws-beam-spin 5s linear infinite;
+}
+
+/* Without motion it keeps its colour and loses only the travel: a steady
+   gold-to-mint ring, so the reduced-motion reader still gets the moment. */
+@media (prefers-reduced-motion: reduce) {
+  .ws-beam-upgrade::before {
+    animation: none;
+    background: linear-gradient(135deg, rgba(255, 214, 47, 0.7), rgba(124, 231, 176, 0.7));
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Vivid assistant surface: the full-screen voice mode.
 

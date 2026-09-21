@@ -11,23 +11,52 @@ const LABEL: Record<MigrationStage, string> = {
 };
 
 /**
- * The top of the migration gate: what this is, why it cannot be closed, and
- * how far along the user is. The rail is the one place the accent is spent —
- * everything else is the sheet's own white-on-black.
+ * Which door the reader came through. `gate` is the upgrade the app holds open
+ * on first arrival; `finish` is the same modal reopened from "Finish upgrading
+ * my old account" in the account menu, for somebody picking up where they left
+ * off. Same modal, same steps — only the words change, because "Upgrade your
+ * account" to somebody halfway through reads as the upgrade having started over.
  */
-export function MigrationGateHeader({ stage, done }: { stage: MigrationStage; done: boolean }) {
+export type GateHeaderVariant = "gate" | "finish";
+
+const COPY: Record<GateHeaderVariant, { eyebrow: string; title: string; intro: string }> = {
+  gate: { eyebrow: "gateEyebrow", title: "gateTitle", intro: "gateIntro" },
+  finish: { eyebrow: "gateFinishEyebrow", title: "gateFinishTitle", intro: "gateFinishIntro" },
+};
+
+/**
+ * The top of the upgrade modal: what this is and how far along the reader is.
+ *
+ * ─── WHERE THE COLOUR GOES ──────────────────────────────────────────────────
+ * The app is white on black, and so is almost all of this. The brand's two
+ * money colours — Kash gold and mint — are spent only on the things that MEAN
+ * something here: the announcement line, the progress the reader has made, and
+ * (in the panel and the frame) the action and the moment itself. The title and
+ * the body stay white, so the colour reads as signal rather than as a coat of
+ * paint over everything.
+ */
+export function MigrationGateHeader({
+  stage,
+  done,
+  variant = "gate",
+}: {
+  stage: MigrationStage;
+  done: boolean;
+  variant?: GateHeaderVariant;
+}) {
   const t = useTranslations("migrate");
   const at = STAGES.indexOf(stage);
+  const copy = COPY[variant];
   return (
     <header className="mb-5 border-b border-white/10 pb-5">
-      {/* The announcement, not a label: sentence case in the accent, so it
-          reads as a line of the page rather than a tracked-out eyebrow. */}
-      <p className="text-accent mb-1.5 text-[12.5px] font-medium">{t("gateEyebrow")}</p>
+      {/* The announcement, not a label: sentence case in gold, so it reads as
+          a line of the page rather than a tracked-out eyebrow. */}
+      <p className="text-kash mb-1.5 text-[12.5px] font-semibold">{t(copy.eyebrow)}</p>
       <h2 className="ws-display text-[28px] leading-[1.1] tracking-[-0.015em] md:text-[30px]">
-        {t("gateTitle")}
+        {t(copy.title)}
       </h2>
       <p className="mt-2 max-w-[44ch] text-[13.5px] leading-normal text-white/60">
-        {t("gateIntro")}
+        {t(copy.intro)}
       </p>
       <ol
         className="mt-5 grid grid-cols-3 gap-2"
@@ -38,10 +67,12 @@ export function MigrationGateHeader({ stage, done }: { stage: MigrationStage; do
           const active = !done && i === at;
           return (
             <li key={s} aria-current={active ? "step" : undefined}>
-              <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
+              <div className="h-[4px] overflow-hidden rounded-full bg-white/10">
+                {/* Progress is the one piece of the reader's own doing on this
+                    screen, so it gets the colour. The step in hand glows. */}
                 <div
-                  className={`h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none ${
-                    active ? "bg-accent shadow-[0_0_10px_rgba(212,212,216,0.55)]" : "bg-accent"
+                  className={`h-full rounded-full bg-[linear-gradient(90deg,#ffd62f,#7ce7b0)] transition-[width] duration-500 motion-reduce:transition-none ${
+                    active ? "shadow-[0_0_12px_rgba(255,214,47,0.6)]" : ""
                   }`}
                   style={{ width: filled ? "100%" : active ? "50%" : "0%" }}
                 />

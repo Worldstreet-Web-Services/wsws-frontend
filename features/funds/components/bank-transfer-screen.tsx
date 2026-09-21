@@ -4,6 +4,7 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/ui/sheet-nav";
+import { useModalScreen } from "@/components/ui/modal-shell";
 import { BankIcon, CheckIcon, CopyIcon } from "@/components/ui/icons";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import {
@@ -95,6 +96,10 @@ function compactNgn(amount: number): string {
 // USDC settles to the wallet automatically once the payment clears, and the
 // final figures shown come from the order itself, never from our own math.
 export function BankTransferScreen({ onBack, onClose }: BankTransferScreenProps) {
+  // The bank flow is a form to fill in, so it takes the whole phone. Its own
+  // header already carries a back button, so the shell draws only the close.
+  useModalScreen({ fullScreen: true });
+
   const t = useTranslations("bankTransfer");
   const { ready, authenticated, evmAddress, solanaAddress, profile } = useAuthSession();
   const addressFor = (chain: string) => (chain === "solana" ? solanaAddress : evmAddress);

@@ -4,6 +4,7 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SheetNav } from "@/components/ui/sheet-nav";
+import { useModalScreen } from "@/components/ui/modal-shell";
 import { MASK_ATTRIBUTE, NO_AUTOCAPTURE_CLASS } from "@/lib/analytics/clarity";
 import { track } from "@/lib/analytics/mixpanel";
 import { ArrowUpRightIcon, CheckIcon, SearchIcon, SwapIcon } from "@/components/ui/icons";
@@ -146,6 +147,10 @@ function BankAvatar({
 // order's deposit address, and the rail pays the Naira to the bank. The final
 // Naira figure shown comes from the order once the rail reports it.
 export function BankWithdrawScreen({ onBack }: BankWithdrawScreenProps) {
+  // The bank flow is a form to fill in, so it takes the whole phone. Its own
+  // header already carries a back button, so the shell draws only the close.
+  useModalScreen({ fullScreen: true });
+
   const t = useTranslations("bankWithdraw");
   const { authenticated, evmAddress, solanaAddress, profile } = useAuthSession();
   const addressFor = (chain: string) => (chain === "solana" ? solanaAddress : evmAddress);

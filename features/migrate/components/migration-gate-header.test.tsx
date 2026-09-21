@@ -13,17 +13,23 @@ import { MigrationGateHeader } from "@/features/migrate/components/migration-gat
   who has already started reads as the upgrade having begun again.
 */
 describe("the upgrade modal's header", () => {
-  it("announces the upgrade on first arrival", () => {
+  /*
+    On first arrival the announcement IS the headline — "New economy
+    unveiling." — and "Upgrade your account" sits above it, small.
+  */
+  it("headlines the announcement on first arrival, with the task above it", () => {
     render(<MigrationGateHeader stage="signIn" done={false} />);
-    expect(screen.getByText("gateEyebrow")).toBeInTheDocument();
-    expect(screen.getByText("gateTitle")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("gateEyebrow");
+    const small = screen.getByText("gateTitle");
+    expect(small.tagName).toBe("P");
     expect(screen.getByText("gateIntro")).toBeInTheDocument();
   });
 
   it("says finish, not start, when reopened from the account menu", () => {
     render(<MigrationGateHeader stage="move" done={false} variant="finish" />);
     expect(screen.getByText("gateFinishEyebrow")).toBeInTheDocument();
-    expect(screen.getByText("gateFinishTitle")).toBeInTheDocument();
+    // Nothing to announce by now: the task takes the headline.
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("gateFinishTitle");
     expect(screen.getByText("gateFinishIntro")).toBeInTheDocument();
     expect(screen.queryByText("gateTitle")).toBeNull();
   });
@@ -49,14 +55,16 @@ describe("the upgrade modal's header", () => {
 
   /*
     The colour is spent on meaning. Progress is the reader's own doing, so the
-    rail carries the brand gradient; the title stays white.
+    rail is solid upgrade gold (#feda4b) — no gradient, which read muddy on this dark sheet —
+    and the title stays white.
   */
-  it("fills the rail in the brand gradient, not the old silver accent", () => {
+  it("fills the rail in solid gold, not a gradient or the old silver", () => {
     const { container } = render(<MigrationGateHeader stage="move" done={false} />);
     const fills = container.querySelectorAll("li > div > div");
     expect(fills.length).toBe(3);
     for (const fill of fills) {
-      expect(fill.className).toContain("linear-gradient(90deg,#ffd62f,#7ce7b0)");
+      expect(fill.className).toContain("bg-upgrade");
+      expect(fill.className).not.toContain("gradient");
       expect(fill.className).not.toContain("bg-accent");
     }
   });

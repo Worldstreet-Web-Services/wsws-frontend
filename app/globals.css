@@ -41,6 +41,12 @@
   /* Kash yellow. Rings the round carousel controls on focus and edges the
      Kash card's actions, as the Market design draws them. */
   --color-kash: #ffd62f;
+  /* The upgrade modal's gold, kept apart from Kash's so neither drifts when the
+     other is tuned. `upgrade` fills — the action, the progress, the border
+     light. `upgrade-soft` is the paler one, for gold TEXT on the dark sheet and
+     the action's hover, where full-strength gold glares. */
+  --color-upgrade: #feda4b;
+  --color-upgrade-soft: #faeaa7;
   /* Small directional glyphs. Neutral grey, was green. */
   --color-arrow: #8a8a8f;
   --color-panel: #0a0a0a;
@@ -1155,8 +1161,8 @@ body:has([data-chess-setup-open]) [data-support-launcher] {
   }
 }
 
-/* The upgrade modal's border light: the house beam above, in the brand's two
-   money colours instead of white — Kash gold chasing mint. It is reserved for
+/* The upgrade modal's border light: the house beam above, in Kash gold
+   instead of white — one colour, no blend. It is reserved for
    the one surface that is an announcement ("New economy unveiling"), so it
    stays a signal rather than becoming decoration the eye learns to ignore.
    Brighter and a touch quicker than the monochrome beam, because it is the
@@ -1171,9 +1177,8 @@ body:has([data-chess-setup-open]) [data-support-launcher] {
   background: conic-gradient(
     from var(--ws-beam-angle),
     transparent 0%,
-    rgba(255, 214, 47, 0.95) 8%,
-    rgba(124, 231, 176, 0.95) 18%,
-    transparent 30%
+    rgba(254, 218, 75, 0.95) 12%,
+    transparent 26%
   );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -1185,11 +1190,11 @@ body:has([data-chess-setup-open]) [data-support-launcher] {
 }
 
 /* Without motion it keeps its colour and loses only the travel: a steady
-   gold-to-mint ring, so the reduced-motion reader still gets the moment. */
+   gold ring, so the reduced-motion reader still gets the moment. */
 @media (prefers-reduced-motion: reduce) {
   .ws-beam-upgrade::before {
     animation: none;
-    background: linear-gradient(135deg, rgba(255, 214, 47, 0.7), rgba(124, 231, 176, 0.7));
+    background: rgba(254, 218, 75, 0.6);
   }
 }
 

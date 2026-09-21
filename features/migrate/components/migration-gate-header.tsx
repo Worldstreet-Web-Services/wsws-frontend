@@ -19,8 +19,14 @@ const LABEL: Record<MigrationStage, string> = {
  */
 export type GateHeaderVariant = "gate" | "finish";
 
+/*
+  `eyebrow` is the small gold line, `title` the large one. On first arrival the
+  ANNOUNCEMENT is the headline — "New economy unveiling." — and what to do about
+  it sits above it in the small line. Reopened from the account menu there is
+  nothing to announce any more, so the task itself takes the headline.
+*/
 const COPY: Record<GateHeaderVariant, { eyebrow: string; title: string; intro: string }> = {
-  gate: { eyebrow: "gateEyebrow", title: "gateTitle", intro: "gateIntro" },
+  gate: { eyebrow: "gateTitle", title: "gateEyebrow", intro: "gateIntro" },
   finish: { eyebrow: "gateFinishEyebrow", title: "gateFinishTitle", intro: "gateFinishIntro" },
 };
 
@@ -28,8 +34,8 @@ const COPY: Record<GateHeaderVariant, { eyebrow: string; title: string; intro: s
  * The top of the upgrade modal: what this is and how far along the reader is.
  *
  * ─── WHERE THE COLOUR GOES ──────────────────────────────────────────────────
- * The app is white on black, and so is almost all of this. The brand's two
- * money colours — Kash gold and mint — are spent only on the things that MEAN
+ * The app is white on black, and so is almost all of this. The upgrade gold is
+ * spent only on the things that MEAN
  * something here: the announcement line, the progress the reader has made, and
  * (in the panel and the frame) the action and the moment itself. The title and
  * the body stay white, so the colour reads as signal rather than as a coat of
@@ -49,9 +55,9 @@ export function MigrationGateHeader({
   const copy = COPY[variant];
   return (
     <header className="mb-5 border-b border-white/10 pb-5">
-      {/* The announcement, not a label: sentence case in gold, so it reads as
+      {/* The announcement, not a label: sentence case in the soft gold, so it reads as
           a line of the page rather than a tracked-out eyebrow. */}
-      <p className="text-kash mb-1.5 text-[12.5px] font-semibold">{t(copy.eyebrow)}</p>
+      <p className="text-upgrade-soft mb-1.5 text-[12.5px] font-semibold">{t(copy.eyebrow)}</p>
       <h2 className="ws-display text-[28px] leading-[1.1] tracking-[-0.015em] md:text-[30px]">
         {t(copy.title)}
       </h2>
@@ -71,8 +77,8 @@ export function MigrationGateHeader({
                 {/* Progress is the one piece of the reader's own doing on this
                     screen, so it gets the colour. The step in hand glows. */}
                 <div
-                  className={`h-full rounded-full bg-[linear-gradient(90deg,#ffd62f,#7ce7b0)] transition-[width] duration-500 motion-reduce:transition-none ${
-                    active ? "shadow-[0_0_12px_rgba(255,214,47,0.6)]" : ""
+                  className={`bg-upgrade h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${
+                    active ? "shadow-[0_0_12px_rgba(254,218,75,0.55)]" : ""
                   }`}
                   style={{ width: filled ? "100%" : active ? "50%" : "0%" }}
                 />

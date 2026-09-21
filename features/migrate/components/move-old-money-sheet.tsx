@@ -56,13 +56,6 @@ export function MoveOldMoneyFrame({
             with the content on a long review list. */}
         <div className="ws-beam-upgrade pointer-events-auto relative w-full rounded-t-[24px] md:w-[min(520px,100%)] md:rounded-[24px]">
           <div className="bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-5 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px] md:pt-[26px]">
-            {/* Light rising behind the announcement, in the same two colours as
-              the beam. Faint on purpose: it is the atmosphere the header sits
-              in, and the header has to stay the thing that is read. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(120%_85%_at_50%_0%,rgba(255,214,47,0.16),rgba(124,231,176,0.07)_45%,transparent_75%)]"
-            />
             {dismissible ? (
               <button
                 onClick={onClose}

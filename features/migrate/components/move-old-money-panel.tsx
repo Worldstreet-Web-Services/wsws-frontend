@@ -107,12 +107,11 @@ export interface MoveOldMoneyPanelProps {
 }
 
 /*
-  The step's action, in the brand's gold-to-mint, so the colour marks the thing
-  to do next. Dark ink on both ends of the gradient, which clears contrast
-  comfortably on gold and on mint.
+  The step's action, in the upgrade gold, so the colour marks the thing
+  to do next. Dark ink on gold clears contrast comfortably.
 */
 const PRIMARY =
-  "w-full cursor-pointer rounded-xl bg-[linear-gradient(100deg,#ffd62f,#7ce7b0)] px-4 py-3 font-sans text-[14px] font-semibold text-ink shadow-[0_10px_28px_-12px_rgba(255,214,47,0.6)] transition-[filter,transform] hover:brightness-105 active:scale-[0.99] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full cursor-pointer rounded-xl bg-upgrade px-4 py-3 font-sans text-[14px] font-semibold text-ink transition-[background-color,transform] hover:bg-upgrade-soft active:scale-[0.99] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
   "w-full cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-3 font-sans text-[14px] font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50";
 

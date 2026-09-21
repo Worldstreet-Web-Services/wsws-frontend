@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/use-auth-session";
 
@@ -16,7 +16,20 @@ import {
   fetchArkjetFairnessRules,
   fetchArkjetRiskRules,
   fetchArkjetRoundHistory,
+  type ArkjetBet,
+  type ArkjetBetList,
+  type ArkjetRound,
+  type CreateArkjetBetInput,
 } from "@/features/casino/lib/api/arkjet";
+import {
+  ARKJET_SOCKET_CLOSED,
+  ARKJET_SOCKET_READY,
+  ARKJET_SOCKET_RESYNC,
+  isArkjetBet,
+  isArkjetRound,
+  sendArkjetCommand,
+  subscribeArkjetTopics,
+} from "@/features/casino/lib/arkjet/live-socket";
 
 export const ARKJET_KEYS = {
   current: ["casino", "arkjet", "round", "current"] as const,
@@ -42,19 +55,22 @@ export function useArkjet() {
   const router = useRouter();
   const login = () => router.push("/auth");
   const queryClient = useQueryClient();
+  const [socketReady, setSocketReady] = useState(false);
   const hasSession = ready && authenticated && Boolean(evmAddress);
   const current = useQuery({
     ...READ_OPTIONS,
     queryKey: ARKJET_KEYS.current,
     queryFn: fetchArkjetCurrentRound,
-    refetchInterval: pollUnlessFailing(1_000),
+    // WebSocket drives live play. This sparse read is authoritative repair if
+    // the broker is unavailable while the gateway connection itself stays up.
+    refetchInterval: pollUnlessFailing(socketReady ? 10_000 : 5_000),
     staleTime: 1_000,
   });
   const history = useQuery({
     ...READ_OPTIONS,
     queryKey: ARKJET_KEYS.history,
     queryFn: () => fetchArkjetRoundHistory(24),
-    refetchInterval: pollUnlessFailing(60_000),
+    refetchInterval: socketReady ? false : pollUnlessFailing(60_000),
     staleTime: 60_000,
   });
   const capabilities = useQuery({
@@ -83,7 +99,7 @@ export function useArkjet() {
     queryKey: [...ARKJET_KEYS.balance, evmAddress ?? null],
     queryFn: fetchArkjetBalance,
     enabled: hasSession,
-    refetchInterval: pollUnlessFailing(30_000),
+    refetchInterval: socketReady ? false : pollUnlessFailing(30_000),
     staleTime: 30_000,
   });
   const bets = useQuery({
@@ -91,10 +107,12 @@ export function useArkjet() {
     queryKey: [...ARKJET_KEYS.bets, evmAddress ?? null],
     queryFn: fetchArkjetCurrentBets,
     enabled: hasSession,
-    refetchInterval: (query) =>
-      pollUnlessFailing(
-        query.state.data?.items.some((bet) => bet.status === "ACCEPTED") ? 2_000 : 30_000
-      )(query),
+    refetchInterval: socketReady
+      ? false
+      : (query) =>
+          pollUnlessFailing(
+            query.state.data?.items.some((bet) => bet.status === "ACCEPTED") ? 2_000 : 30_000
+          )(query),
     staleTime: 2_000,
   });
 
@@ -109,7 +127,9 @@ export function useArkjet() {
     const finished =
       previous.status !== round.status &&
       (round.status === "REVEALED" || round.status === "CANCELLED");
-    if (!changedRound && !finished) return;
+    const changedWithoutTerminal =
+      changedRound && previous.status !== "REVEALED" && previous.status !== "CANCELLED";
+    if (!changedWithoutTerminal && !finished) return;
     // Refresh settlements immediately, with slow polling only as missed-transition repair.
     void queryClient.invalidateQueries({ queryKey: ARKJET_KEYS.history });
     if (hasSession) {
@@ -118,23 +138,150 @@ export function useArkjet() {
     }
   }, [current.data, hasSession, queryClient]);
 
-  const refreshWagering = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ARKJET_KEYS.balance }),
-      queryClient.invalidateQueries({ queryKey: ARKJET_KEYS.bets }),
+  const applyBet = useCallback(
+    (bet: ArkjetBet) => {
+      void queryClient.cancelQueries({ queryKey: ARKJET_KEYS.bets });
+      queryClient.setQueryData<ArkjetBetList>(
+        [...ARKJET_KEYS.bets, evmAddress ?? null],
+        (existing) => {
+          const items = existing?.items ?? [];
+          if (bet.status !== "ACCEPTED") {
+            return { items: items.filter((item) => item.betId !== bet.betId) };
+          }
+          return {
+            items: [bet, ...items.filter((item) => item.betId !== bet.betId)],
+          };
+        }
+      );
+      void queryClient.invalidateQueries({ queryKey: ARKJET_KEYS.balance });
+    },
+    [queryClient, evmAddress]
+  );
+
+  const synchronize = useCallback(async () => {
+    const [roundResult, betsResult, balanceResult] = await Promise.allSettled([
+      fetchArkjetCurrentRound(),
+      hasSession ? fetchArkjetCurrentBets() : Promise.resolve(null),
+      hasSession ? fetchArkjetBalance() : Promise.resolve(null),
     ]);
+    if (roundResult.status === "fulfilled") {
+      queryClient.setQueryData(ARKJET_KEYS.current, roundResult.value);
+    }
+    if (betsResult.status === "fulfilled" && betsResult.value) {
+      queryClient.setQueryData([...ARKJET_KEYS.bets, evmAddress ?? null], betsResult.value);
+    }
+    if (balanceResult.status === "fulfilled" && balanceResult.value) {
+      queryClient.setQueryData([...ARKJET_KEYS.balance, evmAddress ?? null], balanceResult.value);
+    }
+  }, [hasSession, queryClient, evmAddress]);
+
+  /*
+    THE TOPIC IS THE SERVER'S ID, NOT OURS.
+
+    Arkjet publishes a player's own bets on `arkjet:user:<id>`, where <id> is
+    what the server stores the player under — and during the move from Privy
+    that is deliberately NOT always the Decane id: a player whose rows have not
+    been re-keyed yet is still stored, and published to, under their old Privy
+    DID. Any id derived on this side is therefore right for some players and
+    silently wrong for others, who would simply stop receiving their own bets.
+
+    The balance response carries `playerId`, which is exactly the stored id and
+    moves when the rows are re-keyed. So the topic follows it, and waits for it.
+  */
+  const playerId = balance.data?.playerId ?? null;
+  useEffect(() => {
+    return subscribeArkjetTopics(hasSession ? playerId : null, (frame) => {
+      if (frame.type === ARKJET_SOCKET_READY.type) {
+        setSocketReady(true);
+        return;
+      }
+      if (frame.type === ARKJET_SOCKET_CLOSED.type) {
+        setSocketReady(false);
+        void synchronize();
+        return;
+      }
+      if (frame.type === ARKJET_SOCKET_RESYNC.type) {
+        void synchronize();
+        return;
+      }
+      if (frame.type === "multiplier") {
+        const update = frame.data as {
+          roundId?: unknown;
+          sequence?: unknown;
+          multiplier?: unknown;
+        } | null;
+        if (typeof update?.roundId !== "string" || typeof update.multiplier !== "string") return;
+        const roundId = update.roundId;
+        const multiplier = update.multiplier;
+        queryClient.setQueryData<ArkjetRound>(ARKJET_KEYS.current, (round) =>
+          round?.roundId === roundId ? { ...round, currentMultiplier: multiplier } : round
+        );
+        return;
+      }
+      if (isArkjetRound(frame.data)) {
+        void queryClient.cancelQueries({ queryKey: ARKJET_KEYS.current });
+        queryClient.setQueryData(ARKJET_KEYS.current, frame.data);
+        return;
+      }
+      if (isArkjetBet(frame.data)) applyBet(frame.data);
+    });
+  }, [applyBet, hasSession, playerId, queryClient, synchronize]);
+
+  const shouldFallBackToHttp = (error: unknown): boolean => {
+    if (!error || typeof error !== "object" || !("code" in error)) return false;
+    const code = (error as { code?: unknown }).code;
+    return (
+      code === "SOCKET_COMMANDS_UNAVAILABLE" ||
+      code === "SOCKET_UNAVAILABLE" ||
+      code === "SOCKET_COMMAND_TIMEOUT"
+    );
+  };
+  const socketFirst = async <T>(socketAction: () => Promise<T>, httpAction: () => Promise<T>) => {
+    try {
+      return await socketAction();
+    } catch (error) {
+      if (!shouldFallBackToHttp(error)) throw error;
+      return httpAction();
+    }
   };
   const place = useMutation({
-    mutationFn: createArkjetBet,
-    onSuccess: refreshWagering,
+    mutationFn: (input: CreateArkjetBetInput) =>
+      socketFirst(
+        () =>
+          sendArkjetCommand<ArkjetBet>({
+            commandId: input.idempotencyKey,
+            action: "placeBet",
+            ...input,
+          }),
+        () => createArkjetBet(input)
+      ),
+    onSuccess: applyBet,
   });
   const cancel = useMutation({
-    mutationFn: cancelArkjetBet,
-    onSuccess: refreshWagering,
+    mutationFn: (betId: string) =>
+      socketFirst(
+        () =>
+          sendArkjetCommand<ArkjetBet>({
+            commandId: crypto.randomUUID(),
+            action: "cancelBet",
+            betId,
+          }),
+        () => cancelArkjetBet(betId)
+      ),
+    onSuccess: applyBet,
   });
   const cashout = useMutation({
-    mutationFn: cashoutArkjetBet,
-    onSuccess: refreshWagering,
+    mutationFn: (betId: string) =>
+      socketFirst(
+        () =>
+          sendArkjetCommand<ArkjetBet>({
+            commandId: crypto.randomUUID(),
+            action: "cashoutBet",
+            betId,
+          }),
+        () => cashoutArkjetBet(betId)
+      ),
+    onSuccess: applyBet,
   });
 
   return {

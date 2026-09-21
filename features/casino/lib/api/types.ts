@@ -203,6 +203,10 @@ export interface ChessMatch {
   turn: ChessColor;
   // Set once the game ends.
   result: ChessResult | null;
+  // Preserve the service's authoritative terminal metadata so the UI can
+  // explain every ending instead of collapsing unknown draws to agreement.
+  resultReason?: string | null;
+  finishedAt?: string | null;
   // The colour with an outstanding draw offer, if any.
   drawOffered: ChessColor | null;
   // Pending takeback offer state, if the match type allows takebacks at all.

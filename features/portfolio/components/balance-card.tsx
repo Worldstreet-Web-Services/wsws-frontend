@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { useMoney } from "@/components/ui/currency-select";
 import { useBalanceVisibility } from "@/components/ui/balance-visibility";
 import { Responsive } from "@/components/ui/responsive";
@@ -39,7 +39,7 @@ export function BalanceCard({
   updateBalanceSlot,
   maskForMigration = false,
 }: BalanceCardProps) {
-  const { tokens, loading, refreshing, error } = usePortfolio();
+  const { tokens, loading, refreshing, error, refetch, refetchFresh } = usePortfolio();
   // The headline figure spans everything the wallet holds today (spot +
   // perps); readyToSpend below stays spot-only on purpose, see its own
   // comment.
@@ -54,6 +54,16 @@ export function BalanceCard({
   // What a purchase can actually draw on. A portfolio can be worth a lot and
   // still have nothing spendable, which the total alone never shows.
   const readyToSpend = readyToSpendUsd(tokens);
+
+  // Manual refresh: bypass the short server cache, but only for networks the
+  // wallet actually holds — never a fresh sweep of every known chain
+  // (ADR-2026-09-09-portfolio-refresh-scope). With nothing held yet, a plain
+  // refetch re-reads the normal snapshot.
+  const heldNetworks = useMemo(() => [...new Set(tokens.map((token) => token.network))], [tokens]);
+  const onRefresh = useCallback(() => {
+    if (heldNetworks.length > 0) void refetchFresh(heldNetworks);
+    else void refetch();
+  }, [heldNetworks, refetchFresh, refetch]);
 
   // The settling-deposit hold only applies while there is nothing withdrawable.
   // It exists to stop hammering the button for money that has not landed yet;
@@ -82,6 +92,7 @@ export function BalanceCard({
     formatMasked: (amount) => mask(money.format(amount)),
     onOpenFunds,
     onOpenWithdraw,
+    onRefresh,
     onTakeTour,
     updateBalanceSlot,
   };

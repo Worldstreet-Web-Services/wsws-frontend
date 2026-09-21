@@ -140,7 +140,7 @@ describe("chess proxy route", () => {
     }
   });
 
-  it("pins deployed chess requests to the staging gateway", async () => {
+  it("pins deployed chess requests to the production gateway", async () => {
     vi.stubEnv("NODE_ENV", "production");
     auth.verifyRequest.mockResolvedValue({ provider: "privy", userId: "user_1" });
     auth.getRequestUser.mockResolvedValue(walletUser("0xabc"));
@@ -163,7 +163,7 @@ describe("chess proxy route", () => {
       expect(res.status).toBe(200);
       const [url] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
         .calls[0];
-      expect(url).toBe("https://staging.tsionark.com/v1/chess/play?setup=hook");
+      expect(url).toBe("https://api.tsionark.com/v1/chess/play?setup=hook");
     } finally {
       vi.unstubAllEnvs();
     }

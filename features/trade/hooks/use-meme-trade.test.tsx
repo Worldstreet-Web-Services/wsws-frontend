@@ -891,3 +891,52 @@ describe("the wallet-link cache is keyed by identity", () => {
     expect(api.createWalletChallenge).not.toHaveBeenCalled();
   });
 });
+
+// Reported 2026-09-20: a user could not sell their DOGE. Every preview row read
+// "—" under "This wallet isn't linked to your account yet", and it never
+// recovered. The browser held a stale "already linked" hint, so the relink the
+// preview asks for returned without doing anything, and the next preview failed
+// the same way, forever.
+describe("useMemeTrade linking for a preview the service refused", () => {
+  beforeEach(() => {
+    window.localStorage.setItem(
+      "wsws.meme-linked.v3",
+      JSON.stringify([`${UID}:${WALLET.toLowerCase()}`])
+    );
+    api.createWalletChallenge.mockResolvedValue({
+      challengeId: "c1",
+      message: "m",
+      expiresAt: "",
+    });
+    api.verifyWallet.mockResolvedValue({ walletAddress: WALLET });
+  });
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("links again even when the browser believes the wallet is already linked", async () => {
+    const { result } = renderHook(() => useMemeTrade(), { wrapper: tradeWrapper });
+    await act(async () => {
+      await result.current.linkForPreview(8453);
+    });
+    expect(api.createWalletChallenge).toHaveBeenCalledWith(WALLET);
+    expect(api.verifyWallet).toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
+  });
+
+  // The hint is per wallet. Linking Base again must not throw away the Solana
+  // wallet's hint and charge the user a second signature for an unrelated chain.
+  it("keeps the other chain's hint", async () => {
+    window.localStorage.setItem(
+      "wsws.meme-linked.v3",
+      JSON.stringify([`${UID}:${WALLET.toLowerCase()}`, `${UID}:solana:SoLwallet`])
+    );
+    const { result } = renderHook(() => useMemeTrade(), { wrapper: tradeWrapper });
+    await act(async () => {
+      await result.current.linkForPreview(8453);
+    });
+    const kept = JSON.parse(window.localStorage.getItem("wsws.meme-linked.v3") ?? "[]") as string[];
+    expect(kept).toContain(`${UID}:solana:SoLwallet`);
+  });
+});

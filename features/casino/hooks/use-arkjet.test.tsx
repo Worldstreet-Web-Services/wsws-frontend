@@ -23,7 +23,21 @@ const auth = vi.hoisted(() => ({
   profile: { name: "u1", email: "", avatarSeed: "u1" },
   login: vi.fn(),
 }));
+const live = vi.hoisted(() => ({
+  sendArkjetCommand: vi.fn(),
+  subscribeArkjetTopics: vi.fn(() => () => undefined),
+}));
 vi.mock("@/features/casino/lib/api/arkjet", () => api);
+vi.mock("@/features/casino/lib/arkjet/live-socket", () => ({
+  ARKJET_SOCKET_CLOSED: { type: "__closed" },
+  ARKJET_SOCKET_READY: { type: "__ready" },
+  ARKJET_SOCKET_RESYNC: { type: "__resync" },
+  isArkjetBet: (value: unknown) => Boolean(value && typeof value === "object" && "betId" in value),
+  isArkjetRound: (value: unknown) =>
+    Boolean(value && typeof value === "object" && "roundId" in value && "sequence" in value),
+  sendArkjetCommand: live.sendArkjetCommand,
+  subscribeArkjetTopics: live.subscribeArkjetTopics,
+}));
 // The hooks read the Decane session (useAuthSession), not Privy — the whole
 // point of this branch. `auth.evmAddress` stands where `auth.user.id` did:
 // it is the identity the queries are keyed on.
@@ -46,6 +60,8 @@ beforeEach(() => {
   auth.authenticated = true;
   client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
   for (const mock of Object.values(api)) mock.mockReset();
+  live.sendArkjetCommand.mockReset();
+  live.subscribeArkjetTopics.mockClear();
   api.fetchArkjetCurrentRound.mockResolvedValue(round);
   api.fetchArkjetRoundHistory.mockResolvedValue({ items: [] });
   api.fetchArkjetCurrentBets.mockResolvedValue({ items: [] });

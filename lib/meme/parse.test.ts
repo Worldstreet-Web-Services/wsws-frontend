@@ -14,10 +14,12 @@ import {
   parseWalletChallenge,
 } from "@/lib/meme/parse";
 import {
+  LIVE_LIST_TOKEN,
   LIVE_SEARCH_ROW,
   LIVE_TOKEN_DETAIL,
   LIVE_TOKEN_PAGE,
   LIVE_TRADABILITY,
+  LIVE_TRENDING_PAGE,
   SOLANA_SWAP_QUOTE,
   SUBMISSION,
   SWAP_PAGE,
@@ -156,5 +158,197 @@ describe("swap mappers", () => {
     })();
     expect(error).toBeInstanceOf(TradeShapeError);
     expect((error as TradeShapeError).message).toContain("status");
+  });
+});
+
+describe("token activity", () => {
+  const pageWith = (row: Record<string, unknown>) => ({
+    items: [{ ...LIVE_LIST_TOKEN, ...row }],
+    meta: LIVE_TOKEN_PAGE.meta,
+  });
+
+  it("fills every window the row carries to all four fields, null where absent", () => {
+    const [token] = parseTokenPage(
+      pageWith({
+        activity: {
+          "1h": { volumeUsd: "1200.5", transactions: 40 },
+          "24h": { volumeUsd: "9000", transactions: 300, traders: 80, priceChangePercent: "-4.5" },
+        },
+        pairCreatedAt: "2026-09-15T08:00:00.000Z",
+      })
+    ).items;
+    expect(token.activity).toEqual({
+      "1h": { volumeUsd: "1200.5", transactions: 40, traders: null, priceChangePercent: null },
+      "24h": { volumeUsd: "9000", transactions: 300, traders: 80, priceChangePercent: "-4.5" },
+    });
+    expect(token.pairCreatedAt).toBe("2026-09-15T08:00:00.000Z");
+  });
+
+  // A window the providers do not fill is not estimated from another one.
+  it("leaves a window out rather than inventing one", () => {
+    const [token] = parseTokenPage(
+      pageWith({ activity: { "5m": {}, "6h": null, "4h": {} } })
+    ).items;
+    expect(token.activity).toEqual({
+      "5m": { volumeUsd: null, transactions: null, traders: null, priceChangePercent: null },
+    });
+  });
+
+  it("keeps the change exactly as the service wrote it", () => {
+    const [token] = parseTokenPage(
+      pageWith({ activity: { "5m": { priceChangePercent: "12.340000000000002" } } })
+    ).items;
+    expect(token.activity?.["5m"]?.priceChangePercent).toBe("12.340000000000002");
+  });
+
+  it("reads a count that is not a whole, non-negative number as unavailable", () => {
+    const [token] = parseTokenPage(
+      pageWith({ activity: { "1h": { transactions: 1.5, traders: -2 }, "24h": { traders: 7 } } })
+    ).items;
+    expect(token.activity?.["1h"]?.transactions).toBeNull();
+    expect(token.activity?.["1h"]?.traders).toBeNull();
+    expect(token.activity?.["24h"]?.traders).toBe(7);
+  });
+
+  it("reads a null pair creation time as null", () => {
+    const [token] = parseTokenPage(pageWith({ activity: {}, pairCreatedAt: null })).items;
+    expect(token.activity).toEqual({});
+    expect(token.pairCreatedAt).toBeNull();
+  });
+
+  it("maps trending rows the same way", () => {
+    const [token] = parseTokenPage({
+      ...LIVE_TRENDING_PAGE,
+      items: [{ ...LIVE_TRENDING_PAGE.items[0], activity: { "12h": { traders: 5 } } }],
+    }).items;
+    expect(token.activity?.["12h"]?.traders).toBe(5);
+    expect(token.pairCreatedAt).toBeNull();
+  });
+
+  // Search rows carry neither field. They stay undefined so a search row is
+  // never mistaken for a coin with no activity at all.
+  it("leaves both fields undefined on a row that carries neither", () => {
+    const [row] = parseTokenSearch([LIVE_SEARCH_ROW]);
+    expect(row).not.toHaveProperty("activity");
+    expect(row).not.toHaveProperty("pairCreatedAt");
+    const [listed] = parseTokenPage(LIVE_TOKEN_PAGE).items;
+    expect(listed).not.toHaveProperty("activity");
+    expect(listed).not.toHaveProperty("pairCreatedAt");
+  });
+
+  it("does not add either field to the detail read", () => {
+    const token = parseTokenView({
+      ...LIVE_TOKEN_DETAIL,
+      activity: { "24h": { traders: 1 } },
+      pairCreatedAt: "2026-09-15T08:00:00.000Z",
+    });
+    expect(token).not.toHaveProperty("activity");
+    expect(token).not.toHaveProperty("pairCreatedAt");
+  });
+});
+
+// The prod trade service has been sending 24h changes of up to 2.8e19 percent
+// (果蝇, ARGUS, 2026-09-16), which rendered as "$100 -> $22,478,541,914,774,794"
+// on the trending strip. A percentage that large is not a market move, it is a
+// division by a missing or near-zero baseline price upstream. The boundary is
+// where we are required to map an upstream payload into our own domain, so an
+// impossible reading is mapped to "unavailable" rather than carried through.
+// It is never replaced with an invented number: the strip shows no change at
+// all for that window, and every other field on the token still parses.
+describe("impossible price changes", () => {
+  const changeOf = (priceChangePercent: unknown) =>
+    parseTokenPage({
+      items: [
+        {
+          ...LIVE_LIST_TOKEN,
+          activity: {
+            "24h": { volumeUsd: "9000", transactions: 300, traders: 80, priceChangePercent },
+          },
+        },
+      ],
+      meta: LIVE_TOKEN_PAGE.meta,
+    }).items[0];
+
+  it("drops a change too large to be a real market move", () => {
+    const token = changeOf("22478541914774794240");
+
+    expect(token.activity?.["24h"]?.priceChangePercent).toBeNull();
+    // The rest of the window survives: only the unusable field is dropped.
+    expect(token.activity?.["24h"]?.volumeUsd).toBe("9000");
+    expect(token.activity?.["24h"]?.transactions).toBe(300);
+  });
+
+  it("keeps a large but real memecoin move", () => {
+    expect(changeOf("94000").activity?.["24h"]?.priceChangePercent).toBe("94000");
+  });
+
+  it("keeps ordinary and negative changes untouched", () => {
+    for (const value of ["-4.5", "0", "12.340000000000002", "-99.9"]) {
+      expect(changeOf(value).activity?.["24h"]?.priceChangePercent).toBe(value);
+    }
+  });
+
+  it("drops a change that is not a number at all", () => {
+    expect(changeOf("NaN").activity?.["24h"]?.priceChangePercent).toBeNull();
+  });
+
+  // The ceiling itself is a real reading, in both directions. Only past it does
+  // the figure stop being a market move.
+  it("keeps the value on the ceiling and drops the one just past it", () => {
+    expect(changeOf("1000000").activity?.["24h"]?.priceChangePercent).toBe("1000000");
+    expect(changeOf("-1000000").activity?.["24h"]?.priceChangePercent).toBe("-1000000");
+    expect(changeOf("1000000.1").activity?.["24h"]?.priceChangePercent).toBeNull();
+    expect(changeOf("-1000000.1").activity?.["24h"]?.priceChangePercent).toBeNull();
+    // The service writes a large figure in exponent form as often as in full.
+    expect(changeOf("2.8e19").activity?.["24h"]?.priceChangePercent).toBeNull();
+  });
+
+  // The service computes every window the same way, so an impossible reading
+  // can land on any of them, and each is judged on its own.
+  it("judges every window, not only 24h", () => {
+    const [token] = parseTokenPage({
+      items: [
+        {
+          ...LIVE_LIST_TOKEN,
+          activity: {
+            "5m": { priceChangePercent: "2.8e19" },
+            "1h": { priceChangePercent: "-7e12" },
+            "6h": { priceChangePercent: "31.5" },
+          },
+        },
+      ],
+      meta: LIVE_TOKEN_PAGE.meta,
+    }).items;
+
+    expect(token.activity?.["5m"]?.priceChangePercent).toBeNull();
+    expect(token.activity?.["1h"]?.priceChangePercent).toBeNull();
+    expect(token.activity?.["6h"]?.priceChangePercent).toBe("31.5");
+  });
+
+  // The flat field carries the same measurement and most of the desk renders it
+  // directly, so an unguarded one would put the nonsense back on the screen.
+  // changeFor() also falls back to it when the 24h window has no change.
+  it("drops an impossible flat 24h change on list, search and detail rows", () => {
+    const [listed] = parseTokenPage({
+      items: [{ ...LIVE_LIST_TOKEN, priceChange24hPercent: "22478541914774794240" }],
+      meta: LIVE_TOKEN_PAGE.meta,
+    }).items;
+    expect(listed.priceChange24hPercent).toBeNull();
+    // The price beside it is untouched: only the change was unusable.
+    expect(listed.priceUsd).toBe(LIVE_LIST_TOKEN.priceUsd);
+
+    const [found] = parseTokenSearch([{ ...LIVE_SEARCH_ROW, priceChange24hPercent: "2.8e19" }]);
+    expect(found.priceChange24hPercent).toBeNull();
+
+    const detail = parseTokenView({ ...LIVE_TOKEN_DETAIL, priceChange24hPercent: "2.8e19" });
+    expect(detail.priceChange24hPercent).toBeNull();
+  });
+
+  it("keeps a real flat 24h change", () => {
+    const [listed] = parseTokenPage({
+      items: [{ ...LIVE_LIST_TOKEN, priceChange24hPercent: "-12.5" }],
+      meta: LIVE_TOKEN_PAGE.meta,
+    }).items;
+    expect(listed.priceChange24hPercent).toBe("-12.5");
   });
 });

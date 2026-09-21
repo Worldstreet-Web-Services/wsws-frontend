@@ -110,7 +110,16 @@ export type ChessResult =
   | { kind: "checkmate"; winner: ChessColor }
   | { kind: "resignation"; winner: ChessColor }
   | { kind: "timeout"; winner: ChessColor }
-  | { kind: "draw"; reason: "stalemate" | "agreement" | "repetition" | "insufficient" };
+  | {
+      kind: "draw";
+      reason:
+        | "stalemate"
+        | "agreement"
+        | "repetition"
+        | "insufficient"
+        | "fifty_move_rule"
+        | "timeout_insufficient";
+    };
 
 export interface ChessTakebackState {
   white: boolean;

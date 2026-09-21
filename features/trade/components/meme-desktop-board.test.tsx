@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "@/messages/en.json";
-import { memeToken } from "@/features/trade/lib/meme-fixture";
+import { catalogKey } from "@/lib/meme/catalog";
+import { memeToken } from "@/lib/meme/fixture";
 import {
   MEME_LIST_PAGE_SIZE,
   MEME_LIST_ROW_HEIGHT,
@@ -65,35 +66,12 @@ describe("MemeDesktopBoard rows", () => {
   });
 });
 
-// Slice 4: the route hands the board the Curated / All switch and the
-// catalogue's count and "Load more". The board stays presentational; it only
-// decides where they sit.
+// Slice 4: the route hands the board the Curated / All switch. The board stays
+// presentational; it only decides where it sits.
 describe("MemeDesktopBoard catalogue controls", () => {
   it("draws the view switch beside the search", () => {
     renderBoard({ listControls: <div>switch slot</div> });
     expect(screen.getByText("switch slot").closest('[data-region="list-controls"]')).not.toBeNull();
-  });
-
-  it("draws the catalogue status in the list's footer, above the pager", () => {
-    renderBoard({
-      listStatus: <div>count slot</div>,
-      page: 1,
-      pageCount: 3,
-      onPageChange: vi.fn(),
-    });
-    const footer = screen.getByText("count slot").closest('[data-region="list-footer"]');
-    expect(footer).not.toBeNull();
-    expect(footer).toContainElement(screen.getByRole("button", { name: /Next/ }));
-  });
-
-  it("keeps the catalogue status when the list fits on one page", () => {
-    renderBoard({
-      listStatus: <div>count slot</div>,
-      page: 1,
-      pageCount: 1,
-      onPageChange: vi.fn(),
-    });
-    expect(screen.getByText("count slot")).toBeInTheDocument();
   });
 });
 
@@ -461,8 +439,41 @@ describe("MemeDesktopBoard height chain", () => {
 
   it("keeps the rail hugging its own content while the list takes the height", () => {
     renderBoard();
-    expect(columns()).toHaveClass("items-start");
+    expect(columns()).toHaveClass("lg:items-start");
     expect(document.querySelector('[data-region="token-list"]')).toHaveClass("self-stretch");
+  });
+});
+
+// The desk is drawn for a wide window: the rail alone is 468px, and the table
+// needs about 360px, so under about 1024px the two cannot sit side by side
+// without the page scrolling sideways. Below lg the columns stack instead, the
+// table takes the full width, and the rail with its ticket follows underneath.
+// At lg and above nothing changes: the ticket is on the right as before.
+describe("MemeDesktopBoard on a tablet", () => {
+  const columns = () => document.querySelector<HTMLElement>('[data-region="desk-columns"]');
+  const rail = () => columns()?.lastElementChild as HTMLElement;
+
+  it("stacks the columns under lg and puts them side by side from lg", () => {
+    renderBoard();
+    expect(columns()).toHaveClass("flex-col", "lg:flex-row");
+    expect(columns()).not.toHaveClass("items-start");
+  });
+
+  it("gives the rail the full width under lg and its fixed width from lg", () => {
+    renderBoard();
+    expect(rail()).toHaveClass("w-full", "lg:w-[468px]", "lg:shrink-0");
+    expect(rail()).not.toHaveClass("w-[468px]");
+  });
+
+  it("keeps the slots in the left column when it stacks, with the rail after it", () => {
+    renderBoard({
+      trending: <div data-testid="trending-slot" />,
+      screener: <div data-testid="screener-slot" />,
+    });
+    const left = document.querySelector<HTMLElement>('[data-region="left-column"]');
+    expect(left?.parentElement).toBe(columns());
+    expect(columns()?.lastElementChild).toBe(rail());
+    expect(left).toHaveClass("min-w-0");
   });
 });
 
@@ -549,6 +560,24 @@ describe("MemeDesktopBoard fitted rows", () => {
     expect(rowButtons()).toHaveLength(7);
   });
 
+  // With Trending and the toolbar above it the list has less room, and it is
+  // still the rows block that is measured, so fewer whole rows fit.
+  it("fits whole rows into what the left column leaves the list", () => {
+    giveRowsRegion(6 * MEME_LIST_ROW_HEIGHT + 20);
+    const onPageSizeChange = vi.fn();
+    renderBoard({
+      tokens: catalogue(20),
+      trending: <div>trending slot</div>,
+      screener: <div>screener slot</div>,
+      page: 1,
+      pageCount: 2,
+      onPageChange: vi.fn(),
+      onPageSizeChange,
+    });
+    expect(rowButtons()).toHaveLength(6);
+    expect(onPageSizeChange).toHaveBeenLastCalledWith(6);
+  });
+
   it("draws one placeholder per fitted row, so the table does not jump", () => {
     giveRowsRegion(14 * MEME_LIST_ROW_HEIGHT);
     renderBoard({ tokens: [], selected: null, isLoading: true });
@@ -563,5 +592,381 @@ describe("MemeDesktopBoard fitted rows", () => {
     renderBoard({ tokens: catalogue(3) });
     expect(MEME_LIST_ROW_HEIGHT).toBe(57);
     expect(rowButtons()[0]).toHaveClass(`h-[${MEME_LIST_ROW_HEIGHT}px]`);
+  });
+});
+
+// ADR-2026-09-15-meme-trending-screener, section 1: the Trending strip and the
+// screener toolbar join the table in the left column, and the rail beside it
+// is not touched. Without either slot the board is exactly what it was.
+describe("MemeDesktopBoard screener slots", () => {
+  const columns = () => document.querySelector<HTMLElement>('[data-region="desk-columns"]');
+  const leftColumn = () => document.querySelector<HTMLElement>('[data-region="left-column"]');
+  const panel = () => document.querySelector<HTMLElement>('[data-region="token-list"]');
+  const rail = () => columns()?.lastElementChild as HTMLElement;
+
+  const slots = {
+    trending: <div data-testid="trending-slot">trending slot</div>,
+    screener: <div data-testid="screener-slot">screener slot</div>,
+  };
+
+  it("adds no column wrapper when neither slot is passed", () => {
+    renderBoard();
+    expect(leftColumn()).toBeNull();
+    expect(panel()?.parentElement).toBe(columns());
+  });
+
+  it("stacks Trending, the toolbar and the list in one left column", () => {
+    renderBoard(slots);
+    const column = leftColumn();
+    expect(column?.parentElement).toBe(columns());
+    expect(columns()?.firstElementChild).toBe(column);
+    expect(Array.from(column?.children ?? [])).toEqual([
+      screen.getByTestId("trending-slot"),
+      screen.getByTestId("screener-slot"),
+      panel(),
+    ]);
+  });
+
+  it("opens the column for either slot on its own", () => {
+    renderBoard({ trending: slots.trending });
+    expect(leftColumn()).toContainElement(screen.getByTestId("trending-slot"));
+    expect(leftColumn()).toContainElement(panel());
+  });
+
+  // The 682px floor moves up to the column, so the desk keeps its height, and
+  // the list takes what Trending and the toolbar leave.
+  it("moves the 682px floor to the column and lets the list take the rest", () => {
+    renderBoard(slots);
+    expect(leftColumn()).toHaveClass(
+      "flex",
+      "min-w-0",
+      "flex-1",
+      "flex-col",
+      "gap-3",
+      "self-stretch",
+      "min-h-[682px]"
+    );
+    expect(panel()).toHaveClass("min-h-0", "flex-1", "min-w-0", "flex", "flex-col");
+    expect(panel()).toHaveClass("overflow-hidden", "rounded-card", "border", "bg-surface");
+    expect(panel()).not.toHaveClass("min-h-[682px]");
+    expect(panel()).not.toHaveClass("self-stretch");
+  });
+
+  // The toolbar's Sort and Filters popovers hang down over the list, so the
+  // column must not clip them.
+  it("clips nothing at the column, so the toolbar's popovers can hang over the list", () => {
+    renderBoard(slots);
+    expect(leftColumn()?.className).not.toMatch(/(^|\s)overflow-/);
+  });
+
+  it("leaves the rail exactly as it was", () => {
+    // The chart panel's id comes from useId, which differs per render.
+    const markup = () => rail().outerHTML.replace(/meme-desk-chart-[^"]*/g, "meme-desk-chart");
+    renderBoard();
+    const before = markup();
+    cleanup();
+    renderBoard(slots);
+    expect(markup()).toBe(before);
+    expect(rail()).toHaveClass("lg:w-[468px]", "lg:shrink-0");
+  });
+});
+
+describe("MemeDesktopBoard change column", () => {
+  const header = () => document.querySelector<HTMLElement>('[data-region="token-header"]');
+  const slots = { trending: <div>trending slot</div>, screener: <div>screener slot</div> };
+
+  const active = memeToken({
+    symbol: "HOT",
+    priceChange24hPercent: "-1",
+    activity: {
+      "1h": { volumeUsd: "900", transactions: 1234, traders: 56, priceChangePercent: "12.5" },
+    },
+  });
+  const quiet = memeToken({ symbol: "QUIET", priceChange24hPercent: "-3" });
+
+  it("heads the column with the selected window", () => {
+    renderBoard({ ...slots, timeframe: "1h" });
+    expect(header()?.children[2]).toHaveTextContent(/^1h$/);
+  });
+
+  it("keeps today's 24h heading without slots", () => {
+    renderBoard();
+    expect(header()?.children[2]).toHaveTextContent(messages.meme.col24h);
+  });
+
+  it("reads the window's change, and only falls back to the flat field at 24h", () => {
+    renderBoard({ ...slots, tokens: [active, quiet], selected: null, timeframe: "1h" });
+    expect(screen.getByRole("button", { name: /HOT coin/ })).toHaveTextContent("+12.50%");
+    expect(screen.getByRole("button", { name: /HOT coin/ })).not.toHaveTextContent("-1.00%");
+    // No 1h reading is not the 24h one.
+    expect(screen.getByRole("button", { name: /QUIET coin/ })).toHaveTextContent("—");
+    expect(screen.getByRole("button", { name: /QUIET coin/ })).not.toHaveTextContent("-3.00%");
+  });
+
+  it("shows the flat 24h change at 24h, as the table always has", () => {
+    renderBoard({ ...slots, tokens: [quiet], selected: null });
+    expect(screen.getByRole("button", { name: /QUIET coin/ })).toHaveTextContent("-3.00%");
+  });
+
+  it("draws the change bar under the percentage, at the row's height", () => {
+    renderBoard({ ...slots, tokens: [active], selected: null, timeframe: "1h" });
+    const row = screen.getByRole("button", { name: /HOT coin/ });
+    const fill = row.querySelector<HTMLElement>(".bg-up");
+    expect(fill).not.toBeNull();
+    expect(fill?.style.width).toBe("12%");
+    expect(row).toHaveClass(`h-[${MEME_LIST_ROW_HEIGHT}px]`);
+  });
+
+  it("draws no change bar without slots", () => {
+    renderBoard();
+    const row = screen.getByRole("button", { name: /SOL/ });
+    expect(row.querySelector('[aria-hidden="true"] > .bg-down')).toBeNull();
+  });
+});
+
+describe("MemeDesktopBoard sorted metric column", () => {
+  const panel = () => document.querySelector<HTMLElement>('[data-region="token-list"]');
+  const header = () => panel()?.querySelector('[data-region="token-header"]') as HTMLElement;
+  const rowButtons = () =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-region="token-rows-layer"] > button'));
+  const slots = { trending: <div>trending slot</div>, screener: <div>screener slot</div> };
+  const NOW = Date.parse("2026-09-15T12:00:00Z");
+
+  const coin = memeToken({
+    symbol: "HOT",
+    liquidityUsd: "12500",
+    volume24hUsd: "5000",
+    pairCreatedAt: "2026-09-15T11:55:00Z",
+    activity: {
+      "1h": { volumeUsd: "900", transactions: 1234, traders: 56, priceChangePercent: "1" },
+    },
+  });
+
+  // The grid template, whatever else the class list holds.
+  const template = (el: Element) => el.className.match(/grid-cols-\[[^\]]+\]/)?.[0];
+
+  it.each([
+    ["volume", "1h", "Volume", "$900"],
+    ["transactions", "1h", "Transactions", "1,234"],
+    ["traders", "1h", "Traders", "56"],
+    ["liquidity", "24h", "Liquidity", "$12.5K"],
+    ["age", "24h", "Age", "5m"],
+  ] as const)("adds a column for a %s sort", (sortMetric, timeframe, label, value) => {
+    renderBoard({ ...slots, tokens: [coin], selected: null, sortMetric, timeframe, now: NOW });
+    expect(header().children).toHaveLength(5);
+    expect(header().children[4]).toHaveTextContent(label);
+    const row = screen.getByRole("button", { name: /HOT coin/ });
+    expect(row.children).toHaveLength(5);
+    expect(row.children[4]).toHaveTextContent(value);
+    expect(template(header())).toBe("grid-cols-[minmax(0,1fr)_88px_110px_121px_96px]");
+  });
+
+  it("says a missing figure is missing rather than zero", () => {
+    renderBoard({
+      ...slots,
+      tokens: [memeToken({ symbol: "BARE" })],
+      selected: null,
+      sortMetric: "traders",
+      timeframe: "5m",
+    });
+    const row = screen.getByRole("button", { name: /BARE coin/ });
+    expect(row.children[4]).toHaveTextContent(/^—$/);
+  });
+
+  it.each(["price", "marketCap"] as const)(
+    "adds no column for a %s sort, which the table already shows",
+    (sortMetric) => {
+      renderBoard({ ...slots, tokens: [coin], selected: null, sortMetric });
+      expect(header().children).toHaveLength(4);
+      expect(template(header())).toBe("grid-cols-[minmax(0,1fr)_88px_110px_121px]");
+    }
+  );
+
+  it("adds no column without a sort", () => {
+    renderBoard({ ...slots, tokens: [coin], selected: null, sortMetric: null });
+    expect(header().children).toHaveLength(4);
+  });
+
+  it("lays the header and every row on the same template", () => {
+    const tokens = [coin, memeToken({ symbol: "TWO" }), memeToken({ symbol: "THREE" })];
+    renderBoard({ ...slots, tokens, selected: null, sortMetric: "volume" });
+    const expected = template(header());
+    expect(rowButtons()).toHaveLength(3);
+    for (const row of rowButtons()) expect(template(row)).toBe(expected);
+  });
+});
+
+describe("MemeDesktopBoard top gainers", () => {
+  const slots = { trending: <div>trending slot</div>, screener: <div>screener slot</div> };
+  const up = memeToken({ symbol: "UP" });
+  const flat = memeToken({ symbol: "FLAT" });
+
+  it("marks the page's top gainers after the symbol", () => {
+    renderBoard({
+      ...slots,
+      tokens: [up, flat],
+      selected: null,
+      topGainers: new Set([catalogKey(up)]),
+    });
+    const row = screen.getByRole("button", { name: /UP coin/ });
+    expect(within(row).getByRole("img", { name: "Top gainer on this page" })).toHaveTextContent(
+      "🔥"
+    );
+    expect(
+      within(screen.getByRole("button", { name: /FLAT coin/ })).queryByRole("img", {
+        name: "Top gainer on this page",
+      })
+    ).toBeNull();
+  });
+
+  it("marks nothing when no gainers are passed", () => {
+    renderBoard({ ...slots, tokens: [up], selected: null });
+    expect(screen.queryByRole("img", { name: "Top gainer on this page" })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sortable headings and the search box
+// ---------------------------------------------------------------------------
+
+describe("MemeDesktopBoard headings", () => {
+  // The sort is the screener's, not the table's: a heading click and a choice
+  // in the sort menu reach the same setter, so the two can never disagree and
+  // whichever is used is also what goes to the backend.
+  it("asks for a descending sort the first time a heading is clicked", () => {
+    const onSortChange = vi.fn();
+    renderBoard({ onSortChange });
+
+    fireEvent.click(screen.getByRole("button", { name: /mkt cap/i }));
+
+    expect(onSortChange).toHaveBeenCalledWith({ by: "marketCap", order: "desc" });
+  });
+
+  it("flips the heading already sorted, then clears it", () => {
+    const onSortChange = vi.fn();
+    renderBoard({ onSortChange, sortMetric: "marketCap", sortOrder: "desc" });
+    fireEvent.click(screen.getByRole("button", { name: /mkt cap/i }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ by: "marketCap", order: "asc" });
+
+    cleanup();
+    renderBoard({ onSortChange, sortMetric: "marketCap", sortOrder: "asc" });
+    fireEvent.click(screen.getByRole("button", { name: /mkt cap/i }));
+    // Third click clears it, rather than cycling back to descending and
+    // leaving no way to undo a sort from the heading.
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
+  });
+
+  // A screen reader should hear which column is sorted and which way, not just
+  // see an arrow.
+  it("announces the sorted column", () => {
+    renderBoard({ onSortChange: vi.fn(), sortMetric: "price", sortOrder: "asc" });
+
+    const price = screen.getByRole("button", { name: /price/i }).parentElement;
+    expect(price).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  // The asset and change columns have no screener bound behind them, so a
+  // button there would look pressable and do nothing.
+  it("leaves the columns that cannot sort as plain text", () => {
+    renderBoard({ onSortChange: vi.fn() });
+
+    expect(screen.queryByRole("button", { name: /^asset$/i })).toBeNull();
+  });
+
+  // Without a setter the board is read-only, as the phone's callers leave it.
+  it("draws plain headings when no setter is given", () => {
+    renderBoard();
+
+    expect(screen.queryByRole("button", { name: /mkt cap/i })).toBeNull();
+  });
+});
+
+// Slice: long figures are approximated so no cell runs past its column. Every
+// figure below is one that overflowed on the desk before the table was wired
+// to lib/meme/format (the cards already were).
+describe("MemeDesktopBoard long figures", () => {
+  const slots = { trending: <div>trending slot</div>, screener: <div>screener slot</div> };
+
+  const whale = memeToken({
+    symbol: "WHALE",
+    priceUsd: "0.00000000121495281918",
+    marketCapUsd: "3491589227.1234567890123",
+    priceChange24hPercent: "12345.6789",
+    liquidityUsd: "0.004",
+    activity: {
+      "24h": {
+        volumeUsd: "8200000000",
+        transactions: 1284339,
+        traders: 98765,
+        priceChangePercent: "12345.6789",
+      },
+    },
+  });
+
+  const row = () => screen.getByRole("button", { name: /WHALE coin/ });
+
+  it("approximates a market cap in the billions", () => {
+    renderBoard({ tokens: [whale], selected: null });
+    expect(row().children[3]).toHaveTextContent(/^\$3\.49B$/);
+  });
+
+  it("never prints a sub-cent price as $0", () => {
+    renderBoard({ tokens: [whale], selected: null });
+    const price = row().children[1].textContent ?? "";
+    expect(price).not.toBe("$0");
+    expect(price).not.toBe("$0.00");
+    // priceLabel counts the zero run rather than spelling it out.
+    expect(price).toBe("$0.0\u20881215");
+  });
+
+  it("approximates a five-figure change and keeps the exact one for a screen reader", () => {
+    renderBoard({ tokens: [whale], selected: null });
+    const change = row().children[2];
+    expect(change.querySelector('[aria-hidden="true"]')).toHaveTextContent("+12.35K%");
+    expect(change).toHaveTextContent("+12345.68%");
+  });
+
+  it("approximates a seven-figure transaction count", () => {
+    renderBoard({ ...slots, tokens: [whale], selected: null, sortMetric: "transactions" });
+    expect(row().children[4]).toHaveTextContent(/^1\.28M$/);
+  });
+
+  it("never prints a thin pool's liquidity as $0", () => {
+    renderBoard({ ...slots, tokens: [whale], selected: null, sortMetric: "liquidity" });
+    expect(row().children[4]).toHaveTextContent(/^<\$0\.01$/);
+  });
+
+  it("still draws a dash for a figure the service did not publish", () => {
+    const bare = memeToken({ symbol: "BARE", marketCapUsd: null, priceChange24hPercent: null });
+    renderBoard({ tokens: [bare], selected: null });
+    const bareRow = screen.getByRole("button", { name: /BARE coin/ });
+    expect(bareRow.children[3]).toHaveTextContent(/^\u2014$/);
+    expect(bareRow.children[2]).toHaveTextContent(/^\u2014$/);
+  });
+
+  it("keeps every figure cell short enough for its column", () => {
+    renderBoard({ ...slots, tokens: [whale], selected: null, sortMetric: "volume" });
+    // Ten is priceLabel's own bound and the widest cell on the row; the money,
+    // count and change cells all stop at eight. The asset cell is a name, not
+    // a figure, so it is not measured. The change cell carries the exact
+    // figure for a screen reader, so its visible half is the one measured.
+    const cells = Array.from(row().children).slice(1);
+    for (const cell of cells) {
+      const hidden = cell.querySelector('[aria-hidden="true"]');
+      const shown = (hidden ?? cell).textContent ?? "";
+      expect(shown.trim().length).toBeLessThanOrEqual(10);
+    }
+  });
+});
+
+// The box searches the catalogue on more than a name, so it says so rather
+// than borrowing the spot market's "Search tokens".
+describe("MemeDesktopBoard search box", () => {
+  it("tells the reader everything the search matches", () => {
+    renderBoard();
+    expect(screen.getByLabelText("Search all memecoins")).toHaveAttribute(
+      "placeholder",
+      "Search by name, symbol, address, market cap, price or age"
+    );
   });
 });

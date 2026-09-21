@@ -20,6 +20,8 @@ import {
 } from "@/lib/api/schemas/trade";
 import { withRiskDefaults, type Paged } from "@/lib/meme/catalog";
 import type {
+  MemeActivity,
+  MemeTimeframe,
   MemeToken,
   PortfolioPosition,
   PortfolioPositionDetail,
@@ -54,6 +56,65 @@ function read<S extends z.ZodType>(schema: S, data: unknown, what: string): z.ou
   throw new TradeShapeError(what, problem);
 }
 
+const WINDOWS = ["5m", "1h", "6h", "12h", "24h"] as const satisfies readonly MemeTimeframe[];
+
+// A count the boundary let through but that cannot be a count (fractional,
+// negative, not finite) is not currently available, never rounded into one.
+function wholeCount(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+type ActivityRow = NonNullable<z.output<typeof tokenListItemSchema>["activity"]>;
+
+// The largest move we will carry through as real. A memecoin can genuinely run
+// thousands of percent in a day, so this sits far above any honest move: 1e6
+// percent is a ten-thousand-fold rise. Past it the number is not a market move
+// but a division by a missing or near-zero baseline price upstream, which is
+// how the trade service came to report 2.8e19 percent on 2026-09-16.
+const MAX_REAL_CHANGE_PERCENT = 1e6;
+
+// A change we can show, or null. Null means "not available for this window",
+// which is what every reader already handles; the value is never replaced with
+// an invented one, and the rest of the window is untouched.
+function usableChange(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || Math.abs(value) > MAX_REAL_CHANGE_PERCENT) return null;
+  return raw;
+}
+
+// Every window the row carries gets all four fields, null where the service
+// left one out, so a reader never has to tell absent from null. A window that
+// is missing or null stays missing: it is never filled from another window.
+function toActivity(row: ActivityRow): Partial<Record<MemeTimeframe, MemeActivity>> {
+  const activity: Partial<Record<MemeTimeframe, MemeActivity>> = {};
+  for (const window of WINDOWS) {
+    const sample = row[window];
+    if (!sample) continue;
+    activity[window] = {
+      volumeUsd: sample.volumeUsd ?? null,
+      transactions: wholeCount(sample.transactions),
+      traders: wholeCount(sample.traders),
+      priceChangePercent: usableChange(sample.priceChangePercent),
+    };
+  }
+  return activity;
+}
+
+// The screener fields ride only on list and trending rows. A row that carries
+// neither (search, detail) leaves both keys off the token, so it is not
+// mistaken for a coin with no activity. A row with activity but no creation
+// time reads that time as unavailable.
+function screenerFields(
+  row: z.output<typeof tokenListItemSchema>
+): Pick<MemeToken, "activity" | "pairCreatedAt"> {
+  if (row.activity === undefined && row.pairCreatedAt === undefined) return {};
+  return {
+    ...(row.activity === undefined ? {} : { activity: toActivity(row.activity) }),
+    pairCreatedAt: row.pairCreatedAt ?? null,
+  };
+}
+
 // An absent market field on a list row is "not currently available", the
 // same as the null the contract sends; the absent risk block is filled by
 // withRiskDefaults, whose comment carries the policy.
@@ -68,7 +129,11 @@ function toMemeToken(row: z.output<typeof tokenListItemSchema>): MemeToken {
     priceUsd: row.priceUsd,
     liquidityUsd: row.liquidityUsd,
     volume24hUsd: row.volume24hUsd ?? null,
-    priceChange24hPercent: row.priceChange24hPercent ?? null,
+    // The flat field is the same 24h measurement as the window, and most of the
+    // desk reads it directly, so it gets the same guard. changeFor() also falls
+    // back to it when the 24h window carries no change, which would walk an
+    // impossible figure straight back onto the screen.
+    priceChange24hPercent: usableChange(row.priceChange24hPercent),
     marketCapUsd: row.marketCapUsd ?? null,
     fdvUsd: row.fdvUsd ?? null,
     pairAddress: row.pairAddress ?? null,
@@ -78,6 +143,7 @@ function toMemeToken(row: z.output<typeof tokenListItemSchema>): MemeToken {
     buyEnabled: row.buyEnabled,
     sellEnabled: row.sellEnabled,
     status: row.status,
+    ...screenerFields(row),
   });
 }
 

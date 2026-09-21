@@ -75,7 +75,7 @@ import {
   type TradeResult,
 } from "@/features/trade/hooks/use-meme-trade";
 import { useRiskConsent } from "@/features/trade/hooks/use-risk-consent";
-import { memeToken } from "@/features/trade/lib/meme-fixture";
+import { memeToken } from "@/lib/meme/fixture";
 import { TradeApiError } from "@/lib/meme/api";
 import { SubmittedEvmOperationError } from "@/lib/trade/sponsor";
 import { memePortfolioKeys } from "@/lib/meme/portfolio";

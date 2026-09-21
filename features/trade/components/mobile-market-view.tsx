@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -35,7 +36,15 @@ import { ListPagination } from "@/components/ui/list-pagination";
 import { SearchField } from "@/components/ui/search-field";
 import { useSpotMarkets, type SpotMarket } from "@/features/trade/hooks/use-spot-markets";
 import { useMemeCatalog, useMemeSearch } from "@/features/trade/hooks/use-meme-tokens";
-import { MemeCatalogMore, MemeViewSwitch } from "@/features/trade/components/meme-catalog-controls";
+import { MemeViewSwitch } from "@/features/trade/components/meme-catalog-controls";
+import { ChangeBar, formatMetric } from "@/features/trade/components/meme-gamified-bits";
+import { MemeScreenerToolbar } from "@/features/trade/components/meme-screener-toolbar";
+import { METRIC_KEYS } from "@/features/trade/components/meme-sort-menu";
+import {
+  MemeTrendingStrip,
+  TRENDING_PHONE_PAGE_SIZE,
+} from "@/features/trade/components/meme-trending-strip";
+import { useMemeScreener } from "@/features/trade/hooks/use-meme-screener";
 import { useFitRows } from "@/hooks/use-fit-rows";
 import {
   memeOutcomeToast,
@@ -52,6 +61,8 @@ import { friendlyError } from "@/lib/errors";
 import { compactUsd, isValidTradeAmount, type MemeToken } from "@/lib/meme/api";
 import { SOLANA_CHAIN_ID, networkOf } from "@/lib/meme/chain";
 import { DEFAULT_DISCOVERY_VIEW, catalogKey, type DiscoveryView } from "@/lib/meme/catalog";
+import { changeFor, heatShares, topGainerKeys } from "@/lib/meme/momentum";
+import { metricValue, type ScreenerMetric } from "@/lib/meme/screener";
 import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { buyFunding } from "@/lib/meme/funding";
 import { exceedsHeld } from "@/lib/meme/sell-amount";
@@ -154,6 +165,32 @@ function usdMetric(value: string | null): MemeMetricValue {
   return { display: shown === "—" ? null : shown };
 }
 
+// The row's sorted metric shows an age against the wall clock, read as the
+// external system it is (the same store shape as meme-live-transactions.tsx).
+// Whole minutes, because the snapshot is compared by identity on every render
+// and an age is only ever shown in minutes. The clock only ticks while an age
+// is on screen; the server's snapshot is 0, which reads as no age yet.
+const MINUTE_MS = 60_000;
+
+function subscribeToMinute(onStoreChange: () => void): () => void {
+  const id = setInterval(onStoreChange, MINUTE_MS);
+  return () => clearInterval(id);
+}
+
+const subscribeToNothing = () => () => undefined;
+
+function readMinute(): number {
+  return Math.floor(Date.now() / MINUTE_MS) * MINUTE_MS;
+}
+
+function useMinuteClock(ticking: boolean): number {
+  return useSyncExternalStore(
+    ticking ? subscribeToMinute : subscribeToNothing,
+    readMinute,
+    () => 0
+  );
+}
+
 /**
  * One page of `items`, paginated with `usePaged` at a caller-measured page
  * size, under the shared foot pager (components/ui/list-pagination.tsx) the
@@ -166,17 +203,38 @@ function PagedRows<T>({
   items,
   pageSize,
   renderRow,
+  more = false,
+  loadingMore = false,
+  stalled = false,
+  waiting = false,
+  onResume,
 }: {
   items: T[];
   pageSize: number;
-  renderRow: (item: T) => ReactNode;
+  /** Also handed the visible page, for a row that is judged against its neighbours. */
+  renderRow: (item: T, pageItems: T[]) => ReactNode;
+  /**
+   * The list behind `items` is still filling. The page count is over the rows
+   * in hand, so it grows as more land; this is what stops the bar reading as a
+   * final count while it does.
+   */
+  more?: boolean;
+  /** Of those rows, a batch is in flight right now. */
+  loadingMore?: boolean;
+  /** Filling stopped short of the whole list and will not start again alone. */
+  stalled?: boolean;
+  /** Filling is paused and will carry on by itself. */
+  waiting?: boolean;
+  /** Restarts a stalled fill. Drawn as a button in the pager only when given. */
+  onResume?: () => void;
 }) {
   const tCommon = useTranslations("common");
   const paged = usePaged(items, pageSize);
   if (items.length === 0) return null;
+  const { pageItems } = paged;
   return (
     <>
-      {paged.pageItems.map(renderRow)}
+      {pageItems.map((item) => renderRow(item, pageItems))}
       {/* The visible page text lives inside ListPagination; this is only the
           live region that announces a page change to a screen reader. */}
       <p aria-live="polite" className="sr-only">
@@ -186,6 +244,11 @@ function PagedRows<T>({
         page={paged.page + 1}
         pages={paged.pageCount}
         onPage={(target) => (target > paged.page + 1 ? paged.goNext() : paged.goPrev())}
+        more={more}
+        loadingMore={loadingMore}
+        stalled={stalled}
+        waiting={waiting}
+        onResume={onResume}
       />
     </>
   );
@@ -299,6 +362,7 @@ export function MobileMarketView({ rwaSlot, onAddFunds }: MobileMarketViewProps)
   const tCommon = useTranslations("common");
   const tSpot = useTranslations("spot");
   const tMeme = useTranslations("meme");
+  const tScreener = useTranslations("memeScreener");
   const tErr = useTranslations("tradeErrors");
   const { markets, loading, error } = useSpotMarkets();
   // A query per list. They were one field and one term until each tab grew
@@ -360,27 +424,69 @@ export function MobileMarketView({ rwaSlot, onAddFunds }: MobileMarketViewProps)
 
   // The Memecoins tab lists the catalogue, a server page of 500 at a time
   // behind the same Curated / All switch as the desk and the grid
-  // (ADR-2026-09-14-memecoins-trade-contract, slice 4). Trending is discovery
-  // only and stays on the dashboard's cards. A search of two characters or
-  // more replaces the list with the service's results, in the same view.
+  // (ADR-2026-09-14-memecoins-trade-contract, slice 4). A search replaces the
+  // list with its own results, in the same view: the cached rows matched here
+  // from the first character, plus the service's answer from the second.
+  //
+  // It also carries the desk's Trending strip and market screener
+  // (ADR-2026-09-15-meme-trending-screener, 1.1). While filters or a sort
+  // apply, the screener's list stands in for the catalogue. A search still
+  // wins over both, as on the desk.
   const [memeView, setMemeView] = useState<DiscoveryView>(DEFAULT_DISCOVERY_VIEW);
   const memeCatalog = useMemeCatalog({ view: memeView });
-  const memeSearch = useMemeSearch(memeQuery, memeView);
-  const memes = memeSearch.active ? memeSearch.results : memeCatalog.tokens;
-  const memeLoading = memeSearch.active ? memeSearch.searching : memeCatalog.isLoading;
-  const memeError = memeSearch.active ? memeSearch.error : memeCatalog.error;
+  // Same two-source search as the desk: the cached catalogue answers an
+  // address, a figure or an age here in the browser, and the service is still
+  // asked about the coins the catalogue does not hold. It is handed the whole
+  // catalogue rather than the screener's cut, because a search wins over the
+  // filters.
+  const memeSearch = useMemeSearch(memeQuery, memeView, memeCatalog.tokens);
+  // The view renders every tab's hooks, so the screener only asks for data
+  // while its tab is open. Spot readers never pay for a trending poll.
+  const screener = useMemeScreener({
+    view: memeView,
+    trendingPageSize: TRENDING_PHONE_PAGE_SIZE,
+    enabled: activeTab === "memecoins",
+  });
+  const memeList = screener.active ? screener.list : memeCatalog;
+  const memeScreening = screener.active && !memeSearch.active;
+  const memes = memeSearch.active ? memeSearch.results : memeList.tokens;
+  const memeLoading = memeSearch.active ? memeSearch.searching : memeList.isLoading;
+  const memeError = memeSearch.active ? memeSearch.error : memeList.error;
+  const memeTimeframe = screener.timeframe;
+  // Heat compares a coin's volume with the busiest on the whole board, not
+  // just the page on screen, so a card's bar does not change with the page.
+  const trendingTokens = screener.trending.tokens;
+  const trendingHeat = useMemo(
+    () => heatShares(trendingTokens, memeTimeframe),
+    [trendingTokens, memeTimeframe]
+  );
+  // The metric the rows are sorted by joins each row's name line, so the order
+  // explains itself. Price and market cap are left out: the row already shows
+  // the price, and the name line has no room for a second money figure. A
+  // search is not in that order, so it shows none.
+  const sortMetric = screener.filters.sort?.by ?? null;
+  const rowMetric: ScreenerMetric | null =
+    memeScreening && sortMetric !== null && sortMetric !== "price" && sortMetric !== "marketCap"
+      ? sortMetric
+      : null;
+  const memeNow = useMinuteClock(rowMetric === "age");
 
   // A memecoin's own ticket opens in the list's place, the same hide-not-
   // unmount and scroll-restore pattern the Spot tab uses above. The ticket
   // takes the fresher row whenever the list still carries the coin, matched by
   // chainId:address (the same address on two chains is two coins), so a
-  // catalogue refresh does not leave it pointed at a stale copy.
+  // catalogue refresh does not leave it pointed at a stale copy. A coin opened
+  // from Trending that the list does not carry follows the trending board.
   const [memeTicketToken, setMemeTicketToken] = useState<MemeToken | null>(null);
   const ticketMeme = useMemo(() => {
     if (!memeTicketToken) return null;
     const key = catalogKey(memeTicketToken);
-    return memes.find((m) => catalogKey(m) === key) ?? memeTicketToken;
-  }, [memes, memeTicketToken]);
+    return (
+      memes.find((m) => catalogKey(m) === key) ??
+      trendingTokens.find((m) => catalogKey(m) === key) ??
+      memeTicketToken
+    );
+  }, [memes, trendingTokens, memeTicketToken]);
   // The market-metrics disclosure on the meme ticket. Closed by default, like
   // the desk board and the meme page: the comp draws it open, but the ticket
   // leads with the trade, and the reader opens the figures if they want them.
@@ -581,8 +687,9 @@ export function MobileMarketView({ rwaSlot, onAddFunds }: MobileMarketViewProps)
     return q ? markets.filter((m) => `${m.symbol} ${m.name}`.toLowerCase().includes(q)) : markets;
   }, [markets, spotQuery]);
 
-  // The service searches the whole catalogue, not the rows loaded so far, so
-  // the list is either the catalogue or the search results, never a filter.
+  // A search builds its own list, from the cached catalogue and the service
+  // together, so the list is either the catalogue or that result, never a
+  // filter laid over the rows on screen.
   const memeRows = memes;
 
   // While a tab is handing off to its desktop screen, render nothing rather than
@@ -807,6 +914,43 @@ export function MobileMarketView({ rwaSlot, onAddFunds }: MobileMarketViewProps)
                 <div className="px-1 pb-2">
                   <MemeViewSwitch value={memeView} onChange={setMemeView} />
                 </div>
+                {/* Trending follows the applied filters, not the search, so it
+                    stays up while a search holds the list. The list is hidden
+                    while a ticket is open, so no card is ever marked selected. */}
+                <div className="px-1 pb-2">
+                  <MemeTrendingStrip
+                    variant="phone"
+                    tokens={screener.trending.pageTokens}
+                    rankOffset={(screener.trending.page - 1) * TRENDING_PHONE_PAGE_SIZE}
+                    heat={trendingHeat}
+                    timeframe={memeTimeframe}
+                    page={screener.trending.page}
+                    pages={screener.trending.pages}
+                    onPageChange={screener.trending.setPage}
+                    filtered={screener.trending.filtered}
+                    isLoading={screener.trending.isLoading}
+                    error={screener.trending.error}
+                    onRetry={screener.trending.refetch}
+                    selectedKey={null}
+                    onSelect={openMemeTicket}
+                  />
+                </div>
+                <div className="px-1 pb-2">
+                  <MemeScreenerToolbar
+                    variant="phone"
+                    timeframe={memeTimeframe}
+                    onTimeframeChange={screener.setTimeframe}
+                    filters={screener.filters}
+                    count={screener.count}
+                    preset={screener.preset}
+                    onApply={screener.apply}
+                    onSortChange={screener.setSort}
+                    onPreset={screener.applyPreset}
+                    onClearBound={screener.clearBound}
+                    onClearAll={screener.clearAll}
+                    paused={memeSearch.active}
+                  />
+                </div>
                 {memeLoading && memeRows.length === 0 ? (
                   [0, 1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="flex h-[60px] items-center gap-3 px-1">
@@ -816,56 +960,115 @@ export function MobileMarketView({ rwaSlot, onAddFunds }: MobileMarketViewProps)
                   ))
                 ) : (
                   <PagedRows
-                    key={memeQuery}
+                    // A search resets to page 1 as the query changes. Outside
+                    // one, so does a change to the applied filters, which
+                    // changes the rows under the reader.
+                    key={
+                      memeSearch.active
+                        ? `search:${memeQuery}`
+                        : `list:${memeQuery}:${screener.resetKey}`
+                    }
                     items={memeRows}
                     pageSize={memePageSize}
-                    renderRow={(token) => (
-                      <button
-                        key={catalogKey(token)}
-                        type="button"
-                        onClick={() => openMemeTicket(token)}
-                        className="flex h-[60px] w-full items-center gap-3 border-b border-white/6 px-1 text-left transition-colors active:bg-white/5"
-                      >
-                        <span className="shrink-0">
-                          <MemeCoin token={token} size={36} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-serif text-[14px] font-semibold text-white">
-                            {token.symbol ?? "?"}
+                    // The catalogue runs past a hundred thousand coins and
+                    // arrives a server page at a time, so the bar below pages
+                    // over whatever is in hand and grows with it. Without this
+                    // a list 3% loaded would read as a complete three pages.
+                    // A search is its own finished list, so it says nothing.
+                    more={!memeSearch.active && memeList.hasMore}
+                    // The walk's own status, not isLoadingMore: the walk paces
+                    // itself between server pages, and a flag that went false
+                    // in each gap would flicker the hint on and off all the way
+                    // through. It also tells the truth when the walk has
+                    // stalled or been rate limited, where nothing is arriving.
+                    loadingMore={!memeSearch.active && memeList.progress.status === "walking"}
+                    // The walk gives up after a run of refusals and nothing
+                    // restarts it, so the reader was left holding part of the
+                    // catalogue with the bar gone quiet and the list reading as
+                    // finished. This is the way back.
+                    stalled={!memeSearch.active && memeList.progress.status === "stalled"}
+                    // A 429 is a pause, not a stop: the walk resumes itself at
+                    // progress.resumesAt, so it says so and offers no button.
+                    waiting={!memeSearch.active && memeList.progress.status === "rate-limited"}
+                    onResume={memeList.progress.retry}
+                    renderRow={(token, pageItems) => {
+                      const key = catalogKey(token);
+                      const change = changeFor(token, memeTimeframe);
+                      // A page is a dozen rows at most, so ranking it again
+                      // per row costs nothing worth caching.
+                      const topGainer = topGainerKeys(pageItems, memeTimeframe).has(key);
+                      const metricText =
+                        rowMetric === null
+                          ? null
+                          : formatMetric(
+                              metricValue(token, rowMetric, memeTimeframe, memeNow),
+                              tScreener
+                            );
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => openMemeTicket(token)}
+                          className="flex h-[60px] w-full items-center gap-3 border-b border-white/6 px-1 text-left transition-colors active:bg-white/5"
+                        >
+                          <span className="shrink-0">
+                            <MemeCoin token={token} size={36} />
                           </span>
-                          <span className="block truncate text-[11.5px] font-normal text-white/50">
-                            {token.name ?? "—"}
+                          <span className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-1">
+                              <span className="truncate font-serif text-[14px] font-semibold text-white">
+                                {token.symbol ?? "?"}
+                              </span>
+                              {topGainer ? (
+                                <span
+                                  role="img"
+                                  aria-label={tScreener("topGainer")}
+                                  className="shrink-0 text-[11px] leading-none"
+                                >
+                                  🔥
+                                </span>
+                              ) : null}
+                            </span>
+                            {/* The name gives way before the metric does. */}
+                            <span className="flex min-w-0 items-baseline gap-1 text-[11.5px] font-normal text-white/50">
+                              <span className="truncate">{token.name ?? "—"}</span>
+                              {rowMetric !== null && metricText !== null ? (
+                                <span
+                                  data-row-metric={rowMetric}
+                                  className="tnum shrink-0 text-white/70"
+                                >
+                                  <span aria-hidden="true">· </span>
+                                  <span className="sr-only">
+                                    {tScreener(METRIC_KEYS[rowMetric])}{" "}
+                                  </span>
+                                  {metricText}
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <span className="tnum block font-serif text-[13.5px] font-semibold text-white">
-                            {priceLabel(token.priceUsd)}
+                          <span className="shrink-0 text-right">
+                            <span className="tnum block font-serif text-[13.5px] font-semibold text-white">
+                              {priceLabel(token.priceUsd)}
+                            </span>
+                            <span className="block text-[12px] font-semibold">
+                              <PctChange value={change} />
+                            </span>
+                            <ChangeBar change={change} className="mt-0.5 ml-auto max-w-10" />
                           </span>
-                          <span className="block text-[12px] font-semibold">
-                            <PctChange value={token.priceChange24hPercent} />
-                          </span>
-                        </span>
-                      </button>
-                    )}
+                        </button>
+                      );
+                    }}
                   />
                 )}
-                {/* The count and "Load more" describe the catalogue; a search
-                    replaces it, so they step aside while one is showing. */}
-                {!memeSearch.active && !memeLoading ? (
-                  <MemeCatalogMore
-                    className="px-1 pt-3"
-                    loaded={memeCatalog.loaded}
-                    total={memeCatalog.total}
-                    shownCount={memeCatalog.shownCount}
-                    hasMore={memeCatalog.hasMore}
-                    loadingMore={memeCatalog.isLoadingMore}
-                    failed={memeCatalog.loadMoreFailed}
-                    onLoadMore={memeCatalog.loadMore}
-                  />
-                ) : null}
                 {!memeLoading && (memeError || memeRows.length === 0) ? (
                   <p className="mt-8 text-center text-[13px] font-normal text-white/45">
-                    {memeError ? tMeme("unavailable") : tMeme("noResults")}
+                    {memeError
+                      ? memeScreening
+                        ? tScreener("listUnavailable")
+                        : tMeme("unavailable")
+                      : memeScreening
+                        ? tScreener("noMatches")
+                        : tMeme("noResults")}
                   </p>
                 ) : null}
               </div>

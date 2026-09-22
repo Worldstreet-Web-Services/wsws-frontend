@@ -38,6 +38,14 @@ function remember(ids: string[]): void {
 
 type StartedMatch = Pick<ChessMatch, "id" | "state" | "stakeUsdc" | "computer">;
 
+// Bot strength is 1 to 8. Anything outside that is the server describing a
+// difficulty this catalog has no number for, so it is left off.
+function botLevel(level: number | undefined): { bot_level?: number } {
+  return Number.isInteger(level) && (level as number) >= 1 && (level as number) <= 8
+    ? { bot_level: level }
+    : {};
+}
+
 export function useChessStartReport(
   match: StartedMatch | null | undefined,
   you: ChessColor | null
@@ -46,12 +54,20 @@ export function useChessStartReport(
   const underWay = match?.state === "in_progress";
   // A computer game's stake is its wager; a two-player game's is the match's.
   const stake = Number(match?.computer?.wager?.stakeUsdc ?? match?.stakeUsdc ?? 0) || 0;
+  // Whether the other seat is the engine, and how strong it is set to.
+  const computer = match?.computer ?? null;
+  const level = computer?.level;
 
   useEffect(() => {
     if (!id || !underWay || you === null) return;
     const seen = remembered();
     if (seen.includes(id)) return;
     remember([...seen, id]);
-    track("chess_game_started", { stake_usd: stake, amount_usd: stake, game_id: id });
-  }, [id, underWay, you, stake]);
+    track("chess_game_started", {
+      game_id: id,
+      amount_usd: stake,
+      opponent_type: computer ? "bot" : "human",
+      ...(computer ? { mode: "vs_computer" as const, ...botLevel(level) } : {}),
+    });
+  }, [id, underWay, you, stake, computer, level]);
 }

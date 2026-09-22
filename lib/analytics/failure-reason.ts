@@ -58,6 +58,17 @@ export const REASONS = [
   "market_suspended",
   "stake_below_minimum",
   "stake_above_limit",
+  // Games
+  "round_closed",
+  "draw_closed",
+  "incomplete_selection",
+  "duplicate_ticket",
+  "above_maximum",
+  // Square
+  "media_too_large",
+  "unsupported_media",
+  "not_permitted",
+  "empty_post",
   // Perps
   "insufficient_margin",
   "leverage_too_high",
@@ -168,6 +179,44 @@ export const PREDICTION_FAILURE = vocabulary(
   { below_minimum: "stake_below_minimum", above_limit: "stake_above_limit" }
 );
 
+/**
+ * The Arkade games. One list across the five of them: the catalog gives each
+ * game its own, but they are near-identical, and a shared list means a report
+ * can ask "how often does a game fail for want of balance" without unioning
+ * five different spellings of the same word.
+ */
+export const GAME_FAILURE = vocabulary(
+  [
+    "insufficient_balance",
+    "round_closed",
+    "draw_closed",
+    "incomplete_selection",
+    "duplicate_ticket",
+    "below_minimum",
+    "above_maximum",
+    "market_closed",
+    "provider_timeout",
+    "user_cancelled",
+    "unknown",
+  ],
+  // A second ticket for the same draw is this desk's duplicate.
+  { above_limit: "above_maximum", already_submitted: "duplicate_ticket" }
+);
+
+export const SQUARE_FAILURE = vocabulary(
+  [
+    "media_too_large",
+    "unsupported_media",
+    "not_permitted",
+    "empty_post",
+    "rate_limited",
+    "provider_timeout",
+    "user_cancelled",
+    "unknown",
+  ],
+  { kyc_required: "not_permitted", blocked_region: "not_permitted" }
+);
+
 export const PERP_FAILURE = vocabulary(
   [
     "insufficient_margin",
@@ -266,6 +315,13 @@ const BY_MESSAGE: [RegExp, Reason][] = [
   [/kyc|verification required|identity.*required/, "kyc_required"],
   [/below.*(minimum|min)|(minimum|min).*(is|of)/, "below_minimum"],
   [/above.*(limit|maximum|max)|exceeds.*(limit|maximum)/, "above_limit"],
+  [/round (closed|over|ended)|betting closed/, "round_closed"],
+  [/draw (closed|over|ended)/, "draw_closed"],
+  [/(incomplete|pick|select).*(number|selection)|not enough numbers/, "incomplete_selection"],
+  [/(file|image|video|media).*(too (large|big))|exceeds.*size/, "media_too_large"],
+  [/unsupported (file|image|video|media|format)|invalid file type/, "unsupported_media"],
+  [/(not allowed|not permitted|forbidden|unauthorized)/, "not_permitted"],
+  [/(empty|blank).*(post|message)|post.*(empty|blank)/, "empty_post"],
   [/already (submitted|placed|pending)|duplicate/, "already_submitted"],
   [/(rejected|declined) by/, "rail_rejected"],
   [

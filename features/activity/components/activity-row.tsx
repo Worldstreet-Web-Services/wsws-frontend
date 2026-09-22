@@ -243,7 +243,16 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
           </div>
         </div>
       </a>
-      <ShareButton label={title} onClick={() => setSharing(true)} />
+      <ShareButton
+        label={title}
+        onClick={() => {
+          track("arkivity_tx_shared", {
+            tx_type: item.direction === "in" ? "receive" : "send",
+            tx_hash: item.hash,
+          });
+          setSharing(true);
+        }}
+      />
       {sharing ? <ShareToSquare draft={shareDraft} open onClose={() => setSharing(false)} /> : null}
     </div>
   );

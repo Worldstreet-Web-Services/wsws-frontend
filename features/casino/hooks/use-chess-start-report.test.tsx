@@ -25,9 +25,9 @@ describe("useChessStartReport", () => {
   it("reports a player's game once it is under way, with its stake and id", () => {
     renderHook(() => useChessStartReport(match(), "w"));
     expect(analytics.track).toHaveBeenCalledWith("chess_game_started", {
-      stake_usd: 5,
-      amount_usd: 5,
       game_id: "m1",
+      amount_usd: 5,
+      opponent_type: "human",
     });
   });
 
@@ -45,17 +45,35 @@ describe("useChessStartReport", () => {
     expect(analytics.track).toHaveBeenCalledTimes(1);
   });
 
-  it("takes a computer game's stake from its wager", () => {
+  it("takes a computer game's stake from its wager, and names the bot", () => {
     renderHook(() =>
       useChessStartReport(
-        match({ stakeUsdc: null, computer: { wager: { stakeUsdc: "2.5" } } as never }),
+        match({
+          stakeUsdc: null,
+          computer: { wager: { stakeUsdc: "2.5" }, level: 4 } as never,
+        }),
         "w"
       )
     );
     expect(analytics.track).toHaveBeenCalledWith("chess_game_started", {
-      stake_usd: 2.5,
-      amount_usd: 2.5,
       game_id: "m1",
+      amount_usd: 2.5,
+      mode: "vs_computer",
+      opponent_type: "bot",
+      bot_level: 4,
     });
+  });
+
+  it("leaves the bot level off when the server reports one outside 1 to 8", () => {
+    // Absent beats a number the catalog has no meaning for.
+    renderHook(() =>
+      useChessStartReport(
+        match({ stakeUsdc: null, computer: { wager: null, level: 20 } as never }),
+        "w"
+      )
+    );
+    const [, props] = analytics.track.mock.calls.at(-1) as [string, Record<string, unknown>];
+    expect(props).not.toHaveProperty("bot_level");
+    expect(props).toMatchObject({ opponent_type: "bot" });
   });
 });

@@ -21,6 +21,8 @@ import type { AnalyticsEventName } from "@/lib/analytics/events";
 import {
   AUTH_FAILURE,
   DEPOSIT_FAILURE,
+  GAME_FAILURE,
+  SQUARE_FAILURE,
   KASH_FAILURE,
   PERP_FAILURE,
   PREDICTION_FAILURE,
@@ -142,6 +144,12 @@ const ALLOWED_VALUES: Partial<Record<AnalyticsEventName, Record<string, readonly
   trade_failed: { reason: TRADE_FAILURE.reasons },
   prediction_bet_failed: { reason: PREDICTION_FAILURE.reasons },
   perp_trade_failed: { reason: PERP_FAILURE.reasons },
+  chess_game_failed: { reason: GAME_FAILURE.reasons },
+  last_man_failed: { reason: GAME_FAILURE.reasons },
+  arkball_ticket_failed: { reason: GAME_FAILURE.reasons },
+  arkjet_ticket_failed: { reason: GAME_FAILURE.reasons },
+  chicken_round_failed: { reason: GAME_FAILURE.reasons },
+  post_failed: { reason: SQUARE_FAILURE.reasons },
 };
 
 /**
@@ -447,8 +455,6 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       "order_id?": "string",
     }),
   ],
-  perp_tpsl_set: [shape({ pair: "string", "take_profit?": "number", "stop_loss?": "number" })],
-  perp_margin_adjusted: [shape({ pair: "string", action: "string", amount_usd: "number" })],
 
   // Earn marketplace
   earn_listing_viewed: [shape({ listing_id: "string", "type?": "string" })],
@@ -466,14 +472,203 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   ],
 
   // 9. Arkade
+  arkade_opened: NOTHING,
   game_opened: [shape({ game: "string" })],
-  game_wallet_funded: [shape({ game: "string", amount_usd: "number" })],
+  arkade_balance_funded: [shape({ amount_usd: "number" })],
+  arkade_balance_withdrawn: [shape({ amount_usd: "number" })],
+
+  // 9.2 Chess
+  chess_mode_selected: [shape({ mode: "string" })],
   chess_game_created: [
-    shape({ clock_min: "number", stake_usd: "number", mode: "string", ...GAME_MONEY }),
+    shape({
+      game_id: "string",
+      mode: "string",
+      staked: "boolean",
+      amount_usd: "number",
+      "time_control?": "string",
+    }),
   ],
-  chess_challenge_accepted: [shape({ stake_usd: "number", clock_min: "number", ...GAME_MONEY })],
-  chess_challenge_declined: NOTHING,
-  chess_game_started: [shape({ stake_usd: "number", ...GAME_MONEY })],
+  chess_challenge_sent: [shape({ game_id: "string", amount_usd: "number" })],
+  chess_challenge_accepted: [
+    shape({ game_id: "string", amount_usd: "number", "time_control?": "string" }),
+  ],
+  chess_game_started: [
+    shape({
+      game_id: "string",
+      "mode?": "string",
+      amount_usd: "number",
+      opponent_type: "string",
+      "bot_level?": "number",
+    }),
+  ],
+  chess_game_ended: [
+    shape({
+      game_id: "string",
+      result: "string",
+      end_reason: "string",
+      amount_usd: "number",
+      payout_usd: "number",
+      house_usd: "number",
+      "moves?": "number",
+    }),
+  ],
+  chess_puzzle_started: [shape({ puzzle_id: "string" })],
+  chess_puzzle_solved: [shape({ puzzle_id: "string", "attempts?": "number" })],
+  chess_tournament_joined: [
+    shape({ tournament_id: "string", tournament_type: "string", entry_fee_usd: "number" }),
+  ],
+  chess_game_failed: [
+    shape({
+      "game_id?": "string",
+      "amount_usd?": "number",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+
+  // 9.3 Last Man
+  last_man_created: [
+    shape({ game_id: "string", entry_fee_usd: "number", "creator_id?": "string" }),
+  ],
+  last_man_joined: [
+    shape({ game_id: "string", entry_fee_usd: "number", "player_count?": "number" }),
+  ],
+  last_man_ended: [
+    shape({
+      game_id: "string",
+      "player_count?": "number",
+      pot_usd: "number",
+      winner_payout_usd: "number",
+      house_usd: "number",
+      creator_usd: "number",
+      "duration_seconds?": "number",
+    }),
+  ],
+  last_man_failed: [
+    shape({
+      "game_id?": "string",
+      "entry_fee_usd?": "number",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+
+  // 9.4 ArkBall
+  arkball_opened: [
+    shape({
+      draw_id: "string",
+      jackpot_usd: "number",
+      tickets_sold: "number",
+      player_count: "number",
+    }),
+  ],
+  arkball_numbers_selected: [shape({ draw_id: "string", quick_pick: "boolean" })],
+  arkball_ticket_purchased: [
+    shape({
+      draw_id: "string",
+      ticket_id: "string",
+      ticket_price_usd: "number",
+      white_balls: "string",
+      arkball_number: "number",
+      quick_pick: "boolean",
+    }),
+  ],
+  arkball_ticket_failed: [
+    shape({
+      draw_id: "string",
+      "ticket_price_usd?": "number",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+  arkball_draw_settled: [
+    shape({
+      draw_id: "string",
+      jackpot_usd: "number",
+      tickets_sold: "number",
+      player_count: "number",
+      winner_count: "number",
+      payout_usd: "number",
+      rollover: "boolean",
+    }),
+  ],
+
+  // 9.5 Arkjet
+  arkjet_ticket_placed: [
+    shape({
+      round_id: "string",
+      ticket_slot: "number",
+      amount_usd: "number",
+      mode: "string",
+      "auto_cashout_x?": "number",
+    }),
+  ],
+  arkjet_cashed_out: [
+    shape({
+      round_id: "string",
+      ticket_slot: "number",
+      amount_usd: "number",
+      multiplier: "number",
+      payout_usd: "number",
+    }),
+  ],
+  arkjet_round_lost: [
+    shape({
+      round_id: "string",
+      ticket_slot: "number",
+      amount_usd: "number",
+      "crash_multiplier?": "number",
+    }),
+  ],
+  arkjet_ticket_failed: [
+    shape({
+      "round_id?": "string",
+      "amount_usd?": "number",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+
+  // 9.6 Pilot Chicken
+  chicken_round_started: [
+    shape({
+      round_id: "string",
+      amount_usd: "number",
+      difficulty: "string",
+      ticket_type: "string",
+    }),
+  ],
+  chicken_lane_advanced: [
+    shape({ round_id: "string", lane_index: "number", multiplier: "number" }),
+  ],
+  chicken_cashed_out: [
+    shape({
+      round_id: "string",
+      lane_index: "number",
+      multiplier: "number",
+      amount_usd: "number",
+      payout_usd: "number",
+    }),
+  ],
+  chicken_round_lost: [
+    shape({
+      round_id: "string",
+      lane_index: "number",
+      multiplier: "number",
+      amount_usd: "number",
+    }),
+  ],
+  chicken_round_failed: [
+    shape({
+      "amount_usd?": "number",
+      "difficulty?": "string",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+
+  // Draughts, on the generic shapes
+  game_staked: [shape({ game: "string", amount_usd: "number", "game_id?": "string" })],
   game_result: [
     shape({
       game: "string",
@@ -485,7 +680,14 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       ...GAME_MONEY,
     }),
   ],
-  game_watched: [shape({ game: "string", match_id: "string" })],
+  tournament_joined: [
+    shape({
+      game: "string",
+      entry_usd: "number",
+      "amount_usd?": "number",
+      "tournament_id?": "string",
+    }),
+  ],
   spectator_bet_placed: [
     shape({
       game: "string",
@@ -496,17 +698,33 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       "game_id?": "string",
     }),
   ],
-  game_staked: [shape({ game: "string", amount_usd: "number", "game_id?": "string" })],
-  last_man_played: [shape({ cost_usd: "number", ...GAME_MONEY })],
-  last_man_won: [
-    shape({ pot_usd: "number", winnings_usd: "number", started_it: "boolean", ...GAME_MONEY }),
-  ],
-  tournament_joined: [
+
+  // 10. Square
+  square_opened: [shape({ tab: "string" })],
+  square_feed_filtered: [shape({ filter: "string" })],
+  post_created: [
     shape({
-      game: "string",
-      entry_usd: "number",
-      "amount_usd?": "number",
-      "tournament_id?": "string",
+      post_id: "string",
+      media_type: "string",
+      has_media: "boolean",
+      "house_id?": "string",
+    }),
+  ],
+  post_failed: [shape({ media_type: "string", reason: "string", "reason_detail?": "string" })],
+  post_viewed: [shape({ post_id: "string", "author_id?": "string" })],
+  post_liked: [shape({ post_id: "string", "author_id?": "string" })],
+  post_commented: [shape({ post_id: "string", "author_id?": "string" })],
+  post_reposted: [shape({ post_id: "string", "author_id?": "string" })],
+  user_followed: [shape({ target_user_id: "string", "source?": "string" })],
+  user_unfollowed: [shape({ target_user_id: "string" })],
+  creator_application_started: NOTHING,
+  creator_application_submitted: NOTHING,
+  stream_started: [shape({ stream_id: "string" })],
+  stream_ended: [
+    shape({
+      stream_id: "string",
+      "duration_seconds?": "number",
+      "peak_viewers?": "number",
     }),
   ],
 
@@ -525,6 +743,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   ],
 
   // 11. Arkivity
+  arkivity_opened: NOTHING,
   arktivity_tx_opened: [
     shape({
       "tx_type?": "string",
@@ -535,6 +754,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       direction: "string",
     }),
   ],
+  arkivity_tx_shared: [shape({ "tx_type?": "string", "tx_hash?": "string" })],
 
   // Engagement
   currency_switched: [shape({ currency: "string" })],

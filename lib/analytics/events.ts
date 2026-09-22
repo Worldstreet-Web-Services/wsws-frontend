@@ -28,6 +28,8 @@ import type { AmountSource } from "@/lib/analytics/trade-amounts";
 import type {
   AUTH_FAILURE,
   DEPOSIT_FAILURE,
+  GAME_FAILURE,
+  SQUARE_FAILURE,
   KASH_FAILURE,
   PERP_FAILURE,
   PREDICTION_FAILURE,
@@ -40,6 +42,8 @@ import type {
 type ReasonOf<V> = V extends Vocabulary<infer R> ? R : never;
 
 export type AuthReason = ReasonOf<typeof AUTH_FAILURE>;
+export type GameReason = ReasonOf<typeof GAME_FAILURE>;
+export type SquareReason = ReasonOf<typeof SQUARE_FAILURE>;
 export type DepositReason = ReasonOf<typeof DEPOSIT_FAILURE>;
 export type WithdrawReason = ReasonOf<typeof WITHDRAW_FAILURE>;
 export type KashReason = ReasonOf<typeof KASH_FAILURE>;
@@ -57,7 +61,24 @@ export type Direction = "long" | "short";
 export type MarginMode = "cross" | "isolated";
 export type FundMethod = "crypto" | "bank";
 export type WithdrawMethod = "bank" | "wallet";
-export type Game = "chess" | "last_man" | "checkers";
+/**
+ * The Arkade games. `pilot_chicken` and the rest are the catalog's spellings.
+ * `checkers` is draughts, which the catalog does not list but the app ships.
+ */
+export type Game = "chess" | "checkers" | "last_man" | "arkball" | "arkjet" | "pilot_chicken";
+
+/** How a chess game was started. */
+export type ChessMode =
+  "play_online" | "challenge_friend" | "vs_computer" | "puzzles" | "learn" | "watch";
+
+/** How a chess game finished. */
+export type ChessEndReason =
+  "checkmate" | "resign" | "timeout" | "stalemate" | "draw_agreed" | "abandoned";
+
+export type ChickenDifficulty = "easy" | "medium" | "hard" | "hardcore";
+
+export type SquareTab = "home" | "pals" | "chat";
+export type SquareMediaType = "text" | "image" | "video";
 export type KycStatus = "none" | "pending" | "verified";
 export type UserTier = "new" | "activated" | "power";
 
@@ -364,8 +385,9 @@ export interface AnalyticsEvents {
     collateral_usd?: number;
     order_id?: string;
   };
-  perp_tpsl_set: { pair: string; take_profit?: number; stop_loss?: number };
-  perp_margin_adjusted: { pair: string; action: "add" | "remove"; amount_usd: number };
+  // No `perp_tpsl_set` or `perp_margin_adjusted`: exits and leverage are set
+  // when the order is placed, which perp_trade_opened already carries, and the
+  // desk has no way to change either on a position that is already open.
 
   // Earn marketplace. `earn_company_created` deliberately carries nothing: the
   // form it fires from collects a legal entity name, which must not be sent.
@@ -381,30 +403,225 @@ export interface AnalyticsEvents {
     who_can_apply?: string;
   };
 
-  // 9. Arkade. Still the app's current events: the catalog's five-game section
-  // is the second pass. `amount_usd` and `game_id` ride alongside the older
-  // names (`stake_usd`, `entry_usd`, `cost_usd`, `winnings_usd`, `payout_usd`,
-  // `match_id`) rather than replacing them, so reports built on those keep
-  // working.
+  // 9. Arkade
+  //
+  // The catalog names five games and gives four of them a section of their own.
+  // Draughts is a sixth it does not cover, so draughts keeps the generic
+  // `game_staked`, `game_result` and `tournament_joined` it already sends.
+  // Chess has its own events now and no longer sends those, so nothing is
+  // counted under two names.
+  arkade_opened: void;
   game_opened: { game: Game };
-  game_wallet_funded: { game: Game; amount_usd: number };
+  // The Arkade balance is a float of its own: money has to be moved into it
+  // before a game can be staked, and that step is where funded players are
+  // lost. `game_wallet_funded` was the old name and reported only chess.
+  arkade_balance_funded: { amount_usd: number };
+  arkade_balance_withdrawn: { amount_usd: number };
+
+  // 9.2 Chess
+  // Mode, puzzles and tournaments: the chess app has screens for all three,
+  // but none of them is wired yet. They are defined because the surfaces exist
+  // and the events are next; see the release note.
+  chess_mode_selected: { mode: ChessMode };
   chess_game_created: {
-    clock_min: number;
-    stake_usd: number;
-    mode: "invite" | "quick" | "tournament";
-    amount_usd?: number;
-    game_id?: string;
+    game_id: string;
+    mode: ChessMode;
+    /** Whether money is on it. A free game is still a game played. */
+    staked: boolean;
+    amount_usd: number;
+    /** The clock as the lobby labels it: "5+0", "10+5". */
+    time_control?: string;
   };
-  chess_challenge_accepted: {
-    stake_usd: number;
-    clock_min: number;
-    amount_usd?: number;
-    game_id?: string;
-  };
-  chess_challenge_declined: void;
+  // No `chess_challenge_declined`: the service has a decline for a rematch and
+  // for a takeback, but not for a challenge, so there is nothing to report.
+  chess_challenge_sent: { game_id: string; amount_usd: number };
+  chess_challenge_accepted: { game_id: string; amount_usd: number; time_control?: string };
   // Sent by each player when their game starts, whichever seat they took.
-  chess_game_started: { stake_usd: number; amount_usd?: number; game_id?: string };
-  // `fee_usd` is the platform's 5% cut of the winnings. `amount_usd` is the payout.
+  chess_game_started: {
+    game_id: string;
+    mode?: ChessMode;
+    amount_usd: number;
+    opponent_type: "human" | "bot";
+    /** 1 to 8, and only against a bot. */
+    bot_level?: number;
+  };
+  /**
+   * A game that finished, from the seat of the player who watched it finish.
+   *
+   * `house_usd` is the platform's cut, reported beside the payout rather than
+   * left to be derived. The fee rate has changed before, and a report that
+   * divided one by the other would silently restate history when it changes
+   * again.
+   */
+  chess_game_ended: {
+    game_id: string;
+    result: "win" | "loss" | "draw";
+    end_reason: ChessEndReason;
+    amount_usd: number;
+    payout_usd: number;
+    house_usd: number;
+    moves?: number;
+  };
+  chess_puzzle_started: { puzzle_id: string };
+  /**
+   * A puzzle the player actually solved. Giving up finishes a puzzle too, and
+   * counting that would make the solve rate meaningless.
+   *
+   * `attempts` is optional and is not sent today. The puzzle runner is Lichess's
+   * own and reports a move at a time, correct ones included, so a count of
+   * those is the length of the solution rather than the number of tries. It
+   * returns when the runner tells us how many tries it took.
+   */
+  chess_puzzle_solved: { puzzle_id: string; attempts?: number };
+  chess_tournament_joined: {
+    tournament_id: string;
+    tournament_type: "arena" | "swiss";
+    entry_fee_usd: number;
+  };
+  // A game that could not be started or staked. Never a game that was lost.
+  chess_game_failed: {
+    game_id?: string;
+    amount_usd?: number;
+    reason: GameReason;
+    reason_detail?: string;
+  };
+
+  // 9.3 Last Man
+  //
+  // The pot splits winner 50%, house 40%, creator 10%. All three are reported
+  // as their own field rather than derived from the pot: the split is a product
+  // decision that has to be able to change without restating every past round.
+  last_man_created: { game_id: string; entry_fee_usd: number; creator_id?: string };
+  /**
+   * A player buying into the round. `player_count` is optional because the
+   * contract does not expose one and the vault service does not count them:
+   * a guessed figure on a pot game is worse than an absent one.
+   *
+   * There is no `last_man_started`. The round has no start the browser can
+   * observe separately from players joining it, so an event for it could only
+   * be a second report of the same fact.
+   */
+  last_man_joined: { game_id: string; entry_fee_usd: number; player_count?: number };
+  /**
+   * The round settled. Reported by the winner's device only: it is the reveal
+   * that carries the settled figures, and nobody else's screen sees them.
+   *
+   * The three shares are read from the contract's live split rather than from
+   * a rate written down here, because the owner can retune it.
+   */
+  last_man_ended: {
+    game_id: string;
+    player_count?: number;
+    pot_usd: number;
+    winner_payout_usd: number;
+    house_usd: number;
+    creator_usd: number;
+    duration_seconds?: number;
+  };
+  last_man_failed: {
+    game_id?: string;
+    entry_fee_usd?: number;
+    reason: GameReason;
+    reason_detail?: string;
+  };
+
+  // 9.4 ArkBall
+  arkball_opened: {
+    draw_id: string;
+    jackpot_usd: number;
+    tickets_sold: number;
+    player_count: number;
+  };
+  arkball_numbers_selected: { draw_id: string; quick_pick: boolean };
+  arkball_ticket_purchased: {
+    draw_id: string;
+    ticket_id: string;
+    ticket_price_usd: number;
+    /** The five main numbers, comma separated. A list cannot be grouped on. */
+    white_balls: string;
+    arkball_number: number;
+    quick_pick: boolean;
+  };
+  arkball_ticket_failed: {
+    draw_id: string;
+    ticket_price_usd?: number;
+    reason: GameReason;
+    reason_detail?: string;
+  };
+  arkball_draw_settled: {
+    draw_id: string;
+    jackpot_usd: number;
+    tickets_sold: number;
+    player_count: number;
+    winner_count: number;
+    payout_usd: number;
+    rollover: boolean;
+  };
+
+  // 9.5 Arkjet
+  //
+  // Two tickets can ride the same round, so every event names its slot.
+  arkjet_ticket_placed: {
+    round_id: string;
+    ticket_slot: number;
+    amount_usd: number;
+    mode: "manual" | "auto";
+    /** The multiplier an auto ticket cashes out at. Absent on a manual one. */
+    auto_cashout_x?: number;
+  };
+  arkjet_cashed_out: {
+    round_id: string;
+    ticket_slot: number;
+    amount_usd: number;
+    multiplier: number;
+    payout_usd: number;
+  };
+  arkjet_round_lost: {
+    round_id: string;
+    ticket_slot: number;
+    amount_usd: number;
+    crash_multiplier?: number;
+  };
+  arkjet_ticket_failed: {
+    round_id?: string;
+    amount_usd?: number;
+    reason: GameReason;
+    reason_detail?: string;
+  };
+
+  // 9.6 Pilot Chicken
+  chicken_round_started: {
+    round_id: string;
+    amount_usd: number;
+    difficulty: ChickenDifficulty;
+    ticket_type: "paid" | "free";
+  };
+  chicken_lane_advanced: { round_id: string; lane_index: number; multiplier: number };
+  chicken_cashed_out: {
+    round_id: string;
+    lane_index: number;
+    multiplier: number;
+    amount_usd: number;
+    payout_usd: number;
+  };
+  chicken_round_lost: {
+    round_id: string;
+    lane_index: number;
+    multiplier: number;
+    amount_usd: number;
+  };
+  chicken_round_failed: {
+    amount_usd?: number;
+    difficulty?: ChickenDifficulty;
+    reason: GameReason;
+    reason_detail?: string;
+  };
+
+  // Draughts, which the catalog does not cover, so it keeps the generic shapes.
+  // `amount_usd` is the money the event is about and `game_id` joins a stake to
+  // its result; the older names beside them (`stake_usd`, `entry_usd`,
+  // `payout_usd`) are unchanged, so reports built on those keep working.
+  game_staked: { game: Game; amount_usd: number; game_id?: string };
   game_result: {
     game: Game;
     result: "win" | "loss" | "draw";
@@ -417,7 +634,12 @@ export interface AnalyticsEvents {
     amount_usd?: number;
     game_id?: string;
   };
-  game_watched: { game: Game; match_id: string };
+  tournament_joined: {
+    game: Game;
+    entry_usd: number;
+    amount_usd?: number;
+    tournament_id?: string;
+  };
   spectator_bet_placed: {
     game: Game;
     match_id: string;
@@ -426,23 +648,38 @@ export interface AnalyticsEvents {
     odds?: number;
     game_id?: string;
   };
-  game_staked: { game: Game; amount_usd: number; game_id?: string };
-  last_man_played: { cost_usd: number; amount_usd?: number; game_id?: string };
-  // What the round paid the winner, which is their share of the pot, not the
-  // pot; started_it says the starter's share is in it too.
-  last_man_won: {
-    pot_usd: number;
-    winnings_usd: number;
-    started_it: boolean;
-    amount_usd?: number;
-    game_id?: string;
+
+  // 10. Square
+  //
+  // Only what the Square service can actually record, and only where a user
+  // can actually do it. The designs carry more (bookmarks, stories, winks,
+  // gist rooms, direct messages, joining a house), and the catalog asks for a
+  // few others the app has no surface for yet (opening a profile, joining a
+  // hashtag, a viewer joining a stream). None of those has a write or a call
+  // site behind it, so there is no event for them rather than an event that
+  // can never fire.
+  square_opened: { tab: SquareTab };
+  square_feed_filtered: { filter: string };
+  post_created: {
+    post_id: string;
+    media_type: SquareMediaType;
+    has_media: boolean;
+    house_id?: string;
   };
-  tournament_joined: {
-    game: Game;
-    entry_usd: number;
-    amount_usd?: number;
-    tournament_id?: string;
-  };
+  post_failed: { media_type: SquareMediaType; reason: SquareReason; reason_detail?: string };
+  post_viewed: { post_id: string; author_id?: string };
+  post_liked: { post_id: string; author_id?: string };
+  post_commented: { post_id: string; author_id?: string };
+  post_reposted: { post_id: string; author_id?: string };
+  // `source` is where the follow was pressed: the feed, a profile, the
+  // suggestions rail. Which surface actually grows the graph is the question it
+  // answers.
+  user_followed: { target_user_id: string; source?: string };
+  user_unfollowed: { target_user_id: string };
+  creator_application_started: void;
+  creator_application_submitted: void;
+  stream_started: { stream_id: string };
+  stream_ended: { stream_id: string; duration_seconds?: number; peak_viewers?: number };
 
   // Cross-border
   send_money_opened: void;
@@ -461,7 +698,11 @@ export interface AnalyticsEvents {
     fee_currency?: string;
   };
 
-  // 11. Arkivity. The rest of the section is the second pass.
+  // 11. Arkivity
+  //
+  // There is no `arkivity_filtered`: the timeline has paging, not filters, so
+  // the event could never fire. It returns when the filters do.
+  arkivity_opened: void;
   arktivity_tx_opened: {
     tx_type?: ArkivityTxType;
     asset?: string;
@@ -470,6 +711,7 @@ export interface AnalyticsEvents {
     tx_hash?: string;
     direction: "in" | "out";
   };
+  arkivity_tx_shared: { tx_type?: ArkivityTxType; tx_hash?: string };
 
   // Engagement
   currency_switched: { currency: string };

@@ -103,13 +103,32 @@ in a report.
 `page_view` now fires on the landing pages and carries the tags itself, and
 keeping both would double-count every arrival.
 
+### 6. An event only exists if something can send it
+
+Sections 9 to 11 ask for events the app has no surface for: Square bookmarks,
+stories, winks, gist rooms and direct messages; joining or creating a house; an
+Arkivity filter the timeline does not have; a Last Man round start the browser
+cannot observe.
+
+Those are left out of the catalog rather than defined and left unsent. A
+catalog entry is a promise that the event exists, and a list of promises that
+cannot be kept is how a data team ends up querying for rows that were never
+going to arrive. The release notes say which ones, and why, so the gap is
+visible to whoever asks for them next.
+
+Applied to the end: every event in the catalog that a browser can send is now
+sent. What is left is three events with no surface (`chess_challenge_declined`,
+`perp_tpsl_set`, `perp_margin_adjusted`, all removed) and two only a server can
+send (`signup_failed`, `prediction_bet_settled`, both kept and documented).
+
 ## Consequences
 
 - `lib/analytics/events.ts` and `schema.ts` are rewritten for sections 1 to 8.
   The validator still refuses an unknown property and still throws outside
   production, so a drifted call site fails the suite rather than the reports.
-- Sections 9 to 11 are a second branch. Until they land, Arkade keeps sending
-  its current events and Square and Arkivity send nothing.
+- Sections 9 to 11 landed in the same branch, after sections 1 to 8. Chess
+  stops sending the generic `game_staked`, `game_result` and
+  `tournament_joined`, which draughts keeps, so no stake is counted twice.
 - `signup_completed` is specified to fire server-side from the account write.
   The browser cannot do that. It fires from the client on the identified
   account, as it does today, and the outbox brief in

@@ -101,11 +101,12 @@ export function StartGameSheet({
       void settleBalance();
       // The pop-out timer follows whatever you last put money into.
       if (gameId !== null) followGame(gameId);
-      track("game_staked", {
-        game: "last_man",
-        amount_usd: sendUsd,
-        game_id: gameId === null ? undefined : String(gameId),
-      });
+      // Opening a round, which is a different act from buying into one: the
+      // starter takes a share of the pot. A round the contract did not give an
+      // id to cannot be joined to anything, so it is not reported.
+      if (gameId !== null) {
+        track("last_man_created", { game_id: String(gameId), entry_fee_usd: sendUsd });
+      }
       toast.success(t("toastGameStarted"));
       // A second or two at most, and only when the index trails the receipt.
       if (gameId !== null) await confirmGame(gameId);

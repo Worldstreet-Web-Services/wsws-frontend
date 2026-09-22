@@ -2917,6 +2917,7 @@
   },
   "activity": {
     "eyebrow": "Arkivity",
+    "oldAccount": "Altes Konto",
     "subtitle": "Jede Einzahlung, jeder Trade und jede Auszahlung deines Kontos an einem Ort. Tippe auf eine Zeile für den vollständigen Nachweis.",
     "loading": "Aktivität wird geladen…",
     "errorBody": "Ihre Aktivität konnte nicht geladen werden.",

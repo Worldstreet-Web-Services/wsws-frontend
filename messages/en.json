@@ -2917,6 +2917,7 @@
   },
   "activity": {
     "eyebrow": "Arkivity",
+    "oldAccount": "Old account",
     "subtitle": "Every deposit, trade and withdrawal on your account, in one place. Tap a row for the full record.",
     "loading": "Loading your activity…",
     "errorBody": "We couldn't load your activity.",

@@ -2917,6 +2917,7 @@
   },
   "activity": {
     "eyebrow": "Arkivity",
+    "oldAccount": "Conta antiga",
     "subtitle": "Cada depósito, negociação e saque da sua conta, em um só lugar. Toque em uma linha para ver o registro completo.",
     "loading": "Carregando sua atividade…",
     "errorBody": "Não foi possível carregar sua atividade.",

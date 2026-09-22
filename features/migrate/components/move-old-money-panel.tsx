@@ -14,7 +14,8 @@ import { errorCode, isUnconfigured } from "@/lib/api/envelope";
 import { formatUsd } from "@/lib/currency";
 import { scheduleSettlement, sumValueUsd } from "@/lib/migration/schedule";
 import type { LegacyHolding, SettleOutcome, VenueAdapter } from "@/lib/migration/types";
-import { linkLegacyAccount } from "@/features/migrate/lib/api";
+import { linkLegacyAccount, snapshotLegacyActivity } from "@/features/migrate/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { ethPriceFromPortfolio } from "@/features/migrate/lib/discover";
 import type { RunResult } from "@/features/migrate/lib/run";
 import {
@@ -147,6 +148,12 @@ export function MoveOldMoneyPanel({
 
   const status = useMigrationStatus();
   const refetchStatus = status.refetch;
+  // The feed holds the old wallet's snapshot for the session; a fresh one
+  // has to be re-read.
+  const invalidateLegacyActivity = useCallback(
+    () => void queryClient.invalidateQueries({ queryKey: [...queryKeys.activity.all, "legacy"] }),
+    [queryClient]
+  );
   // What the link did to the person's Square profile, once known. `none` is
   // an account that never had one, and says nothing; a service that does not
   // report the ledger says nothing either.
@@ -230,6 +237,11 @@ export function MoveOldMoneyPanel({
           setLinkFailures(0);
           track("migration_linked");
           void refetchStatus();
+          // The old wallet's history comes across with the account: taken
+          // now, and again once the sweep has moved the money (below), so
+          // the outgoing legs are in it. Not awaited — the feed is not the
+          // link's business, and a miss is retried on the next trigger.
+          void snapshotLegacyActivity().then(invalidateLegacyActivity);
         })
         .catch((error: unknown) => {
           const code = errorCode(error);
@@ -250,7 +262,7 @@ export function MoveOldMoneyPanel({
         });
     };
     attemptLink(1);
-  }, [refetchStatus]);
+  }, [refetchStatus, invalidateLegacyActivity]);
   useEffect(() => {
     if (!signer || linked.current) return;
     linked.current = true;
@@ -385,11 +397,23 @@ export function MoveOldMoneyPanel({
         // some has left, rather than letting a stale "still holds money"
         // keep the balance-card button up for another minute.
         void queryClient.invalidateQueries({ queryKey: ["legacyWalletFunds"] });
+        // The sweep just wrote the old wallet's last transactions. Retake the
+        // snapshot so the feed's copy of its history has them.
+        void snapshotLegacyActivity().then(invalidateLegacyActivity);
       }
       void newPortfolio.refetchUntilChanged("all");
       return outcome;
     },
-    [remaining, now, runner, newPortfolio, serverLinked, session.evmAddress, queryClient]
+    [
+      remaining,
+      now,
+      runner,
+      newPortfolio,
+      serverLinked,
+      session.evmAddress,
+      queryClient,
+      invalidateLegacyActivity,
+    ]
   );
 
   // A plain transfer carries no decision, so it no longer waits for one: the

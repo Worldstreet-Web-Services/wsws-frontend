@@ -67,3 +67,24 @@ export async function linkLegacyAccount(): Promise<MigrationLink> {
   );
   return unwrap<MigrationLink>(res, "Couldn't link your old account.");
 }
+
+/**
+ * Take (or retake) the snapshot of the old wallet's activity and keep it
+ * under this account. The addresses and the sweep are the server's; nothing
+ * about the wallet leaves the browser. Never throws: a missed snapshot is
+ * retried on the next trigger, and the feed is not the sweep's business.
+ */
+export async function snapshotLegacyActivity(): Promise<number> {
+  try {
+    const res = await apiFetch(
+      "/api/migration/legacy-activity",
+      { method: "POST" },
+      { requireAuth: true }
+    );
+    if (!res.ok) return 0;
+    const body = (await res.json().catch(() => null)) as { data?: { saved?: unknown } } | null;
+    return typeof body?.data?.saved === "number" ? body.data.saved : 0;
+  } catch {
+    return 0;
+  }
+}

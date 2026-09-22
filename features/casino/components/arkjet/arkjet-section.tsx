@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type {
@@ -91,7 +90,8 @@ function ActivityAvatar({
   stacked?: boolean;
 }) {
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element -- these are fixed local 24px avatars; Next Image adds unnecessary client runtime.
+    <img
       className={stacked ? styles.avatar : styles.roundDot}
       src={activityAvatar(item.profileAvatarSeed)}
       alt=""

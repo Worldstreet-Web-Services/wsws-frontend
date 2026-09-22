@@ -62,7 +62,7 @@ export function RwaSettlementTracker() {
         void refetchUntilChanged(CROSS_CHAIN);
         // The USDC this leg spent, exactly: it is the build's own input.
         track("trade_completed", {
-          vertical: "real_asset",
+          vertical: "rwa",
           asset: purchase.assetSymbol,
           side: "buy",
           ...tradeAmounts({

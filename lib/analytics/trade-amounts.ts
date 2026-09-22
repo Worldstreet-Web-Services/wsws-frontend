@@ -27,7 +27,23 @@ export interface TradeAmounts {
   amount_usd: number;
   /** The traded token's quantity. Omitted when the leg is not known. */
   token_quantity?: number;
+  /**
+   * What one token cost in dollars: the dollar leg over the token leg. Derived
+   * rather than asked of the caller, so it can never disagree with the two
+   * amounts beside it, and omitted when there is no token leg to divide by.
+   *
+   * It is the filled price when `amount_source` is "fill" and the quoted one
+   * when it is "quote", the same as the amounts themselves.
+   */
+  fill_price_usd?: number;
   amount_source: AmountSource;
+}
+
+// Prices are rounded to USDC's own precision, so a figure derived here cannot
+// carry more accuracy than the money it came from.
+function priced(amountUsd: number, quantity: number): { fill_price_usd?: number } {
+  if (!(quantity > 0) || !Number.isFinite(amountUsd)) return {};
+  return { fill_price_usd: Math.round((amountUsd / quantity) * 1e6) / 1e6 };
 }
 
 /** A base-unit amount as the number an analytics property carries. */
@@ -52,6 +68,7 @@ export function tradeAmounts(legs: TradeLegs): TradeAmounts {
   };
   if (legs.tokenRaw !== null && legs.tokenDecimals !== null) {
     amounts.token_quantity = amountFromBaseUnits(legs.tokenRaw, legs.tokenDecimals);
+    Object.assign(amounts, priced(amounts.amount_usd, amounts.token_quantity));
   }
   return amounts;
 }
@@ -118,9 +135,11 @@ export function pricedTradeAmounts(
   priceUsd: number
 ): TradeAmounts {
   const quantity = amountFromBaseUnits(tokenRaw, tokenDecimals);
+  const amountUsd = Math.round(quantity * priceUsd * 1e6) / 1e6;
   return {
-    amount_usd: Math.round(quantity * priceUsd * 1e6) / 1e6,
+    amount_usd: amountUsd,
     token_quantity: quantity,
+    ...priced(amountUsd, quantity),
     amount_source: "quote",
   };
 }

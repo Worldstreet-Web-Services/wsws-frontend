@@ -225,6 +225,8 @@ describe("useSpotSell analytics", () => {
         side: "sell",
         amount_usd: 0.991471,
         token_quantity: 10.14812065,
+        // The price the sale was valued at, derived from the two amounts.
+        fill_price_usd: 0.0977,
         amount_source: "quote",
         order_id: "req-1",
       },

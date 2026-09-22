@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { perpClosedProps, perpOpenedProps } from "@/features/trade/lib/perp-analytics";
+import {
+  perpClosedProps,
+  perpOpenedProps,
+  perpOrderProps,
+} from "@/features/trade/lib/perp-analytics";
 import type { HlOrderRow, HlPositionView } from "@/features/trade/lib/hyperliquid-types";
 
 // The Hyperliquid desk reported nothing: perp_trade_opened and _closed were
@@ -39,21 +43,40 @@ describe("perpOpenedProps", () => {
 
   it("reports the position it opened, with its notional as collateral times leverage", () => {
     expect(perpOpenedProps(order, entry())).toEqual({
-      market: "BTC",
-      side: "long",
+      pair: "BTC",
+      direction: "long",
       leverage: 10,
       margin_mode: "cross",
       collateral_usd: 100,
-      position_size_usd: 1000,
       notional_usd: 1000,
       order_type: "market",
       entry_price: 64000,
-      has_take_profit: true,
-      take_profit_price: 70000,
-      has_stop_loss: false,
+      take_profit: 70000,
       order_id: "ord-1",
       venue: "hyperliquid",
       amount_source: "quote",
+    });
+  });
+
+  it("leaves an exit out entirely rather than reporting it at no price", () => {
+    // A zero stop loss would read as an exit set at $0, which is a level the
+    // user never chose.
+    expect(perpOpenedProps(order, entry())).not.toHaveProperty("stop_loss");
+  });
+
+  it("reports the order as submitted before the venue has answered", () => {
+    // Same shape as the open, minus anything only the fill knows: an order
+    // that never comes back is still counted.
+    expect(perpOrderProps(order)).toEqual({
+      pair: "BTC",
+      direction: "long",
+      leverage: 10,
+      margin_mode: "cross",
+      collateral_usd: 100,
+      notional_usd: 1000,
+      order_type: "market",
+      take_profit: 70000,
+      venue: "hyperliquid",
     });
   });
 
@@ -62,7 +85,7 @@ describe("perpOpenedProps", () => {
       { ...order, side: "sell", orderMode: "limit", limitPrice: "66000" },
       entry({ orderType: "limit", status: "open", limitPrice: "66000" })
     );
-    expect(props).toMatchObject({ side: "short", order_type: "limit", limit_price: 66000 });
+    expect(props).toMatchObject({ direction: "short", order_type: "limit", limit_price: 66000 });
     expect(props).not.toHaveProperty("entry_price");
   });
 
@@ -86,12 +109,14 @@ describe("perpClosedProps", () => {
 
   it("reports a manual close at the mark, with the PnL the position showed", () => {
     expect(perpClosedProps(position, "BTC", entry({ id: "close-1", orderType: "close" }))).toEqual({
-      market: "BTC",
+      pair: "BTC",
+      direction: "long",
+      position_id: "pos-1",
       close_type: "full",
       close_reason: "manual",
+      exit_price: 65000,
       pnl_usd: 15.6,
       notional_usd: 1014,
-      amount_usd: 101.4,
       order_id: "close-1",
       venue: "hyperliquid",
       amount_source: "quote",

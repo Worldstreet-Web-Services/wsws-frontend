@@ -41,7 +41,7 @@ import { buyFunding, estimateReceive } from "@/lib/meme/funding";
 import { exceedsHeld, maxSellAmount } from "@/lib/meme/sell-amount";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 import {
   pricedTradeAmounts,
   swapTradeAmounts,
@@ -563,7 +563,7 @@ export function MemeTradeSheet({
       if (facts) {
         track("trade_completed", {
           vertical: "memecoin",
-          token: token.symbol ?? token.address,
+          asset: token.symbol ?? token.address,
           side: buying ? "buy" : "sell",
           ...facts,
           network: chainSlug(token.chainId) ?? "base",
@@ -606,7 +606,7 @@ export function MemeTradeSheet({
         vertical: "memecoin",
         asset: token.symbol ?? token.address,
         side: buying ? "buy" : "sell",
-        ...failureReason(e),
+        ...reasonFor(TRADE_FAILURE, e),
         amount_usd: quoted?.amount_usd,
       });
       toast.error(friendlyError(e, t("orderFailed"), tErr), { id: toastRef.current });

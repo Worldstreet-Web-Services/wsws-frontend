@@ -7,7 +7,7 @@ import { usePortfolio } from "@/hooks/use-portfolio";
 import { useSettlementReconciler } from "@/hooks/use-settlement-reconciler";
 import { track } from "@/lib/analytics/mixpanel";
 import { amountFromBaseUnits, tradeAmounts, USDC_DECIMALS } from "@/lib/analytics/trade-amounts";
-import { failureReason } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 import { swapTradeFacts } from "@/features/trade/lib/trade-analytics";
 import { SOLANA_CHAIN_ID } from "@/lib/meme/chain";
 import { usdcFromRaw } from "@/lib/meme/funding";
@@ -68,7 +68,7 @@ export function MemeSettlementTracker() {
         if (facts) {
           track("trade_completed", {
             vertical: "memecoin",
-            token: purchase.assetSymbol,
+            asset: purchase.assetSymbol,
             side: "buy",
             ...facts,
             network: "solana",
@@ -87,7 +87,7 @@ export function MemeSettlementTracker() {
           vertical: "memecoin",
           asset: purchase.assetSymbol,
           side: "buy",
-          ...failureReason(error),
+          ...reasonFor(TRADE_FAILURE, error),
           amount_usd: amountFromBaseUnits(spendRaw, USDC_DECIMALS),
           order_id: settlement.requestId,
         });

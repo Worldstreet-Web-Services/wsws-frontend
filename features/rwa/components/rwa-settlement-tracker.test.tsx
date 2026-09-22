@@ -57,7 +57,7 @@ describe("RwaSettlementTracker analytics", () => {
     );
 
     expect(analytics.track).toHaveBeenCalledWith("trade_completed", {
-      vertical: "real_asset",
+      vertical: "rwa",
       asset: "ONDO",
       side: "buy",
       amount_usd: 12.5,

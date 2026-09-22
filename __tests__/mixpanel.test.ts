@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { landingPageForPath, pageNameForPath, pageNameForSection } from "@/lib/analytics/page-name";
+import { campaignTags, pageNameForPath, pageNameForSection } from "@/lib/analytics/page-name";
 
 // A hand-rolled mock, not vi.fn() defaults, so every assertion below reads
 // straight off calls the module actually made.
@@ -181,6 +181,18 @@ describe("with a configured token", () => {
     expect(peopleSet).toHaveBeenCalledWith({ $email: "a@b.com" });
   });
 
+  it("lowercases the address, as the catalog specifies", async () => {
+    // Mixpanel's distinct_id is case-sensitive, so this is not cosmetic: a
+    // checksummed id and a lowercase one are two different people. Lowercasing
+    // happens in identifyUser and nowhere else, so one convention holds across
+    // every caller.
+    const { initAnalytics, analyticsReady, identifyUser } = await loadWithToken("test_token");
+    initAnalytics();
+    await analyticsReady();
+    identifyUser("0xAbC1111111111111111111111111111111111111");
+    expect(identify).toHaveBeenCalledWith("0xabc1111111111111111111111111111111111111");
+  });
+
   it("ignores an identify with no address, so anonymous events stay mergeable", async () => {
     const { initAnalytics, analyticsReady, identifyUser } = await loadWithToken("test_token");
     initAnalytics();
@@ -278,14 +290,26 @@ describe("page names", () => {
     expect(pageNameForSection("square")).toBe("market_square");
   });
 
-  it("names the two landing pages and nothing else", () => {
-    // The pages campaign links point at. A visit there is the top of the
-    // funnel, and the event is what carries the link's utm_* tags.
-    expect(landingPageForPath("/")).toBe("landing");
-    expect(landingPageForPath("/welcome")).toBe("welcome");
-    expect(landingPageForPath("/auth")).toBeNull();
-    expect(landingPageForPath("/dashboard")).toBeNull();
-    expect(landingPageForPath("/welcome/extra")).toBeNull();
+  it("names the landing pages, which is where campaign links point", () => {
+    expect(pageNameForPath("/")).toBe("landing");
+    expect(pageNameForPath("/welcome")).toBe("welcome");
+    // Every page reports itself now, not only the nav sections.
+    expect(pageNameForPath("/auth")).toBe("auth");
+    expect(pageNameForPath("/dashboard")).toBe("portfolio");
+  });
+
+  it("names each Arkade game rather than lumping them together", () => {
+    // "Which game" is the question asked of Arkade most often, and a single
+    // arkade row cannot answer it.
+    expect(pageNameForPath("/casino")).toBe("arkade");
+    expect(pageNameForPath("/casino/chess/play")).toBe("arkade_chess");
+    expect(pageNameForPath("/casino/arkjet")).toBe("arkade_arkjet");
+    expect(pageNameForPath("/casino/last-standing/42")).toBe("arkade_last_man");
+  });
+
+  it("returns no name for a route nobody has mapped", () => {
+    // Not a reason to drop the event: page_view still carries the raw path.
+    expect(pageNameForPath("/some/unmapped/route")).toBeNull();
   });
 
   it("resolves the square page to its section", () => {
@@ -293,17 +317,32 @@ describe("page names", () => {
   });
 
   it("resolves a nested route to its section", () => {
-    expect(pageNameForPath("/casino/checkers/play")).toBe("arkade");
-    expect(pageNameForPath("/prediction/event/abc")).toBe("prediction");
+    expect(pageNameForPath("/casino/checkers/play")).toBe("arkade_checkers");
+    // A market inside prediction is its own page; the index is not.
+    expect(pageNameForPath("/prediction")).toBe("prediction");
+    expect(pageNameForPath("/prediction/event/abc")).toBe("prediction_market");
     expect(pageNameForPath("/earn/sponsor/new")).toBe("earn");
+    expect(pageNameForPath("/earn/listing/abc")).toBe("earn_listing");
   });
 
-  it("reports nothing for a route that is not a nav section", () => {
-    // Better a missing page_view than one naming a page the catalog has no
-    // word for.
-    expect(pageNameForPath("/auth")).toBeNull();
-    expect(pageNameForPath("/interests")).toBeNull();
-    expect(pageNameForPath("/")).toBeNull();
+  it("reads the campaign tags off the url being viewed", () => {
+    // The SDK only ever sees the URL the session booted on, so a campaign link
+    // clicked part-way through a session would otherwise go unattributed.
+    expect(campaignTags("?utm_source=x&utm_campaign=launch")).toEqual({
+      utm_source: "x",
+      utm_campaign: "launch",
+    });
+    // Absent tags are left out rather than sent as empty strings.
+    expect(campaignTags("?utm_source=&foo=bar")).toEqual({});
+    expect(campaignTags("")).toEqual({});
+  });
+
+  it("names the pages that are not nav sections too", () => {
+    // page_view covers the whole app now, so the sign-in page and the landing
+    // page are pages in their own right rather than gaps in the data.
+    expect(pageNameForPath("/auth")).toBe("auth");
+    expect(pageNameForPath("/interests")).toBe("interests");
+    expect(pageNameForPath("/")).toBe("landing");
   });
 });
 
@@ -360,8 +399,7 @@ describe("profile totals derived from events", () => {
     initAnalytics();
     await analyticsReady();
 
-    send("deposit_completed", {
-      method: "bank",
+    send("bank_transfer_completed", {
       amount_ngn: 40000,
       amount_usd: 25,
       fx_rate: 1600,
@@ -376,17 +414,17 @@ describe("profile totals derived from events", () => {
     );
   });
 
-  it("takes the first deposit's rail off the event, not off its name", async () => {
-    // Both rails send the same event now. The method property is the only
-    // thing that knows which one it was, so a hardcoded default here would
-    // put every user's first deposit on the wrong rail.
+  it("takes the first deposit's rail off the event name", async () => {
+    // The rails have separate names again, so the name is the only thing that
+    // knows which one it was. A hardcoded default would put every user's
+    // first deposit on the wrong rail.
     const { initAnalytics, analyticsReady, track: send } = await loadWithToken("test-token");
     initAnalytics();
     await analyticsReady();
 
     send("deposit_completed", {
-      method: "crypto",
-      source_network: "base-mainnet",
+      network: "base-mainnet",
+      asset: "USDC",
       amount_usd: 25,
     });
 
@@ -396,15 +434,14 @@ describe("profile totals derived from events", () => {
   });
 
   it("counts one Naira deposit once", async () => {
-    // The bank rail used to have an event of its own, and a Naira deposit
-    // fired both it and deposit_completed: the same money added to the
-    // lifetime total twice.
+    // The rails have a name each again. A Naira deposit once fired both, and
+    // the same money was added to the lifetime total twice; the two are now
+    // disjoint, so only one of them can ever fire for a given arrival.
     const { initAnalytics, analyticsReady, track: send } = await loadWithToken("test-token");
     initAnalytics();
     await analyticsReady();
 
-    send("deposit_completed", {
-      method: "bank",
+    send("bank_transfer_completed", {
       amount_ngn: 5000,
       amount_usd: 3.448275,
       fx_rate: 1450,
@@ -422,7 +459,7 @@ describe("profile totals derived from events", () => {
     initAnalytics();
     await analyticsReady();
 
-    send("page_view", { page: "portfolio" });
+    send("page_view", { page: "portfolio", path: "/portfolio" });
 
     expect(peopleIncrement).not.toHaveBeenCalled();
     expect(peopleUnion).not.toHaveBeenCalled();
@@ -502,8 +539,7 @@ describe("catalog enforcement", () => {
     await analyticsReady();
 
     expect(() =>
-      (send as unknown as Loose)("deposit_completed", {
-        method: "bank",
+      (send as unknown as Loose)("bank_transfer_completed", {
         amount_usd: 3.448275,
         amount_ngn: "5000",
         fx_rate: 1450,

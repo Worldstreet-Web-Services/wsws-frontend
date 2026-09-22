@@ -93,20 +93,17 @@ export function useDepositAnalytics(items: ActivityItem[], wallet: string): void
       : arrivals;
 
     for (const arrival of reportable) {
-      const settled = {
-        tx_hash: arrival.hash,
-        time: Math.floor(arrival.timestamp / 1000),
-        $insert_id: insertIdFor("deposit_completed", arrival.id),
-      };
+      const time = Math.floor(arrival.timestamp / 1000);
       // Claiming removes the deposit it matched, so two arrivals cannot be
       // attributed to the same transfer.
       const bank = claimOnrampWatch(wallet, arrival.amountUsd, now);
       if (bank) {
-        track("deposit_completed", {
-          method: "bank",
+        track("bank_transfer_completed", {
           amount_usd: arrival.amountUsd,
           ...bank,
-          ...settled,
+          tx_hash: arrival.hash,
+          time,
+          $insert_id: insertIdFor("bank_transfer_completed", arrival.id),
         });
         continue;
       }
@@ -118,13 +115,15 @@ export function useDepositAnalytics(items: ActivityItem[], wallet: string): void
         continue;
       }
       track("deposit_completed", {
-        method: "crypto",
         // The network it settled on. The chain the user sent from is not
         // recoverable from the arrival; `deposit_network_selected` carries
         // that, earlier in the same funnel.
-        source_network: arrival.network,
+        network: arrival.network,
+        asset: arrival.asset,
         amount_usd: arrival.amountUsd,
-        ...settled,
+        tx_hash: arrival.hash,
+        time,
+        $insert_id: insertIdFor("deposit_completed", arrival.id),
       });
     }
 

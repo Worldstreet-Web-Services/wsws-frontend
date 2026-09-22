@@ -333,7 +333,7 @@ export function useMemeTrade() {
         swap_id: quote.swapId,
         recorded,
         request_id: ref ?? undefined,
-        hash: hash ?? undefined,
+        tx_hash: hash ?? undefined,
       });
       reportTradeRecordingMismatch({ swapId: quote.swapId, requestId: ref, hash, recorded });
       setRequestId(ref);

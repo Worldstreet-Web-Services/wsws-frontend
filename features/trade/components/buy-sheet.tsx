@@ -27,7 +27,7 @@ import { tradeShareRef } from "@/lib/trade-share";
 import { useMoney } from "@/components/ui/currency-select";
 import { ShareToSquare } from "@/components/share/share-to-square";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason, failureReasonForStage } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, failureReasonForStage, reasonFor } from "@/lib/analytics/failure-reason";
 import { tradeAmounts, USDC_DECIMALS, type TradeAmounts } from "@/lib/analytics/trade-amounts";
 import { swapTradeFacts } from "@/features/trade/lib/trade-analytics";
 import { useSpotMode } from "@/features/trade/components/spot-mode";
@@ -256,7 +256,9 @@ export function BuySheet({ payload, onClose, onTopUp }: BuySheetProps) {
         vertical: "spot",
         asset: payload.symbol,
         side: "buy",
-        ...(isSwapMarket ? failureReason(memeTrade.error) : failureReasonForStage(stage)),
+        ...(isSwapMarket
+          ? reasonFor(TRADE_FAILURE, memeTrade.error)
+          : failureReasonForStage(TRADE_FAILURE, stage)),
         amount_usd: spentRef.current?.amount_usd,
         order_id: isSwapMarket ? undefined : (requestId ?? undefined),
       });

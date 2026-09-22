@@ -30,11 +30,12 @@ import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-trad
 import { formatUsd, openFee, toBaseUnits } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason } from "@/lib/analytics/failure-reason";
+import { PERP_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 import {
   marketTypeOf,
   perpClosedProps,
   perpOpenedProps,
+  perpOrderProps,
   type PerpTicket,
 } from "@/features/trade/lib/perp-analytics";
 import { scrubVenue } from "@/features/trade/lib/venue-scrub";
@@ -236,7 +237,7 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     if (!viewedSymbol || viewedMarket.current === viewedSymbol) return;
     viewedMarket.current = viewedSymbol;
     track("perp_market_viewed", {
-      market: viewedSymbol,
+      pair: viewedSymbol,
       market_type: marketTypeOf(viewedCategory),
       venue: "hyperliquid",
     });
@@ -457,10 +458,14 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         takeProfitPrice: triggersOpen ? takeProfitPrice : "",
         stopLossPrice: triggersOpen ? stopLossPrice : "",
       };
+      // The order as it is about to be sent. Reported before the venue has
+      // said anything, so an order that never comes back is still counted.
+      const order = perpOrderProps(ticket);
       try {
         setPendingStatus(t("preparingTrade"));
         await trading.actions.updateLeverage(asset.symbol, clampedLeverage, marginMode);
         setPendingStatus(t("placingOrder"));
+        track("perp_order_submitted", order);
         const before = JSON.stringify(trading.positions.map((p) => [p.id, p.size]).sort());
         const result = await trading.actions.placeOrder(
           {
@@ -507,13 +512,17 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         setStopLossPrice("");
       } catch (error) {
         const details = (error as GatewayApiError)?.details;
-        track("perp_order_failed", {
-          market: ticket.market,
-          side: side === "buy" ? "long" : "short",
+        track("perp_trade_failed", {
+          pair: order.pair,
+          direction: order.direction,
+          // The desk checks the margin itself and gets a structured answer, so
+          // it says so outright rather than reading it back off the message.
           ...(isInsufficientMarginDetails(details)
-            ? { reason: "insufficient_balance" as const }
-            : failureReason(error)),
-          notional_usd: ticket.notionalUsd,
+            ? { reason: "insufficient_margin" as const }
+            : reasonFor(PERP_FAILURE, error)),
+          leverage: order.leverage,
+          margin_mode: order.margin_mode,
+          collateral_usd: order.collateral_usd,
         });
         if (isInsufficientMarginDetails(details)) {
           setOrderStatus({

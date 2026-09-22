@@ -24,6 +24,8 @@ export interface DepositArrival {
   id: string;
   hash: string;
   network: string;
+  /** The stablecoin that landed: USDC or USDT. */
+  asset: string;
   amountUsd: number;
   /** When it arrived, in milliseconds since epoch. */
   timestamp: number;
@@ -82,6 +84,7 @@ export function newDepositArrivals(
       id: item.id,
       hash: item.hash,
       network: item.network,
+      asset: item.symbol.toUpperCase(),
       amountUsd: item.amount,
       timestamp: item.timestamp,
     }));

@@ -17,7 +17,7 @@ import { TERMINAL_STAGES, depositProgress, usdcBaseUnits } from "@/lib/deposit";
 import { toast } from "@/lib/toast";
 import { friendlyError } from "@/lib/errors";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason, failureReasonForStage } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, failureReasonForStage, reasonFor } from "@/lib/analytics/failure-reason";
 import { tradeAmounts, USDC_DECIMALS, type TradeAmounts } from "@/lib/analytics/trade-amounts";
 import { swapTradeFacts } from "@/features/trade/lib/trade-analytics";
 
@@ -161,7 +161,7 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
       vertical: "spot",
       asset: symbol,
       side: "buy",
-      ...failureReasonForStage(stage),
+      ...failureReasonForStage(TRADE_FAILURE, stage),
       amount_usd: spentRef.current?.amount_usd,
       order_id: requestId,
     });
@@ -238,7 +238,7 @@ export function useSpotBuy({ symbol, name, amount }: SpotBuyArgs): SpotBuyState 
           vertical: "spot",
           asset: symbol,
           side: "buy",
-          ...failureReason(e),
+          ...reasonFor(TRADE_FAILURE, e),
           amount_usd: spent.amount_usd,
         });
         toast.error(friendlyError(e, t("buyFailedToast", { name }), tErr), {

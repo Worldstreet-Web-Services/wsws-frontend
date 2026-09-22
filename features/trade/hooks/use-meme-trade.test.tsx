@@ -211,7 +211,7 @@ describe("useMemeTrade on Base when the service records a delivered trade as fai
     });
     expect(analytics.track).toHaveBeenCalledWith(
       "trade_recording_mismatch",
-      expect.objectContaining({ swap_id: "swap-1", recorded: "FAILED", hash: "0xswap" })
+      expect.objectContaining({ swap_id: "swap-1", recorded: "FAILED", tx_hash: "0xswap" })
     );
   });
 
@@ -278,7 +278,12 @@ describe("useMemeTrade prices the trade it made", () => {
       outcome: "confirmed",
       swapId: "swap-1",
       requestId: null,
-      amounts: { amount_usd: 1.96, token_quantity: 4230.106143, amount_source: "fill" },
+      amounts: {
+        amount_usd: 1.96,
+        token_quantity: 4230.106143,
+        fill_price_usd: 0.000463,
+        amount_source: "fill",
+      },
       txHash: "0xswap",
     });
   });
@@ -315,7 +320,12 @@ describe("useMemeTrade prices the trade it made", () => {
     });
     await expect(outcome!).resolves.toMatchObject({
       outcome: "confirmed",
-      amounts: { amount_usd: 2, token_quantity: 4230.106143, amount_source: "quote" },
+      amounts: {
+        amount_usd: 2,
+        token_quantity: 4230.106143,
+        fill_price_usd: 0.000473,
+        amount_source: "quote",
+      },
     });
   });
 });

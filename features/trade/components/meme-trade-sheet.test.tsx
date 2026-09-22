@@ -682,7 +682,7 @@ describe("what a trade reports", () => {
     await waitFor(() => expect(reported("trade_completed")).toHaveLength(1));
     expect(reported("trade_completed")[0]).toMatchObject({
       vertical: "memecoin",
-      token: "PEPE",
+      asset: "PEPE",
       side: "sell",
       amount_usd: 4.97,
       token_quantity: 1_000_000,

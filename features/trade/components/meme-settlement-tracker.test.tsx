@@ -64,7 +64,7 @@ describe("MemeSettlementTracker analytics", () => {
 
     expect(analytics.track).toHaveBeenCalledWith("trade_completed", {
       vertical: "memecoin",
-      token: "BONK",
+      asset: "BONK",
       side: "buy",
       amount_usd: 5,
       amount_source: "fill",

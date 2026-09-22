@@ -552,7 +552,7 @@ describe("HyperliquidProPerps", () => {
         </NextIntlClientProvider>
       );
       expect(reported("perp_market_viewed")).toEqual([
-        { market: "BTC", market_type: "crypto", venue: "hyperliquid" },
+        { pair: "BTC", market_type: "crypto", venue: "hyperliquid" },
       ]);
     });
 
@@ -579,8 +579,11 @@ describe("HyperliquidProPerps", () => {
       );
       expect(reported("perp_trade_closed")).toEqual([
         expect.objectContaining({
-          market: "BTC",
+          pair: "BTC",
+          direction: "long",
+          position_id: "pos-1",
           close_reason: "manual",
+          exit_price: 65000,
           pnl_usd: 10,
           notional_usd: 650,
           order_id: "close-1",
@@ -599,8 +602,25 @@ describe("HyperliquidProPerps", () => {
         };
       act(() => ticket().onQuantityChange("100"));
       await act(async () => ticket().onBuy());
-      expect(reported("perp_order_failed")).toEqual([
-        expect.objectContaining({ market: "BTC", side: "long", reason: "user_cancelled" }),
+      expect(reported("perp_trade_failed")).toEqual([
+        expect.objectContaining({ pair: "BTC", direction: "long", reason: "user_cancelled" }),
+      ]);
+    });
+
+    it("reports the order as submitted before the venue answers", async () => {
+      // An order that is rejected, or never comes back at all, is still an
+      // order someone placed. Without this the funnel loses it entirely.
+      trading.actions.placeOrder.mockRejectedValue(new Error("User rejected the request."));
+      renderDesk();
+      const ticket = () =>
+        ticketProps.mock.calls.at(-1)?.[0] as {
+          onQuantityChange: (v: string) => void;
+          onBuy: () => void;
+        };
+      act(() => ticket().onQuantityChange("100"));
+      await act(async () => ticket().onBuy());
+      expect(reported("perp_order_submitted")).toEqual([
+        expect.objectContaining({ pair: "BTC", direction: "long", order_type: "market" }),
       ]);
     });
   });

@@ -736,15 +736,17 @@ describe("what a trade reports", () => {
     });
 
     expect(reported("trade_previewed")).toEqual([
-      { vertical: "real_asset", asset: "ONDO", side: "sell", amount_usd: 12, token_quantity: 5 },
+      { vertical: "rwa", asset: "ONDO", side: "sell", amount_usd: 12, token_quantity: 5 },
     ]);
     expect(reported("trade_completed")).toEqual([
       {
-        vertical: "real_asset",
+        vertical: "rwa",
         asset: "ONDO",
         side: "sell",
         amount_usd: 12,
         token_quantity: 5,
+        // The two amounts divided, so it cannot disagree with them.
+        fill_price_usd: 2.4,
         amount_source: "quote",
         // The same id its trade_submitted carried, so the two join.
         order_id: "action-1",
@@ -764,7 +766,7 @@ describe("what a trade reports", () => {
 
     expect(reported("trade_completed")).toEqual([
       expect.objectContaining({
-        vertical: "real_asset",
+        vertical: "rwa",
         asset: "ONDO",
         side: "buy",
         amount_usd: 10,

@@ -9,7 +9,7 @@
 // Stops, take profits and liquidations execute on Hyperliquid itself and never
 // pass through this app, so a close reported here is always a manual one.
 
-import type { AnalyticsEvents, MarketType } from "@/lib/analytics/events";
+import type { AnalyticsEvents, MarketType, PerpOrder } from "@/lib/analytics/events";
 import type { HlOrderRow, HlPositionView } from "@/features/trade/lib/hyperliquid-types";
 
 export interface PerpTicket {
@@ -50,33 +50,52 @@ function positive(value: string): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+/** Which way a ticket is pointing, in the catalog's words. */
+export function directionOf(side: "buy" | "sell"): "long" | "short" {
+  return side === "buy" ? "long" : "short";
+}
+
+/**
+ * What the ticket says about the order, shared by the submission and the open.
+ *
+ * These are the values actually sent to the venue, not the screen's defaults:
+ * the ticket is built from what the user set, and `notional_usd` is collateral
+ * times that leverage rather than a figure read back off the position.
+ */
+export function perpOrderProps(ticket: PerpTicket): PerpOrder {
+  const takeProfit = positive(ticket.takeProfitPrice);
+  const stopLoss = positive(ticket.stopLossPrice);
+  const limit = ticket.orderMode === "limit" ? positive(ticket.limitPrice) : undefined;
+  return {
+    pair: ticket.market,
+    direction: directionOf(ticket.side),
+    leverage: ticket.leverage,
+    margin_mode: ticket.marginMode,
+    collateral_usd: ticket.collateralUsd,
+    notional_usd: ticket.notionalUsd,
+    order_type: ticket.orderMode,
+    ...(limit !== undefined ? { limit_price: limit } : {}),
+    // Omitted rather than sent as a zero, which would read as an exit set at
+    // no price at all.
+    ...(takeProfit !== undefined ? { take_profit: takeProfit } : {}),
+    ...(stopLoss !== undefined ? { stop_loss: stopLoss } : {}),
+    venue: "hyperliquid",
+  };
+}
+
 /** perp_trade_opened for an order the exchange accepted, or null when it did not. */
 export function perpOpenedProps(
   ticket: PerpTicket,
   entry: HlOrderRow
 ): AnalyticsEvents["perp_trade_opened"] | null {
   if (DID_NOT_OPEN.has(entry.status)) return null;
-  const takeProfit = positive(ticket.takeProfitPrice);
-  const stopLoss = positive(ticket.stopLossPrice);
-  const limit = ticket.orderMode === "limit" ? positive(ticket.limitPrice) : undefined;
+  const order = perpOrderProps(ticket);
   return {
-    market: ticket.market,
-    side: ticket.side === "buy" ? "long" : "short",
-    leverage: ticket.leverage,
-    margin_mode: ticket.marginMode,
-    collateral_usd: ticket.collateralUsd,
-    position_size_usd: ticket.notionalUsd,
-    notional_usd: ticket.notionalUsd,
-    order_type: ticket.orderMode,
-    // A market order opens at the mark; a limit order has not opened at any
-    // price yet, and carries the level it is waiting for instead.
-    ...(limit !== undefined ? { limit_price: limit } : { entry_price: ticket.markPrice }),
-    has_take_profit: takeProfit !== undefined,
-    ...(takeProfit !== undefined ? { take_profit_price: takeProfit } : {}),
-    has_stop_loss: stopLoss !== undefined,
-    ...(stopLoss !== undefined ? { stop_loss_price: stopLoss } : {}),
+    ...order,
+    // A market order opens at the mark. A limit order has not opened at any
+    // price yet: it is resting at the level perpOrderProps already reported.
+    ...(order.limit_price === undefined ? { entry_price: ticket.markPrice } : {}),
     order_id: entry.id,
-    venue: "hyperliquid",
     amount_source: "quote",
   };
 }
@@ -89,15 +108,17 @@ export function perpClosedProps(
 ): AnalyticsEvents["perp_trade_closed"] {
   const price = Number(position.markPrice ?? position.entryPrice);
   const notional = Math.round(Math.abs(Number(position.size)) * price * 1e6) / 1e6;
-  const leverage = position.leverage > 0 ? position.leverage : 1;
   return {
-    market,
+    pair: market,
+    direction: position.side === "long" ? "long" : "short",
+    position_id: position.id,
     close_type: "full",
     close_reason: "manual",
+    // The mark the close was taken at. The venue reports the true fill; this is
+    // what the desk saw, which is why the whole event is amount_source "quote".
+    ...(Number.isFinite(price) ? { exit_price: price } : {}),
     pnl_usd: Number(position.unrealizedPnlUsdc ?? 0),
     notional_usd: notional,
-    // The margin the position held: what the close returns before PnL.
-    amount_usd: Math.round((notional / leverage) * 1e6) / 1e6,
     order_id: closeOrder.id,
     venue: "hyperliquid",
     amount_source: "quote",

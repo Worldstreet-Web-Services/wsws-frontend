@@ -200,7 +200,13 @@ export function ActivityRow({ item, priceUsd }: { item: ActivityEntry; priceUsd:
         href={explorer ? `${explorer}${item.hash}` : undefined}
         onClick={() => {
           if (explorer)
-            track("arktivity_tx_opened", { chain: item.network, direction: item.direction });
+            track("arktivity_tx_opened", {
+              tx_type: item.direction === "in" ? "receive" : "send",
+              asset: item.symbol,
+              network: item.network,
+              tx_hash: item.hash,
+              direction: item.direction,
+            });
         }}
         target="_blank"
         rel="noopener noreferrer"

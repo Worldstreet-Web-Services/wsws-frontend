@@ -22,7 +22,7 @@ import {
 import { getWalletAddress } from "@/lib/user";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 import { tradeAmounts, type TradeAmounts } from "@/lib/analytics/trade-amounts";
 import { chainIdOfNetwork } from "@/lib/meme/chain";
 import { depositProgress, quoteFee, settlementFor, type DepositProgress } from "@/lib/deposit";
@@ -436,7 +436,7 @@ export function useRwaTicket({
   };
 
   useEffect(() => {
-    track("market_viewed", { vertical: "real_asset", asset: asset.symbol });
+    track("market_viewed", { vertical: "rwa", asset: asset.symbol });
   }, [asset.symbol]);
 
   // Refresh the portfolio as the Dextopus request advances. These reads use
@@ -536,7 +536,7 @@ export function useRwaTicket({
     const quoted = rwaTradeAmounts(req.amountIn, quote);
     if (quoted) {
       track("trade_previewed", {
-        vertical: "real_asset",
+        vertical: "rwa",
         asset: asset.symbol,
         side: isBuy ? "buy" : "sell",
         amount_usd: quoted.amount_usd,
@@ -621,7 +621,7 @@ export function useRwaTicket({
       // know it by, and nothing is signed before this point.
       if (quoted) {
         track("trade_submitted", {
-          vertical: "real_asset",
+          vertical: "rwa",
           asset: asset.symbol,
           side: isBuy ? "buy" : "sell",
           amount_usd: quoted.amount_usd,
@@ -638,7 +638,7 @@ export function useRwaTicket({
       const executed = rwaTradeAmounts(req.amountIn, action.quote ?? quote);
       if (executed) {
         track("trade_completed", {
-          vertical: "real_asset",
+          vertical: "rwa",
           asset: asset.symbol,
           side: isBuy ? "buy" : "sell",
           ...executed,
@@ -677,10 +677,10 @@ export function useRwaTicket({
       // The provider's own code, which is already a coded string. The raw
       // message is never sent: it can quote back what the user typed.
       track("trade_failed", {
-        vertical: "real_asset",
+        vertical: "rwa",
         asset: asset.symbol,
         side: isBuy ? "buy" : "sell",
-        ...failureReason(e),
+        ...reasonFor(TRADE_FAILURE, e),
         amount_usd: quoted?.amount_usd,
       });
       setSignStep(null);

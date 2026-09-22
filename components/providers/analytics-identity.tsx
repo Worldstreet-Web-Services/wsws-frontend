@@ -10,7 +10,7 @@ import {
   setSuper,
   track,
 } from "@/lib/analytics/mixpanel";
-import type { SignupMethod } from "@/lib/analytics/events";
+import type { AuthMethod } from "@/lib/analytics/events";
 import { identifyClarity, tagClaritySession } from "@/lib/analytics/clarity";
 import { deriveProfile, getWalletAddress } from "@/lib/user";
 
@@ -30,10 +30,12 @@ import { deriveProfile, getWalletAddress } from "@/lib/user";
 // Privy's own login method names, mapped to the ones the catalog uses. Twitter
 // is reported as "x". Anything unrecognised passes through as-is rather than
 // being forced into one of the known values.
-function authMethod(method: string | null): SignupMethod {
+function authMethod(method: string | null): AuthMethod {
   if (!method) return "email";
   if (method === "twitter") return "x";
-  if (method === "google" || method === "email" || method === "passkey") return method;
+  if (method === "google" || method === "email" || method === "passkey" || method === "apple")
+    return method;
+  if (method === "siwe" || method === "wallet") return "wallet";
   if (method.includes("kingschat")) return "kingschat";
   return "email";
 }
@@ -43,7 +45,7 @@ const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
 
 // A completed sign-in, waiting for the account to be identified before it is
 // sent. See sendSignIn below.
-type SignIn = { isNewUser: boolean; method: SignupMethod };
+type SignIn = { isNewUser: boolean; method: AuthMethod };
 
 function sendSignIn({ isNewUser, method }: SignIn): void {
   if (isNewUser) {
@@ -110,8 +112,10 @@ export function AnalyticsIdentity(): null {
     const profile = deriveProfile(user);
     const solAddress = getWalletAddress(user, "solana");
 
-    // Exactly as Privy gives it. Every existing profile is keyed by this
-    // string, and Mixpanel cannot merge two identified ids.
+    // Passed as Privy gives it; identifyUser lowercases it, and does so in one
+    // place so every caller lands on the same id. See the ADR: the lowercase
+    // form is the catalog's, and profiles created before it do not follow
+    // their owner across.
     identifyUser(walletEvm, {
       // Mixpanel's reserved contact fields. Governed: set here only, never
       // copied onto an event.

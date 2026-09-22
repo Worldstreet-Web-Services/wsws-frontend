@@ -18,7 +18,15 @@
 // This is what makes the spec enforceable instead of merely written down.
 
 import type { AnalyticsEventName } from "@/lib/analytics/events";
-import { FAILURE_REASONS } from "@/lib/analytics/failure-reason";
+import {
+  AUTH_FAILURE,
+  DEPOSIT_FAILURE,
+  KASH_FAILURE,
+  PERP_FAILURE,
+  PREDICTION_FAILURE,
+  TRADE_FAILURE,
+  WITHDRAW_FAILURE,
+} from "@/lib/analytics/failure-reason";
 
 export type PropType = "number" | "string" | "boolean";
 
@@ -28,8 +36,8 @@ export interface Shape {
 }
 
 // One shape, or one per variant for an event whose properties depend on a
-// discriminant (the funding rail, the trading vertical). A payload is valid if
-// it matches any of them, which is `oneOf` in JSON Schema terms.
+// discriminant (the withdrawal rail). A payload is valid if it matches any of
+// them, which is `oneOf` in JSON Schema terms.
 export type EventSchema = readonly Shape[];
 
 export interface Violation {
@@ -66,36 +74,74 @@ const SETTLED_RECORD: Record<string, PropType> = {
 };
 
 // What a game event carries alongside its older property names. See the
-// Arkade games section of ./events.
+// Arkade section of ./events.
 const GAME_MONEY: Record<string, PropType> = {
   "amount_usd?": "number",
   "game_id?": "string",
 };
 
-// What every completed trade carries, whatever its vertical. See TradeFacts in
-// ./events.
-const TRADE_FACTS: Record<string, PropType> = {
+// What a trade event says about the order at any stage. See TradeIntent.
+const TRADE_INTENT: Record<string, PropType> = {
+  vertical: "string",
+  asset: "string",
   side: "string",
   amount_usd: "number",
-  amount_source: "string",
   "token_quantity?": "number",
-  "recorded?": "string",
-  "order_id?": "string",
-  "tx_hash?": "string",
+  "fill_price_usd?": "number",
   "token_address?": "string",
   "chain_id?": "number",
+  "network?": "string",
+};
+
+// The same, minus the dollar value, for the one event that may not know it.
+const TRADE_INTENT_NO_AMOUNT: Record<string, PropType> = Object.fromEntries(
+  Object.entries(TRADE_INTENT).filter(([key]) => key !== "amount_usd")
+);
+
+// What an order says about itself, at submission and once open. See PerpOrder.
+const PERP_ORDER: Record<string, PropType> = {
+  pair: "string",
+  "market_type?": "string",
+  direction: "string",
+  leverage: "number",
+  margin_mode: "string",
+  collateral_usd: "number",
+  notional_usd: "number",
+  order_type: "string",
+  "limit_price?": "number",
+  "take_profit?": "number",
+  "stop_loss?": "number",
+  "venue?": "string",
+};
+
+// What every slip event reports. See PredictionSlip.
+const PREDICTION_SLIP: Record<string, PropType> = {
+  "slip_id?": "string",
+  leg_count: "number",
+  stake_usd: "number",
+  "combined_odds?": "number",
+  "potential_payout_usd?": "number",
 };
 
 /**
- * Properties whose value must come from a fixed list. `reason` on a failure
- * event is the data team's vocabulary: before it, the same failure arrived as
- * "order_failed", "trade_failed" or "failed" depending on the desk.
+ * Properties whose value must come from a fixed list.
+ *
+ * `reason` is the data team's vocabulary, and each domain has its own: before
+ * this, the same failure arrived as "order_failed", "trade_failed" or "failed"
+ * depending on the desk. A withdrawal reason on a trade event now fails here.
  */
 const ALLOWED_VALUES: Partial<Record<AnalyticsEventName, Record<string, readonly string[]>>> = {
-  trade_failed: { reason: FAILURE_REASONS },
-  deposit_failed: { reason: FAILURE_REASONS },
-  perp_order_failed: { reason: FAILURE_REASONS },
-  withdraw_failed: { reason: FAILURE_REASONS },
+  signup_failed: { reason: AUTH_FAILURE.reasons },
+  login_failed: { reason: AUTH_FAILURE.reasons },
+  kyc_failed: { reason: AUTH_FAILURE.reasons },
+  deposit_address_failed: { reason: DEPOSIT_FAILURE.reasons },
+  bank_account_failed: { reason: DEPOSIT_FAILURE.reasons },
+  deposit_failed: { reason: DEPOSIT_FAILURE.reasons },
+  withdraw_failed: { reason: WITHDRAW_FAILURE.reasons },
+  kash_failed: { reason: KASH_FAILURE.reasons },
+  trade_failed: { reason: TRADE_FAILURE.reasons },
+  prediction_bet_failed: { reason: PREDICTION_FAILURE.reasons },
+  perp_trade_failed: { reason: PERP_FAILURE.reasons },
 };
 
 /**
@@ -116,95 +162,175 @@ const REQUIRED_WHEN: Partial<
 };
 
 export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
-  // Auth and onboarding
-  auth_started: NOTHING,
-  signup_completed: [shape({ method: "string" })],
+  // 1. Landing
+  page_view: [
+    shape({
+      "page?": "string",
+      path: "string",
+      "referrer?": "string",
+      "utm_source?": "string",
+      "utm_medium?": "string",
+      "utm_campaign?": "string",
+      "utm_content?": "string",
+    }),
+  ],
+  get_started_clicked: [shape({ placement: "string" })],
+
+  // 2. Auth
+  auth_started: [shape({ intent: "string" })],
+  auth_method_selected: [shape({ method: "string" })],
+  signup_completed: [shape({ method: "string", "referral_code?": "string" })],
+  signup_failed: [shape({ method: "string", reason: "string", "reason_detail?": "string" })],
   login_completed: [shape({ method: "string" })],
+  login_failed: [shape({ method: "string", reason: "string", "reason_detail?": "string" })],
   passkey_added: NOTHING,
   passkey_skipped: [shape({ supported: "boolean" })],
-
-  // KYC
-  kyc_started: [shape({ kyc_type: "string" })],
+  kyc_started: [shape({ "kyc_type?": "string" })],
   kyc_completed: NOTHING,
-  kyc_failed: [shape({ reason: "string" })],
+  kyc_failed: [shape({ reason: "string", "reason_detail?": "string" })],
 
-  // Funding
+  // 3. Add funds
   add_funds_opened: NOTHING,
   fund_method_selected: [shape({ method: "string" })],
   deposit_network_selected: [shape({ network: "string" })],
-  // Two rails, two shapes. The bank leg's Naira properties are required, and
-  // `provider` is the rail rather than the user's own bank; see DepositCompleted.
+  deposit_address_generated: [shape({ network: "string", asset: "string" })],
+  deposit_address_failed: [
+    shape({ network: "string", reason: "string", "reason_detail?": "string" }),
+  ],
+  bank_account_requested: [
+    shape({
+      provider: "string",
+      "amount_ngn?": "number",
+      "fx_rate?": "number",
+      "reused?": "boolean",
+    }),
+  ],
+  bank_account_generated: [shape({ provider: "string", bank: "string" })],
+  bank_account_failed: [
+    shape({ provider: "string", reason: "string", "reason_detail?": "string" }),
+  ],
   deposit_completed: [
     shape({
-      method: "string",
       amount_usd: "number",
-      source_network: "string",
+      network: "string",
+      asset: "string",
+      "token_address?": "string",
+      "chain_id?": "number",
+      "order_id?": "string",
       ...SETTLED_RECORD,
     }),
+  ],
+  bank_transfer_completed: [
     shape({
-      method: "string",
       amount_usd: "number",
       amount_ngn: "number",
       fx_rate: "number",
       provider: "string",
+      "order_id?": "string",
       "fee_ngn?": "number",
       ...SETTLED_RECORD,
     }),
   ],
-  bank_account_requested: [shape({ amount_ngn: "number", fx_rate: "number", reused: "boolean" })],
   deposit_failed: [
     shape({
       method: "string",
       reason: "string",
       "reason_detail?": "string",
+      "amount_usd?": "number",
       "network?": "string",
       "asset?": "string",
     }),
   ],
 
-  // Trading
-  market_viewed: [shape({ vertical: "string", asset: "string" })],
-  trade_previewed: [
+  // 4. Withdraw
+  withdraw_opened: NOTHING,
+  withdraw_method_selected: [shape({ method: "string" })],
+  withdraw_completed: [
+    shape({
+      method: "string",
+      asset: "string",
+      amount_usd: "number",
+      "network?": "string",
+      "recipient_address?": "string",
+      "order_id?": "string",
+      ...SETTLED_RECORD,
+    }),
+    shape({
+      method: "string",
+      asset: "string",
+      amount_usd: "number",
+      amount_ngn: "number",
+      fx_rate: "number",
+      bank: "string",
+      "provider?": "string",
+      "fee_ngn?": "number",
+      "order_id?": "string",
+      ...SETTLED_RECORD,
+    }),
+  ],
+  withdraw_failed: [
+    shape({
+      method: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "amount_usd?": "number",
+      "order_id?": "string",
+    }),
+  ],
+
+  // 5. Kash
+  kash_bought: [
+    shape({
+      amount_usd: "number",
+      kash_amount: "number",
+      "rate?": "number",
+      "order_id?": "string",
+      "tx_hash?": "string",
+    }),
+  ],
+  kash_sold: [
+    shape({
+      amount_usd: "number",
+      kash_amount: "number",
+      "rate?": "number",
+      "order_id?": "string",
+      "tx_hash?": "string",
+    }),
+  ],
+  kash_failed: [
+    shape({
+      side: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "amount_usd?": "number",
+      "kash_amount?": "number",
+    }),
+  ],
+  kash_earned: [shape({ "source?": "string", kash_amount: "number" })],
+
+  // 6. Trading
+  market_viewed: [
     shape({
       vertical: "string",
       asset: "string",
-      side: "string",
-      amount_usd: "number",
-      "token_quantity?": "number",
+      "token_address?": "string",
+      "chain_id?": "number",
     }),
   ],
-  trade_submitted: [
-    shape({
-      vertical: "string",
-      asset: "string",
-      side: "string",
-      amount_usd: "number",
-      "token_quantity?": "number",
-      order_id: "string",
-    }),
-  ],
+  trade_previewed: [shape({ ...TRADE_INTENT })],
+  trade_submitted: [shape({ ...TRADE_INTENT, order_id: "string" })],
   trade_completed: [
     shape({
-      vertical: "string",
-      asset: "string",
-      ...TRADE_FACTS,
+      ...TRADE_INTENT,
+      amount_source: "string",
+      "order_id?": "string",
+      "tx_hash?": "string",
       "fee_usd?": "number",
-      "network?": "string",
-      "mode?": "string",
-    }),
-    shape({
-      vertical: "string",
-      token: "string",
-      ...TRADE_FACTS,
-      network: "string",
-      "slippage_pct?": "number",
       "price_impact_pct?": "number",
+      "recorded?": "string",
+      "slippage_pct?": "number",
       "risk_label?": "string",
-    }),
-    shape({
-      vertical: "string",
-      asset: "string",
-      ...TRADE_FACTS,
+      "mode?": "string",
       "apy?": "number",
       "category?": "string",
       "issuer?": "string",
@@ -212,12 +338,10 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   ],
   trade_failed: [
     shape({
-      vertical: "string",
-      asset: "string",
+      ...TRADE_INTENT_NO_AMOUNT,
+      "amount_usd?": "number",
       reason: "string",
       "reason_detail?": "string",
-      "side?": "string",
-      "amount_usd?": "number",
       "order_id?": "string",
     }),
   ],
@@ -228,74 +352,40 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       swap_id: "string",
       recorded: "string",
       "request_id?": "string",
-      "hash?": "string",
+      "tx_hash?": "string",
     }),
   ],
 
-  // Perpetuals
-  perp_market_viewed: [shape({ market: "string", "market_type?": "string", "venue?": "string" })],
-  perp_trade_opened: [
-    shape({
-      market: "string",
-      "market_type?": "string",
-      side: "string",
-      leverage: "number",
-      collateral_usd: "number",
-      position_size_usd: "number",
-      order_type: "string",
-      "entry_price?": "number",
-      "limit_price?": "number",
-      has_take_profit: "boolean",
-      "take_profit_price?": "number",
-      has_stop_loss: "boolean",
-      "stop_loss_price?": "number",
-      "opening_fee_usd?": "number",
-      "execution_fee_eth?": "number",
-      "notional_usd?": "number",
-      "margin_mode?": "string",
-      "order_id?": "string",
-      "venue?": "string",
-      "amount_source?": "string",
-    }),
-  ],
-  perp_trade_closed: [
-    shape({
-      market: "string",
-      close_type: "string",
-      close_reason: "string",
-      pnl_usd: "number",
-      amount_usd: "number",
-      notional_usd: "number",
-      "order_id?": "string",
-      "venue?": "string",
-      "amount_source?": "string",
-    }),
-  ],
-  perp_order_failed: [
-    shape({
-      market: "string",
-      side: "string",
-      reason: "string",
-      "reason_detail?": "string",
-      "notional_usd?": "number",
-    }),
-  ],
-  perp_tpsl_set: [shape({ market: "string", has_tp: "boolean", has_sl: "boolean" })],
-  perp_margin_adjusted: [shape({ market: "string", action: "string", amount_usd: "number" })],
-
-  // Prediction
+  // 7. Prediction
   prediction_market_viewed: [
-    shape({ market_id: "string", "category?": "string", scope: "string" }),
-  ],
-  prediction_bet_placed: [
     shape({
       market_id: "string",
       "category?": "string",
-      scope: "string",
-      side: "string",
-      amount_usd: "number",
-      price_cents: "number",
-      "outcome_label?": "string",
+      "odds?": "number",
+      "scope?": "string",
+    }),
+  ],
+  prediction_selection_added: [
+    shape({ market_id: "string", outcome: "string", "odds?": "number", slip_size: "number" }),
+  ],
+  prediction_selection_removed: [shape({ market_id: "string", slip_size: "number" })],
+  prediction_slip_submitted: [shape({ ...PREDICTION_SLIP, market_ids: "string" })],
+  prediction_bet_placed: [shape({ ...PREDICTION_SLIP })],
+  prediction_bet_failed: [
+    shape({
+      "slip_id?": "string",
+      leg_count: "number",
+      stake_usd: "number",
+      reason: "string",
+      "reason_detail?": "string",
+    }),
+  ],
+  prediction_bet_settled: [
+    shape({
+      "slip_id?": "string",
+      outcome: "string",
+      stake_usd: "number",
+      payout_usd: "number",
     }),
   ],
   prediction_market_created: [
@@ -312,13 +402,53 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
     shape({ market_id: "string", outcome: "string", num_outcomes: "number" }),
   ],
   prediction_payout_claimed: [
-    shape({ "market_id?": "string", scope: "string", "amount_usd?": "number" }),
+    shape({ "market_id?": "string", "scope?": "string", "amount_usd?": "number" }),
   ],
 
-  // Kash
-  kash_bought: [shape({ amount_usd: "number", kash_amount: "number" })],
-  kash_sold: [shape({ kash_amount: "number", amount_usd: "number" })],
-  kash_earned: [shape({ "source?": "string", kash_amount: "number" })],
+  // 8. Perps
+  perp_market_viewed: [shape({ pair: "string", "market_type?": "string", "venue?": "string" })],
+  perp_order_submitted: [shape({ ...PERP_ORDER, "order_id?": "string" })],
+  perp_trade_opened: [
+    shape({
+      ...PERP_ORDER,
+      "order_id?": "string",
+      "position_id?": "string",
+      "entry_price?": "number",
+      "fee_usd?": "number",
+      "execution_fee_eth?": "number",
+      "amount_source?": "string",
+    }),
+  ],
+  perp_trade_closed: [
+    shape({
+      pair: "string",
+      direction: "string",
+      "position_id?": "string",
+      close_type: "string",
+      close_reason: "string",
+      "exit_price?": "number",
+      pnl_usd: "number",
+      notional_usd: "number",
+      "fee_usd?": "number",
+      "order_id?": "string",
+      "venue?": "string",
+      "amount_source?": "string",
+    }),
+  ],
+  perp_trade_failed: [
+    shape({
+      pair: "string",
+      direction: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "leverage?": "number",
+      "margin_mode?": "string",
+      "collateral_usd?": "number",
+      "order_id?": "string",
+    }),
+  ],
+  perp_tpsl_set: [shape({ pair: "string", "take_profit?": "number", "stop_loss?": "number" })],
+  perp_margin_adjusted: [shape({ pair: "string", action: "string", amount_usd: "number" })],
 
   // Earn marketplace
   earn_listing_viewed: [shape({ listing_id: "string", "type?": "string" })],
@@ -335,7 +465,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
     }),
   ],
 
-  // Arkade games
+  // 9. Arkade
   game_opened: [shape({ game: "string" })],
   game_wallet_funded: [shape({ game: "string", amount_usd: "number" })],
   chess_game_created: [
@@ -394,46 +524,21 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
     }),
   ],
 
-  // Withdraw
-  withdraw_opened: NOTHING,
-  withdraw_completed: [
+  // 11. Arkivity
+  arktivity_tx_opened: [
     shape({
-      method: "string",
-      asset: "string",
-      amount_usd: "number",
+      "tx_type?": "string",
+      "asset?": "string",
       "network?": "string",
-      "recipient_address?": "string",
-      "order_id?": "string",
-      ...SETTLED_RECORD,
-    }),
-    shape({
-      method: "string",
-      asset: "string",
-      amount_usd: "number",
-      amount_ngn: "number",
-      fx_rate: "number",
-      bank: "string",
-      "fee_ngn?": "number",
-      "order_id?": "string",
-      ...SETTLED_RECORD,
-    }),
-  ],
-  withdraw_failed: [
-    shape({
-      method: "string",
-      reason: "string",
-      "reason_detail?": "string",
       "amount_usd?": "number",
-      "order_id?": "string",
+      "tx_hash?": "string",
+      direction: "string",
     }),
   ],
 
   // Engagement
-  landing_viewed: [shape({ page: "string" })],
-  page_view: [shape({ page: "string" })],
   currency_switched: [shape({ currency: "string" })],
   referral_completed: NOTHING,
-  arktivity_tx_opened: [shape({ chain: "string", direction: "string" })],
 };
 
 function typeOf(value: unknown): PropType | "other" {

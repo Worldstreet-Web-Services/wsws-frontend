@@ -19,7 +19,7 @@ import { hasGasPolicyForNetwork } from "@/lib/trade/sponsored-evm";
 import { nativeSymbol, networkLabel } from "@/lib/trade/networks";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
-import { failureReason } from "@/lib/analytics/failure-reason";
+import { TRADE_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 import { pricedTradeAmounts } from "@/lib/analytics/trade-amounts";
 import { swapTradeFacts } from "@/features/trade/lib/trade-analytics";
 import { friendlyError, supportDetail, isStaleBalanceRevert } from "@/lib/errors";
@@ -245,7 +245,7 @@ export function useSpotSell({
           vertical: "spot",
           asset: holding.symbol,
           side: "sell",
-          ...failureReason(error),
+          ...reasonFor(TRADE_FAILURE, error),
           amount_usd: priced.amount_usd,
         });
         toast.error(
@@ -317,7 +317,7 @@ export function useSpotSell({
         vertical: "spot",
         asset: holding.symbol,
         side: "sell",
-        ...failureReason(error),
+        ...reasonFor(TRADE_FAILURE, error),
         amount_usd: priced.amount_usd,
       });
       // The raw reason travels with the friendly line: a screenshot of this

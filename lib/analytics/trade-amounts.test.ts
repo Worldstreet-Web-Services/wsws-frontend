@@ -33,7 +33,12 @@ describe("tradeAmounts", () => {
         tokenDecimals: 18,
         source: "fill",
       })
-    ).toEqual({ amount_usd: 5, token_quantity: 1_000_000, amount_source: "fill" });
+    ).toEqual({
+      amount_usd: 5,
+      token_quantity: 1_000_000,
+      fill_price_usd: 0.000005,
+      amount_source: "fill",
+    });
   });
 
   it("omits token_quantity when the token leg is unknown", () => {
@@ -64,6 +69,7 @@ describe("swapTradeAmounts", () => {
     expect(swapTradeAmounts(sellQuote, null)).toEqual({
       amount_usd: 5,
       token_quantity: 1_000_000,
+      fill_price_usd: 0.000005,
       amount_source: "quote",
     });
   });
@@ -72,6 +78,7 @@ describe("swapTradeAmounts", () => {
     expect(swapTradeAmounts(sellQuote, 4_950_000n)).toEqual({
       amount_usd: 4.95,
       token_quantity: 1_000_000,
+      fill_price_usd: 0.000005,
       amount_source: "fill",
     });
   });
@@ -88,6 +95,7 @@ describe("swapTradeAmounts", () => {
     expect(swapTradeAmounts(buyQuote, 390_000_000_000_000_000_000_000n)).toEqual({
       amount_usd: 2,
       token_quantity: 390_000,
+      fill_price_usd: 0.000005,
       amount_source: "fill",
     });
   });
@@ -109,6 +117,9 @@ describe("pricedTradeAmounts", () => {
     expect(pricedTradeAmounts(1_014_812_065n, 8, 0.0977)).toEqual({
       amount_usd: 0.991471,
       token_quantity: 10.14812065,
+      // The two amounts divided, rounded to USDC's own precision. Derived
+      // rather than passed in, so it cannot disagree with them.
+      fill_price_usd: 0.0977,
       amount_source: "quote",
     });
   });

@@ -166,18 +166,27 @@ async function bootMixpanel(): Promise<void> {
 }
 
 /**
- * Ties Mixpanel's distinct_id to the account's canonical EVM wallet address.
+ * Ties Mixpanel's distinct_id to the account's canonical EVM wallet address,
+ * lowercased.
  *
  * That address is assigned server-side at signup and is the same on every
  * device, which is what merges a user's laptop and phone sessions into one
  * person. It is public on-chain, stable per account, and doubles as the join
  * key to on-chain data. Never identify by email, and never switch to the
  * Solana address: an id that changes is two users as far as reports go.
+ *
+ * Lowercased on the catalog's instruction. Mixpanel's distinct_id is
+ * case-sensitive, so this is not cosmetic: every profile created before it was
+ * keyed by the checksummed address and does not follow its owner across. The
+ * data team runs an identity merge after release to rejoin them; see
+ * docs/adr/ADR-2026-09-22-mixpanel-management-catalog.md. Lowercasing happens
+ * here and only here, so one convention holds everywhere.
  */
 export function identifyUser(walletEvm: string, profile?: UserProfile): void {
   if (!ready() || !walletEvm) return;
+  const distinctId = walletEvm.toLowerCase();
   try {
-    withMixpanel((m) => m.identify(walletEvm));
+    withMixpanel((m) => m.identify(distinctId));
     if (profile) withMixpanel((m) => m.people.set(compact(profile as Record<string, unknown>)));
   } catch (error) {
     console.warn("[analytics] failed to identify", error);
@@ -274,15 +283,18 @@ function accumulateProfile(name: AnalyticsEventName, props: Record<string, unkno
       if (typeof vertical === "string") unionProfile("verticals_used", [vertical]);
       return;
     }
-    // One event covers both rails, so the running total cannot count a Naira
-    // deposit twice the way it did when the bank rail had a name of its own.
-    case "deposit_completed": {
+    // The two rails have separate event names again, so both are read here.
+    // They are disjoint by construction, which is what stops a naira deposit
+    // being counted twice the way it was when one deposit fired both names.
+    case "deposit_completed":
+    case "bank_transfer_completed": {
       incrementProfile({ total_deposit_usd: num("amount_usd") });
       setProfile({ has_deposited: true });
-      // set_once, so these keep describing the first deposit. The method comes
-      // off the event, which is the only thing that knows which rail it was.
+      // set_once, so these keep describing the first deposit. The rail is the
+      // event's own name: neither event carries a `method` any more, because
+      // neither can mean more than one thing.
       setProfileOnce({
-        first_deposit_method: typeof props.method === "string" ? props.method : undefined,
+        first_deposit_method: name === "bank_transfer_completed" ? "bank" : "crypto",
         first_deposit_date: new Date().toISOString(),
       });
       return;

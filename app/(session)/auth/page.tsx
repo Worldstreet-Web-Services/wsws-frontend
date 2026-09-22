@@ -62,7 +62,10 @@ export default function AuthPage() {
   useEffect(() => {
     if (!ready || authenticated || authStartedReported.current) return;
     authStartedReported.current = true;
-    track("auth_started");
+    // `intent` is which door was used, not what the visitor turns out to be:
+    // this screen is one form for both, so everyone arriving at it is reported
+    // as signing in until a completed signup says otherwise.
+    track("auth_started", { intent: "login" });
   }, [ready, authenticated]);
 
   // Where step 2 hands off to: a first-timer continues onboarding at the

@@ -29,6 +29,8 @@ describe("newDepositArrivals", () => {
         id: "0xabc:log:1",
         hash: item({}).hash,
         network: "base-mainnet",
+        // The stablecoin that landed. deposit_completed reports it as `asset`.
+        asset: "USDC",
         amountUsd: 25,
         timestamp: item({}).timestamp,
       },

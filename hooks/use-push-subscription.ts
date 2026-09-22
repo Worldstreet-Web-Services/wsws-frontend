@@ -6,8 +6,17 @@ import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api";
 import { errorCode, errorStatus, unwrap } from "@/lib/api/envelope";
 import { NOTIFICATION_ROUTES } from "@/lib/notifications/routes";
-import { subscribeResultSchema, vapidKeySchema } from "@/lib/notifications/schema";
 import { applicationServerKey, pushSupport, toSubscriptionDto } from "@/lib/notifications/push";
+
+// The bell mounts in the app shell, so this hook is in the first-load payload
+// of every route. A static import of the zod-backed parsers put zod and every
+// schema there and CI's budget refused the build
+// (hooks/notifications.first-load.test.ts). They are loaded when a response
+// comes back instead, never on first paint, the same rule lib/meme/api.ts
+// follows.
+async function parsers(): Promise<typeof import("@/lib/notifications/schema")> {
+  return import("@/lib/notifications/schema");
+}
 
 // The one place this app turns browser push on and off.
 //
@@ -129,7 +138,7 @@ async function retireEarnPush(): Promise<void> {
 async function readVapidKey(userId: string): Promise<string | null> {
   const res = await apiFetch(NOTIFICATION_ROUTES.vapidKey(userId), {}, { requireAuth: true });
   const body = await unwrap<unknown>(res, "Could not read the notification key");
-  return vapidKeySchema.parse(body).publicKey;
+  return (await parsers()).vapidKeySchema.parse(body).publicKey;
 }
 
 async function postSubscription(userId: string, subscription: PushSubscription): Promise<void> {
@@ -145,7 +154,8 @@ async function postSubscription(userId: string, subscription: PushSubscription):
     },
     { requireAuth: true }
   );
-  subscribeResultSchema.parse(await unwrap<unknown>(res, "Could not turn notifications on"));
+  const body = await unwrap<unknown>(res, "Could not turn notifications on");
+  (await parsers()).subscribeResultSchema.parse(body);
 }
 
 async function deleteSubscription(userId: string, endpoint: string): Promise<void> {
@@ -154,7 +164,8 @@ async function deleteSubscription(userId: string, endpoint: string): Promise<voi
     { method: "DELETE", headers: JSON_HEADERS, body: JSON.stringify({ endpoint }) },
     { requireAuth: true }
   );
-  subscribeResultSchema.parse(await unwrap<unknown>(res, "Could not turn notifications off"));
+  const body = await unwrap<unknown>(res, "Could not turn notifications off");
+  (await parsers()).subscribeResultSchema.parse(body);
 }
 
 export function usePushSubscription(): PushSubscriptionControls {

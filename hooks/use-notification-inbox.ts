@@ -6,8 +6,17 @@ import { usePrivy } from "@privy-io/react-auth";
 import { apiFetch } from "@/lib/api";
 import { unwrap } from "@/lib/api/envelope";
 import { NOTIFICATION_ROUTES } from "@/lib/notifications/routes";
-import { inboxPageSchema, readResultSchema } from "@/lib/notifications/schema";
 import type { InboxNotification, InboxPage } from "@/lib/notifications/types";
+
+// The bell mounts in the app shell, so this hook is in the first-load payload
+// of every route. A static import of the zod-backed parsers put zod and every
+// schema there and CI's budget refused the build
+// (hooks/notifications.first-load.test.ts). They are loaded when a response
+// comes back instead, never on first paint, the same rule lib/meme/api.ts
+// follows.
+async function parsers(): Promise<typeof import("@/lib/notifications/schema")> {
+  return import("@/lib/notifications/schema");
+}
 
 // The platform notification inbox, which is the durable record. A push
 // message and a realtime frame are only signals that something arrived: they
@@ -51,7 +60,8 @@ async function fetchInboxPage(userId: string, cursor: string | null): Promise<In
   );
   // Parsed, not coerced. A page that does not match the contract belongs in
   // the query's error state, not in a half-empty list on screen.
-  return inboxPageSchema.parse(await unwrap<unknown>(res, "Could not load your notifications"));
+  const body = await unwrap<unknown>(res, "Could not load your notifications");
+  return (await parsers()).inboxPageSchema.parse(body);
 }
 
 async function postRead(userId: string, ids: string[] | null): Promise<void> {
@@ -66,7 +76,8 @@ async function postRead(userId: string, ids: string[] | null): Promise<void> {
     },
     { requireAuth: true }
   );
-  readResultSchema.parse(await unwrap<unknown>(res, "Could not mark your notifications read"));
+  const body = await unwrap<unknown>(res, "Could not mark your notifications read");
+  (await parsers()).readResultSchema.parse(body);
 }
 
 // The same edit the server is about to make, applied to every cached page so

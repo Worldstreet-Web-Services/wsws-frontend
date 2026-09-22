@@ -3420,6 +3420,11 @@
       "partial": "Traído en parte",
       "blocked": "Todavía no ha pasado nada"
     },
+    "square": {
+      "done": "Tu perfil de Square se movió contigo.",
+      "pending": "Tu perfil de Square todavía está en camino. Aparecerá solo.",
+      "failed": "Tu perfil de Square no pudo moverse porque esa cuenta ya tiene uno. Contacta con soporte y los uniremos. No se pierde nada."
+    },
     "summaryBody": "Lo que quede sigue a salvo en tu cuenta antigua. Vuelve cuando quieras desde tu perfil.",
     "moved": "Traído",
     "left": "Esperando",

@@ -3420,6 +3420,11 @@
       "partial": "Partly across",
       "blocked": "Nothing across yet"
     },
+    "square": {
+      "done": "Your Square profile moved with you.",
+      "pending": "Your Square profile is still on its way. It will appear on its own.",
+      "failed": "Your Square profile couldn't move because that account already has one. Contact support and we'll join them up. Nothing is lost."
+    },
     "summaryBody": "Whatever is left stays safe on your old account. Come back any time from your profile.",
     "moved": "Across",
     "left": "Waiting",

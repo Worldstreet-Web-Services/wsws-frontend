@@ -3420,6 +3420,11 @@
       "partial": "Arrivé en partie",
       "blocked": "Rien n'est encore arrivé"
     },
+    "square": {
+      "done": "Ton profil Square a été transféré avec toi.",
+      "pending": "Ton profil Square est encore en route. Il apparaîtra tout seul.",
+      "failed": "Ton profil Square n'a pas pu être transféré, car ce compte en a déjà un. Contacte le support et nous les réunirons. Rien n'est perdu."
+    },
     "summaryBody": "Ce qui reste est en sécurité sur votre ancien compte. Revenez quand vous voulez depuis votre profil.",
     "moved": "Arrivé",
     "left": "En attente",

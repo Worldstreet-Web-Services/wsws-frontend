@@ -3420,6 +3420,11 @@
       "partial": "Veio em parte",
       "blocked": "Ainda não veio nada"
     },
+    "square": {
+      "done": "O teu perfil do Square mudou-se contigo.",
+      "pending": "O teu perfil do Square ainda está a caminho. Vai aparecer sozinho.",
+      "failed": "O teu perfil do Square não pôde mudar-se porque essa conta já tem um. Contacta o suporte e nós juntamo-los. Nada se perde."
+    },
     "summaryBody": "O que sobrar fica seguro na sua conta antiga. Volte quando quiser a partir do seu perfil.",
     "moved": "Veio",
     "left": "À espera",

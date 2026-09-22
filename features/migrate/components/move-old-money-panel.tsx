@@ -147,6 +147,11 @@ export function MoveOldMoneyPanel({
 
   const status = useMigrationStatus();
   const refetchStatus = status.refetch;
+  // What the link did to the person's Square profile, once known. `none` is
+  // an account that never had one, and says nothing; a service that does not
+  // report the ledger says nothing either.
+  const squareOutcome = status.data?.rekey.square;
+  const squareRekey = squareOutcome && squareOutcome !== "none" ? squareOutcome : null;
 
   const ethPriceUsd = ethPriceFromPortfolio(newPortfolio.tokens);
   // Before the old sign-in, a linked account's addresses come from the
@@ -531,6 +536,19 @@ export function MoveOldMoneyPanel({
             tone={failed.length ? "down" : undefined}
           />
         </div>
+        {/* The same link moves the person's Square profile — a wsws user who
+            upgrades here has upgraded there too. The service says whether
+            that landed, and the one answer that must not be swallowed is
+            "failed": a split Square account looks fine from this side. */}
+        {squareRekey ? (
+          <p
+            className={`mt-3 text-[13px] leading-normal ${
+              squareRekey === "failed" ? "text-down" : "text-white/65"
+            }`}
+          >
+            {t(`square.${squareRekey}`)}
+          </p>
+        ) : null}
         {runBlocked ? (
           <p className="mt-3 text-[13px] leading-normal text-white/65">{t("walletBlockedBody")}</p>
         ) : failed.length > 0 ? (

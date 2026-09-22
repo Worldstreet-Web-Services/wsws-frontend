@@ -3420,6 +3420,11 @@
       "partial": "Teilweise herüber",
       "blocked": "Noch nichts herüber"
     },
+    "square": {
+      "done": "Dein Square-Profil ist mit dir umgezogen.",
+      "pending": "Dein Square-Profil ist noch unterwegs. Es erscheint von selbst.",
+      "failed": "Dein Square-Profil konnte nicht umziehen, weil dieses Konto bereits eines hat. Wende dich an den Support, wir führen sie zusammen. Nichts geht verloren."
+    },
     "summaryBody": "Was übrig bleibt, bleibt sicher auf deinem alten Konto. Komm jederzeit über dein Profil zurück.",
     "moved": "Herüber",
     "left": "Wartet",

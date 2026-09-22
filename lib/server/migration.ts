@@ -17,7 +17,7 @@ export function migrationServiceEnabled(): boolean {
 
 // Override for a local service; unset, the shared gateway serves it.
 function base(): string {
-  return process.env.MIGRATION_API_URL ?? wsapiService("migration");
+  return process.env.MIGRATION_API_URL ?? wsapiService("user-management");
 }
 
 // The OLD identity's credentials, sent alongside the Decane bearer on the link

@@ -13,7 +13,7 @@ on-chain venues alone.
 
 ## Location
 
-Gateway service `migration`, so `WSAPI_BASE_URL/v1/migration`. The frontend
+Gateway service `user-management`, so `WSAPI_BASE_URL/v1/user-management` (the migration contract is mounted at that service's root). The frontend
 proxies it at `/api/migration/*` and never calls it from the browser.
 
 Frontend environment:
@@ -60,7 +60,7 @@ Every response is the gateway envelope:
 { "success": false, "error": { "code": "UPPER_SNAKE", "message": "..." } }
 ```
 
-## `POST /v1/migration/link`
+## `POST /v1/user-management/link`
 
 Links the Decane account to the Privy account and re-keys the ledgers.
 Idempotent: a repeated call for the same pair returns the stored link and
@@ -106,7 +106,7 @@ Errors:
 | 409    | `LEGACY_ALREADY_LINKED` | The Privy account is linked to a different Decane account. |
 | 409    | `SAME_WALLET`           | Both tokens resolve to the same EVM wallet.                |
 
-## `GET /v1/migration/status`
+## `GET /v1/user-management/status`
 
 What the service knows about the caller's old wallet. Cheap; the frontend
 polls it at most every five minutes per session and on demand after a run.

@@ -101,7 +101,11 @@ export function StartGameSheet({
       void settleBalance();
       // The pop-out timer follows whatever you last put money into.
       if (gameId !== null) followGame(gameId);
-      track("game_staked", { game: "last_man", amount_usd: sendUsd });
+      track("game_staked", {
+        game: "last_man",
+        amount_usd: sendUsd,
+        game_id: gameId === null ? undefined : String(gameId),
+      });
       toast.success(t("toastGameStarted"));
       // A second or two at most, and only when the index trails the receipt.
       if (gameId !== null) await confirmGame(gameId);

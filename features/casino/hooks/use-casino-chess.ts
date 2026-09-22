@@ -977,10 +977,12 @@ export function useCreateChallenge() {
       track("chess_game_created", {
         clock_min: clockMinutes(input.timeControl),
         stake_usd: stake,
+        amount_usd: stake,
+        game_id: match.id,
         // The catalog's "quick" is this app's auto-pairing mode.
         mode: input.mode === "auto" ? "quick" : "invite",
       });
-      if (stake > 0) track("game_staked", { game: "chess", amount_usd: stake });
+      if (stake > 0) track("game_staked", { game: "chess", amount_usd: stake, game_id: match.id });
       queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
       void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.challenges });
     },
@@ -1020,10 +1022,13 @@ export function useAcceptChallenge() {
       track("chess_challenge_accepted", {
         stake_usd: stake,
         clock_min: clockMinutes(match.timeControl),
+        amount_usd: stake,
+        game_id: match.id,
       });
-      // Both seats are filled, so the game is under way.
-      track("chess_game_started", { stake_usd: stake });
-      if (stake > 0) track("game_staked", { game: "chess", amount_usd: stake });
+      // chess_game_started is reported by the play screen, for both players
+      // (see use-chess-start-report); reporting it here too would count the
+      // accepter twice and the creator never.
+      if (stake > 0) track("game_staked", { game: "chess", amount_usd: stake, game_id: match.id });
       queryClient.setQueryData(CHESS_KEYS.match(match.id), match);
       void queryClient.invalidateQueries({ queryKey: CHESS_KEYS.challenges });
     },

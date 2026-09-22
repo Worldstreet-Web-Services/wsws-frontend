@@ -125,3 +125,104 @@ describe("events with more than one shape", () => {
     expect(validateEvent("deposit_completed", withoutRate)).toHaveLength(1);
   });
 });
+
+describe("trade amounts", () => {
+  const SPOT_SELL = {
+    vertical: "spot",
+    asset: "DOGE",
+    side: "sell",
+    amount_usd: 0.99,
+    token_quantity: 10.14812065,
+    amount_source: "quote",
+  };
+
+  it("accepts a sell that carries its dollar value and its token quantity", () => {
+    expect(validateEvent("trade_completed", SPOT_SELL)).toEqual([]);
+  });
+
+  it("refuses a sell without token_quantity, so amount_usd cannot quietly carry tokens again", () => {
+    // The units bug: sells reported the token quantity as amount_usd, which
+    // put $1.26M of trading volume into Mixpanel that never happened.
+    const violations = validateEvent("trade_completed", without(SPOT_SELL, "token_quantity"));
+    expect(violations.map((v) => v.property)).toContain("token_quantity");
+  });
+
+  it("refuses a sell preview without token_quantity too", () => {
+    const violations = validateEvent("trade_previewed", {
+      vertical: "memecoin",
+      asset: "TOSHI",
+      side: "sell",
+      amount_usd: 5,
+    });
+    expect(violations.map((v) => v.property)).toContain("token_quantity");
+  });
+
+  it("requires every completed trade to say where its dollar figure came from", () => {
+    const violations = validateEvent("trade_completed", without(SPOT_SELL, "amount_source"));
+    expect(violations.map((v) => v.property)).toContain("amount_source");
+  });
+
+  it("does not require token_quantity on a buy", () => {
+    const buy = { ...without(SPOT_SELL, "token_quantity"), side: "buy" };
+    expect(validateEvent("trade_completed", buy)).toEqual([]);
+  });
+});
+
+describe("landing_viewed", () => {
+  it("names which landing page was opened", () => {
+    expect(validateEvent("landing_viewed", { page: "landing" })).toEqual([]);
+    expect(validateEvent("landing_viewed", {}).map((v) => v.property)).toContain("page");
+  });
+});
+
+describe("failure reasons", () => {
+  it("accepts a reason from the agreed vocabulary, with a coded detail", () => {
+    expect(
+      validateEvent("trade_failed", {
+        vertical: "memecoin",
+        asset: "PEPE",
+        reason: "no_route",
+        reason_detail: "NO_SWAP_ROUTE",
+      })
+    ).toEqual([]);
+  });
+
+  it("refuses a reason outside the vocabulary, so one failure has one name", () => {
+    // "order_failed", "trade_failed" and "failed" all meant the same thing.
+    const violations = validateEvent("trade_failed", {
+      vertical: "memecoin",
+      asset: "PEPE",
+      reason: "order_failed",
+    });
+    expect(violations.map((v) => v.property)).toContain("reason");
+  });
+
+  it("holds deposit failures to the same vocabulary", () => {
+    expect(
+      validateEvent("deposit_failed", { method: "crypto", reason: "address_unavailable" })
+    ).toEqual([]);
+    expect(
+      validateEvent("deposit_failed", { method: "crypto", reason: "nope" }).map((v) => v.property)
+    ).toContain("reason");
+  });
+});
+
+describe("trade_submitted", () => {
+  it("carries the order id its completion will share, and a sell's quantity", () => {
+    const sell = {
+      vertical: "spot",
+      asset: "DOGE",
+      side: "sell",
+      amount_usd: 1,
+      token_quantity: 10,
+      order_id: "req-1",
+    };
+    expect(validateEvent("trade_submitted", sell)).toEqual([]);
+    expect(
+      validateEvent("trade_submitted", without(sell, "order_id")).map((v) => v.property)
+    ).toContain("order_id");
+    expect(
+      validateEvent("trade_submitted", without(sell, "token_quantity")).map((v) => v.property)
+    ).toContain("token_quantity");
+  });
+});

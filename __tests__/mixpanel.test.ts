@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pageNameForPath, pageNameForSection } from "@/lib/analytics/page-name";
+import { landingPageForPath, pageNameForPath, pageNameForSection } from "@/lib/analytics/page-name";
 
 // A hand-rolled mock, not vi.fn() defaults, so every assertion below reads
 // straight off calls the module actually made.
@@ -14,6 +14,7 @@ const reset = vi.fn();
 const track = vi.fn();
 const register = vi.fn();
 const hasOptedOut = vi.fn(() => false);
+const getProperty = vi.fn<(name: string) => unknown>(() => undefined);
 
 vi.mock("mixpanel-browser", () => ({
   default: {
@@ -29,6 +30,7 @@ vi.mock("mixpanel-browser", () => ({
     track,
     register,
     has_opted_out_tracking: hasOptedOut,
+    get_property: getProperty,
   },
 }));
 
@@ -52,6 +54,8 @@ beforeEach(() => {
   register.mockClear();
   hasOptedOut.mockClear();
   hasOptedOut.mockReturnValue(false);
+  getProperty.mockReset();
+  getProperty.mockReturnValue(undefined);
 });
 
 afterEach(() => {
@@ -101,6 +105,32 @@ describe("with a configured token", () => {
       "test_token",
       expect.objectContaining({ autocapture: false })
     );
+  });
+
+  it("sends events through our own origin, on neutral paths, not straight to Mixpanel", async () => {
+    // Ad blockers drop requests to api-js.mixpanel.com, and filter lists match
+    // words like "track" in paths on any host. app/api/relay forwards them to
+    // the project's EU ingestion host.
+    const { initAnalytics, analyticsReady } = await loadWithToken("test_token");
+    initAnalytics();
+    await analyticsReady();
+    expect(init).toHaveBeenCalledWith(
+      "test_token",
+      expect.objectContaining({
+        api_host: `${window.location.origin}/api/relay`,
+        api_routes: expect.objectContaining({ track: "e", engage: "p", groups: "g" }),
+      })
+    );
+  });
+
+  it("labels every event with the environment it came from", async () => {
+    // One project serves production, previews and local builds, so reports
+    // that count real people filter on this.
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ENV", "preview");
+    const { initAnalytics, analyticsReady } = await loadWithToken("test_token");
+    initAnalytics();
+    await analyticsReady();
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({ environment: "preview" }));
   });
 
   it("says so when the browser is opted out, rather than going quietly silent", async () => {
@@ -248,6 +278,16 @@ describe("page names", () => {
     expect(pageNameForSection("square")).toBe("market_square");
   });
 
+  it("names the two landing pages and nothing else", () => {
+    // The pages campaign links point at. A visit there is the top of the
+    // funnel, and the event is what carries the link's utm_* tags.
+    expect(landingPageForPath("/")).toBe("landing");
+    expect(landingPageForPath("/welcome")).toBe("welcome");
+    expect(landingPageForPath("/auth")).toBeNull();
+    expect(landingPageForPath("/dashboard")).toBeNull();
+    expect(landingPageForPath("/welcome/extra")).toBeNull();
+  });
+
   it("resolves the square page to its section", () => {
     expect(pageNameForPath("/square")).toBe("market_square");
   });
@@ -308,6 +348,7 @@ describe("profile totals derived from events", () => {
       asset: "ETH",
       side: "buy",
       amount_usd: 25,
+      amount_source: "fill",
     });
 
     expect(peopleIncrement).toHaveBeenCalledWith({ trade_count: 1, total_volume_usd: 25 });
@@ -393,7 +434,13 @@ describe("profile totals derived from events", () => {
     await analyticsReady();
 
     // A free trade still counts as a trade, but zero volume moves nothing.
-    send("trade_completed", { vertical: "spot", asset: "ETH", side: "buy", amount_usd: 0 });
+    send("trade_completed", {
+      vertical: "spot",
+      asset: "ETH",
+      side: "buy",
+      amount_usd: 0,
+      amount_source: "fill",
+    });
 
     expect(peopleIncrement).toHaveBeenCalledWith({ trade_count: 1 });
   });
@@ -490,5 +537,24 @@ describe("catalog enforcement", () => {
     expect(error).toHaveBeenCalledWith(expect.stringContaining("unknown property"));
     expect(track).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe("a previous session's identity", () => {
+  it("is cleared when the device still holds an identified user", async () => {
+    getProperty.mockImplementation((name: string) => (name === "$user_id" ? "0xAbC" : undefined));
+    const { initAnalytics, analyticsReady, resetStaleIdentity } = await loadWithToken("t");
+    initAnalytics();
+    await analyticsReady();
+    resetStaleIdentity();
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves an anonymous device alone, so one visitor's trail is not split", async () => {
+    const { initAnalytics, analyticsReady, resetStaleIdentity } = await loadWithToken("t");
+    initAnalytics();
+    await analyticsReady();
+    resetStaleIdentity();
+    expect(reset).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import type { PageName } from "@/lib/analytics/events";
+import type { LandingPage, PageName } from "@/lib/analytics/events";
 import type { SectionId } from "@/lib/sections";
 
 // The app's own section ids and the names the analytics catalog reports are
@@ -48,4 +48,15 @@ export function pageNameForPath(pathname: string): PageName | null {
     (left, right) => right[0].length - left[0].length
   )[0];
   return match ? match[1] : null;
+}
+
+/**
+ * The landing page a pathname is, or null. Exact matches only: these are the
+ * pages campaign links point at, and `landing_viewed` is the event that carries
+ * the link's utm_* tags into Mixpanel.
+ */
+export function landingPageForPath(pathname: string): LandingPage | null {
+  if (pathname === "/") return "landing";
+  if (pathname === "/welcome") return "welcome";
+  return null;
 }

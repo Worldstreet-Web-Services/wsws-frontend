@@ -645,10 +645,12 @@ export function LastStandingSection({ gameId }: LastStandingSectionProps) {
           pot_usd: lastPotRef.current || potUsd,
           winnings_usd: revealPrizeUsd,
           started_it: winnerIsStarter,
+          amount_usd: revealPrizeUsd,
+          game_id: String(gameId),
         });
       }
     }
-  }, [phase, youWon, potUsd, revealPrizeUsd, winnerIsStarter]);
+  }, [phase, youWon, potUsd, revealPrizeUsd, winnerIsStarter, gameId]);
   useEffect(() => {
     if (wonPendingRef.current && hasPending && !claiming) {
       wonPendingRef.current = false;
@@ -772,8 +774,12 @@ export function LastStandingSection({ gameId }: LastStandingSectionProps) {
       // `game_staked` is the generic "money went into a game" event the
       // catalog uses across all of them, so it rides alongside the
       // last-man-specific one.
-      track("last_man_played", { cost_usd: amountUsd });
-      track("game_staked", { game: "last_man", amount_usd: amountUsd });
+      track("last_man_played", {
+        cost_usd: amountUsd,
+        amount_usd: amountUsd,
+        game_id: String(gameId),
+      });
+      track("game_staked", { game: "last_man", amount_usd: amountUsd, game_id: String(gameId) });
       toast.success(t("toastYoureIn"), { id: toastId });
       playWagerSound();
       // The wager just landed on-chain, but the backend indexes it a moment

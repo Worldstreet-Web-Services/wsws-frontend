@@ -92,6 +92,7 @@ import {
 import { RoundChatFeed } from "@/features/casino/components/chess/round/round-chat";
 import { RoundBoardMenu } from "@/features/casino/components/chess/round/round-board-menu";
 import { shareOrigin } from "@/lib/site-url";
+import { useChessStartReport } from "@/features/casino/hooks/use-chess-start-report";
 
 const LiveVideoPlayer = dynamic(
   () =>
@@ -771,6 +772,9 @@ export function PlaySection({
     extendingTime,
     claimingTimeout,
   } = useChessMatch(matchId, seatName);
+  // The start, for whichever seat this player holds. See the hook for why it
+  // is reported here rather than where a challenge is accepted.
+  useChessStartReport(match, you);
   const [selected, setSelected] = useState<Square | null>(null);
   const [hintGuidance, setHintGuidance] = useState<{
     fen: string;
@@ -946,6 +950,9 @@ export function PlaySection({
     // Same guards the sound uses: reported once, and only for someone who
     // watched the game finish rather than opening a settled one.
     if (you) {
+      const payout = match.computer?.wager
+        ? computerGamePayout(match.computer.wager, outcome)
+        : gamePayout(match.stakeUsdc, outcome, match.wagerFeeBps ?? CHESS_FEE_BPS);
       track("game_result", {
         game: "chess",
         result: outcome,
@@ -957,9 +964,9 @@ export function PlaySection({
               : result.kind === "timeout"
                 ? "timeout"
                 : "checkmate",
-        ...(match?.computer?.wager
-          ? computerGamePayout(match.computer.wager, outcome)
-          : gamePayout(match?.stakeUsdc, outcome, match?.wagerFeeBps ?? CHESS_FEE_BPS)),
+        ...payout,
+        amount_usd: payout.payout_usd,
+        game_id: match.id,
       });
     }
   }, [inProgress, match, queryClient, result, terminal, wallet.address, you]);

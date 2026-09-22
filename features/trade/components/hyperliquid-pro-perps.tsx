@@ -29,6 +29,14 @@ import {
 import { tradingViewSymbolForAsset } from "@/features/trade/lib/hyperliquid-tradingview";
 import { formatUsd, openFee, toBaseUnits } from "@/lib/trade/math";
 import { friendlyError } from "@/lib/errors";
+import { track } from "@/lib/analytics/mixpanel";
+import { failureReason } from "@/lib/analytics/failure-reason";
+import {
+  marketTypeOf,
+  perpClosedProps,
+  perpOpenedProps,
+  type PerpTicket,
+} from "@/features/trade/lib/perp-analytics";
 import { scrubVenue } from "@/features/trade/lib/venue-scrub";
 import type { GatewayApiError } from "@/lib/api/envelope";
 import {
@@ -218,6 +226,21 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     trading.assets.find((a) => a.symbol === "BTC") ??
     trading.assets[0] ??
     null;
+  // The market on screen, reported once per market. Keyed by symbol alone:
+  // the desk re-renders on every price tick, and the old desk re-sent this on
+  // each data refresh, which is how a view count reached 94,707.
+  const viewedMarket = useRef<string | null>(null);
+  const viewedSymbol = asset?.symbol ?? null;
+  const viewedCategory = asset?.category ?? null;
+  useEffect(() => {
+    if (!viewedSymbol || viewedMarket.current === viewedSymbol) return;
+    viewedMarket.current = viewedSymbol;
+    track("perp_market_viewed", {
+      market: viewedSymbol,
+      market_type: marketTypeOf(viewedCategory),
+      venue: "hyperliquid",
+    });
+  }, [viewedSymbol, viewedCategory]);
   const markPrice = asset ? Number(trading.prices[asset.symbol] ?? 0) : 0;
   const currentPosition = asset
     ? (trading.positions.find((p) => p.assetId === asset.id && p.status === "open") ?? null)
@@ -343,7 +366,17 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
   const handleClosePosition = (position: HlPositionView, siblingOrderIdsToCancel: string[]) =>
     withBusy(async () => {
       try {
-        await trading.actions.closePosition(position.id, siblingOrderIdsToCancel);
+        const closeOrder = await trading.actions.closePosition(
+          position.id,
+          siblingOrderIdsToCancel
+        );
+        // Reported only with the close order in hand: it is what the event
+        // is keyed by, and a close must never fail on its report.
+        if (closeOrder) {
+          const market =
+            trading.assets.find((a) => a.id === position.assetId)?.symbol ?? position.assetId;
+          track("perp_trade_closed", perpClosedProps(position, market, closeOrder));
+        }
       } finally {
         trading.refetchAll();
         // The immediate refetch above usually already shows the close (a
@@ -410,6 +443,20 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
     setOrderStatus(null);
     setPendingSide(side);
     void withBusy(async () => {
+      // What the ticket asked for, fixed before the fields are cleared.
+      const ticket: PerpTicket = {
+        market: asset.symbol,
+        side,
+        orderMode,
+        leverage: clampedLeverage,
+        marginMode,
+        collateralUsd: collateralUsdcNum,
+        notionalUsd: notionalUsdc,
+        markPrice,
+        limitPrice,
+        takeProfitPrice: triggersOpen ? takeProfitPrice : "",
+        stopLossPrice: triggersOpen ? stopLossPrice : "",
+      };
       try {
         setPendingStatus(t("preparingTrade"));
         await trading.actions.updateLeverage(asset.symbol, clampedLeverage, marginMode);
@@ -430,6 +477,8 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         void trading.waitForPositionsChange(
           (rows) => JSON.stringify(rows.map((p) => [p.id, p.size]).sort()) !== before
         );
+        const opened = perpOpenedProps(ticket, result.entryOrder);
+        if (opened) track("perp_trade_opened", opened);
 
         const rejectedLegs = [
           result.takeProfitOrder?.status === "rejected" ? t("takeProfit") : null,
@@ -458,6 +507,14 @@ export function HyperliquidProPerps({ initialSymbol = "" }: HyperliquidProPerpsP
         setStopLossPrice("");
       } catch (error) {
         const details = (error as GatewayApiError)?.details;
+        track("perp_order_failed", {
+          market: ticket.market,
+          side: side === "buy" ? "long" : "short",
+          ...(isInsufficientMarginDetails(details)
+            ? { reason: "insufficient_balance" as const }
+            : failureReason(error)),
+          notional_usd: ticket.notionalUsd,
+        });
         if (isInsufficientMarginDetails(details)) {
           setOrderStatus({
             text: t("stillShortAfterTopUp", {

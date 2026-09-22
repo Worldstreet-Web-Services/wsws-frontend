@@ -15,8 +15,12 @@ import type {
   UserProfile,
 } from "@/lib/analytics/events";
 import { validateEvent } from "@/lib/analytics/schema";
+import { ANALYTICS_ENVIRONMENT } from "@/lib/analytics/environment";
+import { RELAY_PATH, RELAY_ROUTES } from "@/lib/analytics/relay";
 
 const TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
+// Ships with the build, so a report can tell which release an event came from.
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
 
 /**
  * The SDK, once it has loaded. It is fetched on demand rather than imported at
@@ -99,6 +103,21 @@ export function analyticsReady(): Promise<void> {
 async function bootMixpanel(): Promise<void> {
   const { default: loaded } = await import("mixpanel-browser");
   loaded.init(TOKEN as string, {
+    // Through our own origin to the EU host, past ad blockers. See ./relay.
+    // The SDK replaces api_routes whole rather than merging it, so the routes
+    // it would otherwise take from its defaults are named too. Recording and
+    // feature flags are off in this app, so those two are never called; the
+    // relay does not forward them.
+    api_host: `${window.location.origin}${RELAY_PATH}`,
+    api_routes: {
+      // No trailing slash: Next redirects one away, which would cost every
+      // send an extra round trip.
+      track: RELAY_ROUTES.track,
+      engage: RELAY_ROUTES.engage,
+      groups: RELAY_ROUTES.groups,
+      record: "record/",
+      flags: "flags/",
+    },
     persistence: "localStorage",
     // Off: the catalog in ./events is a deliberate taxonomy, and autocapture
     // adds click, scroll and pageview rows that report nothing the named events
@@ -112,6 +131,13 @@ async function bootMixpanel(): Promise<void> {
     // practice: a browser sending DNT gets no events at all, and Mixpanel
     // persists that decision, so the browser stays silent on later visits too.
     ignore_dnt: false,
+  });
+  // On every event from the first one, signed in or not. The identity provider
+  // adds what is only known about a signed-in account.
+  loaded.register({
+    environment: ANALYTICS_ENVIRONMENT,
+    platform: "web",
+    ...(APP_VERSION ? { app_version: APP_VERSION } : {}),
   });
   mp = loaded;
   for (const job of pending.splice(0)) {
@@ -163,6 +189,22 @@ export function identifyUser(walletEvm: string, profile?: UserProfile): void {
 export function resetAnalytics(): void {
   if (!ready()) return;
   withMixpanel((m) => m.reset());
+}
+
+/**
+ * Clears an identity this device still holds from an earlier session.
+ *
+ * Call when a visit starts with no session. A session that ended while the tab
+ * was closed (the idle sign-out, an expired token) never passed through a
+ * logout here, so the device kept the last person's identity, and the next
+ * person's anonymous events were attributed to them. An anonymous device is
+ * left alone: resetting it would split one visitor's trail in two.
+ */
+export function resetStaleIdentity(): void {
+  if (!ready()) return;
+  withMixpanel((m) => {
+    if (m.get_property("$user_id")) m.reset();
+  });
 }
 
 /**

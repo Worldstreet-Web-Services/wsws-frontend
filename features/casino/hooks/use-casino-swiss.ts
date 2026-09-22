@@ -214,6 +214,8 @@ export function useSwissTournament(tournamentId: string | null) {
       track("tournament_joined", {
         game: "chess",
         entry_usd: Number(next.entryFeeUsdc),
+        amount_usd: Number(next.entryFeeUsdc),
+        tournament_id: tournamentId as string,
       });
     },
   });

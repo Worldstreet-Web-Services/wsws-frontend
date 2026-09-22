@@ -4,6 +4,7 @@ import { renderHook } from "@testing-library/react";
 import { useDepositAnalytics } from "@/features/activity/hooks/use-deposit-analytics";
 import { closeOnrampWatch, openOnrampWatch } from "@/lib/ramping/onramp-watch";
 import type { ActivityItem } from "@/lib/server/activity";
+import { insertIdFor } from "@/lib/analytics/insert-id";
 
 const track = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/analytics/mixpanel", () => ({ track }));
@@ -60,6 +61,23 @@ describe("reporting a settled deposit", () => {
     expect(window.localStorage.getItem(SEEN_KEY)).toContain("0xabc:log:1");
   });
 
+  it("reports a new account's first deposit, which a silent first run used to swallow", () => {
+    // A new user has no history on any device, so the first time this runs
+    // is exactly when their first deposit is sitting in activity.
+    const at = Date.now() - 60_000;
+    renderHook(() => useDepositAnalytics([item({ timestamp: at })], WALLET));
+    expect(track).toHaveBeenCalledWith("deposit_completed", {
+      method: "crypto",
+      source_network: "base-mainnet",
+      amount_usd: 3.448275,
+      tx_hash: "0xabc",
+      // The deposit's own time and a stable id, so the same deposit noticed
+      // on a second device is one event in Mixpanel, not two.
+      time: Math.floor(at / 1000),
+      $insert_id: insertIdFor("deposit_completed", "0xabc:log:1"),
+    });
+  });
+
   it("names the chain rail when no bank transfer explains the arrival", () => {
     alreadySeeded();
     renderHook(() => useDepositAnalytics([item()], WALLET));
@@ -67,6 +85,9 @@ describe("reporting a settled deposit", () => {
       method: "crypto",
       source_network: "base-mainnet",
       amount_usd: 3.448275,
+      tx_hash: "0xabc",
+      time: 1,
+      $insert_id: insertIdFor("deposit_completed", "0xabc:log:1"),
     });
   });
 
@@ -91,6 +112,9 @@ describe("reporting a settled deposit", () => {
       amount_ngn: 5000,
       fx_rate: 1450,
       provider: "Rubies MFB",
+      tx_hash: "0xabc",
+      time: 1,
+      $insert_id: insertIdFor("deposit_completed", "0xabc:log:1"),
     });
   });
 

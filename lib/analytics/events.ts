@@ -16,6 +16,9 @@
 // crown jewels. Contact details (email, name) are governed profile fields set
 // once on identify, never event properties.
 
+import type { AmountSource } from "@/lib/analytics/trade-amounts";
+import type { FailureReason } from "@/lib/analytics/failure-reason";
+
 export type Vertical = "spot" | "memecoin" | "real_asset";
 export type SignupMethod = "google" | "x" | "email" | "passkey" | "kingschat";
 export type Side = "buy" | "sell";
@@ -25,6 +28,8 @@ export type UserTier = "new" | "activated" | "power";
 
 // The nav sections `page_view` reports. Kept as a union so a new route has to
 // be mapped deliberately rather than leaking a raw pathname into the data.
+export type LandingPage = "landing" | "welcome";
+
 export type PageName =
   | "portfolio"
   | "spot"
@@ -51,7 +56,9 @@ export interface AnalyticsEvents {
   signup_completed: { method: SignupMethod };
   login_completed: { method: string };
   passkey_added: void;
-  passkey_skipped: void;
+  // `supported` is false where the device cannot make a passkey at all, and
+  // the only way on was "Continue": not a choice to skip.
+  passkey_skipped: { supported: boolean };
 
   // KYC. The identity check itself is the only thing recorded: which document
   // type was used, and whether it passed. Never the number behind it.
@@ -73,13 +80,50 @@ export interface AnalyticsEvents {
   // applied at settlement rides on `deposit_completed`, and the gap between the
   // two is the spread the Naira rail charges.
   bank_account_requested: { amount_ngn: number; fx_rate: number; reused: boolean };
-  deposit_failed: { method: "crypto" | "bank"; reason: string };
+  // `network` and `asset` are what a crypto deposit was attempting, so an
+  // address that could not be made can be traced to the pair that failed.
+  deposit_failed: {
+    method: "crypto" | "bank";
+    reason: FailureReason;
+    reason_detail?: string;
+    network?: string;
+    asset?: string;
+  };
 
   // Trading. One event across the verticals, told apart by `vertical`.
   market_viewed: { vertical: Vertical; asset: string };
-  trade_previewed: { vertical: Vertical; asset: string; side: Side; amount_usd: number };
+  // A sell carries `token_quantity`: the validator refuses one without it, so
+  // `amount_usd` can never again be a token count. See ./trade-amounts.
+  trade_previewed: {
+    vertical: Vertical;
+    asset: string;
+    side: Side;
+    amount_usd: number;
+    token_quantity?: number;
+  };
+  // The order was sent and the venue accepted it. `order_id` is the one its
+  // trade_completed or trade_failed will carry, so a retry reads as the same
+  // order rather than a second trade.
+  trade_submitted: {
+    vertical: Vertical;
+    asset: string;
+    side: Side;
+    amount_usd: number;
+    token_quantity?: number;
+    order_id: string;
+  };
   trade_completed: TradeCompleted;
-  trade_failed: { vertical: Vertical; asset: string; reason: string };
+  // One vocabulary for why (see ./failure-reason); `amount_usd` sizes what the
+  // failure cost when it is known.
+  trade_failed: {
+    vertical: Vertical;
+    asset: string;
+    reason: FailureReason;
+    reason_detail?: string;
+    side?: Side;
+    amount_usd?: number;
+    order_id?: string;
+  };
   // The wallet's balance proved the trade, but the trade service recorded it
   // as something else. An ops signal, never shown to the user as a failure.
   trade_recording_mismatch: {
@@ -94,7 +138,7 @@ export interface AnalyticsEvents {
   };
 
   // Perpetuals
-  perp_market_viewed: { market: string; market_type?: MarketType };
+  perp_market_viewed: { market: string; market_type?: MarketType; venue?: PerpVenue };
   perp_trade_opened: PerpTradeOpened;
   perp_trade_closed: {
     market: string;
@@ -110,6 +154,18 @@ export interface AnalyticsEvents {
     pnl_usd: number;
     amount_usd: number;
     notional_usd: number;
+    order_id?: string;
+    venue?: PerpVenue;
+    amount_source?: AmountSource;
+  };
+  // An order the desk could not place. The exchange's own rejection of a
+  // TP/SL leg is not this: the entry stands, and perp_trade_opened says so.
+  perp_order_failed: {
+    market: string;
+    side: "long" | "short";
+    reason: FailureReason;
+    reason_detail?: string;
+    notional_usd?: number;
   };
   perp_tpsl_set: { market: string; has_tp: boolean; has_sl: boolean };
   perp_margin_adjusted: { market: string; action: "add" | "remove"; amount_usd: number };
@@ -162,17 +218,32 @@ export interface AnalyticsEvents {
   };
 
   // Arkade games
+  //
+  // `amount_usd` and `game_id` ride alongside the older names (`stake_usd`,
+  // `entry_usd`, `cost_usd`, `winnings_usd`, `payout_usd`, `match_id`) rather
+  // than replacing them, so reports built on those keep working. `amount_usd`
+  // is the money the event is about: the stake, the entry fee, the payout.
+  // `game_id` joins a stake to its result.
   game_opened: { game: Game };
   game_wallet_funded: { game: Game; amount_usd: number };
   chess_game_created: {
     clock_min: number;
     stake_usd: number;
     mode: "invite" | "quick" | "tournament";
+    amount_usd?: number;
+    game_id?: string;
   };
-  chess_challenge_accepted: { stake_usd: number; clock_min: number };
+  chess_challenge_accepted: {
+    stake_usd: number;
+    clock_min: number;
+    amount_usd?: number;
+    game_id?: string;
+  };
   chess_challenge_declined: void;
-  chess_game_started: { stake_usd: number };
-  // `fee_usd` is the platform's 5% cut of the winnings.
+  // Sent by each player when their game starts, whichever seat they took.
+  chess_game_started: { stake_usd: number; amount_usd?: number; game_id?: string };
+  // `fee_usd` is the platform's 5% cut of the winnings. `amount_usd` is the
+  // payout.
   game_result: {
     game: Game;
     result: "win" | "loss" | "draw";
@@ -182,6 +253,8 @@ export interface AnalyticsEvents {
     stake_usd: number;
     payout_usd: number;
     fee_usd: number;
+    amount_usd?: number;
+    game_id?: string;
   };
   game_watched: { game: Game; match_id: string };
   spectator_bet_placed: {
@@ -190,13 +263,26 @@ export interface AnalyticsEvents {
     side: "white" | "draw" | "black";
     amount_usd: number;
     odds?: number;
+    game_id?: string;
   };
-  game_staked: { game: Game; amount_usd: number };
-  last_man_played: { cost_usd: number };
+  game_staked: { game: Game; amount_usd: number; game_id?: string };
+  last_man_played: { cost_usd: number; amount_usd?: number; game_id?: string };
   // What the round paid the winner, which is their share of the pot, not the
-  // pot; started_it says the starter's share is in it too.
-  last_man_won: { pot_usd: number; winnings_usd: number; started_it: boolean };
-  tournament_joined: { game: Game; entry_usd: number };
+  // pot; started_it says the starter's share is in it too. `amount_usd` is the
+  // winnings.
+  last_man_won: {
+    pot_usd: number;
+    winnings_usd: number;
+    started_it: boolean;
+    amount_usd?: number;
+    game_id?: string;
+  };
+  tournament_joined: {
+    game: Game;
+    entry_usd: number;
+    amount_usd?: number;
+    tournament_id?: string;
+  };
 
   // Cross-border
   send_money_opened: void;
@@ -220,8 +306,21 @@ export interface AnalyticsEvents {
   // Withdraw
   withdraw_opened: void;
   withdraw_completed: WithdrawCompleted;
+  // A withdrawal attempt that did not pay out. There was no event for this, so
+  // failed withdrawals could not be seen at all.
+  withdraw_failed: {
+    method: "wallet" | "bank";
+    reason: FailureReason;
+    reason_detail?: string;
+    amount_usd?: number;
+    order_id?: string;
+  };
 
   // Engagement
+  // A campaign link's landing page. The SDK attaches the URL's utm_* tags to
+  // the first event it sends, so this is the event that carries them; without
+  // it the landing page sent nothing and the campaign was lost.
+  landing_viewed: { page: LandingPage };
   page_view: { page: PageName };
   currency_switched: { currency: string };
   referral_completed: void;
@@ -238,44 +337,60 @@ export interface AnalyticsEvents {
  * base-mainnet USDC transfer that is indistinguishable from a real Base
  * deposit. `source_network` cannot do this job and neither can the amount.
  */
-export type DepositCompleted =
-  | {
-      method: "crypto";
-      // The network the deposit settled on. The chain the user sent from is not
-      // recoverable from the arrival; `deposit_network_selected` carries that.
-      source_network: string;
-      amount_usd: number;
-    }
-  | {
-      method: "bank";
-      // What the user sent, in Naira, and what was credited, in dollars.
-      amount_ngn: number;
-      amount_usd: number;
-      /**
-       * Naira per dollar ACTUALLY APPLIED at settlement, which is not always
-       * the rate quoted on `bank_account_requested`: an onramp whose rate lock
-       * has lapsed converts at the live rate instead. `amount_ngn / fx_rate`
-       * equals `amount_usd` to rounding.
-       */
-      fx_rate: number;
-      /**
-       * The institution the money settled through: the bank holding the
-       * virtual account the user paid into.
-       *
-       * Deliberately not called `bank`. On a withdrawal `bank` is the user's
-       * own bank, and one property name meaning the rail on one event and the
-       * customer on the other misleads whoever queries it next.
-       */
-      provider: string;
-      /**
-       * There is no `bank` here on purpose. A deposit is pushed from whatever
-       * bank app the user chooses and the rail reports only where the money
-       * landed, so their own bank is not observable. Absent beats guessed.
-       */
-      // Only when the provider actually charged one. Omitted when there is
-      // genuinely no fee, rather than reported as a zero.
-      fee_ngn?: number;
-    };
+export type DepositCompleted = SettledRecord &
+  (
+    | {
+        method: "crypto";
+        // The network the deposit settled on. The chain the user sent from is not
+        // recoverable from the arrival; `deposit_network_selected` carries that.
+        source_network: string;
+        amount_usd: number;
+      }
+    | {
+        method: "bank";
+        // What the user sent, in Naira, and what was credited, in dollars.
+        amount_ngn: number;
+        amount_usd: number;
+        /**
+         * Naira per dollar ACTUALLY APPLIED at settlement, which is not always
+         * the rate quoted on `bank_account_requested`: an onramp whose rate lock
+         * has lapsed converts at the live rate instead. `amount_ngn / fx_rate`
+         * equals `amount_usd` to rounding.
+         */
+        fx_rate: number;
+        /**
+         * The institution the money settled through: the bank holding the
+         * virtual account the user paid into.
+         *
+         * Deliberately not called `bank`. On a withdrawal `bank` is the user's
+         * own bank, and one property name meaning the rail on one event and the
+         * customer on the other misleads whoever queries it next.
+         */
+        provider: string;
+        /**
+         * There is no `bank` here on purpose. A deposit is pushed from whatever
+         * bank app the user chooses and the rail reports only where the money
+         * landed, so their own bank is not observable. Absent beats guessed.
+         */
+        // Only when the provider actually charged one. Omitted when there is
+        // genuinely no fee, rather than reported as a zero.
+        fee_ngn?: number;
+      }
+  );
+
+/**
+ * What an event about a settled record carries so it can be counted once.
+ *
+ * The browser notices a deposit on whichever device is open when it lands,
+ * and may notice it again on another. `time` is when it happened, in seconds,
+ * and `$insert_id` is derived from the record (see ./insert-id), so Mixpanel
+ * treats the two reports as one event. Both are Mixpanel's own reserved names.
+ */
+export interface SettledRecord {
+  tx_hash?: string;
+  time?: number;
+  $insert_id?: string;
+}
 
 /**
  * A withdrawal the rail has paid out. Same shape rule as the deposit: one
@@ -285,47 +400,48 @@ export type DepositCompleted =
  * that produced it. Without both, the round-trip cost of the Naira rail (in at
  * one rate, out at another) cannot be worked out from the data at all.
  */
-export type WithdrawCompleted =
-  | {
-      method: "wallet";
-      asset: string;
-      amount_usd: number;
-      network?: string;
-      /**
-       * Where a crypto withdrawal was sent. An on-chain address is public by
-       * construction, the same class of value as the wallet address we already
-       * use as the distinct_id, and it is what makes a withdrawal traceable to
-       * the chain.
-       *
-       * A bank withdrawal's recipient is an account number, which is on the
-       * never-send list, so that rail has no equivalent and sends none.
-       */
-      recipient_address?: string;
-    }
-  | {
-      method: "bank";
-      asset: string;
-      // What left the balance, and the net Naira the user received for it.
-      amount_usd: number;
-      amount_ngn: number;
-      // Naira per dollar actually applied at payout.
-      fx_rate: number;
-      /**
-       * The user's own bank, receiving the money. Always the customer's
-       * institution, never the rail: the rail is `provider` on a deposit.
-       *
-       * Sent as the bank registry's own name rather than the short label the
-       * picker shows, so the same bank cannot arrive as both "OPay" and
-       * "Opay" and split a breakdown into two rows.
-       */
-      bank: string;
-      /**
-       * No `provider` here: a payout reports the account it reached, not the
-       * institution it passed through, so there is nothing honest to send.
-       */
-      // The difference between gross and net, when the rail charges one.
-      fee_ngn?: number;
-    };
+export type WithdrawCompleted = SettledRecord & { order_id?: string } & (
+    | {
+        method: "wallet";
+        asset: string;
+        amount_usd: number;
+        network?: string;
+        /**
+         * Where a crypto withdrawal was sent. An on-chain address is public by
+         * construction, the same class of value as the wallet address we already
+         * use as the distinct_id, and it is what makes a withdrawal traceable to
+         * the chain.
+         *
+         * A bank withdrawal's recipient is an account number, which is on the
+         * never-send list, so that rail has no equivalent and sends none.
+         */
+        recipient_address?: string;
+      }
+    | {
+        method: "bank";
+        asset: string;
+        // What left the balance, and the net Naira the user received for it.
+        amount_usd: number;
+        amount_ngn: number;
+        // Naira per dollar actually applied at payout.
+        fx_rate: number;
+        /**
+         * The user's own bank, receiving the money. Always the customer's
+         * institution, never the rail: the rail is `provider` on a deposit.
+         *
+         * Sent as the bank registry's own name rather than the short label the
+         * picker shows, so the same bank cannot arrive as both "OPay" and
+         * "Opay" and split a breakdown into two rows.
+         */
+        bank: string;
+        /**
+         * No `provider` here: a payout reports the account it reached, not the
+         * institution it passed through, so there is nothing honest to send.
+         */
+        // The difference between gross and net, when the rail charges one.
+        fee_ngn?: number;
+      }
+  );
 
 export type MarketType = "crypto" | "forex" | "commodity" | "equity";
 export type PredictionScope = "global" | "local";
@@ -334,35 +450,61 @@ export type EarnListingType = "bounty" | "project" | "grant";
 // Trading carries the fields its vertical actually has: a spot fill knows its
 // network and whether it came from the simple or pro screen, a memecoin fill
 // knows slippage and the risk label, a real-world asset knows its issuer.
-export type TradeCompleted =
-  | {
-      vertical: "spot";
-      asset: string;
-      side: Side;
-      amount_usd: number;
-      fee_usd?: number;
-      network?: string;
-      mode?: "simple" | "pro";
-    }
-  | {
-      vertical: "memecoin";
-      token: string;
-      side: Side;
-      amount_usd: number;
-      slippage_pct?: number;
-      price_impact_pct?: number;
-      risk_label?: "low" | "medium" | "critical";
-      network: "base" | "solana";
-    }
-  | {
-      vertical: "real_asset";
-      asset: string;
-      side: Side;
-      amount_usd: number;
-      apy?: number;
-      category?: "credit" | "carbon" | "real_estate";
-      issuer?: string;
-    };
+export type TradeCompleted = TradeFacts &
+  (
+    | {
+        vertical: "spot";
+        asset: string;
+        fee_usd?: number;
+        network?: string;
+        mode?: "simple" | "pro";
+      }
+    | {
+        vertical: "memecoin";
+        token: string;
+        slippage_pct?: number;
+        price_impact_pct?: number;
+        risk_label?: "low" | "medium" | "critical";
+        network: "base" | "solana";
+      }
+    | {
+        vertical: "real_asset";
+        asset: string;
+        apy?: number;
+        category?: "credit" | "carbon" | "real_estate";
+        issuer?: string;
+      }
+  );
+
+/**
+ * What every completed trade reports, whatever its vertical.
+ *
+ * `amount_usd` is the trade's value in dollars on both sides, never the token
+ * count; `token_quantity` carries that, and is required on a sell (enforced by
+ * the validator). `amount_source` says whether the dollar figure is what moved
+ * or what the quote expected. See ./trade-amounts.
+ */
+export interface TradeFacts {
+  side: Side;
+  amount_usd: number;
+  amount_source: AmountSource;
+  token_quantity?: number;
+  /**
+   * What the trade service recorded for a swap-engine trade. `delivered` is a
+   * swap the receipt proves paid out while the service recorded something
+   * else: the money moved, so it is a trade.
+   */
+  recorded?: "confirmed" | "delivered";
+  /** The venue's own reference: the swap id or the Dextopus request id. */
+  order_id?: string;
+  tx_hash?: string;
+  token_address?: string;
+  /**
+   * The EVM chain id. Omitted on Solana, which has no id our services agree on
+   * (the swap engine says 101, the bridge 792703809); `network` names it.
+   */
+  chain_id?: number;
+}
 
 export interface PerpTradeOpened {
   market: string;
@@ -389,7 +531,17 @@ export interface PerpTradeOpened {
   stop_loss_price?: number;
   opening_fee_usd?: number;
   execution_fee_eth?: number;
+  /** Collateral times leverage: the position's size in dollars. */
+  notional_usd?: number;
+  margin_mode?: "cross" | "isolated";
+  /** The venue's order id. */
+  order_id?: string;
+  venue?: PerpVenue;
+  amount_source?: AmountSource;
 }
+
+/** Which perps venue an event came from. Hyperliquid replaced the old desk. */
+export type PerpVenue = "hyperliquid";
 
 export type AnalyticsEventName = keyof AnalyticsEvents;
 
@@ -406,12 +558,20 @@ export type ProfileCounter =
 // Attached to every event, so any of them can be sliced by who sent it without
 // each call site having to pass these through.
 export interface SuperProperties {
+  /** production, preview or development. See ./environment. */
+  environment: string;
   kyc_status: KycStatus;
   country?: string;
   has_deposited: boolean;
   user_tier: UserTier;
   platform: "web";
   app_version?: string;
+  /**
+   * The EVM address lowercased, for joining to on-chain data. The distinct_id
+   * stays the checksummed address Privy gives, which every existing profile is
+   * keyed by.
+   */
+  wallet_evm?: string;
 }
 
 // Set once on identify. The EVM address is already the distinct_id, so it is

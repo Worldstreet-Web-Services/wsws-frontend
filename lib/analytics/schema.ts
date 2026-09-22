@@ -18,6 +18,7 @@
 // This is what makes the spec enforceable instead of merely written down.
 
 import type { AnalyticsEventName } from "@/lib/analytics/events";
+import { FAILURE_REASONS } from "@/lib/analytics/failure-reason";
 
 export type PropType = "number" | "string" | "boolean";
 
@@ -56,13 +57,71 @@ function shape(spec: Record<string, PropType>): Shape {
 // An event that carries nothing. Anything sent with it is a violation.
 const NOTHING: EventSchema = [shape({})];
 
+// What an event about a settled record carries to be counted once. See
+// SettledRecord in ./events.
+const SETTLED_RECORD: Record<string, PropType> = {
+  "tx_hash?": "string",
+  "time?": "number",
+  "$insert_id?": "string",
+};
+
+// What a game event carries alongside its older property names. See the
+// Arkade games section of ./events.
+const GAME_MONEY: Record<string, PropType> = {
+  "amount_usd?": "number",
+  "game_id?": "string",
+};
+
+// What every completed trade carries, whatever its vertical. See TradeFacts in
+// ./events.
+const TRADE_FACTS: Record<string, PropType> = {
+  side: "string",
+  amount_usd: "number",
+  amount_source: "string",
+  "token_quantity?": "number",
+  "recorded?": "string",
+  "order_id?": "string",
+  "tx_hash?": "string",
+  "token_address?": "string",
+  "chain_id?": "number",
+};
+
+/**
+ * Properties whose value must come from a fixed list. `reason` on a failure
+ * event is the data team's vocabulary: before it, the same failure arrived as
+ * "order_failed", "trade_failed" or "failed" depending on the desk.
+ */
+const ALLOWED_VALUES: Partial<Record<AnalyticsEventName, Record<string, readonly string[]>>> = {
+  trade_failed: { reason: FAILURE_REASONS },
+  deposit_failed: { reason: FAILURE_REASONS },
+  perp_order_failed: { reason: FAILURE_REASONS },
+  withdraw_failed: { reason: FAILURE_REASONS },
+};
+
+/**
+ * Properties an event must carry when another property has a given value,
+ * which a flat shape cannot say.
+ *
+ * A sell must carry `token_quantity`. Sells once reported the token count as
+ * `amount_usd`; requiring the quantity separately means a desk that has not
+ * worked out the dollar value fails here, in development and CI, instead of
+ * shipping tokens as dollars.
+ */
+const REQUIRED_WHEN: Partial<
+  Record<AnalyticsEventName, { when: [string, string]; requires: string[] }[]>
+> = {
+  trade_completed: [{ when: ["side", "sell"], requires: ["token_quantity"] }],
+  trade_previewed: [{ when: ["side", "sell"], requires: ["token_quantity"] }],
+  trade_submitted: [{ when: ["side", "sell"], requires: ["token_quantity"] }],
+};
+
 export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   // Auth and onboarding
   auth_started: NOTHING,
   signup_completed: [shape({ method: "string" })],
   login_completed: [shape({ method: "string" })],
   passkey_added: NOTHING,
-  passkey_skipped: NOTHING,
+  passkey_skipped: [shape({ supported: "boolean" })],
 
   // KYC
   kyc_started: [shape({ kyc_type: "string" })],
@@ -76,7 +135,12 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   // Two rails, two shapes. The bank leg's Naira properties are required, and
   // `provider` is the rail rather than the user's own bank; see DepositCompleted.
   deposit_completed: [
-    shape({ method: "string", amount_usd: "number", source_network: "string" }),
+    shape({
+      method: "string",
+      amount_usd: "number",
+      source_network: "string",
+      ...SETTLED_RECORD,
+    }),
     shape({
       method: "string",
       amount_usd: "number",
@@ -84,22 +148,46 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       fx_rate: "number",
       provider: "string",
       "fee_ngn?": "number",
+      ...SETTLED_RECORD,
     }),
   ],
   bank_account_requested: [shape({ amount_ngn: "number", fx_rate: "number", reused: "boolean" })],
-  deposit_failed: [shape({ method: "string", reason: "string" })],
+  deposit_failed: [
+    shape({
+      method: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "network?": "string",
+      "asset?": "string",
+    }),
+  ],
 
   // Trading
   market_viewed: [shape({ vertical: "string", asset: "string" })],
   trade_previewed: [
-    shape({ vertical: "string", asset: "string", side: "string", amount_usd: "number" }),
-  ],
-  trade_completed: [
     shape({
       vertical: "string",
       asset: "string",
       side: "string",
       amount_usd: "number",
+      "token_quantity?": "number",
+    }),
+  ],
+  trade_submitted: [
+    shape({
+      vertical: "string",
+      asset: "string",
+      side: "string",
+      amount_usd: "number",
+      "token_quantity?": "number",
+      order_id: "string",
+    }),
+  ],
+  trade_completed: [
+    shape({
+      vertical: "string",
+      asset: "string",
+      ...TRADE_FACTS,
       "fee_usd?": "number",
       "network?": "string",
       "mode?": "string",
@@ -107,8 +195,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
     shape({
       vertical: "string",
       token: "string",
-      side: "string",
-      amount_usd: "number",
+      ...TRADE_FACTS,
       network: "string",
       "slippage_pct?": "number",
       "price_impact_pct?": "number",
@@ -117,14 +204,23 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
     shape({
       vertical: "string",
       asset: "string",
-      side: "string",
-      amount_usd: "number",
+      ...TRADE_FACTS,
       "apy?": "number",
       "category?": "string",
       "issuer?": "string",
     }),
   ],
-  trade_failed: [shape({ vertical: "string", asset: "string", reason: "string" })],
+  trade_failed: [
+    shape({
+      vertical: "string",
+      asset: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "side?": "string",
+      "amount_usd?": "number",
+      "order_id?": "string",
+    }),
+  ],
   trade_recording_mismatch: [
     shape({
       vertical: "string",
@@ -137,7 +233,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   ],
 
   // Perpetuals
-  perp_market_viewed: [shape({ market: "string", "market_type?": "string" })],
+  perp_market_viewed: [shape({ market: "string", "market_type?": "string", "venue?": "string" })],
   perp_trade_opened: [
     shape({
       market: "string",
@@ -155,6 +251,11 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       "stop_loss_price?": "number",
       "opening_fee_usd?": "number",
       "execution_fee_eth?": "number",
+      "notional_usd?": "number",
+      "margin_mode?": "string",
+      "order_id?": "string",
+      "venue?": "string",
+      "amount_source?": "string",
     }),
   ],
   perp_trade_closed: [
@@ -165,6 +266,18 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       pnl_usd: "number",
       amount_usd: "number",
       notional_usd: "number",
+      "order_id?": "string",
+      "venue?": "string",
+      "amount_source?": "string",
+    }),
+  ],
+  perp_order_failed: [
+    shape({
+      market: "string",
+      side: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "notional_usd?": "number",
     }),
   ],
   perp_tpsl_set: [shape({ market: "string", has_tp: "boolean", has_sl: "boolean" })],
@@ -225,10 +338,12 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   // Arkade games
   game_opened: [shape({ game: "string" })],
   game_wallet_funded: [shape({ game: "string", amount_usd: "number" })],
-  chess_game_created: [shape({ clock_min: "number", stake_usd: "number", mode: "string" })],
-  chess_challenge_accepted: [shape({ stake_usd: "number", clock_min: "number" })],
+  chess_game_created: [
+    shape({ clock_min: "number", stake_usd: "number", mode: "string", ...GAME_MONEY }),
+  ],
+  chess_challenge_accepted: [shape({ stake_usd: "number", clock_min: "number", ...GAME_MONEY })],
   chess_challenge_declined: NOTHING,
-  chess_game_started: [shape({ stake_usd: "number" })],
+  chess_game_started: [shape({ stake_usd: "number", ...GAME_MONEY })],
   game_result: [
     shape({
       game: "string",
@@ -237,6 +352,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       stake_usd: "number",
       payout_usd: "number",
       fee_usd: "number",
+      ...GAME_MONEY,
     }),
   ],
   game_watched: [shape({ game: "string", match_id: "string" })],
@@ -247,12 +363,22 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       side: "string",
       amount_usd: "number",
       "odds?": "number",
+      "game_id?": "string",
     }),
   ],
-  game_staked: [shape({ game: "string", amount_usd: "number" })],
-  last_man_played: [shape({ cost_usd: "number" })],
-  last_man_won: [shape({ pot_usd: "number", winnings_usd: "number", started_it: "boolean" })],
-  tournament_joined: [shape({ game: "string", entry_usd: "number" })],
+  game_staked: [shape({ game: "string", amount_usd: "number", "game_id?": "string" })],
+  last_man_played: [shape({ cost_usd: "number", ...GAME_MONEY })],
+  last_man_won: [
+    shape({ pot_usd: "number", winnings_usd: "number", started_it: "boolean", ...GAME_MONEY }),
+  ],
+  tournament_joined: [
+    shape({
+      game: "string",
+      entry_usd: "number",
+      "amount_usd?": "number",
+      "tournament_id?": "string",
+    }),
+  ],
 
   // Cross-border
   send_money_opened: NOTHING,
@@ -277,6 +403,8 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       amount_usd: "number",
       "network?": "string",
       "recipient_address?": "string",
+      "order_id?": "string",
+      ...SETTLED_RECORD,
     }),
     shape({
       method: "string",
@@ -286,10 +414,22 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
       fx_rate: "number",
       bank: "string",
       "fee_ngn?": "number",
+      "order_id?": "string",
+      ...SETTLED_RECORD,
+    }),
+  ],
+  withdraw_failed: [
+    shape({
+      method: "string",
+      reason: "string",
+      "reason_detail?": "string",
+      "amount_usd?": "number",
+      "order_id?": "string",
     }),
   ],
 
   // Engagement
+  landing_viewed: [shape({ page: "string" })],
   page_view: [shape({ page: "string" })],
   currency_switched: [shape({ currency: "string" })],
   referral_completed: NOTHING,
@@ -358,11 +498,34 @@ export function validateEvent(
   const shapes = EVENT_SCHEMA[name];
   if (!shapes) return [{ message: `"${name}" is not in the event catalog` }];
 
+  const conditional: Violation[] = [];
+  for (const [property, allowed] of Object.entries(ALLOWED_VALUES[name] ?? {})) {
+    const value = props[property];
+    if (typeof value === "string" && !allowed.includes(value)) {
+      conditional.push({
+        property,
+        message: `"${property}" must be one of ${allowed.join(", ")}, got "${value}"`,
+      });
+    }
+  }
+  for (const { when, requires } of REQUIRED_WHEN[name] ?? []) {
+    const [property, value] = when;
+    if (props[property] !== value) continue;
+    for (const key of requires) {
+      if (!(key in props)) {
+        conditional.push({
+          property: key,
+          message: `"${key}" is required when ${property} is "${value}"`,
+        });
+      }
+    }
+  }
+
   let closest: Violation[] | null = null;
   for (const shp of shapes) {
     const found = checkShape(shp, props);
-    if (found.length === 0) return [];
+    if (found.length === 0) return conditional;
     if (closest === null || found.length < closest.length) closest = found;
   }
-  return closest ?? [];
+  return [...(closest ?? []), ...conditional];
 }

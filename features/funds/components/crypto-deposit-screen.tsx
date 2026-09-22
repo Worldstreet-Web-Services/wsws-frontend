@@ -395,11 +395,19 @@ function DepositAddressView({
   // phone and fits inside it, so nobody has to scroll to reach the address.
   useModalScreen({ back: onBack, fullScreen: true, fits: true });
 
+  // The pair that failed, so a failing chain or token shows up as one.
+  const failedNetwork = chain.name;
+  const failedAsset = token.symbol;
   useEffect(() => {
     if (staticAddr.isError) {
-      track("deposit_failed", { method: "crypto", reason: "address_unavailable" });
+      track("deposit_failed", {
+        method: "crypto",
+        reason: "address_unavailable",
+        network: failedNetwork,
+        asset: failedAsset,
+      });
     }
-  }, [staticAddr.isError]);
+  }, [staticAddr.isError, failedNetwork, failedAsset]);
 
   // Loading
   if (!staticAddr.data && !staticAddr.isError) {

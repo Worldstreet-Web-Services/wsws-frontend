@@ -10,7 +10,7 @@ import {
   watchtowerEnabled,
   watchtowerOptions,
 } from "@/lib/analytics/watchtower";
-import { pageNameForPath } from "@/lib/analytics/page-name";
+import { landingPageForPath, pageNameForPath } from "@/lib/analytics/page-name";
 
 initAnalytics();
 void initClarity();
@@ -34,6 +34,11 @@ if (watchtowerEnabled) Sentry.init({ ...watchtowerOptions(), tunnel: WATCHTOWER_
 if (typeof window !== "undefined") {
   const page = pageNameForPath(window.location.pathname);
   if (page) track("page_view", { page });
+  // An arrival on a landing page. Only the first load: that is the one a
+  // campaign link produces, and its utm_* tags ride on this event. Moving back
+  // to the landing page inside the app is not a new arrival.
+  const landing = landingPageForPath(window.location.pathname);
+  if (landing) track("landing_viewed", { page: landing });
 }
 
 // Mixpanel doesn't see client-side route changes on its own; this is Next's

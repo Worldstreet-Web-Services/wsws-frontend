@@ -894,7 +894,9 @@ export function MoveOldMoneyPanel({
             {t("moveButton")}
           </button>
         )}
-        {locked ? null : (
+        {/* On the card the frame's own close is the way out; a Close pill
+            under the gate's footer was a second one, beside Go to Market. */}
+        {locked || compact ? null : (
           <button onClick={onClose} className={SECONDARY}>
             {t("close")}
           </button>

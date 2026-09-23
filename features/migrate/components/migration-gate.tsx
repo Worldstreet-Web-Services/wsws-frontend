@@ -88,12 +88,16 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   // "Continue" offered between a transfer being signed and it landing is how
   // somebody walks away mid-sweep.
   const running = progress?.running === true;
+  // Done means done: the essentials are across AND nothing more is about to
+  // run. The core count alone read as done before the sweep had started, and
+  // again between a miss and its retry.
   const canFinish =
     progress !== null &&
     !running &&
     progress.linked &&
     progress.discovered &&
-    progress.coreRemaining === 0;
+    progress.coreRemaining === 0 &&
+    progress.settled;
   // Linking failed in a way no retry can fix — the old wallet belongs to a
   // different account. There is nothing the user can do here, so the gate stops
   // being a wall and offers a way out instead of looping on "link again".

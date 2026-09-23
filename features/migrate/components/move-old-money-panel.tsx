@@ -106,6 +106,13 @@ export interface MigrationProgress {
    * listing what did not land.
    */
   retrying: boolean;
+  /**
+   * Nothing more is going to run: the sweep has finished, or discovery found
+   * nothing for it to do. Right after discovery the core count can already be
+   * zero while non-essential items are still about to move — and "done" shown
+   * then flips back to a bar a second later. Done waits for this.
+   */
+  settled: boolean;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -394,6 +401,13 @@ export function MoveOldMoneyPanel({
       (h) => isCoreAsset(h) && !runs.some((r) => r.results.get(h.id)?.ok)
     ).length;
   }, [finishedNow, autoResult]);
+  // Nothing left to run: finished, or discovered with nothing to do.
+  const settled =
+    finishedNow !== null ||
+    (discovered &&
+      !holdingsQuery.isFetching &&
+      groups.automatic.length === 0 &&
+      groups.optIn.length === 0);
   // Whether the card is about to go round again — see the effect by `retry`.
   const retrying =
     compact &&
@@ -424,6 +438,7 @@ export function MoveOldMoneyPanel({
           ? { done: runner.progress.done, total: runner.progress.total }
           : null,
       retrying,
+      settled: settled && !retrying,
     });
   }, [
     onProgress,
@@ -439,6 +454,7 @@ export function MoveOldMoneyPanel({
     runner.progress?.done,
     runner.progress?.total,
     retrying,
+    settled,
   ]);
 
   const toggle = (id: string) => {

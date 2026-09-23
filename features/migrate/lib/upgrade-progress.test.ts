@@ -14,6 +14,7 @@ const base: MigrationProgress = {
   running: false,
   step: null,
   retrying: false,
+  settled: true,
 };
 
 describe("one bar for the whole upgrade", () => {

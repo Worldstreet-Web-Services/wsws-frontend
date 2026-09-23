@@ -47,7 +47,8 @@ export function MoveOldMoneySheet({
     !progress.running &&
     progress.linked &&
     progress.discovered &&
-    progress.coreRemaining === 0;
+    progress.coreRemaining === 0 &&
+    progress.settled;
   return (
     <MoveOldMoneyFrame onClose={onClose}>
       <LegacyPrivyProvider>

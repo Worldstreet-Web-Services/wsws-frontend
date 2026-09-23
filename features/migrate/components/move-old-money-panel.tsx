@@ -377,8 +377,11 @@ export function MoveOldMoneyPanel({
   const groups = useMemo(() => reviewGroups(remaining, checked, now), [remaining, checked, now]);
   // Which step is on screen — the same choice the render below makes.
   const finishedNow = result ?? (autoResult && groups.optIn.length === 0 ? autoResult : null);
-  // What a finished run left unsettled, at hook level so the card can go
-  // round again without a button.
+  // What a finished run left unsettled among the CORE assets, at hook level
+  // so the card can go round again without a button. Core only: the gate is
+  // done once the essentials are across, and a memecoin that reverted must
+  // not pull a finished upgrade back into "checking again" — it waits for
+  // "Finish upgrading" like everything else that is not essential.
   const unsettled = useMemo(() => {
     if (!finishedNow) return 0;
     const runs = [autoResult, finishedNow].filter(
@@ -387,7 +390,9 @@ export function MoveOldMoneyPanel({
     const attempted = new Map(
       runs.flatMap((r) => r.plan.phases.flatMap((ph) => ph.holdings)).map((h) => [h.id, h])
     );
-    return [...attempted.values()].filter((h) => !runs.some((r) => r.results.get(h.id)?.ok)).length;
+    return [...attempted.values()].filter(
+      (h) => isCoreAsset(h) && !runs.some((r) => r.results.get(h.id)?.ok)
+    ).length;
   }, [finishedNow, autoResult]);
   // Whether the card is about to go round again — see the effect by `retry`.
   const retrying =

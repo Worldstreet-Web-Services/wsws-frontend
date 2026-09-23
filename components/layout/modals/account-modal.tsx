@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
+import { UpgradeSkeleton } from "@/features/migrate/components/upgrade-skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
@@ -48,6 +49,11 @@ const MigrationSheetHost = dynamic(() => import("@/components/layout/migration-s
 });
 
 export function AccountModal({ onClose }: AccountModalProps) {
+  // The sheet is mounted CLOSED with the modal, so its chunk — the old
+  // provider's SDK — downloads before the row is tapped rather than after,
+  // and the card's skeleton is drawn from the tap until the chunk has arrived.
+  const [sheetReady, setSheetReady] = useState(false);
+  const onSheetLoaded = useCallback(() => setSheetReady(true), []);
   const t = useTranslations("account");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -93,9 +99,13 @@ export function AccountModal({ onClose }: AccountModalProps) {
           {t("inviteFriends")}
         </button>
         <MoveOldMoneyButton onClick={() => setMoveOpen(true)} className={item} />
-        {moveOpen ? (
-          <MigrationSheetHost open onClose={() => setMoveOpen(false)} entry="account_modal" />
-        ) : null}
+        <MigrationSheetHost
+          open={moveOpen}
+          onLoaded={onSheetLoaded}
+          onClose={() => setMoveOpen(false)}
+          entry="account_modal"
+        />
+        {moveOpen && !sheetReady ? <UpgradeSkeleton /> : null}
         {/* Only for a device that fell back to a PIN and could hold a passkey
             now. Hidden otherwise, so it is an answer to a problem the user has
             rather than a setting to wonder about. */}

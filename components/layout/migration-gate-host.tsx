@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { MigrationGate } from "@/features/migrate/components/migration-gate";
-import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-sheet";
 import { useOfferMigrationState } from "@/features/migrate/hooks/use-offer-migration";
+import { UpgradeSkeleton } from "@/features/migrate/components/upgrade-skeleton";
 import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
 
 /**
@@ -34,30 +34,6 @@ export function MigrationGateHost() {
 
   if (deciding && !ceilingHit) return <UpgradeSkeleton />;
   return <MigrationGate adapters={MIGRATION_ADAPTERS} />;
-}
-
-const noop = () => {};
-
-/** The card's shape, before its words: art strip, mark, two lines, a pill. */
-function UpgradeSkeleton() {
-  return (
-    <MoveOldMoneyFrame dismissible={false} onClose={noop}>
-      <div aria-busy="true" aria-label="Checking your account" className="animate-pulse">
-        <div className="aspect-[598/149] w-full bg-[#232323]" />
-        <div className="flex flex-col items-center px-[26px] pt-6 pb-[26px]">
-          <div className="h-[18px] w-[140px] rounded bg-white/10" />
-          <div className="mt-5 h-[30px] w-[78%] rounded bg-white/12" />
-          <div className="mt-2 h-[30px] w-[52%] rounded bg-white/12" />
-          <div className="mt-4 h-[15px] w-[86%] rounded bg-white/8" />
-          <div className="mt-2 h-[15px] w-[70%] rounded bg-white/8" />
-          <div className="mt-6 h-[42px] w-[62%] rounded-full bg-white/6" />
-          <div className="mt-8 h-px w-full bg-white/10" />
-          <div className="mt-6 h-[52px] w-full rounded-full bg-white/10" />
-          <div className="mt-6 h-[14px] w-[44%] rounded bg-white/8" />
-        </div>
-      </div>
-    </MoveOldMoneyFrame>
-  );
 }
 
 export default MigrationGateHost;

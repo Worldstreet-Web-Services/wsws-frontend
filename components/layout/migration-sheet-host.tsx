@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { MigrationEntry } from "@/features/migrate/components/move-old-money-panel";
 import { MoveOldMoneySheet } from "@/features/migrate/components/move-old-money-sheet";
 import { MIGRATION_ADAPTERS } from "@/components/layout/migration-adapters";
@@ -23,11 +24,21 @@ export function MigrationSheetHost({
   open,
   onClose,
   entry,
+  onLoaded,
 }: {
   open: boolean;
   onClose: () => void;
   entry: MigrationEntry;
+  /**
+   * Fired once this chunk has arrived and mounted. The door that opened the
+   * sheet draws the card's skeleton until then, so a tap on "Finish
+   * upgrading" shows something while the old provider's SDK downloads.
+   */
+  onLoaded?: () => void;
 }) {
+  useEffect(() => {
+    onLoaded?.();
+  }, [onLoaded]);
   return (
     <MoveOldMoneySheet open={open} onClose={onClose} adapters={MIGRATION_ADAPTERS} entry={entry} />
   );

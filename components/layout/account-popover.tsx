@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -18,6 +18,7 @@ import { MoveOldMoneyButton } from "@/features/migrate/components/move-old-money
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { openSupportChat } from "@/lib/support-chat/open";
 import { toast } from "@/lib/toast";
+import { UpgradeSkeleton } from "@/features/migrate/components/upgrade-skeleton";
 
 const MigrationSheetHost = dynamic(() => import("@/components/layout/migration-sheet-host"), {
   ssr: false,
@@ -101,6 +102,15 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
   const hasPasskey = canUsePasskey;
   const squareAvatar = useSquareAvatar();
   const squareSeed = useSquareSeed();
+
+  // Fetch the sheet's chunk the moment the menu opens, not when the row is
+  // tapped: it is the whole old-provider SDK, and the wait between the tap
+  // and the card was that download.
+  // The sheet is mounted CLOSED as soon as this opens, so its chunk — the
+  // old provider's SDK — downloads before the row is tapped rather than after,
+  // and the card's skeleton is drawn from the tap until the chunk has arrived.
+  const [sheetReady, setSheetReady] = useState(false);
+  const onSheetLoaded = useCallback(() => setSheetReady(true), []);
 
   useEffect(() => {
     if (!open) return;
@@ -246,9 +256,10 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           popover body would be unmounted by that same click, half way through
           handling it. Which is why Sign in and Move both did nothing on
           desktop while the phone, whose door is a modal, was fine. */}
-      {moveOpen ? (
+      {open || moveOpen ? (
         <MigrationSheetHost
-          open
+          open={moveOpen}
+          onLoaded={onSheetLoaded}
           onClose={() => {
             setMoveOpen(false);
             onClose();
@@ -256,6 +267,7 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           entry="account_modal"
         />
       ) : null}
+      {moveOpen && !sheetReady ? <UpgradeSkeleton /> : null}
     </>
   );
 }

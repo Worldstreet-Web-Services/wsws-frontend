@@ -786,9 +786,11 @@ export function MoveOldMoneyPanel({
               {t("retry")}
             </button>
           ) : null}
-          {locked ? null : (
-            <button onClick={onClose} className={compact ? UPGRADE_PRIMARY : SECONDARY}>
-              {compact ? t("goToMarket") : t("done")}
+          {/* On the card the gate's own footer draws Go to Market — the one
+              button that finishes — so the panel draws no second one. */}
+          {locked || compact ? null : (
+            <button onClick={onClose} className={SECONDARY}>
+              {t("done")}
             </button>
           )}
         </div>

@@ -609,7 +609,16 @@ export function MoveOldMoneyPanel({
             <LegacySignIn />
           ) : (
             <button
-              onClick={() => setStarted(true)}
+              onClick={() => {
+                // Which condition is holding the card, when a tap seems to do
+                // nothing: the button is live only once the old provider is
+                // ready and the inherited session has been discarded.
+                console.log(
+                  `[migrate] start upgrade: privy ready ${privy.ready}, fresh ${fresh}` +
+                    `, inherited session ${privy.authenticated ? "present" : "none"}`
+                );
+                setStarted(true);
+              }}
               disabled={!privy.ready || !fresh}
               className={UPGRADE_PRIMARY}
             >

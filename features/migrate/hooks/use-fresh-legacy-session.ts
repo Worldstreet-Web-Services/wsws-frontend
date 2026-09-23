@@ -87,7 +87,13 @@ export function useFreshLegacySession(): boolean {
         }
       );
       const cleared = await discard;
-      if (live) setDecided({ owner, fresh: cleared });
+      // Same verdict, same object: a fresh object for an unchanged answer
+      // would re-render every consumer on every pass.
+      if (live) {
+        setDecided((prev) =>
+          prev.owner === owner && prev.fresh === cleared ? prev : { owner, fresh: cleared }
+        );
+      }
     })();
     return () => {
       live = false;

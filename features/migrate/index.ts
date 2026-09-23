@@ -1,6 +1,5 @@
 export { UpdateBalanceButton } from "./components/update-balance-button";
 export { MoveOldMoneyEntry, MoveOldMoneyButton } from "./components/move-old-money-entry";
-export { MoveOldMoneySheet } from "./components/move-old-money-sheet";
 export { MigrationOAuthReturn } from "./components/migration-oauth-return";
 export { useOfferMigration, useMaskBalance } from "./hooks/use-offer-migration";
 export { walletAdapter } from "./lib/venues/wallet";

@@ -1,5 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  resetMigrationRequest,
+  useMigrationRequest,
+} from "@/features/migrate/lib/migration-card-store";
 
 const oauth = vi.hoisted(() => ({ returning: false }));
 
@@ -8,25 +12,39 @@ vi.mock("@/features/migrate/lib/oauth-return", () => ({
     return oauth.returning;
   },
 }));
-vi.mock("@/features/migrate/components/move-old-money-sheet", () => ({
-  MoveOldMoneySheet: ({ open }: { open: boolean }) => (open ? <div data-testid="sheet" /> : null),
-}));
 
 const { MigrationOAuthReturn } =
   await import("@/features/migrate/components/migration-oauth-return");
 
+function Request() {
+  const request = useMigrationRequest();
+  return <div data-testid="request">{request ? request.entry : "none"}</div>;
+}
+
+afterEach(() => resetMigrationRequest());
+
 describe("MigrationOAuthReturn", () => {
-  it("renders nothing on an ordinary page load", () => {
+  it("opens nothing on an ordinary page load", () => {
     oauth.returning = false;
-    render(<MigrationOAuthReturn adapters={[]} />);
-    expect(screen.queryByTestId("sheet")).not.toBeInTheDocument();
+    const { getByTestId } = render(
+      <>
+        <MigrationOAuthReturn />
+        <Request />
+      </>
+    );
+    expect(getByTestId("request")).toHaveTextContent("none");
   });
 
-  it("reopens the sheet when Privy hands the OAuth result back in the URL", () => {
+  it("opens the one card when Privy hands the OAuth result back in the URL", () => {
     // Without this the code is never exchanged: the sign-in silently does not
     // happen, the credentials stay in the URL, and the money never moves.
     oauth.returning = true;
-    render(<MigrationOAuthReturn adapters={[]} />);
-    expect(screen.getByTestId("sheet")).toBeInTheDocument();
+    const { getByTestId } = render(
+      <>
+        <MigrationOAuthReturn />
+        <Request />
+      </>
+    );
+    expect(getByTestId("request")).toHaveTextContent("account_modal");
   });
 });

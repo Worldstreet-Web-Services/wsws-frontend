@@ -1,41 +1,19 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import type { VenueAdapter } from "@/lib/migration/types";
+import { useEffect } from "react";
 import { returningFromPrivyOAuth } from "@/features/migrate/lib/oauth-return";
-import { MoveOldMoneySheet } from "@/features/migrate/components/move-old-money-sheet";
+import { openMigration } from "@/features/migrate/lib/migration-card-store";
 
-// Never changes for the life of the page: the answer was read at import, before
-// Privy could strip the parameters it describes.
-const subscribe = () => () => {};
-
-// Google and Twitter sign-in for the old account returns the whole page, which
-// throws away the sheet the user started in. Reopening it on the way back is
-// what makes that sign-in mean anything: the point of it is to move the money,
-// so the user lands back in the flow — Privy exchanges the code, the panel
-// discovers the old holdings, and the plain balances sweep on their own, as if
-// the redirect had never happened. Mounting the provider again is also the only
-// thing that clears Privy's credentials out of the URL.
-//
-// Renders nothing on any ordinary page load.
-export function MigrationOAuthReturn({ adapters }: { adapters: readonly VenueAdapter[] }) {
-  // The sheet portals to document.body, so the server must render none of it.
-  // Read through useSyncExternalStore rather than as initial state, so the
-  // server sees false, the client sees the truth, and hydration agrees.
-  const returning = useSyncExternalStore(
-    subscribe,
-    () => returningFromPrivyOAuth,
-    () => false
-  );
-  const [dismissed, setDismissed] = useState(false);
-
-  if (!returning || dismissed) return null;
-  return (
-    <MoveOldMoneySheet
-      open
-      onClose={() => setDismissed(true)}
-      adapters={adapters}
-      entry="account_modal"
-    />
-  );
+/**
+ * Google and X sign-in for the OLD account returns the whole page, with the
+ * result in the query string, and only the card's provider can exchange it.
+ * So the way back opens the one card, which completes the sign-in and puts
+ * the person back where they were — about to move their money. Renders
+ * nothing, on any page load.
+ */
+export function MigrationOAuthReturn() {
+  useEffect(() => {
+    if (returningFromPrivyOAuth) openMigration("account_modal");
+  }, []);
+  return null;
 }

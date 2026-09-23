@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MigrationProgress } from "@/features/migrate/components/move-old-money-panel";
 
@@ -29,7 +29,7 @@ vi.mock("@/components/providers/legacy-privy-provider", () => ({
 vi.mock("@/features/migrate/components/upgrade-header", () => ({
   UpgradeHeader: () => <div data-testid="header" />,
 }));
-vi.mock("@/features/migrate/components/move-old-money-sheet", () => ({
+vi.mock("@/features/migrate/components/move-old-money-frame", () => ({
   MoveOldMoneyFrame: ({
     children,
     dismissible,
@@ -123,6 +123,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
 }));
 
 import { MigrationGate } from "@/features/migrate/components/migration-gate";
+import { openMigration, resetMigrationRequest } from "@/features/migrate/lib/migration-card-store";
 
 const KEY = "ws.migrationGateDone:0xabc0000000000000000000000000000000000001";
 const SNOOZE_KEY = "ws.migrationGateSnooze:0xabc0000000000000000000000000000000000001";
@@ -133,6 +134,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   window.localStorage.clear();
+  resetMigrationRequest();
 });
 
 describe("MigrationGate", () => {
@@ -318,5 +320,44 @@ describe("MigrationGate — blocked wallet window", () => {
     for (const label of ["goToMarket", "gateBlockedExit", "gateContinueLater", "gateNoAccess"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
+  });
+});
+
+// There is one card. The balance card, the account menu and the way back from
+// the old sign-in do not mount their own copy of the panel — they ask this
+// one to open. Opened that way, and not held by the offer, it can be put away.
+describe("MigrationGate — opened by a door", () => {
+  it("opens unlocked and dismissable when a door asks, with no offer", () => {
+    state.offer = false;
+    render(<MigrationGate adapters={[]} />);
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+
+    act(() => openMigration("account_modal"));
+    expect(screen.getByTestId("frame")).toHaveAttribute("data-dismissible", "true");
+    expect(screen.getByTestId("panel")).toHaveAttribute("data-locked", "false");
+
+    // The panel's own close puts the card away, and marks nothing done.
+    fireEvent.click(screen.getByText("panel-exit"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("stays locked while the offer holds it, whatever door also asked", () => {
+    render(<MigrationGate adapters={[]} />);
+    act(() => openMigration("balance_card"));
+    expect(screen.getByTestId("frame")).toHaveAttribute("data-dismissible", "false");
+    expect(screen.getByTestId("panel")).toHaveAttribute("data-locked", "true");
+    fireEvent.click(screen.getByText("panel-exit"));
+    expect(screen.getByTestId("frame")).toBeInTheDocument();
+  });
+
+  it("reopens for a door after the gate was finished", () => {
+    render(<MigrationGate adapters={[]} />);
+    fireEvent.click(screen.getByText("core-done-tail-left"));
+    fireEvent.click(screen.getByText("goToMarket"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+
+    act(() => openMigration("account_modal"));
+    expect(screen.getByTestId("frame")).toHaveAttribute("data-dismissible", "true");
   });
 });

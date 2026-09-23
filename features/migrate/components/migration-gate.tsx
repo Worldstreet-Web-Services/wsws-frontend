@@ -7,7 +7,8 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 import { track } from "@/lib/analytics/mixpanel";
 import type { VenueAdapter } from "@/lib/migration/types";
 import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
-import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-sheet";
+import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-frame";
+import { closeMigration, useMigrationRequest } from "@/features/migrate/lib/migration-card-store";
 import { UpgradeHeader } from "@/features/migrate/components/upgrade-header";
 import { upgradeView } from "@/features/migrate/lib/upgrade-progress";
 import { SUPPORT_EMAIL } from "@/lib/brand";
@@ -82,6 +83,13 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   // documented pattern for a latch; it re-renders before commit.)
   const [opened, setOpened] = useState(false);
   if (offer && !opened) setOpened(true);
+  // A door asked for the card — the balance card, the account menu, the way
+  // back from the old provider's sign-in. Same card, same panel; only the
+  // lock differs: held by the offer it cannot be put away, opened by a door
+  // it can.
+  const request = useMigrationRequest();
+  const held = opened && !doneHere && !snoozedHere;
+  const locked = held;
 
   // A step is being signed or mined right now. Every exit below is withheld
   // while it is: the header promises the app waits until it is done, and a
@@ -119,6 +127,7 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const finish = useCallback(() => {
     if (!canFinish) return;
     writeGateDone(key);
+    closeMigration();
   }, [canFinish, key]);
 
   // Exit a gate that can never be completed here — the old account belongs
@@ -142,24 +151,25 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
 
   const ignore = useCallback(() => {}, []);
 
-  if (!opened || doneHere || snoozedHere) return null;
+  if (!held && request === null) return null;
   const coreLeft = progress?.linked === true && !canFinish && !stuck && !walletBlocked;
   const atSignIn =
     !running && stage === "signIn" && !blocked && !stuck && !walletBlocked && !canFinish;
   const view = upgradeView(progress, canFinish);
   return (
-    <MoveOldMoneyFrame dismissible={false} onClose={ignore}>
+    <MoveOldMoneyFrame dismissible={!locked} onClose={locked ? ignore : closeMigration}>
       <LegacyPrivyProvider>
-        <UpgradeHeader view={view} />
+        <UpgradeHeader view={view} variant={locked ? "gate" : "finish"} />
         <div className="px-[26px] pt-5 pb-[26px]">
           <MoveOldMoneyPanel
             adapters={adapters}
-            entry="gate"
-            locked
+            entry={locked ? "gate" : (request?.entry ?? "gate")}
+            locked={locked}
             onProgress={setProgress}
             // The panel's own close buttons are hidden while locked, and no
             // other path may finish the gate: only Go to Market below does.
-            onClose={ignore}
+            // Opened by a door, the panel's close simply puts the card away.
+            onClose={locked ? ignore : closeMigration}
             compact
           />
           {blocked ? (

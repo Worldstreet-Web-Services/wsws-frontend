@@ -1,21 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { WalletIcon } from "@/components/ui/icons";
-import type { VenueAdapter } from "@/lib/migration/types";
-import { MoveOldMoneySheet } from "@/features/migrate/components/move-old-money-sheet";
+import { openMigration } from "@/features/migrate/lib/migration-card-store";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 import { useLegacyAccount } from "@/features/migrate/hooks/use-legacy-account";
 import { useLocalPrivyHistory } from "@/features/migrate/lib/visibility";
 
-// The row on its own, with the sheet left to the caller. Needed wherever the
-// door lives inside something that unmounts: the sheet portals to document.body
-// and so falls outside a popover's "was that click inside me?" test, meaning the
-// first click in the sheet dismisses the popover and takes the sheet down with
-// it, mid-click. Hosting the sheet as a sibling of the popover's body keeps it
-// alive. See AccountPopover.
+// The row on its own, with what the tap does left to the caller.
 export function MoveOldMoneyButton({
   onClick,
   className,
@@ -81,25 +74,10 @@ export function MoveOldMoneyButton({
 // The always-available door into the migration, for the Account modal. It
 // never retires: challenge windows, keeper fills and late bank deposits can
 // leave money in the old wallet long after the balance-card button is gone.
-// Self-contained, so only for callers whose own tree stays mounted while the
-// sheet is open.
-export function MoveOldMoneyEntry({
-  adapters,
-  className,
-}: {
-  adapters: readonly VenueAdapter[];
-  className: string;
-}) {
-  const [open, setOpen] = useState(false);
+// The row plus the door: it opens the one card, which lives on the session,
+// so the caller's own tree may come down behind it.
+export function MoveOldMoneyEntry({ className }: { className: string }) {
   return (
-    <>
-      <MoveOldMoneyButton onClick={() => setOpen(true)} className={className} />
-      <MoveOldMoneySheet
-        open={open}
-        onClose={() => setOpen(false)}
-        adapters={adapters}
-        entry="account_modal"
-      />
-    </>
+    <MoveOldMoneyButton onClick={() => openMigration("account_modal")} className={className} />
   );
 }

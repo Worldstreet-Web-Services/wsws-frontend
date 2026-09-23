@@ -1,6 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AccountPopover } from "./account-popover";
+import {
+  resetMigrationRequest,
+  useMigrationRequest,
+} from "@/features/migrate/lib/migration-card-store";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -36,13 +40,6 @@ vi.mock("@/features/migrate/components/move-old-money-entry", () => ({
   MoveOldMoneyButton: ({ onClick }: { onClick: () => void }) => (
     <button onClick={onClick}>open-migration</button>
   ),
-}));
-// The sheet is behind next/dynamic; the host is what the popover renders.
-vi.mock("@/components/layout/migration-sheet-host", () => ({
-  __esModule: true,
-  default: ({ open }: { open: boolean }) => (open ? <div data-testid="migration-sheet" /> : null),
-  MigrationSheetHost: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="migration-sheet" /> : null,
 }));
 vi.mock("@/components/layout/migration-adapters", () => ({
   MIGRATION_ADAPTERS: [],
@@ -117,26 +114,26 @@ describe("AccountPopover", () => {
   });
 });
 
-describe("the migration sheet's lifetime", () => {
-  // The sheet portals to document.body, so every click inside it reads as
-  // "outside the popover" and closes it. Rendered within the popover body it
-  // was therefore unmounted by the very click it was handling: Sign in and
-  // Move both did nothing on desktop, while the phone's modal door was fine.
-  it("survives the popover closing", async () => {
+function Request() {
+  const request = useMigrationRequest();
+  return <div data-testid="request">{request ? request.entry : "none"}</div>;
+}
+
+afterEach(() => resetMigrationRequest());
+
+describe("the migration row", () => {
+  // The popover mounts no card of its own. The one card lives on the session
+  // and portals to document.body, so the popover closing behind a tap in it —
+  // every click there reads as "outside the popover" — takes nothing down.
+  it("asks the one card to open, from the account menu", () => {
     const triggerRef = { current: null };
-    const { rerender } = render(
-      <AccountPopover open={true} onClose={() => {}} triggerRef={triggerRef} />
+    render(
+      <>
+        <AccountPopover open={true} onClose={() => {}} triggerRef={triggerRef} />
+        <Request />
+      </>
     );
-
     fireEvent.click(screen.getByText("open-migration"));
-    // findBy, not getBy: the sheet is behind next/dynamic and resolves a tick
-    // later — which is the point, it is not in the initial payload.
-    expect(await screen.findByTestId("migration-sheet")).toBeInTheDocument();
-
-    // What a click inside the sheet does to the popover.
-    rerender(<AccountPopover open={false} onClose={() => {}} triggerRef={triggerRef} />);
-
-    await waitFor(() => expect(screen.queryByText("open-migration")).not.toBeInTheDocument());
-    expect(screen.getByTestId("migration-sheet")).toBeInTheDocument();
+    expect(screen.getByTestId("request")).toHaveTextContent("account_modal");
   });
 });

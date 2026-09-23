@@ -387,7 +387,11 @@ export function MoveOldMoneyPanel({
   const checked = optIn ?? defaultOptIn(remaining);
   const groups = useMemo(() => reviewGroups(remaining, checked, now), [remaining, checked, now]);
   // Which step is on screen — the same choice the render below makes.
-  const finishedNow = result ?? (autoResult && groups.optIn.length === 0 ? autoResult : null);
+  // On the card the automatic run IS the run: nothing is listed and nothing is
+  // asked, so an opt-in position (closing at market) is not offered there —
+  // it waits, like the rest of the long tail. The full panel still stops for it.
+  const finishedNow =
+    result ?? (autoResult && (compact || groups.optIn.length === 0) ? autoResult : null);
   // What a finished run left unsettled among the CORE assets, at hook level
   // so the card can go round again without a button. Core only: the gate is
   // done once the essentials are across, and a memecoin that reverted must
@@ -851,21 +855,27 @@ export function MoveOldMoneyPanel({
           </div>
         )
       ) : null}
-      {autoResult && autoResult.movedUsd > 0 ? (
+      {autoResult && autoResult.movedUsd > 0 && !compact ? (
         <div className="border-accent/25 bg-accent/8 mb-4 rounded-xl border px-3 py-2.5 text-[12.5px] text-white/75">
           {t("autoMoved")}
         </div>
       ) : null}
-      <Section title={t("automaticHeading")} holdings={shownAutomatic} t={t} />
-      <Section
-        title={t("optInHeading")}
-        holdings={groups.optIn}
-        t={t}
-        checked={checked}
-        onToggle={toggle}
-      />
-      <Section title={t("laterHeading")} holdings={shownLater} t={t} showReason />
-      <Section title={t("skippedHeading")} holdings={shownSkipped} t={t} showReason />
+      {/* Never on the card: the header's bar says what is happening, and a
+          list of tokens under it reads as a ledger to check. */}
+      {compact ? null : (
+        <>
+          <Section title={t("automaticHeading")} holdings={shownAutomatic} t={t} />
+          <Section
+            title={t("optInHeading")}
+            holdings={groups.optIn}
+            t={t}
+            checked={checked}
+            onToggle={toggle}
+          />
+          <Section title={t("laterHeading")} holdings={shownLater} t={t} showReason />
+          <Section title={t("skippedHeading")} holdings={shownSkipped} t={t} showReason />
+        </>
+      )}
       {nothing &&
       shownLater.length === 0 &&
       shownSkipped.length === 0 &&
@@ -877,12 +887,8 @@ export function MoveOldMoneyPanel({
       <div className="mt-5 grid gap-2.5">
         {/* On the card a disabled "move" under "nothing to move" is a dead
             button; the gate's own footer says what comes next. */}
-        {compact && nothing ? null : (
-          <button
-            onClick={start}
-            disabled={nothing}
-            className={compact ? UPGRADE_PRIMARY : PRIMARY}
-          >
+        {compact ? null : (
+          <button onClick={start} disabled={nothing} className={PRIMARY}>
             {t("moveButton")}
           </button>
         )}

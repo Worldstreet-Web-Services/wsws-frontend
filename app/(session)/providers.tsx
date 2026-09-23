@@ -53,6 +53,13 @@ const MigrationOAuthReturnHost = dynamic(
   () => import("@/components/layout/migration-oauth-return-host"),
   { ssr: false }
 );
+// The one upgrade card, mounted once for the whole signed-in session: held
+// open by the offer, or opened by a door (the balance card, the account
+// menu, the way back from the old sign-in) from any signed-in route. Deferred
+// for the same reason as the return host: it mounts the old provider's SDK.
+const MigrationGateHost = dynamic(() => import("@/components/layout/migration-gate-host"), {
+  ssr: false,
+});
 
 const DECANE_CHAINS = ["evm:8453", "evm:1", "evm:42161", "evm:10", "evm:137", "solana:mainnet"];
 
@@ -165,6 +172,7 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
                 the user back where they were — about to move their money.
                 Renders nothing on any ordinary page load. */}
             {returningFromPrivyOAuth ? <MigrationOAuthReturnHost /> : null}
+            <MigrationGateHost />
           </BroadcastSessionProvider>
         </BalanceVisibilityProvider>
       </NetworkStatusProvider>

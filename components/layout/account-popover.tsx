@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -10,7 +10,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import { InviteFriendsModal } from "@/features/referrals";
-import dynamic from "next/dynamic";
 // Deep import: the @/features/migrate barrel re-exports UpdateBalanceButton,
 // which mounts the whole Privy SDK. The row itself is light; the sheet is not,
 // so only the sheet is deferred — and this popover is mounted on every route.
@@ -18,11 +17,7 @@ import { MoveOldMoneyButton } from "@/features/migrate/components/move-old-money
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { openSupportChat } from "@/lib/support-chat/open";
 import { toast } from "@/lib/toast";
-import { UpgradeSkeleton } from "@/features/migrate/components/upgrade-skeleton";
-
-const MigrationSheetHost = dynamic(() => import("@/components/layout/migration-sheet-host"), {
-  ssr: false,
-});
+import { openMigration } from "@/features/migrate/lib/migration-card-store";
 
 interface AccountPopoverProps {
   open: boolean;
@@ -76,7 +71,6 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
   const popoverRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("account");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
   const { profile, logout: sessionLogout } = useAuthSession();
   const { canUsePasskey } = useSocialAuth();
   const { addPasskey } = useSocialWallet();
@@ -102,15 +96,6 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
   const hasPasskey = canUsePasskey;
   const squareAvatar = useSquareAvatar();
   const squareSeed = useSquareSeed();
-
-  // Fetch the sheet's chunk the moment the menu opens, not when the row is
-  // tapped: it is the whole old-provider SDK, and the wait between the tap
-  // and the card was that download.
-  // The sheet is mounted CLOSED as soon as this opens, so its chunk — the
-  // old provider's SDK — downloads before the row is tapped rather than after,
-  // and the card's skeleton is drawn from the tap until the chunk has arrived.
-  const [sheetReady, setSheetReady] = useState(false);
-  const onSheetLoaded = useCallback(() => setSheetReady(true), []);
 
   useEffect(() => {
     if (!open) return;
@@ -208,7 +193,10 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
                   phone Account modal, so a desktop user reaches the sweep from
                   the same place. Only the row lives here — the sheet is a
                   sibling below, for the reason given there. */}
-              <MoveOldMoneyButton onClick={() => setMoveOpen(true)} className={itemClass} />
+              <MoveOldMoneyButton
+                onClick={() => openMigration("account_modal")}
+                className={itemClass}
+              />
 
               {/* The in-app chat, not a form in a new tab: support is a
                   conversation the shell already carries. */}
@@ -249,25 +237,6 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           onClose();
         }}
       />
-
-      {/* Outside the AnimatePresence on purpose, like the invite modal above.
-          The sheet portals to document.body, so every click inside it reads as
-          "outside the popover" and closes it — and a sheet rendered within the
-          popover body would be unmounted by that same click, half way through
-          handling it. Which is why Sign in and Move both did nothing on
-          desktop while the phone, whose door is a modal, was fine. */}
-      {open || moveOpen ? (
-        <MigrationSheetHost
-          open={moveOpen}
-          onLoaded={onSheetLoaded}
-          onClose={() => {
-            setMoveOpen(false);
-            onClose();
-          }}
-          entry="account_modal"
-        />
-      ) : null}
-      {moveOpen && !sheetReady ? <UpgradeSkeleton /> : null}
     </>
   );
 }

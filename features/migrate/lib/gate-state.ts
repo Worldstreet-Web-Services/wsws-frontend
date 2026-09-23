@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { useOfferMigrationState } from "@/features/migrate/hooks/use-offer-migration";
+import { useMigrationRequest } from "@/features/migrate/lib/migration-card-store";
 
 // Whether the migration gate has been completed for an account, kept PER
 // ACCOUNT (not per device — the device-wide flag is what let one user's finish
@@ -140,5 +141,7 @@ export function useMigrationGateActive(): boolean {
     () => readGateSnoozed(snoozeKey),
     () => false
   );
-  return (offer || deciding) && !done && !snoozed;
+  // A door-opened card is the same card on screen; the tour waits for it too.
+  const request = useMigrationRequest();
+  return ((offer || deciding) && !done && !snoozed) || request !== null;
 }

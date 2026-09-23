@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-sheet";
+import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-frame";
 
 describe("MoveOldMoneyFrame", () => {
   it("closes on Escape, the backdrop and the close button by default", () => {

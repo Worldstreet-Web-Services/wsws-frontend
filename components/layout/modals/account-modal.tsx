@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
-import { UpgradeSkeleton } from "@/features/migrate/components/upgrade-skeleton";
+import { openMigration } from "@/features/migrate/lib/migration-card-store";
 import { Avatar } from "@/components/ui/avatar";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import { LanguageSelect } from "@/components/ui/language-select";
 import { InviteFriendsModal } from "@/features/referrals";
-import dynamic from "next/dynamic";
 // Deep import: the @/features/migrate barrel re-exports UpdateBalanceButton,
 // which mounts the whole Privy SDK. The row is light; the sheet it opens is
 // deferred below.
@@ -44,19 +43,9 @@ function InviteIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-const MigrationSheetHost = dynamic(() => import("@/components/layout/migration-sheet-host"), {
-  ssr: false,
-});
-
 export function AccountModal({ onClose }: AccountModalProps) {
-  // The sheet is mounted CLOSED with the modal, so its chunk — the old
-  // provider's SDK — downloads before the row is tapped rather than after,
-  // and the card's skeleton is drawn from the tap until the chunk has arrived.
-  const [sheetReady, setSheetReady] = useState(false);
-  const onSheetLoaded = useCallback(() => setSheetReady(true), []);
   const t = useTranslations("account");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
   const tLanguage = useTranslations("language");
   const { profile, logout } = useAuthSession();
   const passkey = useDevicePasskey();
@@ -98,14 +87,7 @@ export function AccountModal({ onClose }: AccountModalProps) {
           </span>
           {t("inviteFriends")}
         </button>
-        <MoveOldMoneyButton onClick={() => setMoveOpen(true)} className={item} />
-        <MigrationSheetHost
-          open={moveOpen}
-          onLoaded={onSheetLoaded}
-          onClose={() => setMoveOpen(false)}
-          entry="account_modal"
-        />
-        {moveOpen && !sheetReady ? <UpgradeSkeleton /> : null}
+        <MoveOldMoneyButton onClick={() => openMigration("account_modal")} className={item} />
         {/* Only for a device that fell back to a PIN and could hold a passkey
             now. Hidden otherwise, so it is an answer to a problem the user has
             rather than a setting to wonder about. */}

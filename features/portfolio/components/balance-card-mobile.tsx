@@ -119,8 +119,24 @@ export function BalanceCardMobile({
                 >
                   {formatMasked(totalUsd)}
                 </div>
-                <div className="tnum mt-1 text-center text-[11px] font-normal text-white/45">
-                  {t("readyToSpend", { amount: formatMasked(readyToSpend) })}
+                {/* Spendable cash, in the three states it actually has: on its
+                    way, known (zero included), or not known. Never a zero
+                    standing in for one of the other two — this row gates the
+                    withdraw button beneath it. */}
+                <div
+                  data-testid="ready-to-spend"
+                  className="tnum mt-1 text-center text-[11px] font-normal text-white/45"
+                >
+                  {readyToSpend.state === "loading" ? (
+                    <span className="mt-1 block h-[10px] w-[110px] animate-pulse rounded-full bg-white/8" />
+                  ) : readyToSpend.state === "known" ? (
+                    t("readyToSpend", { amount: formatMasked(readyToSpend.usd) })
+                  ) : (
+                    // Borrowed from the total's own failure message: it is the
+                    // only "we could not read it" string translated in all
+                    // five catalogues today. A dedicated key is requested.
+                    t("readyToSpendUnknown")
+                  )}
                 </div>
               </>
             )}

@@ -8,8 +8,8 @@ import { BalanceCardMobile } from "@/features/portfolio/components/balance-card-
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { usePendingBankDeposit } from "@/hooks/use-ramping";
 import { useGlobalBalance } from "@/hooks/use-global-balance";
-import { readyToSpendUsd } from "@/features/portfolio/lib/breakdown";
-import { OFFRAMP_MIN_USDC } from "@/lib/ramping/orders";
+import { useSpendableCash } from "@/features/portfolio/hooks/use-spendable-cash";
+import { isWithdrawHeld } from "@/features/portfolio/lib/ready-to-spend";
 import type { BalanceCardViewProps } from "@/features/portfolio/components/balance-card-view";
 
 interface BalanceCardProps {
@@ -38,13 +38,27 @@ export function BalanceCard({ onOpenFunds, onOpenWithdraw, onTakeTour }: Balance
 
   // What a purchase can actually draw on. A portfolio can be worth a lot and
   // still have nothing spendable, which the total alone never shows.
-  const readyToSpend = readyToSpendUsd(tokens);
+  //
+  // This one figure, and only this one, reads the user-management balance
+  // endpoint: exact base units of the stablecoins this app can sign for, on
+  // Base, where everything here settles. The total above, the token list and
+  // the breakdown all stay on usePortfolio, which spans six chains and perps
+  // and is the only source that can price them
+  // (ADR-2026-09-23-user-balance-endpoint).
+  //
+  // There is deliberately NO fallback to readyToSpendUsd(tokens) when this is
+  // unavailable. Two sources for one number is how the two quietly disagree,
+  // and a float sum standing in during an outage would hide the outage behind
+  // a figure nobody could tell apart from the real one.
+  const { readyToSpend } = useSpendableCash();
 
   // The settling-deposit hold only applies while there is nothing withdrawable.
   // It exists to stop hammering the button for money that has not landed yet;
   // a user whose spendable cash already clears the withdrawal minimum can
-  // legitimately withdraw and keeps the button.
-  const withdrawHeld = depositPending && readyToSpend < OFFRAMP_MIN_USDC;
+  // legitimately withdraw and keeps the button — and a user whose spendable
+  // cash is not known keeps it too, because "we don't know" is not "you have
+  // nothing". See isWithdrawHeld.
+  const withdrawHeld = isWithdrawHeld(depositPending, readyToSpend);
 
   // Distinguish "we couldn't load it" from "you have nothing": a failed request
   // that left a cached balance behind keeps showing the balance.

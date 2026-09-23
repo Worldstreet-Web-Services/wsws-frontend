@@ -37,6 +37,32 @@ const INBOX_PAGE = {
 
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123-capability-url";
 
+const BALANCE = {
+  generatedAt: "2026-09-23T15:11:29.600Z",
+  staleAt: "2026-09-23T15:11:44.600Z",
+  cached: false,
+  chains: ["0x2105"],
+  totalUsdValue: null,
+  wallets: [
+    {
+      chain: "0x2105",
+      address: "0x72f2578ade01ca5a844cb0a46dc1943bbd233aca",
+      native: {
+        symbol: "ETH",
+        name: "Ether",
+        decimals: 18,
+        address: null,
+        balance: "504709067444182",
+        balanceFormatted: "0.000504709067444182",
+        usdValue: null,
+      },
+      tokens: [],
+      blockNumber: "51693471",
+      slot: null,
+    },
+  ],
+};
+
 function upstream(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -155,6 +181,33 @@ describe("the allowed routes", () => {
     expect(init.headers["content-type"]).toBe("application/json");
   });
 
+  it("relays the balance read and hands the payload back untouched", async () => {
+    fetchMock.mockResolvedValue(upstream({ success: true, data: BALANCE }));
+    const path = ["users", DID, "balance"];
+    const res = await route.GET(request(path), ctx(path));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ success: true, data: BALANCE });
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/users/${ENCODED}/balance`);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+  });
+
+  // The allowlist admitted it; the schema has to judge it. A balance that
+  // relayed unjudged would be the fail-open this change exists to close.
+  it("judges the balance against the contract rather than relaying it unjudged", async () => {
+    fetchMock.mockResolvedValue(
+      upstream({
+        success: true,
+        data: { ...BALANCE, wallets: [{ ...BALANCE.wallets[0], blockNumber: 51693471 }] },
+      })
+    );
+    const path = ["users", DID, "balance"];
+    const res = await route.GET(request(path), ctx(path));
+
+    expect(res.status).toBe(502);
+    expect((await res.json()).error.code).toBe("BAD_RESPONSE");
+  });
+
   it("never caches an answer, because every one of them is private to one user", async () => {
     const path = ["users", DID, "notifications"];
     const res = await route.GET(request(path), ctx(path));
@@ -209,6 +262,71 @@ describe("what the proxy refuses", () => {
     const subs = ["users", DID, "push", "subscriptions"];
     expect((await route.POST(request(read, { method: "POST" }), ctx(read))).status).toBe(401);
     expect((await route.DELETE(request(subs, { method: "DELETE" }), ctx(subs))).status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // The proxy forwards the caller's own token, so what stopped person A asking
+  // for person B's rows was the upstream 403 and nothing on this side. In
+  // front of wallet balances that is not enough: the did in the path must be
+  // the one the verified session names.
+  it("answers 403 when the session names a different user than the path does", async () => {
+    verifyRequest.mockResolvedValue({
+      userId: "did:privy:someone-else-entirely",
+      sessionId: "s-2",
+    });
+    const path = ["users", DID, "notifications"];
+    const res = await route.GET(request(path), ctx(path));
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      success: false,
+      error: { code: "FORBIDDEN" },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a mismatched did on every method and every route", async () => {
+    verifyRequest.mockResolvedValue({
+      userId: "did:privy:someone-else-entirely",
+      sessionId: "s-2",
+    });
+    const cases = [
+      { method: "GET" as const, path: ["users", DID, "notifications"] },
+      { method: "GET" as const, path: ["users", DID, "balance"] },
+      { method: "GET" as const, path: ["users", DID, "push", "vapid-public-key"] },
+      { method: "POST" as const, path: ["users", DID, "notifications", "read"] },
+      { method: "POST" as const, path: ["users", DID, "push", "subscriptions"] },
+      { method: "DELETE" as const, path: ["users", DID, "push", "subscriptions"] },
+    ];
+    for (const { method, path } of cases) {
+      const body = method === "GET" ? undefined : "{}";
+      const res = await route[method](request(path, { method, body }), ctx(path));
+      expect(res.status, `${method} ${path.join("/")}`).toBe(403);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // The allowlist hands back the did percent-encoded as one URL segment. The
+  // claim is the raw `sub`, so comparing against the encoded form would refuse
+  // every legitimate caller — `:` alone encodes to `%3A`.
+  it("compares the raw did, not the encoded one the allowlist returns", async () => {
+    verifyRequest.mockResolvedValue({ userId: DID, sessionId: "s-1" });
+    const path = ["users", DID, "notifications"];
+    const res = await route.GET(request(path), ctx(path));
+
+    expect(res.status).toBe(200);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/users/${ENCODED}/notifications`);
+  });
+
+  // A DID's method-specific id is case-sensitive, and the upstream compares it
+  // to `sub` exactly. Folding case here would admit a request the service
+  // refuses and would be the only place in the stack that did.
+  it("refuses a did that differs from the claim only in case", async () => {
+    verifyRequest.mockResolvedValue({ userId: DID.toUpperCase(), sessionId: "s-1" });
+    const path = ["users", DID, "notifications"];
+    const res = await route.GET(request(path), ctx(path));
+
+    expect(res.status).toBe(403);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -316,6 +434,40 @@ describe("what the upstream answers", () => {
 // A push endpoint is a capability URL and the DID names the person. Neither,
 // nor the token, may reach a log line.
 describe("what the proxy logs", () => {
+  // One handler serves the inbox, push and balances, so a message naming any
+  // one of them tells the reader about the wrong feature.
+  it("says nothing about notifications when a balance read fails", async () => {
+    fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
+    const path = ["users", DID, "balance"];
+    const res = await route.GET(request(path), ctx(path));
+    const body = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(body.error.code).toBe("UPSTREAM_ERROR");
+    expect(body.error.message).not.toMatch(/notification/iu);
+  });
+
+  it("names no feature in any failure message it writes itself", async () => {
+    const path = ["users", DID, "notifications"];
+    const seen: string[] = [];
+
+    fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
+    seen.push((await (await route.GET(request(path), ctx(path))).json()).error.message);
+
+    fetchMock.mockResolvedValue(new Response("<html>gateway</html>", { status: 200 }));
+    seen.push((await (await route.GET(request(path), ctx(path))).json()).error.message);
+
+    fetchMock.mockResolvedValue(new Response("<html>nope</html>", { status: 409 }));
+    seen.push((await (await route.GET(request(path), ctx(path))).json()).error.message);
+
+    for (const message of seen) {
+      expect(message, message).not.toMatch(/notification|push|balance/iu);
+    }
+  });
+
+  // routeLabel scrubs the did by position, replacing segment index 1, so it
+  // covers a tail it has never seen. Confirmed on the new one rather than
+  // assumed.
   it("names the route shape and never the did, the token or the endpoint", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
     const path = ["users", DID, "push", "subscriptions"];
@@ -337,5 +489,16 @@ describe("what the proxy logs", () => {
     expect(logged).not.toContain(ENDPOINT);
     expect(logged).not.toContain("caller-token");
     expect(logged).toContain("push/subscriptions");
+  });
+
+  it("scrubs the did out of a balance log line too, by position", async () => {
+    fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
+    const path = ["users", DID, "balance"];
+    await route.GET(request(path), ctx(path));
+
+    const logged = errorSpy.mock.calls.flat().map(String).join(" ");
+    expect(logged).not.toContain(DID);
+    expect(logged).not.toContain(ENCODED);
+    expect(logged).toContain("users/:user/balance");
   });
 });

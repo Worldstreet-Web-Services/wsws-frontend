@@ -360,6 +360,7 @@
     "withdraw": "Retirar",
     "depositPending": "Seu depósito bancário está a caminho. Pode levar de 5 a 10 minutos para refletir no seu saldo; os saques são liberados assim que chegar.",
     "readyToSpend": "{amount} disponível para gastar",
+    "readyToSpendUnknown": "Não foi possível carregar o saldo disponível",
     "breakdownTitle": "Onde está o seu dinheiro",
     "assetsHeld": "ativos",
     "breakdownEmpty": "Ainda não tem nada.",

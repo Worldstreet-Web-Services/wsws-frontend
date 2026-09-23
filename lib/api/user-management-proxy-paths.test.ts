@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { userManagementProxyPath } from "./user-management-proxy-paths";
 
 // The proxy forwards the caller's own Privy token, so anything this list
-// admits is performed AS them. Five routes exist for the notification inbox
-// and browser push, and nothing else on the user-management service is
-// reachable from this app.
+// admits is performed AS them. The allowlist covers the notification inbox,
+// browser push and the wallet balance read, and nothing else on the
+// user-management service is reachable from this app.
 
 const DID = "did:privy:cm1abcdef0000000000000000";
 const ENCODED = encodeURIComponent(DID);
@@ -31,10 +31,11 @@ const ALLOWED = [
     tail: ["push", "subscriptions"],
     path: `users/${ENCODED}/push/subscriptions`,
   },
+  { method: "GET" as const, tail: ["balance"], path: `users/${ENCODED}/balance` },
 ];
 
 describe("user management proxy allowlist", () => {
-  it("relays each of the five routes the inbox and push need", () => {
+  it("relays every route on the allowlist", () => {
     for (const { method, tail, path } of ALLOWED) {
       const result = userManagementProxyPath(["users", DID, ...tail], method);
       expect(result, `${method} ${tail.join("/")} must be relayed`).toEqual({ ok: true, path });
@@ -50,6 +51,10 @@ describe("user management proxy allowlist", () => {
       { method: "POST" as const, tail: ["push", "vapid-public-key"] },
       { method: "DELETE" as const, tail: ["push", "vapid-public-key"] },
       { method: "GET" as const, tail: ["push", "subscriptions"] },
+      // The balance is a read. Nothing in this app writes one, and admitting a
+      // write would be admitting it AS the caller.
+      { method: "POST" as const, tail: ["balance"] },
+      { method: "DELETE" as const, tail: ["balance"] },
     ];
     for (const { method, tail } of wrong) {
       const result = userManagementProxyPath(["users", DID, ...tail], method);
@@ -98,7 +103,7 @@ describe("user management proxy allowlist", () => {
     }
   });
 
-  it("refuses anything outside the five shapes", () => {
+  it("refuses anything outside the allowlisted shapes", () => {
     const shapes = [
       ["users"],
       ["users", DID],
@@ -107,6 +112,8 @@ describe("user management proxy allowlist", () => {
       ["users", DID, "push"],
       ["users", DID, "push", "subscriptions", "extra"],
       ["users", DID, "push", "vapid-private-key"],
+      ["users", DID, "balance", "history"],
+      ["users", DID, "balances"],
       ["health"],
       [],
     ];

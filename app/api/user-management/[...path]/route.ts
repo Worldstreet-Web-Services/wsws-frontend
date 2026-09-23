@@ -6,17 +6,22 @@ import { userManagementSchemaFor } from "@/lib/api/schemas/user-management";
 import { verifyRequest } from "@/lib/server/auth";
 import { wsapiService } from "@/lib/wsapi-base";
 
-// Server-side proxy for the user-management service: the notification inbox
-// and the browser push subscriptions behind it. The gateway sends no CORS
-// headers, so routing through our own origin is what makes the service
-// reachable from the browser at all, and it keeps the gateway URL out of the
-// bundle.
+// Server-side proxy for the user-management service: the notification inbox,
+// the browser push subscriptions behind it, and the wallet balance read. The
+// gateway sends no CORS headers, so routing through our own origin is what
+// makes the service reachable from the browser at all, and it keeps the
+// gateway URL out of the bundle.
 //
 // The service verifies the caller's Privy access token itself and requires
 // the did in the path to equal the token's subject, so this proxy holds no
-// secret. What it holds is the allowlist and the session check: every path is
-// one of five, every method needs a verified session, and the answer is
-// judged against the contract before it can reach a component.
+// secret. What it holds is the allowlist and the identity check: every path is
+// on the allowlist, every method needs a verified session naming the same
+// person the path does, and the answer is judged against the contract before
+// it can reach a component.
+//
+// Every message here is domain-neutral on purpose. One handler serves the
+// inbox, push and balances, so copy naming any one of them would tell a
+// reader about the wrong feature.
 //
 // Nothing here is logged with a did, an Authorization header or a push
 // endpoint in it. The endpoint is a capability URL: anybody holding it can
@@ -101,11 +106,7 @@ function clientFailure(status: number, text: string) {
       headers: { "content-type": "application/json", "cache-control": NO_STORE },
     });
   }
-  return failure(
-    CODE_BY_STATUS[status] ?? "UPSTREAM_ERROR",
-    "Notifications refused that request.",
-    status
-  );
+  return failure(CODE_BY_STATUS[status] ?? "UPSTREAM_ERROR", "That request was refused.", status);
 }
 
 async function forward(
@@ -115,11 +116,26 @@ async function forward(
 ): Promise<NextResponse> {
   const route = userManagementProxyPath(segments, method);
   if (!route.ok) return failure("NOT_FOUND", "Not found.", 404);
-  if (!BASE) return failure("NOT_CONFIGURED", "Notifications aren't configured yet.", 503);
+  if (!BASE) return failure("NOT_CONFIGURED", "This isn't configured yet.", 503);
 
   // Checked here as well as upstream so an expired session fails with our own
   // message rather than a bare 401 from a service the user never hears of.
-  if (!(await verifyRequest(req))) return failure("UNAUTHORIZED", "Sign in to continue.", 401);
+  const claims = await verifyRequest(req);
+  if (!claims) return failure("UNAUTHORIZED", "Sign in to continue.", 401);
+
+  // Every path here is scoped to one person, and the proxy forwards that
+  // person's own token, so without this the only thing refusing person A a
+  // read of person B's inbox or wallet balances is the upstream 403. This is
+  // the second line of defence.
+  //
+  // Compared against the raw segment, not `route.path`, which carries the did
+  // percent-encoded as one URL segment. Exactly, not case-insensitively: a
+  // DID's method-specific id is case-sensitive and the service compares it to
+  // the token's subject verbatim, so folding case here would admit requests
+  // the service refuses and make this the one lenient link in the chain.
+  if (claims.userId !== segments[1]) {
+    return failure("FORBIDDEN", "That isn't your account.", 403);
+  }
 
   // The allowlist already matched the did as one segment; this is the same
   // guard the other proxies apply, kept so a later edit to the shapes cannot
@@ -157,25 +173,25 @@ async function forward(
     text = await res.text();
   } catch (error) {
     console.error("User management proxy failed:", label, error);
-    return failure("UPSTREAM_ERROR", "Notifications are unreachable.", 502);
+    return failure("UPSTREAM_ERROR", "That service is unreachable.", 502);
   }
 
   if (!res.ok) {
     if (res.status >= 400 && res.status < 500) return clientFailure(res.status, text);
     console.error("User management upstream failed:", label, res.status);
-    return failure("UPSTREAM_ERROR", "Notifications are unreachable.", 502);
+    return failure("UPSTREAM_ERROR", "That service is unreachable.", 502);
   }
 
   const schema = userManagementSchemaFor(route.path, method);
   const parsed = parseJson(text);
   if (parsed === null) {
     console.error("User management returned invalid JSON:", label);
-    return failure("BAD_RESPONSE", "Notifications returned an invalid response.", 502);
+    return failure("BAD_RESPONSE", "That service returned an invalid response.", 502);
   }
   const contract = checkUpstream(schema, parsed, { service: "user-management", path: label });
   if (!contract.ok) {
     console.error(contract.problem);
-    return failure("BAD_RESPONSE", "Notifications returned an invalid response.", 502);
+    return failure("BAD_RESPONSE", "That service returned an invalid response.", 502);
   }
 
   // Never cached, at any layer: every one of these answers is private to the

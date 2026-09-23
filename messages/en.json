@@ -360,6 +360,7 @@
     "withdraw": "Withdraw",
     "depositPending": "Your bank deposit is on its way. It can take 5 to 10 minutes to reflect in your balance; withdrawals unlock once it lands.",
     "readyToSpend": "{amount} ready to spend",
+    "readyToSpendUnknown": "Ready to spend unavailable",
     "breakdownTitle": "Where your money is",
     "assetsHeld": "assets",
     "breakdownEmpty": "Nothing held yet.",

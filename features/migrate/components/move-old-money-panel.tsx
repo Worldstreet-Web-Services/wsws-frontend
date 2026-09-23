@@ -41,6 +41,7 @@ import {
 } from "@/features/migrate/hooks/use-legacy-holdings";
 import { useMigrationRun } from "@/features/migrate/hooks/use-migration-run";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
+import { useLedgerRekeys } from "@/features/migrate/hooks/use-ledger-rekeys";
 import { LegacySignIn } from "@/features/migrate/components/legacy-sign-in";
 import { STUCK_AFTER_FAILURES } from "@/features/migrate/lib/gate-state";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
@@ -363,6 +364,9 @@ export function MoveOldMoneyPanel({
   // refetches the status, which is a dep here, so the report catches up.
   const serverLinked = status.data?.linked === true;
   const linkedNow = serverLinked || linkedHere;
+  // From the link on, watch the services move their ledgers and refresh the
+  // screens that show them — the Kash chip above all — as each one lands.
+  useLedgerRekeys(linkedNow);
   // "Discovered" must mean we actually enumerated the OLD account, which needs
   // the legacy session. Without a signer the holdings query still runs on the
   // server-recorded addresses (enabled on addresses alone), but it cannot see

@@ -2916,7 +2916,71 @@
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
     "pnlShareLoss": "Closed {symbol} at a loss",
-    "partialBody": "Some of your history couldn't be loaded, so this list may be incomplete."
+    "partialBody": "Some of your history couldn't be loaded, so this list may be incomplete.",
+    "statusWon": "Won",
+    "statusLost": "Lost",
+    "statusLive": "Live",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "statusEarned": "Earned",
+    "statusFailed": "Failed",
+    "statusAwaitingResults": "Awaiting Results",
+    "products": {
+      "predictions": "Predictions",
+      "memecoins": "Memecoins",
+      "trade": "Trade",
+      "perps": "Perps",
+      "arkade": "Arkade",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal",
+      "transfer": "Transfer",
+      "rewards": "Rewards"
+    },
+    "captions": {
+      "amountSent": "Amount Sent",
+      "amountReceived": "Amount Received",
+      "stakeCommitted": "Stake Committed",
+      "rewardPoints": "Reward Points",
+      "paid": "Paid {amount}",
+      "received": "Received {amount}"
+    },
+    "subtitles": {
+      "from": "From {address}",
+      "to": "To {address}",
+      "versus": "vs {opponent}"
+    },
+    "dayHeadings": {
+      "today": "Today, {day, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} {month}",
+      "yesterday": "Yesterday, {day, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} {month}",
+      "date": "{day, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} {month}",
+      "dateWithYear": "{day, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} {month} {year}"
+    },
+    "filters": {
+      "searchLabel": "Search activity",
+      "searchPlaceholder": "Search activity",
+      "allProducts": "All Products",
+      "productTitle": "Filter by product",
+      "rangeTitle": "Filter by date",
+      "noMatchesTitle": "No matching activity",
+      "noMatchesBody": "Nothing here matches your search and filters. Try a wider date range.",
+      "clear": "Clear filters"
+    },
+    "ranges": {
+      "7d": "Last 7 Days",
+      "30d": "Last 30 Days",
+      "90d": "Last 90 Days",
+      "12m": "Last 12 Months",
+      "all": "All Time"
+    },
+    "detail": {
+      "eyebrow": "Activity Details",
+      "when": "When",
+      "product": "Product",
+      "transaction": "Transaction",
+      "share": "Share to Market Square",
+      "explorer": "View on {chain}"
+    },
+    "groupCount": "{count, plural, one {# Activity} other {# Activities}}"
   },
   "notifications": {
     "title": "Notifications",

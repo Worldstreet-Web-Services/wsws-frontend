@@ -2916,7 +2916,71 @@
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
     "pnlShareLoss": "Closed {symbol} at a loss",
-    "partialBody": "Ein Teil deiner Historie konnte nicht geladen werden, daher ist diese Liste möglicherweise unvollständig."
+    "partialBody": "Ein Teil deiner Historie konnte nicht geladen werden, daher ist diese Liste möglicherweise unvollständig.",
+    "statusWon": "Gewonnen",
+    "statusLost": "Verloren",
+    "statusLive": "Live",
+    "statusProcessing": "In Bearbeitung",
+    "statusCompleted": "Abgeschlossen",
+    "statusEarned": "Verdient",
+    "statusFailed": "Fehlgeschlagen",
+    "statusAwaitingResults": "Warten auf Ergebnis",
+    "products": {
+      "predictions": "Prognosen",
+      "memecoins": "Memecoins",
+      "trade": "Handel",
+      "perps": "Perps",
+      "arkade": "Arkade",
+      "deposit": "Einzahlung",
+      "withdrawal": "Auszahlung",
+      "transfer": "Transfer",
+      "rewards": "Prämien"
+    },
+    "captions": {
+      "amountSent": "Gesendeter Betrag",
+      "amountReceived": "Erhaltener Betrag",
+      "stakeCommitted": "Eingesetzter Betrag",
+      "rewardPoints": "Prämienpunkte",
+      "paid": "{amount} bezahlt",
+      "received": "{amount} erhalten"
+    },
+    "subtitles": {
+      "from": "Von {address}",
+      "to": "An {address}",
+      "versus": "gegen {opponent}"
+    },
+    "dayHeadings": {
+      "today": "Heute, {day, selectordinal, other {#.}} {month}",
+      "yesterday": "Gestern, {day, selectordinal, other {#.}} {month}",
+      "date": "{day, selectordinal, other {#.}} {month}",
+      "dateWithYear": "{day, selectordinal, other {#.}} {month} {year}"
+    },
+    "filters": {
+      "searchLabel": "Aktivität suchen",
+      "searchPlaceholder": "Aktivität suchen",
+      "allProducts": "Alle Produkte",
+      "productTitle": "Nach Produkt filtern",
+      "rangeTitle": "Nach Datum filtern",
+      "noMatchesTitle": "Keine passende Aktivität",
+      "noMatchesBody": "Nichts hier passt zur Suche und zu den Filtern. Versuchen Sie einen größeren Zeitraum.",
+      "clear": "Filter zurücksetzen"
+    },
+    "ranges": {
+      "7d": "Letzte 7 Tage",
+      "30d": "Letzte 30 Tage",
+      "90d": "Letzte 90 Tage",
+      "12m": "Letzte 12 Monate",
+      "all": "Gesamter Zeitraum"
+    },
+    "detail": {
+      "eyebrow": "Aktivitätsdetails",
+      "when": "Wann",
+      "product": "Produkt",
+      "transaction": "Transaktion",
+      "share": "In Market Square teilen",
+      "explorer": "Auf {chain} ansehen"
+    },
+    "groupCount": "{count, plural, one {# Aktivität} other {# Aktivitäten}}"
   },
   "notifications": {
     "title": "Benachrichtigungen",

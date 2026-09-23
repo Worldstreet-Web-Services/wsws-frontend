@@ -37,6 +37,7 @@ const UID = "u-1111";
 const TOKEN = `h.${btoa(JSON.stringify({ uid: UID })).replace(/=+$/, "")}.s`;
 vi.mock("decane-connect-kit", () => ({
   useSocialWallet: () => ({
+    isConnected: true,
     isUnlocked: true,
     unlock: vi.fn(async () => {}),
     signMessage: vi.fn(async () => "0xsig"),
@@ -71,6 +72,7 @@ vi.mock("@/lib/meme/api", async (importOriginal) => {
 import {
   useMemePreview,
   useMemeTrade,
+  usePreviewRelink,
   tradeRef,
   type TradeResult,
 } from "@/features/trade/hooks/use-meme-trade";
@@ -938,5 +940,51 @@ describe("useMemeTrade linking for a preview the service refused", () => {
     });
     const kept = JSON.parse(window.localStorage.getItem("wsws.meme-linked.v3") ?? "[]") as string[];
     expect(kept).toContain(`${UID}:solana:SoLwallet`);
+  });
+});
+
+// Reported 2026-09-19: a user could not sell, and it never recovered.
+describe("useMemeTrade relinking after a preview the service refused", () => {
+  const mismatch = () => new TradeApiError("WALLET_OWNERSHIP_MISMATCH", "not linked", 403);
+
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("tries again after a link attempt fails", async () => {
+    const link = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("wallet still connecting"))
+      .mockResolvedValueOnce(undefined);
+    const refetch = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ error }: { error: unknown }) => usePreviewRelink(error, 8453, link, refetch),
+      { initialProps: { error: mismatch() as unknown } }
+    );
+    await waitFor(() => expect(link).toHaveBeenCalledTimes(1));
+
+    rerender({ error: mismatch() });
+
+    await waitFor(() => expect(link).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(refetch).toHaveBeenCalled());
+  });
+
+  // The original guard: after a successful link, a refusal is a real one.
+  it("does not link twice when the link succeeded and the refusal stands", async () => {
+    const link = vi.fn().mockResolvedValue(undefined);
+    const refetch = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ error }: { error: unknown }) => usePreviewRelink(error, 8453, link, refetch),
+      { initialProps: { error: mismatch() as unknown } }
+    );
+    await waitFor(() => expect(link).toHaveBeenCalledTimes(1));
+
+    rerender({ error: mismatch() });
+
+    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(link).toHaveBeenCalledTimes(1);
   });
 });

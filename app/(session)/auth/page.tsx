@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSocialAuth, useSocialWallet } from "decane-connect-kit";
 import { useTranslations } from "next-intl";
 import { Wordmark } from "@/components/ui/wordmark";
 import { BRAND } from "@/lib/brand";
 import { markKnownUser } from "@/lib/known-user";
+import { returnPathFrom } from "@/lib/return-to";
 import { MarketLogo } from "@/components/ui/market-logo";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { EmailForm } from "@/components/auth/email-form";
@@ -30,6 +31,9 @@ export default function AuthPage() {
   const { isNewUser, phase } = useSocialAuth();
   const router = useRouter();
   const handled = useRef(false);
+  const searchParams = useSearchParams();
+  // Where they were headed before sign-in took over, when it is ours to go to.
+  const returnTo = returnPathFrom(searchParams?.toString() ?? "");
 
   // What this browser can offer a returning visitor in place of the full
   // method list — a passkey unlock, or a one-tap repeat of their last method.
@@ -101,8 +105,11 @@ export default function AuthPage() {
     // A method only becomes the remembered one once it has actually produced a
     // session, so an abandoned attempt never sets the shortcut.
     promotePending();
-    router.replace(isNewUser ? "/interests" : "/dashboard");
-  }, [ready, authenticated, isNewUser, router, holdRedirect]);
+    // A link they followed wins over the default landing, first-timer or not:
+    // someone handed a game at an event should reach the game, and onboarding
+    // is still one tap away afterwards.
+    router.replace(returnTo ?? (isNewUser ? "/interests" : "/dashboard"));
+  }, [ready, authenticated, isNewUser, router, holdRedirect, returnTo]);
 
   // Key generation runs inside the sign-in ("creating"); reopening a session
   // for a returning user is "unlocking". Both read as busy.

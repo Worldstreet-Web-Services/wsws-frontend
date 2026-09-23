@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { MarketLogo } from "@/components/ui/market-logo";
-import { Avatar } from "@/components/ui/avatar";
+import { SquareAvatar } from "@/components/ui/square-avatar";
+import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import type { NavItem } from "@/components/layout/nav-items";
 import type { DashboardSection } from "@/lib/modal-types";
 import { truncateAddress } from "@/lib/format";
@@ -30,6 +31,8 @@ interface SidebarProps {
 // component for both, so the nav can never differ between the two.
 export function Sidebar({ items, activeSection, onNavigate, open, onClose }: SidebarProps) {
   const { profile, evmAddress: address } = useAuthSession();
+  const squareAvatar = useSquareAvatar();
+  const squareSeed = useSquareSeed();
   const t = useTranslations("topbar");
   // The square is a product with its own catalog namespace, so the rail reads
   // its name from there rather than repeating the string. The rail's word is
@@ -197,7 +200,7 @@ export function Sidebar({ items, activeSection, onNavigate, open, onClose }: Sid
             onClick={() => setAccountPopoverOpen((v) => !v)}
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-white/8 px-2 py-2.5 text-left transition-colors hover:bg-white/4"
           >
-            <Avatar seed={profile.avatarSeed} />
+            <SquareAvatar src={squareAvatar} seed={squareSeed} name={profile.name} size={32} />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-sans text-[13px] font-medium text-white">
                 {profile.name}

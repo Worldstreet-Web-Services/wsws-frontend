@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthSession } from "@/hooks/use-auth-session";
+
 import { BASE_CHAIN_ID } from "@/lib/meme/chain";
 import { scopeOf } from "@/lib/portfolio/fresh-scope";
 import { networkForChainId } from "@/lib/trade-share";
@@ -49,6 +51,8 @@ export function SellSheet({ payload, onClose, initialAmount = "" }: SellSheetPro
   const [maxRequested, setMaxRequested] = useState(false);
   const sell = useSell();
 
+  const session = useAuthSession();
+  const feePayer = session.evmAddress ?? undefined;
   const nativeSym = nativeSymbol(payload.network);
   const chainLabel = networkLabel(payload.network);
 
@@ -78,10 +82,14 @@ export function SellSheet({ payload, onClose, initialAmount = "" }: SellSheetPro
   // itself: the same figure answers "what must this wallet hold to send at
   // all", which is what the hint below is for.
   const measuredGas = useQuery({
-    queryKey: ["nativeSendCost", payload.network],
-    queryFn: () => nativeSendCost(payload.network),
+    queryKey: ["nativeSendCost", payload.network, payload.address],
+    queryFn: () =>
+      nativeSendCost(payload.network, { tokenAddress: payload.address, from: feePayer }),
     enabled: !sponsored && nativeSym !== null,
-    staleTime: 30_000,
+    // Gas moves with traffic, so the figure is re-read while the sheet is open
+    // rather than frozen at the price when it was first opened.
+    staleTime: 15_000,
+    refetchInterval: 15_000,
     retry: 1,
   });
 

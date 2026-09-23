@@ -279,6 +279,9 @@ export function useMemeTrade() {
         return;
       }
       if (!wallet) throw new Error("Sign in first.");
+      // The address is known before the signer for it is up, so check the
+      // signer exists rather than spending a challenge it cannot sign.
+      if (!socialWallet.isConnected) throw new Error("Your wallet is still connecting. Try again.");
       const key = subject ? `${subject}:${wallet.toLowerCase()}` : null;
       if (key && force) forgetLinked(key);
       else if (key && linkedCache().has(key)) return;
@@ -690,6 +693,8 @@ export function usePreviewRelink(
     linkForPreview(chainId)
       .then(() => refetch())
       .catch((e: unknown) => {
+        // Only a link that happened counts as the one attempt.
+        triedRef.current.delete(chainId);
         console.warn("[meme] linking the wallet for a preview failed", e);
       });
   }, [error, chainId, linkForPreview, refetch]);

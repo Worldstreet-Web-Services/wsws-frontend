@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
 import { Avatar } from "@/components/ui/avatar";
+import { SquareAvatar } from "@/components/ui/square-avatar";
+import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import { LanguageSelect } from "@/components/ui/language-select";
 import { InviteFriendsModal } from "@/features/referrals";
 import dynamic from "next/dynamic";
@@ -59,6 +61,8 @@ export function AccountModal({ onClose }: AccountModalProps) {
     await logout();
     router.push("/auth");
   };
+  const squareAvatar = useSquareAvatar();
+  const squareSeed = useSquareSeed();
 
   const item =
     "flex items-center gap-3 rounded-xl border border-white/8 bg-white/4 px-3.5 py-3 font-sans text-[14.5px] font-medium hover:bg-white/8 transition-colors cursor-pointer w-full text-left";
@@ -66,7 +70,7 @@ export function AccountModal({ onClose }: AccountModalProps) {
   return (
     <div>
       <div className="flex items-center gap-[13px]">
-        <Avatar seed={profile.avatarSeed} size={46} />
+        <SquareAvatar src={squareAvatar} seed={squareSeed} name={profile.name} size={46} />
         <div className="min-w-0" data-sensitive="other">
           <div className="ws-display truncate text-[21px]">{profile.name}</div>
           {profile.email ? (

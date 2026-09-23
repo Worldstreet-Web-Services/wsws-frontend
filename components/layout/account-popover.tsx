@@ -7,6 +7,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useSocialAuth, useSocialWallet } from "decane-connect-kit";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { Avatar } from "@/components/ui/avatar";
+import { SquareAvatar } from "@/components/ui/square-avatar";
+import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import { InviteFriendsModal } from "@/features/referrals";
 import dynamic from "next/dynamic";
 // Deep import: the @/features/migrate barrel re-exports UpdateBalanceButton,
@@ -14,13 +16,12 @@ import dynamic from "next/dynamic";
 // so only the sheet is deferred — and this popover is mounted on every route.
 import { MoveOldMoneyButton } from "@/features/migrate/components/move-old-money-entry";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
+import { openSupportChat } from "@/lib/support-chat/open";
 import { toast } from "@/lib/toast";
 
 const MigrationSheetHost = dynamic(() => import("@/components/layout/migration-sheet-host"), {
   ssr: false,
 });
-
-const SUPPORT_FORM_URL = "https://forms.gle/T5DLdFCAbRsVrzU97";
 
 interface AccountPopoverProps {
   open: boolean;
@@ -98,6 +99,8 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
   };
 
   const hasPasskey = canUsePasskey;
+  const squareAvatar = useSquareAvatar();
+  const squareSeed = useSquareSeed();
 
   useEffect(() => {
     if (!open) return;
@@ -149,7 +152,7 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           >
             {/* User Identity Header */}
             <div className="flex items-center gap-2.5 px-1 pb-2">
-              <Avatar seed={profile.avatarSeed} size={36} />
+              <SquareAvatar src={squareAvatar} seed={squareSeed} name={profile.name} size={36} />
               <div className="min-w-0 flex-1" data-sensitive="other">
                 <div className="truncate text-[13.5px] font-medium text-white">{profile.name}</div>
                 <div className="truncate text-[11.5px] font-normal text-white/50">
@@ -197,17 +200,20 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
                   sibling below, for the reason given there. */}
               <MoveOldMoneyButton onClick={() => setMoveOpen(true)} className={itemClass} />
 
-              <a
-                href={SUPPORT_FORM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* The in-app chat, not a form in a new tab: support is a
+                  conversation the shell already carries. */}
+              <button
+                type="button"
                 role="menuitem"
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  openSupportChat();
+                }}
                 className={itemClass}
               >
                 <HelpIcon size={18} />
                 <span>{t("helpSupport")}</span>
-              </a>
+              </button>
 
               <button
                 type="button"

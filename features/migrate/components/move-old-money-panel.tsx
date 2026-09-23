@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
+import { useLoginWithOAuth, usePrivy } from "@privy-io/react-auth";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { CheckIcon } from "@/components/ui/icons";
@@ -160,6 +160,16 @@ export function MoveOldMoneyPanel({
   const t = useTranslations("migrate");
   const locale = useLocale();
   const privy = usePrivy();
+  /*
+    MOUNTED HERE, NOT ONLY IN THE SIGN-IN. Google and X leave the page and
+    come back to it with the code in the URL, and it is THIS hook, on the
+    page they come back to, that turns the code into a session. The sign-in
+    component holds one too, but on the way back the card is showing "Start
+    Upgrade" and the sign-in is not mounted — so the return sat in the URL
+    and nothing happened. While it completes, the card says so.
+  */
+  const oauthReturn = useLoginWithOAuth();
+  const oauthReturning = oauthReturn.state.status === "loading";
   const signer = useLegacySigner();
   // The wallet window never came up after sign-in — see the hook.
   const walletWindowBlocked = useWalletWindowBlocked();
@@ -569,7 +579,12 @@ export function MoveOldMoneyPanel({
         }
       >
         {compact && !signedInElsewhere ? (
-          started && privy.ready && fresh ? (
+          oauthReturning ? (
+            <p className="flex items-center justify-center gap-2 text-[13.5px] text-white/60">
+              <Spinner />
+              {t("updating")}
+            </p>
+          ) : started && privy.ready && fresh ? (
             <LegacySignIn />
           ) : (
             <button

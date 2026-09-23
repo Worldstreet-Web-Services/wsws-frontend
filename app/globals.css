@@ -45,8 +45,10 @@
      other is tuned. `upgrade` fills — the action, the progress, the border
      light. `upgrade-soft` is the paler one, for gold TEXT on the dark sheet and
      the action's hover, where full-strength gold glares. */
-  --color-upgrade: #feda4b;
+  --color-upgrade: #ffd62f;
   --color-upgrade-soft: #faeaa7;
+  /* "In Progress" over the bar: the design's amber, distinct from the bar's gold. */
+  --color-upgrade-progress: #f7a92f;
   /* Small directional glyphs. Neutral grey, was green. */
   --color-arrow: #8a8a8f;
   --color-panel: #0a0a0a;
@@ -866,6 +868,15 @@ body:has([data-chess-setup-open]) [data-support-launcher] {
 /* Product tour (driver.js): the popover restyled to the app's dark sheet.
    Applied through popoverClass, so the library's own defaults never leak
    into the page. */
+/* The tour sits UNDER the modals. driver.js stacks its overlay and popover at
+   the top of everything (1e9), which put the walkthrough on top of the upgrade
+   gate that was holding the app shut. Above the chrome (the sidebar is 110),
+   below the sheets (the gate is 440). */
+.driver-overlay,
+.driver-popover {
+  z-index: 400 !important;
+}
+
 .driver-popover.ws-tour {
   background: #131316;
   color: #fff;

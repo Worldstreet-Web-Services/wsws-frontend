@@ -10,7 +10,8 @@ import {
   type MigrationEntry,
   type MigrationProgress,
 } from "@/features/migrate/components/move-old-money-panel";
-import { MigrationGateHeader } from "@/features/migrate/components/migration-gate-header";
+import { UpgradeHeader } from "@/features/migrate/components/upgrade-header";
+import { upgradeView } from "@/features/migrate/lib/upgrade-progress";
 
 // The chrome around the migration panel: a full-height sheet above every
 // other modal (the Account modal opens it from underneath), in a portal so
@@ -55,7 +56,10 @@ export function MoveOldMoneyFrame({
             it would be positioned inside the scroll container and slide away
             with the content on a long review list. */}
         <div className="ws-beam-upgrade pointer-events-auto relative w-full rounded-t-[24px] md:w-[min(520px,100%)] md:rounded-[24px]">
-          <div className="bg-sheet relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 px-[26px] pt-5 pb-[26px] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px] md:pt-[26px]">
+          {/* No padding of its own: the header's art bleeds to the edges, and
+              the body brings its own. Black, not the sheet grey — the art is
+              drawn against black. */}
+          <div className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-white/14 bg-black shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_-20px_90px_-30px_rgba(0,0,0,0.9)] md:rounded-[24px]">
             {dismissible ? (
               <button
                 onClick={onClose}
@@ -111,13 +115,16 @@ export function MoveOldMoneySheet({
   return (
     <MoveOldMoneyFrame onClose={onClose}>
       <LegacyPrivyProvider>
-        <MigrationGateHeader stage={progress?.stage ?? "signIn"} done={done} variant="finish" />
-        <MoveOldMoneyPanel
-          adapters={adapters}
-          entry={entry}
-          onClose={onClose}
-          onProgress={setProgress}
-        />
+        <UpgradeHeader view={upgradeView(progress, done)} variant="finish" />
+        <div className="px-[26px] pt-5 pb-[26px]">
+          <MoveOldMoneyPanel
+            adapters={adapters}
+            entry={entry}
+            onClose={onClose}
+            onProgress={setProgress}
+            compact
+          />
+        </div>
       </LegacyPrivyProvider>
     </MoveOldMoneyFrame>
   );

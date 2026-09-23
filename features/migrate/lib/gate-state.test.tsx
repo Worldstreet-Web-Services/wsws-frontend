@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   offer: true,
+  deciding: false,
   evm: "0xAbC0000000000000000000000000000000000001" as string | null,
 }));
 
 vi.mock("@/features/migrate/hooks/use-offer-migration", () => ({
   useOfferMigration: () => state.offer,
+  useOfferMigrationState: () => ({ offer: state.offer, deciding: state.deciding }),
 }));
 vi.mock("@/hooks/use-auth-session", () => ({
   useAuthSession: () => ({ evmAddress: state.evm }),
@@ -25,10 +27,23 @@ import {
 
 beforeEach(() => {
   state.offer = true;
+  state.deciding = false;
   state.evm = "0xAbC0000000000000000000000000000000000001";
   window.localStorage.clear();
 });
 afterEach(() => window.localStorage.clear());
+
+/*
+  The tour waits on this. The offer's two answers arrive after the page has
+  painted, and a tour that started in that gap ran on top of the gate that
+  opened a beat later. Deciding counts as active.
+*/
+it("is active while the offer is still being decided", () => {
+  state.offer = false;
+  state.deciding = true;
+  const { result } = renderHook(() => useMigrationGateActive());
+  expect(result.current).toBe(true);
+});
 
 describe("useMigrationGateActive", () => {
   it("is active while offered and not finished", () => {

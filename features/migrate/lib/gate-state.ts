@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
-import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
+import { useOfferMigrationState } from "@/features/migrate/hooks/use-offer-migration";
 
 // Whether the migration gate has been completed for an account, kept PER
 // ACCOUNT (not per device — the device-wide flag is what let one user's finish
@@ -100,7 +100,9 @@ function subscribe(onChange: () => void): () => void {
  * without a reload.
  */
 export function useMigrationGateActive(): boolean {
-  const offer = useOfferMigration();
+  // Deciding counts as active: the tour must not start under a gate that is
+  // about to open.
+  const { offer, deciding } = useOfferMigrationState();
   const { evmAddress } = useAuthSession();
   const doneKey = gateDoneKey(evmAddress);
   const snoozeKey = gateSnoozeKey(evmAddress);
@@ -114,5 +116,5 @@ export function useMigrationGateActive(): boolean {
     () => readGateSnoozed(snoozeKey),
     () => false
   );
-  return offer && !done && !snoozed;
+  return (offer || deciding) && !done && !snoozed;
 }

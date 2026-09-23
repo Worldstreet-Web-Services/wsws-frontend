@@ -8,7 +8,9 @@ import { track } from "@/lib/analytics/mixpanel";
 import type { VenueAdapter } from "@/lib/migration/types";
 import { useOfferMigration } from "@/features/migrate/hooks/use-offer-migration";
 import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-sheet";
-import { MigrationGateHeader } from "@/features/migrate/components/migration-gate-header";
+import { UpgradeHeader } from "@/features/migrate/components/upgrade-header";
+import { upgradeView } from "@/features/migrate/lib/upgrade-progress";
+import { SUPPORT_EMAIL } from "@/lib/brand";
 import {
   gateDoneKey,
   gateSnoozeKey,
@@ -25,9 +27,9 @@ import {
   type MigrationProgress,
 } from "@/features/migrate/components/move-old-money-panel";
 
-// Matches the panel's primary: one coloured action on screen, the next step.
+// The design's action: a white pill, dark text. The gold is the bar's.
 const PRIMARY =
-  "w-full cursor-pointer rounded-xl bg-upgrade px-4 py-3 font-sans text-[14px] font-semibold text-ink transition-[background-color,transform] hover:bg-upgrade-soft active:scale-[0.99] motion-reduce:transform-none";
+  "w-full cursor-pointer rounded-full bg-gradient-to-b from-white to-[#DADADA] px-4 py-[15px] font-sans text-[17px] font-semibold text-[#111] transition-[transform,opacity] hover:opacity-95 active:scale-[0.99] motion-reduce:transform-none";
 const SECONDARY =
   "w-full cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-3 font-sans text-[14px] font-semibold text-white hover:bg-white/10";
 const QUIET =
@@ -139,71 +141,85 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const coreLeft = progress?.linked === true && !canFinish && !stuck && !walletBlocked;
   const atSignIn =
     !running && stage === "signIn" && !blocked && !stuck && !walletBlocked && !canFinish;
+  const view = upgradeView(progress, canFinish);
   return (
     <MoveOldMoneyFrame dismissible={false} onClose={ignore}>
       <LegacyPrivyProvider>
-        <MigrationGateHeader stage={stage} done={canFinish} />
-        <MoveOldMoneyPanel
-          adapters={adapters}
-          entry="gate"
-          locked
-          onProgress={setProgress}
-          onClose={finish}
-        />
-        {blocked ? (
-          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
-            <p className={NOTE}>{t("gateBlockedBody")}</p>
-            <button onClick={leave} className={PRIMARY}>
-              {t("gateBlockedExit")}
-            </button>
-          </div>
-        ) : canFinish ? (
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <button onClick={finish} className={PRIMARY}>
-              {t("gateFinish")}
-            </button>
-          </div>
-        ) : walletBlocked ? (
-          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
-            <p className={NOTE}>{t("gateWalletBlockedBody")}</p>
-            <button onClick={() => snooze("browser")} className={SECONDARY}>
-              {t("gateContinueLater")}
-            </button>
-          </div>
-        ) : stuck ? (
-          <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
-            <p className={NOTE}>{t("gateStuckBody")}</p>
-            <button onClick={() => snooze("failing")} className={SECONDARY}>
-              {t("gateContinueLater")}
-            </button>
-          </div>
-        ) : coreLeft ? (
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <p className={NOTE}>{t("gateCoreLeft")}</p>
-          </div>
-        ) : atSignIn ? (
-          <div className="mt-5 border-t border-white/10 pt-4">
-            {confirmingNoAccess ? (
-              <div className="space-y-3">
-                <p className={NOTE}>{t("gateNoAccessBody")}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setConfirmingNoAccess(false)} className={SECONDARY}>
-                    {t("gateNoAccessBack")}
-                  </button>
-                  <button onClick={() => snooze("no_access")} className={PRIMARY}>
-                    {t("gateContinueLater")}
+        <UpgradeHeader view={view} />
+        <div className="px-[26px] pt-5 pb-[26px]">
+          <MoveOldMoneyPanel
+            adapters={adapters}
+            entry="gate"
+            locked
+            onProgress={setProgress}
+            onClose={finish}
+            compact
+          />
+          {blocked ? (
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+              <p className={NOTE}>{t("gateBlockedBody")}</p>
+              <button onClick={leave} className={PRIMARY}>
+                {t("gateBlockedExit")}
+              </button>
+            </div>
+          ) : canFinish ? (
+            <div className="mt-5">
+              <button onClick={finish} className={PRIMARY}>
+                {t("goToMarket")}
+              </button>
+            </div>
+          ) : walletBlocked ? (
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+              <p className={NOTE}>{t("gateWalletBlockedBody")}</p>
+              <button onClick={() => snooze("browser")} className={SECONDARY}>
+                {t("gateContinueLater")}
+              </button>
+            </div>
+          ) : stuck ? (
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+              <p className={NOTE}>{t("gateStuckBody")}</p>
+              <button onClick={() => snooze("failing")} className={SECONDARY}>
+                {t("gateContinueLater")}
+              </button>
+            </div>
+          ) : coreLeft ? (
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <p className={NOTE}>{t("gateCoreLeft")}</p>
+            </div>
+          ) : atSignIn ? (
+            <div className="mt-6 border-t border-white/10 pt-6">
+              {confirmingNoAccess ? (
+                <div className="space-y-3">
+                  <p className={NOTE}>{t("gateNoAccessBody")}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setConfirmingNoAccess(false)} className={SECONDARY}>
+                      {t("gateNoAccessBack")}
+                    </button>
+                    <button onClick={() => snooze("no_access")} className={PRIMARY}>
+                      {t("gateContinueLater")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <button onClick={() => setConfirmingNoAccess(true)} className={QUIET}>
+                    {t("needHelp")}
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <button onClick={() => setConfirmingNoAccess(true)} className={QUIET}>
-                  {t("gateNoAccess")}
-                </button>
-              </div>
-            )}
-          </div>
-        ) : null}
+              )}
+            </div>
+          ) : null}
+          {/* The design's footer line. At the old sign-in the same words open
+            the "having trouble" exit above instead, which already names
+            support. */}
+          {!atSignIn || confirmingNoAccess ? (
+            <p className="mt-6 border-t border-white/10 pt-6 text-center">
+              <a href={`mailto:${SUPPORT_EMAIL}`} className={QUIET}>
+                {t("needHelp")}
+              </a>
+            </p>
+          ) : null}
+        </div>
       </LegacyPrivyProvider>
     </MoveOldMoneyFrame>
   );

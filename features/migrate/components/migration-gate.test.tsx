@@ -26,8 +26,8 @@ vi.mock("@/hooks/use-auth-session", () => ({
 vi.mock("@/components/providers/legacy-privy-provider", () => ({
   LegacyPrivyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock("@/features/migrate/components/migration-gate-header", () => ({
-  MigrationGateHeader: () => <div data-testid="header" />,
+vi.mock("@/features/migrate/components/upgrade-header", () => ({
+  UpgradeHeader: () => <div data-testid="header" />,
 }));
 vi.mock("@/features/migrate/components/move-old-money-sheet", () => ({
   MoveOldMoneyFrame: ({
@@ -64,6 +64,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         failures: 0,
         walletBlocked: false,
         running: false,
+        step: null,
         ...p,
       });
     return (
@@ -144,7 +145,7 @@ describe("MigrationGate", () => {
     expect(screen.getByTestId("frame")).toHaveAttribute("data-dismissible", "false");
     expect(screen.getByTestId("panel")).toHaveAttribute("data-locked", "true");
     fireEvent.click(screen.getByText("core-left"));
-    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    expect(screen.queryByText("goToMarket")).not.toBeInTheDocument();
     expect(screen.getByText("gateCoreLeft")).toBeInTheDocument();
     fireEvent.click(screen.getByText("panel-exit"));
     expect(screen.getByTestId("frame")).toBeInTheDocument();
@@ -155,8 +156,8 @@ describe("MigrationGate", () => {
   it("lets the user through once core is clear, even with the long tail remaining", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("core-done-tail-left"));
-    expect(screen.getByText("gateFinish")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("gateFinish"));
+    expect(screen.getByText("goToMarket")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("goToMarket"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
     expect(window.localStorage.getItem(KEY)).toBe("1");
   });
@@ -164,7 +165,7 @@ describe("MigrationGate", () => {
   it("stays shut when core moved but the link never landed", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("not-linked"));
-    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    expect(screen.queryByText("goToMarket")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("panel-exit"));
     expect(screen.getByTestId("frame")).toBeInTheDocument();
   });
@@ -175,7 +176,7 @@ describe("MigrationGate", () => {
   it("offers a way out when linking is terminally blocked", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("link-blocked"));
-    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    expect(screen.queryByText("goToMarket")).not.toBeInTheDocument();
     expect(screen.queryByText("gateCoreLeft")).not.toBeInTheDocument();
     expect(screen.getByText("gateBlockedBody")).toBeInTheDocument();
     fireEvent.click(screen.getByText("gateBlockedExit"));
@@ -205,12 +206,12 @@ describe("MigrationGate — ways out of a trap", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("sign-in-step"));
     expect(screen.queryByText("gateNoAccessBody")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText("gateNoAccess"));
+    fireEvent.click(screen.getByText("needHelp"));
     expect(screen.getByText("gateNoAccessBody")).toBeInTheDocument();
     // Changing their mind puts the link back.
     fireEvent.click(screen.getByText("gateNoAccessBack"));
     expect(screen.queryByText("gateNoAccessBody")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText("gateNoAccess"));
+    fireEvent.click(screen.getByText("needHelp"));
     fireEvent.click(screen.getByText("gateContinueLater"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
     expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
@@ -223,7 +224,7 @@ describe("MigrationGate — ways out of a trap", () => {
     expect(screen.queryByText("gateStuckBody")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("stuck"));
     expect(screen.getByText("gateStuckBody")).toBeInTheDocument();
-    expect(screen.queryByText("gateFinish")).not.toBeInTheDocument();
+    expect(screen.queryByText("goToMarket")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("gateContinueLater"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
     expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
@@ -270,7 +271,7 @@ describe("MigrationGate — stays open once opened", () => {
     expect(screen.getByTestId("frame")).toBeInTheDocument();
     // The sweep completes; the gate's own exit closes it.
     fireEvent.click(screen.getByText("core-done-tail-left"));
-    fireEvent.click(screen.getByText("gateFinish"));
+    fireEvent.click(screen.getByText("goToMarket"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
     expect(window.localStorage.getItem(KEY)).toBe("1");
   });
@@ -308,7 +309,7 @@ describe("MigrationGate — blocked wallet window", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("running"));
 
-    for (const label of ["gateFinish", "gateBlockedExit", "gateContinueLater", "gateNoAccess"]) {
+    for (const label of ["goToMarket", "gateBlockedExit", "gateContinueLater", "gateNoAccess"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
   });

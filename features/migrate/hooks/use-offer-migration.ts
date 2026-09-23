@@ -24,7 +24,21 @@ import {
 // linking. Once linked, only money PROVEN to still sit on the old wallet
 // brings the offer back — see offerMigration.
 export function useOfferMigration(): boolean {
-  const { profile, evmAddress } = useAuthSession();
+  return useOfferMigrationState().offer;
+}
+
+/**
+ * The offer, and whether it is still being DECIDED.
+ *
+ * The decision needs the service's status and the directory's answer, and
+ * both arrive after the page has painted. Until they do, `offer` reads as
+ * "no" — so the dashboard showed for a moment and the upgrade then dropped
+ * over it, and the product tour, which waits on the offer, had already
+ * started underneath. `deciding` is what the gate's skeleton and the tour
+ * wait on. Bounded by the caller: an outage must not hold the screen.
+ */
+export function useOfferMigrationState(): { offer: boolean; deciding: boolean } {
+  const { ready, authenticated, profile, evmAddress } = useAuthSession();
   const email = profile.email;
   // The device's memory of a confirmed link. Written only once the service
   // has said `linked: true`, under the email and the address. From then on
@@ -78,15 +92,25 @@ export function useOfferMigration(): boolean {
     legacyKnownAbsent: legacy.certain && !legacy.has,
     walletFunds: walletFundsRead,
   });
+  // Still deciding while the two answers the offer turns on are on their way
+  // — unless one of the device's own signals has already settled it.
+  const deciding =
+    ready &&
+    authenticated &&
+    !complete &&
+    !knownLinked &&
+    !offer &&
+    (status.isPending || legacy.pending);
+
   console.log(
-    `[migrate] offer migrate-to-2.0: ${offer ? "YES" : "no"}` +
+    `[migrate] offer migrate-to-2.0: ${offer ? "YES" : "no"}${deciding ? " (deciding)" : ""}` +
       ` [linked: ${knownLinked ? "yes (remembered on this device)" : status.isError ? "service errored" : statusData === undefined ? "loading" : (statusData.linked ?? "service could not say")},` +
       ` done on this device: ${complete}, privy keys here: ${localHistory},` +
       ` service reports funds: ${statusData?.hasLegacyFunds ?? "unknown"},` +
       ` old wallet on chain: ${!linked ? "not read (not linked)" : walletFunds.isError ? "read failed" : walletFunds.data === undefined ? "probing" : walletFunds.data === null ? "partial read" : walletFunds.data.worthMoving ? `$${walletFunds.data.usd.toFixed(2)} left -> proven` : walletFunds.data.hasFunds ? `dust only ($${walletFunds.data.usd.toFixed(2)}) -> not proven` : "empty"},` +
       ` directory: ${knownLinked ? "skipped (known linked)" : legacy.has ? "legacy account found" : legacy.certain ? "definitely no legacy account" : "no legacy account (unconfirmed)"}]`
   );
-  return offer;
+  return { offer, deciding };
 }
 
 // Whether the balance card should hide the figure. Comes off as soon as a run

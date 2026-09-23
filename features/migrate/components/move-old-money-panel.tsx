@@ -93,6 +93,8 @@ export interface MigrationProgress {
    * seeing it land.
    */
   running: boolean;
+  /** How far the run in flight has got, for the one bar the header draws. */
+  step: { done: number; total: number } | null;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -105,6 +107,12 @@ export interface MoveOldMoneyPanelProps {
    */
   locked?: boolean;
   onProgress?: (progress: MigrationProgress) => void;
+  /**
+   * The design's card: the header above draws the title, the copy and the
+   * one progress bar, so the steps here keep only what the header cannot
+   * say — the action, a decision, the details of what was left.
+   */
+  compact?: boolean;
 }
 
 /*
@@ -115,6 +123,14 @@ const PRIMARY =
   "w-full cursor-pointer rounded-xl bg-upgrade px-4 py-3 font-sans text-[14px] font-semibold text-ink transition-[background-color,transform] hover:bg-upgrade-soft active:scale-[0.99] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
   "w-full cursor-pointer rounded-xl border border-white/14 bg-white/6 px-4 py-3 font-sans text-[14px] font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50";
+
+/*
+  The design's action: a white pill, dark text. Used only on the compact card,
+  where the gold is spent on the bar and the colour of the button is the
+  design's, not ours.
+*/
+const UPGRADE_PRIMARY =
+  "w-full cursor-pointer rounded-full bg-gradient-to-b from-white to-[#DADADA] px-4 py-[15px] font-sans text-[17px] font-semibold text-[#111] transition-[transform,opacity] hover:opacity-95 active:scale-[0.99] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50";
 
 // The automatic run opts into nothing: everything it moves is deterministic.
 const NO_OPT_IN: ReadonlySet<string> = new Set();
@@ -129,6 +145,7 @@ export function MoveOldMoneyPanel({
   onClose,
   locked = false,
   onProgress,
+  compact = false,
 }: MoveOldMoneyPanelProps) {
   const t = useTranslations("migrate");
   const locale = useLocale();
@@ -339,6 +356,10 @@ export function MoveOldMoneyPanel({
       failures: stuckCount,
       walletBlocked,
       running: runner.running,
+      step:
+        runner.running && runner.progress
+          ? { done: runner.progress.done, total: runner.progress.total }
+          : null,
     });
   }, [
     onProgress,
@@ -351,6 +372,8 @@ export function MoveOldMoneyPanel({
     stuckCount,
     walletBlocked,
     runner.running,
+    runner.progress?.done,
+    runner.progress?.total,
   ]);
 
   const toggle = (id: string) => {
@@ -467,6 +490,7 @@ export function MoveOldMoneyPanel({
     if (emailMatch.mismatch) {
       return (
         <Step
+          compact={compact}
           title={t("wrongEmailTitle")}
           body={t("wrongEmailBody", { expected: emailMatch.expected, actual: emailMatch.actual })}
         >
@@ -483,9 +507,11 @@ export function MoveOldMoneyPanel({
     // Signed in to the right account, which has a wallet — and the wallet
     // window never came up. Say so, before the "wrong account" reading below
     // sends this user off to sign in as someone else.
-    if (walletWindowBlocked) return <WalletWindowBlocked t={t} />;
+    if (walletWindowBlocked) return <WalletWindowBlocked t={t} compact={compact} />;
     return (
       <Step
+        compact={compact}
+        bare={compact && !signedInElsewhere}
         title={signedInElsewhere ? t("wrongAccountTitle") : t("signInTitle")}
         body={
           signedInElsewhere ? t("wrongAccountBody") : known > 0 ? t("signInKnown") : t("signInBody")
@@ -499,9 +525,13 @@ export function MoveOldMoneyPanel({
           // session being discarded, a login would be torn down by the logout
           // landing behind it — the same dead click by another route.
           disabled={!privy.ready || !fresh}
-          className={PRIMARY}
+          className={compact && !signedInElsewhere ? UPGRADE_PRIMARY : PRIMARY}
         >
-          {signedInElsewhere ? t("wrongAccountButton") : t("signInButton")}
+          {signedInElsewhere
+            ? t("wrongAccountButton")
+            : compact
+              ? t("startUpdate")
+              : t("signInButton")}
         </button>
       </Step>
     );
@@ -510,12 +540,21 @@ export function MoveOldMoneyPanel({
   if (runner.running && runner.progress) {
     const { done, total, message } = runner.progress;
     return (
-      <Step title={t("runningTitle")} body={message || t("runningBody")}>
-        <ProgressBar pct={total === 0 ? 0 : Math.round((done / total) * 100)} />
-        <p className="tnum mt-2 flex items-center gap-2 text-[12.5px] text-white/55">
-          <Spinner />
-          {t("runningCount", { done, total })}
-        </p>
+      <Step
+        compact={compact}
+        bare={compact}
+        title={t("runningTitle")}
+        body={message || t("runningBody")}
+      >
+        {compact ? null : (
+          <>
+            <ProgressBar pct={total === 0 ? 0 : Math.round((done / total) * 100)} />
+            <p className="tnum mt-2 flex items-center gap-2 text-[12.5px] text-white/55">
+              <Spinner />
+              {t("runningCount", { done, total })}
+            </p>
+          </>
+        )}
         {/* No "stop" and no "continue" while a step is in flight. Both used to
             sit here, and both invited the one thing this screen exists to
             prevent: leaving between a transfer being signed and it landing.
@@ -548,6 +587,7 @@ export function MoveOldMoneyPanel({
     const left = finished.plan.settleLater.filter(worthShowing).length;
     return (
       <Step
+        compact={compact}
         title={t(`summary.${finished.outcome}`)}
         body={t(locked ? "gateSummaryBody" : "summaryBody")}
       >
@@ -616,17 +656,19 @@ export function MoveOldMoneyPanel({
 
   if (holdingsQuery.isPending) {
     return (
-      <Step title={t("reviewTitle")} body={t("checking")}>
-        <div className="flex items-center gap-2 text-[12.5px] text-white/45">
-          <Spinner />
-          {t("checkingNote")}
-        </div>
+      <Step compact={compact} bare={compact} title={t("reviewTitle")} body={t("checking")}>
+        {compact ? null : (
+          <div className="flex items-center gap-2 text-[12.5px] text-white/45">
+            <Spinner />
+            {t("checkingNote")}
+          </div>
+        )}
       </Step>
     );
   }
   if (holdingsQuery.isError) {
     return (
-      <Step title={t("reviewTitle")} body={t("checkFailed")}>
+      <Step compact={compact} title={t("reviewTitle")} body={t("checkFailed")}>
         <button onClick={() => void holdingsQuery.refetch()} className={PRIMARY}>
           {t("retry")}
         </button>
@@ -646,21 +688,30 @@ export function MoveOldMoneyPanel({
   const shownSkipped = groups.skipped.filter(worthShowing);
 
   return (
-    <Step title={t("reviewTitle")} body={t("reviewBody")}>
+    <Step compact={compact} bare={compact} title={t("reviewTitle")} body={t("reviewBody")}>
       {failures.length > 0 ? (
         // Deliberately not styled as an error, and deliberately without the
         // underlying message. A venue that did not answer says nothing about
         // the user's money, and the raw text ("Not found", "wallet is not
         // connected") reads like loss to someone who is already nervous about
         // moving funds. discover() has already logged the real error.
-        <div className="mb-4 rounded-xl border border-white/8 bg-white/4 px-3 py-2.5">
-          <div className="text-[12.5px] font-semibold text-white/85">{t("pendingTitle")}</div>
-          <p className="mt-1 text-[12px] leading-normal text-white/55">
-            {t("pendingBody", {
+        // On the card it is one line: the header has the title.
+        compact ? (
+          <p className="mb-4 text-center text-[13.5px] leading-normal text-white/60">
+            {t("pendingLine", {
               places: listFormat.format(failures.map((f) => t(`venue.${f.venue}`))),
             })}
           </p>
-        </div>
+        ) : (
+          <div className="mb-4 rounded-xl border border-white/8 bg-white/4 px-3 py-2.5">
+            <div className="text-[12.5px] font-semibold text-white/85">{t("pendingTitle")}</div>
+            <p className="mt-1 text-[12px] leading-normal text-white/55">
+              {t("pendingBody", {
+                places: listFormat.format(failures.map((f) => t(`venue.${f.venue}`))),
+              })}
+            </p>
+          </div>
+        )
       ) : null}
       {autoResult && autoResult.movedUsd > 0 ? (
         <div className="border-accent/25 bg-accent/8 mb-4 rounded-xl border px-3 py-2.5 text-[12.5px] text-white/75">
@@ -677,13 +728,26 @@ export function MoveOldMoneyPanel({
       />
       <Section title={t("laterHeading")} holdings={shownLater} t={t} showReason />
       <Section title={t("skippedHeading")} holdings={shownSkipped} t={t} showReason />
-      {nothing && shownLater.length === 0 && shownSkipped.length === 0 ? (
-        <p className="text-[13.5px] text-white/60">{t("nothingToMove")}</p>
+      {nothing &&
+      shownLater.length === 0 &&
+      shownSkipped.length === 0 &&
+      !(compact && failures.length > 0) ? (
+        <p className={`text-[13.5px] text-white/60 ${compact ? "text-center" : ""}`}>
+          {t("nothingToMove")}
+        </p>
       ) : null}
       <div className="mt-5 grid gap-2.5">
-        <button onClick={start} disabled={nothing} className={PRIMARY}>
-          {t("moveButton")}
-        </button>
+        {/* On the card a disabled "move" under "nothing to move" is a dead
+            button; the gate's own footer says what comes next. */}
+        {compact && nothing ? null : (
+          <button
+            onClick={start}
+            disabled={nothing}
+            className={compact ? UPGRADE_PRIMARY : PRIMARY}
+          >
+            {t("moveButton")}
+          </button>
+        )}
         {locked ? null : (
           <button onClick={onClose} className={SECONDARY}>
             {t("close")}
@@ -709,9 +773,9 @@ export function MoveOldMoneyPanel({
 // The wallet window is blocked and nothing has been tried yet. Reload is the
 // only action worth offering: after allowing Privy's domain or pausing the
 // blocker, the iframe only loads on a fresh page.
-function WalletWindowBlocked({ t }: { t: Translate }) {
+function WalletWindowBlocked({ t, compact }: { t: Translate; compact: boolean }) {
   return (
-    <Step title={t("walletBlockedTitle")} body={t("walletBlockedBody")}>
+    <Step compact={compact} title={t("walletBlockedTitle")} body={t("walletBlockedBody")}>
       <button onClick={() => window.location.reload()} className={PRIMARY}>
         {t("walletBlockedReload")}
       </button>
@@ -741,11 +805,27 @@ function Step({
   title,
   body,
   children,
+  compact = false,
+  bare = false,
 }: {
   title: string;
   body: string;
   children?: React.ReactNode;
+  /** Under the design's header: a small label, not a second headline. */
+  compact?: boolean;
+  /** The header has said it all; only the children (the action) show. */
+  bare?: boolean;
 }) {
+  if (bare) return <div className="mt-2">{children}</div>;
+  if (compact) {
+    return (
+      <div className="mt-2">
+        <div className="text-[15px] font-semibold text-white">{title}</div>
+        <p className="mt-1 mb-3 text-[13.5px] leading-normal text-white/60">{body}</p>
+        {children}
+      </div>
+    );
+  }
   return (
     <div>
       <div className="ws-display text-[22px] tracking-[-0.01em] md:text-[24px]">{title}</div>

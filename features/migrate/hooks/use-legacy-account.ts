@@ -122,7 +122,14 @@ async function ask(ids: Identifiers): Promise<LegacyAccount> {
   }
 }
 
-export function useLegacyAccount(enabled = true): LegacyAccount {
+export function useLegacyAccount(enabled = true): LegacyAccount & {
+  /**
+   * A lookup is owed and has not settled: the answer that decides whether to
+   * offer the upgrade is still on its way. The gate's skeleton waits on it,
+   * so the screen is never shown and then covered a moment later.
+   */
+  pending: boolean;
+} {
   // Re-run when the signed-in account changes, not only on mount: the account
   // switch happens without a reload, and the display profile this asks with
   // changes with it.
@@ -137,6 +144,11 @@ export function useLegacyAccount(enabled = true): LegacyAccount {
   const ids = identifiers();
   const key = cacheKey(ids);
   const state = resolved?.key === key ? resolved.answer : (answers.get(key) ?? UNKNOWN);
+  const pending =
+    enabled &&
+    Boolean(ids.email || ids.xId || ids.xHandle) &&
+    !answers.has(key) &&
+    resolved?.key !== key;
 
   useEffect(() => {
     // Disabled means a caller already knows the answer it would give (e.g. the
@@ -169,5 +181,5 @@ export function useLegacyAccount(enabled = true): LegacyAccount {
     // changed; the identifiers themselves are read fresh inside.
   }, [enabled, evmAddress, profile.email]);
 
-  return state;
+  return { ...state, pending };
 }

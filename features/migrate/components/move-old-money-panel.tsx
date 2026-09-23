@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useLoginWithOAuth, usePrivy } from "@privy-io/react-auth";
+import { useLoginWithOAuth, usePrivy, useWallets } from "@privy-io/react-auth";
+import { getEmbeddedWallets } from "@/lib/user";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { CheckIcon } from "@/components/ui/icons";
@@ -170,6 +171,21 @@ export function MoveOldMoneyPanel({
   */
   const oauthReturn = useLoginWithOAuth();
   const oauthReturning = oauthReturn.state.status === "loading";
+  /*
+    THE ADDRESS ARRIVES BEFORE THE WALLET. Sign-in puts the embedded wallet's
+    address on the user record at once; the wallet OBJECT comes once the
+    provider's window has initialised, a moment later. In between there is
+    no signer, and "no signer while signed in" used to read as "an account
+    that was never on the old app" — a screen that said there was nothing to
+    upgrade, to somebody whose upgrade was a second away. That moment is a
+    wait, and it is drawn as one.
+  */
+  const { wallets: legacyWallets } = useWallets();
+  const legacyWalletPending =
+    privy.ready &&
+    privy.authenticated &&
+    getEmbeddedWallets(privy.user).length > 0 &&
+    !legacyWallets.some((w) => w.walletClientType === "privy");
   const signer = useLegacySigner();
   // The wallet window never came up after sign-in — see the hook.
   const walletWindowBlocked = useWalletWindowBlocked();
@@ -569,6 +585,16 @@ export function MoveOldMoneyPanel({
     // window never came up. Say so, before the "wrong account" reading below
     // sends this user off to sign in as someone else.
     if (walletWindowBlocked) return <WalletWindowBlocked t={t} compact={compact} />;
+    if (legacyWalletPending || oauthReturning) {
+      return (
+        <Step compact={compact} bare title={t("signInTitle")} body={t("updating")}>
+          <p className="flex items-center justify-center gap-2 text-[13.5px] text-white/60">
+            <Spinner />
+            {t("updating")}
+          </p>
+        </Step>
+      );
+    }
     return (
       <Step
         compact={compact}
@@ -579,12 +605,7 @@ export function MoveOldMoneyPanel({
         }
       >
         {compact && !signedInElsewhere ? (
-          oauthReturning ? (
-            <p className="flex items-center justify-center gap-2 text-[13.5px] text-white/60">
-              <Spinner />
-              {t("updating")}
-            </p>
-          ) : started && privy.ready && fresh ? (
+          started && privy.ready && fresh ? (
             <LegacySignIn />
           ) : (
             <button

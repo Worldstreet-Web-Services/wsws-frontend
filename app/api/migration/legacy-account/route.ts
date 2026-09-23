@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyRequest } from "@/lib/server/auth";
+import { forwardMigration, migrationServiceEnabled } from "@/lib/server/migration";
 import { getPrivyClient } from "@/lib/server/privy";
 import { fetchPortfolio } from "@/lib/server/alchemy";
 import {
@@ -112,6 +113,24 @@ export async function POST(req: NextRequest) {
   if (xHandle && !/^[A-Za-z0-9_]{1,15}$/.test(xHandle)) xHandle = null;
   if (!email && !xId && !xHandle) return answer(false);
 
+  /*
+    THE SERVICE FIRST. user-management holds the identity map — every old
+    account, seeded from the provider's export — and asks the provider
+    itself for anything the export predates, seeding what it finds. One
+    lookup, and the same answer the Square gives its sign-in. The directory
+    below and the provider call under it stay as the fallback for an
+    unconfigured or silent service, and for X sign-ins, which have no email.
+  */
+  const service = await askUserManagement(req, email);
+  if (service === "legacy") {
+    console.log("[migrate] result: legacy account per user-management -> offering Update Balance");
+    return answer(true, null);
+  }
+  if (service === "new") {
+    console.log("[migrate] result: no legacy account per user-management");
+    return answer(false, null, true);
+  }
+
   // The directory first: a snapshot of who held a Privy account, which needs
   // no Privy call and keeps answering after Privy is switched off. Membership
   // cannot go stale — the population is closed — so a snapshot is as correct
@@ -172,5 +191,31 @@ export async function POST(req: NextRequest) {
     // false must read as "no reason to offer it", never as "you have nothing".
     // The caller keeps its other signals, which is why this one only ever ORs.
     return answer(false);
+  }
+}
+
+/**
+ * Where user-management says this sign-in stands — `legacy`, `new`, or null
+ * when it could not say (unconfigured, no email, `linked`, an outage). A
+ * linked account is null on purpose: the offer for one is decided by the
+ * service's status and the old wallet's balance, not by this.
+ */
+async function askUserManagement(
+  req: NextRequest,
+  email: string | null
+): Promise<"legacy" | "new" | null> {
+  if (!email || !migrationServiceEnabled()) return null;
+  try {
+    const res = await forwardMigration("/legacy-account", {
+      method: "POST",
+      headers: { authorization: req.headers?.get("authorization") ?? "" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => null)) as { data?: { state?: unknown } } | null;
+    const state = body?.data?.state;
+    return state === "legacy" || state === "new" ? state : null;
+  } catch {
+    return null;
   }
 }

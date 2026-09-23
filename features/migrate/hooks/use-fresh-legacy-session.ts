@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { returningFromPrivyOAuth } from "@/features/migrate/lib/oauth-return";
+import { useAuthSession } from "@/hooks/use-auth-session";
 
 // Privy restores its last session from localStorage the moment it mounts, and
 // that session is not necessarily the account whose money is about to move: a
@@ -25,19 +26,42 @@ import { returningFromPrivyOAuth } from "@/features/migrate/lib/oauth-return";
 // never rejects: a throw here would leave every legacy surface waiting on a
 // promise that never settles, which is its own dead end.
 let discard: Promise<boolean> | null = null;
+/*
+  ONCE PER PAGE LOAD, PER NEW ACCOUNT. The discard was keyed to nothing, so
+  signing out of Decane and in as somebody else in the same page load found
+  the first person's old session still there and — the discard having
+  already "happened" — handed it out: the second account's link answered
+  LEGACY_ALREADY_LINKED, because the old account was the first person's.
+  The new account the discard was made for is remembered; a different one
+  starts over.
+*/
+let discardFor: string | null = null;
 
 // Exported for tests, which need each case to start from nothing.
 export function resetFreshLegacySession(): void {
   discard = null;
+  discardFor = null;
 }
 
 // False until any inherited session has been cleared away. Callers must treat
 // that as "no legacy session", never as "still loading, carry on".
 export function useFreshLegacySession(): boolean {
   const privy = usePrivy();
-  const [fresh, setFresh] = useState(false);
+  const { evmAddress } = useAuthSession();
+  const owner = evmAddress ?? "";
+  // Tagged with the new account it was decided for, so a different account
+  // reads as not-fresh at once rather than inheriting the last verdict.
+  const [decided, setDecided] = useState<{ owner: string; fresh: boolean }>({
+    owner: "",
+    fresh: false,
+  });
+  const fresh = decided.owner === owner && decided.fresh;
 
   useEffect(() => {
+    if (discardFor !== owner) {
+      discard = null;
+      discardFor = owner;
+    }
     // `ready` is Privy's own signal that restoring has finished, so this is the
     // first moment `authenticated` can be trusted. Deciding earlier would read
     // a false and let the restored session through a moment later.
@@ -63,12 +87,12 @@ export function useFreshLegacySession(): boolean {
         }
       );
       const cleared = await discard;
-      if (live) setFresh(cleared);
+      if (live) setDecided({ owner, fresh: cleared });
     })();
     return () => {
       live = false;
     };
-  }, [privy]);
+  }, [privy, owner]);
 
   return fresh;
 }

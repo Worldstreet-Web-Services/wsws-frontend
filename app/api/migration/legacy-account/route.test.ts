@@ -15,6 +15,19 @@ vi.mock("@/lib/server/legacy-directory", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/server/legacy-directory")>()),
   lookupLegacyIdentifiers: directory.lookupLegacyIdentifiers,
 }));
+const service = vi.hoisted(() => ({ state: null as string | null }));
+vi.mock("@/lib/server/migration", () => ({
+  migrationServiceEnabled: () => true,
+  forwardMigration: async () =>
+    new Response(
+      JSON.stringify(
+        service.state
+          ? { success: true, data: { state: service.state } }
+          : { success: false, error: { code: "UPSTREAM_ERROR" } }
+      ),
+      { status: service.state ? 200 : 502 }
+    ),
+}));
 vi.mock("@/lib/server/privy", () => ({
   getPrivyClient: () => ({
     users: () => ({
@@ -37,8 +50,40 @@ beforeEach(() => {
   privy.getByEmailAddress.mockReset();
   privy.getByTwitterSubject.mockReset();
   auth.verifyRequest.mockResolvedValue({ provider: "decane", userId: "u1" });
+  // The service could not say, so the existing cases exercise what comes after it.
+  service.state = null;
   // Unknown by default, so the existing cases exercise the Privy fallback.
   directory.lookupLegacyIdentifiers.mockResolvedValue({ known: null, entry: null });
+});
+
+/*
+  The offer used to wait on the directory and then a provider round trip.
+  user-management holds the identity map and answers in one lookup — the
+  same answer the Square's sign-in gets — so it is asked first.
+*/
+describe("the service is asked first", () => {
+  it("offers on a legacy answer without touching the directory or the provider", async () => {
+    service.state = "legacy";
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(await res.json()).toMatchObject({ hasLegacyAccount: true, certain: true });
+    expect(directory.lookupLegacyIdentifiers).not.toHaveBeenCalled();
+    expect(privy.getByEmailAddress).not.toHaveBeenCalled();
+  });
+
+  it("retires the offer on a definite new", async () => {
+    service.state = "new";
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(await res.json()).toMatchObject({ hasLegacyAccount: false, certain: true });
+    expect(directory.lookupLegacyIdentifiers).not.toHaveBeenCalled();
+  });
+
+  it("falls through to the directory when the service cannot say", async () => {
+    service.state = "linked";
+    directory.lookupLegacyIdentifiers.mockResolvedValue({ known: false, entry: null });
+    const res = await POST(req({ email: "a@b.com" }));
+    expect(await res.json()).toMatchObject({ hasLegacyAccount: false, certain: true });
+    expect(directory.lookupLegacyIdentifiers).toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/migration/legacy-account", () => {

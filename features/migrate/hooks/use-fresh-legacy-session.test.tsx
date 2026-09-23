@@ -10,6 +10,10 @@ const privy = vi.hoisted(() => ({
 }));
 
 vi.mock("@privy-io/react-auth", () => ({ usePrivy: () => privy.state }));
+const decane = vi.hoisted(() => ({
+  evmAddress: "0xnew0000000000000000000000000000000000001" as string | null,
+}));
+vi.mock("@/hooks/use-auth-session", () => ({ useAuthSession: () => decane }));
 
 const oauth = vi.hoisted(() => ({ returning: false }));
 vi.mock("@/features/migrate/lib/oauth-return", () => ({
@@ -21,6 +25,7 @@ vi.mock("@/features/migrate/lib/oauth-return", () => ({
 beforeEach(() => {
   resetFreshLegacySession();
   oauth.returning = false;
+  decane.evmAddress = "0xnew0000000000000000000000000000000000001";
   privy.state = { ready: false, authenticated: false, logout: vi.fn(async () => {}) };
 });
 
@@ -53,6 +58,24 @@ describe("useFreshLegacySession", () => {
 
     await waitFor(() => expect(result.current).toBe(true));
     expect(privy.state.logout).toHaveBeenCalledOnce();
+  });
+
+  /*
+    Seen live: one account upgraded, the person signed out of Decane and in
+    as another in the same page load, and the first account's old session
+    was handed to the second — its link answered LEGACY_ALREADY_LINKED. A
+    different new account starts the discard over.
+  */
+  it("discards again when a different new account signs in on the same page", async () => {
+    privy.state = { ...privy.state, ready: true, authenticated: true };
+    const { result, rerender } = renderHook(() => useFreshLegacySession());
+    await waitFor(() => expect(result.current).toBe(true));
+    expect(privy.state.logout).toHaveBeenCalledOnce();
+
+    decane.evmAddress = "0xother000000000000000000000000000000000002";
+    rerender();
+    await waitFor(() => expect(privy.state.logout).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current).toBe(true));
   });
 
   it("logs out once per page load however many surfaces are mounted", async () => {

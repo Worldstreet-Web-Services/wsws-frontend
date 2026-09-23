@@ -36,7 +36,7 @@ const QUIET =
   "cursor-pointer font-sans text-[13px] text-white/45 underline-offset-2 hover:text-white/70 hover:underline";
 const NOTE = "text-[13px] leading-normal text-white/55";
 
-type SnoozeReason = "no_access" | "failing" | "browser";
+type SnoozeReason = "no_access" | "failing" | "browser" | "blocked";
 
 /**
  * The migration as a gate: an overlay nobody can close until the old account
@@ -122,12 +122,16 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
     setDoneHere(true);
   }, [canFinish, key]);
 
-  // Exit a gate that can never be completed. Unlike finish, this is not gated on
-  // canFinish — it only runs when linking is terminally blocked.
+  // Exit a gate that can never be completed here — the old account belongs
+  // to another Market 2.0 account. Put away for the long window, never marked
+  // DONE: "Go to Market" on a finished upgrade is the one thing that marks an
+  // account done, and this account has not upgraded. Support may yet sort out
+  // whose it is, and the gate should come back for that.
   const leave = useCallback(() => {
-    writeGateDone(key);
-    setDoneHere(true);
-  }, [key]);
+    writeGateSnooze(snoozeKey, Date.now() + SNOOZE_NO_ACCESS_MS);
+    track("migration_gate_snoozed", { reason: "blocked", stage });
+    setSnoozedHere(true);
+  }, [snoozeKey, stage]);
 
   const snooze = useCallback(
     (reason: SnoozeReason) => {
@@ -156,7 +160,9 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
             entry="gate"
             locked
             onProgress={setProgress}
-            onClose={finish}
+            // The panel's own close buttons are hidden while locked, and no
+            // other path may finish the gate: only Go to Market below does.
+            onClose={ignore}
             compact
           />
           {blocked ? (

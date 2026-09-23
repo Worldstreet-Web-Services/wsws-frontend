@@ -55,7 +55,10 @@ export interface AnalyticsEvents {
   migration_link_blocked: { code: string };
   // The user put the gate away for a while: they cannot sign into the old
   // account, or the current step kept failing. A delay, never a completion.
-  migration_gate_snoozed: { reason: "no_access" | "failing" | "browser"; stage: string };
+  migration_gate_snoozed: {
+    reason: "no_access" | "failing" | "browser" | "blocked";
+    stage: string;
+  };
   migration_reviewed: {
     holdings: number;
     opted_in: number;

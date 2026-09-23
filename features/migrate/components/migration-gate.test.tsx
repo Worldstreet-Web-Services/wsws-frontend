@@ -183,7 +183,11 @@ describe("MigrationGate", () => {
     expect(screen.getByText("gateBlockedBody")).toBeInTheDocument();
     fireEvent.click(screen.getByText("gateBlockedExit"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(KEY)).toBe("1");
+    // Put away, never marked done: only Go to Market on a finished upgrade
+    // marks an account done, and this one has not upgraded. Support may sort
+    // out whose the old account is, and the gate comes back for that.
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+    expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
   });
 
   it("does not return for an account that finished, even while the service still reports funds", () => {

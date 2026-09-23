@@ -3351,7 +3351,7 @@
     "bugReportReply": "¡Muchas gracias por el informe! Nuestro equipo de frontend está investigando la incidencia. Puedes adjuntar registros adicionales como `bloque de código`."
   },
   "migrate": {
-    "pendingLine": "{places} aún no se han actualizado; vuelve más tarde para terminar su actualización.",
+    "pendingLine": "{places} aún no se han actualizado. Vuelve más tarde para terminar su actualización.",
     "updateTitle": "Actualiza tu cuenta de Market.",
     "updateIntro": "Market está pasando a un nuevo sistema de cuentas. Actualiza tu cuenta actual para continuar.",
     "finishTitle": "Termina de actualizar tu cuenta.",

@@ -3351,7 +3351,7 @@
     "bugReportReply": "Vielen Dank für den Hinweis und die Details! Unser Frontend-Team untersucht das Problem bereits. Zusätzliche Logs können Sie gerne als `Codeblock` einfügen."
   },
   "migrate": {
-    "pendingLine": "{places} sind noch nicht aktualisiert – schau später wieder vorbei, um ihre Aktualisierung abzuschließen.",
+    "pendingLine": "{places} sind noch nicht aktualisiert. Schau später wieder vorbei, um ihre Aktualisierung abzuschließen.",
     "updateTitle": "Aktualisiere dein Market-Konto.",
     "updateIntro": "Market wechselt zu einem neuen Kontosystem. Aktualisiere dein bestehendes Konto, um fortzufahren.",
     "finishTitle": "Schließe die Aktualisierung ab.",

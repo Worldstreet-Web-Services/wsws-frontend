@@ -3351,7 +3351,7 @@
     "bugReportReply": "Merci pour ce signalement détaillé ! Notre équipe d'ingénieurs examine le problème. Vous pouvez coller des logs supplémentaires sous forme de `bloc de code`."
   },
   "migrate": {
-    "pendingLine": "{places} ne sont pas encore mis à jour — reviens plus tard pour terminer leur mise à jour.",
+    "pendingLine": "{places} ne sont pas encore mis à jour. Reviens plus tard pour terminer leur mise à jour.",
     "updateTitle": "Mets à jour ton compte Market.",
     "updateIntro": "Market passe à un nouveau système de comptes. Mets à jour ton compte actuel pour continuer.",
     "finishTitle": "Termine la mise à jour de ton compte.",

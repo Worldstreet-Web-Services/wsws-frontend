@@ -3351,7 +3351,7 @@
     "bugReportReply": "Thank you for the report and details! Our frontend engineering team is looking into this glitch. If you have extra logs or console messages, you can paste them as a `code block`."
   },
   "migrate": {
-    "pendingLine": "{places} haven’t upgraded yet — check back later to finish their upgrade.",
+    "pendingLine": "{places} haven’t upgraded yet. Check back later to finish their upgrade.",
     "updateTitle": "Update your Market account.",
     "updateIntro": "Market is moving to a new account system. Update your existing account to continue.",
     "finishTitle": "Finish updating your account.",

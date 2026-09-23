@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-frame";
 
 describe("MoveOldMoneyFrame", () => {
-  it("closes on Escape, the backdrop and the close button by default", () => {
+  // Leaving is a deliberate press: a tap beside the card, or Escape, while a
+  // sweep is being signed must not put the card away by accident.
+  it("closes on the close button only — not Escape, not the backdrop", () => {
     const onClose = vi.fn();
     render(
       <MoveOldMoneyFrame onClose={onClose}>
@@ -12,9 +14,12 @@ describe("MoveOldMoneyFrame", () => {
       </MoveOldMoneyFrame>
     );
     fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.click(screen.getByRole("dialog"));
+    expect(onClose).not.toHaveBeenCalled();
+    const buttons = screen.getAllByLabelText("Close");
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
     expect(onClose).toHaveBeenCalledTimes(1);
-    for (const button of screen.getAllByLabelText("Close")) fireEvent.click(button);
-    expect(onClose).toHaveBeenCalledTimes(3);
   });
 
   // The gate: the only way out is whatever the children offer.

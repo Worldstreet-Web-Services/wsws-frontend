@@ -161,9 +161,28 @@ export function BalanceCardDesktop({
                 selected currency, so an empty spendable balance is stated
                 rather than silently missing. The side padding and the looser
                 leading are for the long locales: "disponible para gastar" runs
-                to a second line on a narrow column and needs room around it. */}
-            <div className="tnum mt-2 max-w-full px-3 text-center text-[13px] leading-[1.45] font-normal text-white/45">
-              {t("readyToSpend", { amount: formatMasked(readyToSpend) })}
+                to a second line on a narrow column and needs room around it.
+
+                Three states, not a figure and a fallback: a read on its way
+                gets the same pulse the total gets, and a read that failed says
+                so. Neither is ever drawn as a zero — "you have nothing" is a
+                claim about someone's money, and this is the row the withdraw
+                button is gated on. */}
+            <div
+              data-testid="ready-to-spend"
+              className="tnum mt-2 max-w-full px-3 text-center text-[13px] leading-[1.45] font-normal text-white/45"
+            >
+              {readyToSpend.state === "loading" ? (
+                <span className="block h-[12px] w-[130px] animate-pulse rounded-full bg-white/8" />
+              ) : readyToSpend.state === "known" ? (
+                t("readyToSpend", { amount: formatMasked(readyToSpend.usd) })
+              ) : (
+                // Its own key rather than the card's generic "Couldn't load",
+                // which sits a few lines above on the same card: borrowing it
+                // here would read as the whole balance having failed when only
+                // this one figure is unreadable.
+                t("readyToSpendUnknown")
+              )}
             </div>
           </>
         )}

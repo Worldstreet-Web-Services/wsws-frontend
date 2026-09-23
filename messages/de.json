@@ -360,6 +360,7 @@
     "withdraw": "Auszahlen",
     "depositPending": "Deine Bankeinzahlung ist unterwegs. Es kann 5 bis 10 Minuten dauern, bis sie in deinem Guthaben erscheint; Auszahlungen sind danach wieder möglich.",
     "readyToSpend": "{amount} verfügbar",
+    "readyToSpendUnknown": "Verfügbarer Betrag nicht abrufbar",
     "breakdownTitle": "Wo dein Geld liegt",
     "assetsHeld": "Werte",
     "breakdownEmpty": "Noch nichts im Bestand.",

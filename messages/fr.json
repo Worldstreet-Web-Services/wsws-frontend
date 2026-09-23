@@ -360,6 +360,7 @@
     "withdraw": "Retirer",
     "depositPending": "Votre dépôt bancaire est en route. Cela peut prendre 5 à 10 minutes avant d'apparaître sur votre solde ; les retraits seront ensuite de nouveau disponibles.",
     "readyToSpend": "{amount} disponible à dépenser",
+    "readyToSpendUnknown": "Montant disponible non chargé",
     "breakdownTitle": "Où est votre argent",
     "assetsHeld": "actifs",
     "breakdownEmpty": "Rien en portefeuille.",

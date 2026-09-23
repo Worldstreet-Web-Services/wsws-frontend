@@ -14,11 +14,10 @@ import { SUPPORT_EMAIL } from "@/lib/brand";
 import {
   gateDoneKey,
   gateSnoozeKey,
-  readGateDone,
-  readGateSnoozed,
   SNOOZE_FAILING_MS,
   SNOOZE_NO_ACCESS_MS,
   STUCK_AFTER_FAILURES,
+  useGateFlags,
   writeGateDone,
   writeGateSnooze,
 } from "@/features/migrate/lib/gate-state";
@@ -67,8 +66,9 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const session = useAuthSession();
   const key = gateDoneKey(session.evmAddress);
   const snoozeKey = gateSnoozeKey(session.evmAddress);
-  const [doneHere, setDoneHere] = useState(() => readGateDone(key));
-  const [snoozedHere, setSnoozedHere] = useState(() => readGateSnoozed(snoozeKey));
+  // Live, not a copy taken at mount: an upgrade finished in the sheet marks
+  // the account done, and this must see it before it can open.
+  const { done: doneHere, snoozed: snoozedHere } = useGateFlags(session.evmAddress);
   const [progress, setProgress] = useState<MigrationProgress | null>(null);
   // The "I can't sign in" exit asks once before it acts.
   const [confirmingNoAccess, setConfirmingNoAccess] = useState(false);
@@ -119,7 +119,6 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const finish = useCallback(() => {
     if (!canFinish) return;
     writeGateDone(key);
-    setDoneHere(true);
   }, [canFinish, key]);
 
   // Exit a gate that can never be completed here — the old account belongs
@@ -130,7 +129,6 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
   const leave = useCallback(() => {
     writeGateSnooze(snoozeKey, Date.now() + SNOOZE_NO_ACCESS_MS);
     track("migration_gate_snoozed", { reason: "blocked", stage });
-    setSnoozedHere(true);
   }, [snoozeKey, stage]);
 
   const snooze = useCallback(
@@ -138,7 +136,6 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
       const span = reason === "no_access" ? SNOOZE_NO_ACCESS_MS : SNOOZE_FAILING_MS;
       writeGateSnooze(snoozeKey, Date.now() + span);
       track("migration_gate_snoozed", { reason, stage });
-      setSnoozedHere(true);
     },
     [snoozeKey, stage]
   );

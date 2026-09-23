@@ -783,8 +783,8 @@ export function MoveOldMoneyPanel({
             </button>
           ) : null}
           {locked ? null : (
-            <button onClick={onClose} className={SECONDARY}>
-              {t("done")}
+            <button onClick={onClose} className={compact ? UPGRADE_PRIMARY : SECONDARY}>
+              {compact ? t("goToMarket") : t("done")}
             </button>
           )}
         </div>

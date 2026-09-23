@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuthSession } from "@/hooks/use-auth-session";
+import { gateDoneKey, writeGateDone } from "@/features/migrate/lib/gate-state";
 import { LegacyPrivyProvider } from "@/components/providers/legacy-privy-provider";
 import { MoveOldMoneyFrame } from "@/features/migrate/components/move-old-money-frame";
 
@@ -41,14 +43,22 @@ export function MoveOldMoneySheet({
   entry: MigrationEntry;
 }) {
   const [progress, setProgress] = useState<MigrationProgress | null>(null);
-  if (!open) return null;
   const done =
+    open &&
     progress !== null &&
     !progress.running &&
     progress.linked &&
     progress.discovered &&
     progress.coreRemaining === 0 &&
     progress.settled;
+  // Finished here is finished: the gate must not open for this account and
+  // run the whole thing again the moment this closes. Same condition the
+  // gate's own Go to Market uses.
+  const { evmAddress } = useAuthSession();
+  useEffect(() => {
+    if (done) writeGateDone(gateDoneKey(evmAddress));
+  }, [done, evmAddress]);
+  if (!open) return null;
   return (
     <MoveOldMoneyFrame onClose={onClose}>
       <LegacyPrivyProvider>

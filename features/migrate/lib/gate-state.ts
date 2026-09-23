@@ -99,6 +99,30 @@ function subscribe(onChange: () => void): () => void {
  * anything waiting on the migration (the product tour, say) can proceed
  * without a reload.
  */
+/**
+ * The account's done and snoozed flags, read LIVE: they re-render the moment
+ * either is written, in this tab or another. The gate reads them this way
+ * so that an upgrade finished in the sheet (the balance card's button, the
+ * account menu) closes the gate's door before it can open — it used to read
+ * the flags once, at mount, and then open for an account that had just
+ * finished elsewhere and run the whole thing again.
+ */
+export function useGateFlags(evmAddress: string | null): { done: boolean; snoozed: boolean } {
+  const doneKey = gateDoneKey(evmAddress);
+  const snoozeKey = gateSnoozeKey(evmAddress);
+  const done = useSyncExternalStore(
+    subscribe,
+    () => readGateDone(doneKey),
+    () => false
+  );
+  const snoozed = useSyncExternalStore(
+    subscribe,
+    () => readGateSnoozed(snoozeKey),
+    () => false
+  );
+  return { done, snoozed };
+}
+
 export function useMigrationGateActive(): boolean {
   // Deciding counts as active: the tour must not start under a gate that is
   // about to open.

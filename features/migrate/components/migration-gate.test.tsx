@@ -65,6 +65,7 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         walletBlocked: false,
         running: false,
         step: null,
+        retrying: false,
         ...p,
       });
     return (

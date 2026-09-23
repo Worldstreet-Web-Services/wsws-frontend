@@ -40,6 +40,8 @@ import {
 } from "@/features/migrate/hooks/use-legacy-holdings";
 import { useMigrationRun } from "@/features/migrate/hooks/use-migration-run";
 import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-status";
+import { LegacySignIn } from "@/features/migrate/components/legacy-sign-in";
+import { STUCK_AFTER_FAILURES } from "@/features/migrate/lib/gate-state";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 
 export type MigrationEntry = "balance_card" | "account_modal" | "gate";
@@ -52,6 +54,8 @@ export type MigrationStage = "signIn" | "move" | "finish";
 // user whose old wallet belongs to another account is not trapped behind the
 // overlay forever.
 const TERMINAL_LINK_CODES = new Set(["LEGACY_ALREADY_LINKED"]);
+// How long the card pauses before going round again after a miss.
+const RETRY_PAUSE_MS = 2_500;
 // Link attempts per mount, and the pauses between them.
 const LINK_ATTEMPTS = 3;
 const LINK_RETRY_MS = [1_500, 4_000] as const;
@@ -95,6 +99,12 @@ export interface MigrationProgress {
   running: boolean;
   /** How far the run in flight has got, for the one bar the header draws. */
   step: { done: number; total: number } | null;
+  /**
+   * A run left something behind and the panel is going round again on its
+   * own. The bar stays; the caption says "checking again" rather than
+   * listing what did not land.
+   */
+  retrying: boolean;
 }
 
 export interface MoveOldMoneyPanelProps {
@@ -201,6 +211,9 @@ export function MoveOldMoneyPanel({
   // reset with every re-discovery.
   const [optIn, setOptIn] = useState<Set<string> | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // "Start Update" pressed: the old provider's methods are drawn in place of
+  // the button, by us (see LegacySignIn), never as the provider's own modal.
+  const [started, setStarted] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   // The deterministic sweep that runs without being asked for, kept apart from
   // the opted-in run so the summary can add the two together.
@@ -338,6 +351,25 @@ export function MoveOldMoneyPanel({
   const groups = useMemo(() => reviewGroups(remaining, checked, now), [remaining, checked, now]);
   // Which step is on screen — the same choice the render below makes.
   const finishedNow = result ?? (autoResult && groups.optIn.length === 0 ? autoResult : null);
+  // What a finished run left unsettled, at hook level so the card can go
+  // round again without a button.
+  const unsettled = useMemo(() => {
+    if (!finishedNow) return 0;
+    const runs = [autoResult, finishedNow].filter(
+      (r, i, all): r is RunResult => r !== null && all.indexOf(r) === i
+    );
+    const attempted = new Map(
+      runs.flatMap((r) => r.plan.phases.flatMap((ph) => ph.holdings)).map((h) => [h.id, h])
+    );
+    return [...attempted.values()].filter((h) => !runs.some((r) => r.results.get(h.id)?.ok)).length;
+  }, [finishedNow, autoResult]);
+  // Whether the card is about to go round again — see the effect by `retry`.
+  const retrying =
+    compact &&
+    finishedNow !== null &&
+    unsettled > 0 &&
+    !runBlocked &&
+    sweepFailures < STUCK_AFTER_FAILURES;
   const stage: MigrationStage = !signer ? "signIn" : finishedNow ? "finish" : "move";
   const coreRemaining = blocking.filter(isCoreAsset).length;
   // Fetch cycles that ended in error (each already includes the client's two
@@ -360,6 +392,7 @@ export function MoveOldMoneyPanel({
         runner.running && runner.progress
           ? { done: runner.progress.done, total: runner.progress.total }
           : null,
+      retrying,
     });
   }, [
     onProgress,
@@ -374,6 +407,7 @@ export function MoveOldMoneyPanel({
     runner.running,
     runner.progress?.done,
     runner.progress?.total,
+    retrying,
   ]);
 
   const toggle = (id: string) => {
@@ -473,6 +507,23 @@ export function MoveOldMoneyPanel({
     void holdingsQuery.refetch();
   };
 
+  /*
+    ON THE CARD, A MISS GOES ROUND AGAIN BY ITSELF. The summary used to list
+    what moved, what waited and what failed, with a "try again" under it. The
+    design shows one bar and a line; so a run that left something behind
+    simply runs again after a breath, with the bar still up and "checking
+    again" under it — until the gate's own "this keeps failing" exit takes
+    over (STUCK_AFTER_FAILURES), which is unchanged. A blocked wallet window
+    is not retried: a reload is what fixes that, and the note says so.
+  */
+  useEffect(() => {
+    if (!retrying) return;
+    const timer = setTimeout(retry, RETRY_PAUSE_MS);
+    return () => clearTimeout(timer);
+    // `retry` is recreated every render; what decides a retry is the state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retrying, sweepFailures]);
+
   if (!signer) {
     const known =
       walletFunds.data?.usd ?? (status.data?.hasLegacyFunds ? status.data.legacyFundsUsd : 0);
@@ -517,22 +568,36 @@ export function MoveOldMoneyPanel({
           signedInElsewhere ? t("wrongAccountBody") : known > 0 ? t("signInKnown") : t("signInBody")
         }
       >
-        <button
-          onClick={() =>
-            signedInElsewhere ? void privy.logout().then(() => privy.login()) : void privy.login()
-          }
-          // Not merely privy.ready: between Privy being ready and the inherited
-          // session being discarded, a login would be torn down by the logout
-          // landing behind it — the same dead click by another route.
-          disabled={!privy.ready || !fresh}
-          className={compact && !signedInElsewhere ? UPGRADE_PRIMARY : PRIMARY}
-        >
-          {signedInElsewhere
-            ? t("wrongAccountButton")
-            : compact
-              ? t("startUpdate")
-              : t("signInButton")}
-        </button>
+        {compact && !signedInElsewhere ? (
+          started && privy.ready && fresh ? (
+            <LegacySignIn />
+          ) : (
+            <button
+              onClick={() => setStarted(true)}
+              disabled={!privy.ready || !fresh}
+              className={UPGRADE_PRIMARY}
+            >
+              {t("startUpdate")}
+            </button>
+          )
+        ) : (
+          <button
+            onClick={() =>
+              signedInElsewhere
+                ? compact
+                  ? void privy.logout()
+                  : void privy.logout().then(() => privy.login())
+                : void privy.login()
+            }
+            // Not merely privy.ready: between Privy being ready and the inherited
+            // session being discarded, a login would be torn down by the logout
+            // landing behind it — the same dead click by another route.
+            disabled={!privy.ready || !fresh}
+            className={PRIMARY}
+          >
+            {signedInElsewhere ? t("wrongAccountButton") : t("signInButton")}
+          </button>
+        )}
       </Step>
     );
   }
@@ -588,18 +653,21 @@ export function MoveOldMoneyPanel({
     return (
       <Step
         compact={compact}
+        bare={compact}
         title={t(`summary.${finished.outcome}`)}
         body={t(locked ? "gateSummaryBody" : "summaryBody")}
       >
-        <div className="ws-inset flex flex-col gap-2 p-3.5 text-[13px]">
-          <Row label={t("moved")} value={String(movedCount)} />
-          <Row label={t("left")} value={String(left)} />
-          <Row
-            label={t("failed")}
-            value={String(failed.length)}
-            tone={failed.length ? "down" : undefined}
-          />
-        </div>
+        {compact ? null : (
+          <div className="ws-inset flex flex-col gap-2 p-3.5 text-[13px]">
+            <Row label={t("moved")} value={String(movedCount)} />
+            <Row label={t("left")} value={String(left)} />
+            <Row
+              label={t("failed")}
+              value={String(failed.length)}
+              tone={failed.length ? "down" : undefined}
+            />
+          </div>
+        )}
         {/* The same link moves the person's Square profile — a wsws user who
             upgrades here has upgraded there too. The service says whether
             that landed, and the one answer that must not be swallowed is
@@ -615,7 +683,7 @@ export function MoveOldMoneyPanel({
         ) : null}
         {runBlocked ? (
           <p className="mt-3 text-[13px] leading-normal text-white/65">{t("walletBlockedBody")}</p>
-        ) : failed.length > 0 ? (
+        ) : failed.length > 0 && !compact ? (
           <ul className="mt-3 flex flex-col gap-1.5 text-[12.5px] text-white/60">
             {failed.map((h) => {
               // The last run that attempted it holds the error worth showing.
@@ -639,8 +707,8 @@ export function MoveOldMoneyPanel({
             <button onClick={() => window.location.reload()} className={PRIMARY}>
               {t("walletBlockedReload")}
             </button>
-          ) : failed.length > 0 || left > 0 ? (
-            <button onClick={retry} className={PRIMARY}>
+          ) : (failed.length > 0 || left > 0) && !retrying ? (
+            <button onClick={retry} className={compact ? UPGRADE_PRIMARY : PRIMARY}>
               {t("retry")}
             </button>
           ) : null}

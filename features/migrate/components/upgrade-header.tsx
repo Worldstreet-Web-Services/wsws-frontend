@@ -103,13 +103,7 @@ export function UpgradeHeader({
                 style={{ width: `${view.pct}%` }}
               />
             </div>
-            <p className="mt-3 text-[14px] text-white/60">
-              {view.caption
-                ? view.caption === "captionMoving" && view.step
-                  ? t("captionMoving", view.step)
-                  : t(view.caption)
-                : ""}
-            </p>
+            <p className="mt-3 text-[14px] text-white/60">{view.caption ? t(view.caption) : ""}</p>
           </div>
         )}
       </div>

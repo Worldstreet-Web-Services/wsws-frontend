@@ -43,7 +43,9 @@ describe("the upgrade modal's header", () => {
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "55");
     expect(bar.firstElementChild).toHaveStyle({ width: "55%" });
-    expect(screen.getByText('captionMoving:{"done":2,"total":4}')).toBeInTheDocument();
+    // No count: "2 of 4" invites watching money move; the line just says
+    // what is happening.
+    expect(screen.getByText("captionMoving")).toBeInTheDocument();
     // The old three-step rail is gone for good.
     expect(screen.queryByRole("list")).toBeNull();
   });

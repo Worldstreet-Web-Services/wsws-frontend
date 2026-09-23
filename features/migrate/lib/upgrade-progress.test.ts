@@ -13,6 +13,7 @@ const base: MigrationProgress = {
   walletBlocked: false,
   running: false,
   step: null,
+  retrying: false,
 };
 
 describe("one bar for the whole upgrade", () => {
@@ -48,6 +49,14 @@ describe("one bar for the whole upgrade", () => {
     expect(upgradeView({ ...base, running: true, step: { done: 9, total: 5 } }, false).pct).toBe(
       90
     );
+  });
+
+  // A miss is not shown as a list of what failed; the card goes round again.
+  it("says checking again while a run is repeated, with the bar still up", () => {
+    const view = upgradeView({ ...base, stage: "finish", retrying: true }, false);
+    expect(view).toMatchObject({ phase: "progress", caption: "captionRetrying" });
+    expect(view.pct).toBeGreaterThan(20);
+    expect(view.pct).toBeLessThan(100);
   });
 
   it("is full only when the gate says the upgrade is done", () => {

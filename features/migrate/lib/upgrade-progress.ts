@@ -19,6 +19,7 @@ export type UpgradeCaption =
   | "captionCopying"
   | "captionChecking"
   | "captionMoving"
+  | "captionRetrying"
   | "captionReview"
   | "captionLeft"
   | "updateComplete";
@@ -46,6 +47,10 @@ export function upgradeView(progress: MigrationProgress | null, canFinish: boole
   if (!progress.linked) return { phase: "progress", pct: 6, caption: "captionCopying", step: null };
   if (!progress.discovered) {
     return { phase: "progress", pct: 14, caption: "captionChecking", step: null };
+  }
+  // Going round again after a miss: the bar holds where the sweep left it.
+  if (progress.retrying) {
+    return { phase: "progress", pct: 60, caption: "captionRetrying", step: null };
   }
   if (progress.running && progress.step) {
     const { done, total } = progress.step;

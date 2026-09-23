@@ -15,14 +15,16 @@ export const SOLANA_NETWORK = "solana-mainnet";
 // millionth of one whole unit is a rounding remnant whatever the price, so
 // this one needs no price and survives a feed outage.
 export const DUST_MIN_BALANCE = 1e-6;
-// By value: a token worth less than a cent is dust, whatever its balance
-// says, and whether or not it carries a price. A honeypot memecoin holds a
-// real balance (nine whole units) worth a hundredth of a cent and reverts on
-// transfer — "ERC20: transfer amount exceeds balance"; an unpriced one is
-// "$0.00" to the user and not worth a sponsored transaction either. The one
-// exception is a chain's NATIVE coin with no price at all: that is a feed
-// gap, not a worthless balance, and native is the money the gate exists for.
-export const DUST_MIN_VALUE_USD = 0.01;
+// By value: a token worth less than a tenth of a cent is dust, whatever its
+// balance says, and whether or not it carries a price. It was a cent, and a
+// person whose old account held tokens worth one and two cents watched them
+// stay behind — small, but theirs, and "ignored" is how it read. A honeypot
+// memecoin holding a real balance worth a hundredth of a cent still reverts on
+// transfer and is still dropped here; an unpriced one is "$0.00" to the user
+// and not worth a sponsored transaction either. The one exception is a
+// chain's NATIVE coin with no price at all: that is a feed gap, not a
+// worthless balance, and native is the money the gate exists for.
+export const DUST_MIN_VALUE_USD = 0.001;
 
 export interface SweepAsset {
   // Stable identity for progress tracking across retries.

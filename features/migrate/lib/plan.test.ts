@@ -189,7 +189,9 @@ describe("buildSweepPlan — dust", () => {
     expect(all).toEqual(["APE"]);
   });
 
-  it("sweeps from a cent up, and not below", () => {
+  // A cent or two is small, but it is the person's, and leaving it behind
+  // read as "ignored". The floor is a tenth of a cent.
+  it("sweeps from a tenth of a cent up, and not below", () => {
     const plan = buildSweepPlan([
       token({
         symbol: "CENT",
@@ -200,14 +202,22 @@ describe("buildSweepPlan — dust", () => {
         valueUsd: 0.01,
       }),
       token({
-        symbol: "SUB",
-        rawBalance: "9000",
+        symbol: "MILLI",
+        rawBalance: "1000",
         decimals: 6,
-        balance: 0.009,
+        balance: 0.001,
         priceUsd: 1,
-        valueUsd: 0.009,
+        valueUsd: 0.001,
+      }),
+      token({
+        symbol: "SUB",
+        rawBalance: "900",
+        decimals: 6,
+        balance: 0.0009,
+        priceUsd: 1,
+        valueUsd: 0.0009,
       }),
     ]);
-    expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["CENT"]);
+    expect(plan.chains.flatMap((c) => c.assets).map((a) => a.symbol)).toEqual(["CENT", "MILLI"]);
   });
 });

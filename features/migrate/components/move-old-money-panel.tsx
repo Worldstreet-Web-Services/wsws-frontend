@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useLoginWithOAuth, usePrivy, useWallets } from "@privy-io/react-auth";
 import { getEmbeddedWallets } from "@/lib/user";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -11,7 +12,7 @@ import { CheckIcon } from "@/components/ui/icons";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { track } from "@/lib/analytics/mixpanel";
-import { errorCode, isUnconfigured } from "@/lib/api/envelope";
+import { errorCode, errorStatus, isUnconfigured } from "@/lib/api/envelope";
 import { formatUsd } from "@/lib/currency";
 import { scheduleSettlement, sumValueUsd } from "@/lib/migration/schedule";
 import type { LegacyHolding, SettleOutcome, VenueAdapter } from "@/lib/migration/types";
@@ -44,6 +45,7 @@ import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-statu
 import { useLedgerRekeys } from "@/features/migrate/hooks/use-ledger-rekeys";
 import { LegacySignIn } from "@/features/migrate/components/legacy-sign-in";
 import { STUCK_AFTER_FAILURES } from "@/features/migrate/lib/gate-state";
+import { isSessionExpired } from "@/features/migrate/lib/session-expiry";
 import { useLegacyWalletFunds } from "@/features/migrate/hooks/use-legacy-wallet-funds";
 
 export type MigrationEntry = "balance_card" | "account_modal" | "gate";
@@ -138,6 +140,10 @@ export interface MoveOldMoneyPanelProps {
   The step's action, in the upgrade gold, so the colour marks the thing
   to do next. Dark ink on gold clears contrast comfortably.
 */
+// How long the "session expired" line stays before the card sends the person
+// to sign in by itself. The button on it goes at once.
+const SESSION_EXPIRED_REDIRECT_MS = 4_000;
+
 const PRIMARY =
   "w-full cursor-pointer rounded-xl bg-upgrade px-4 py-3 font-sans text-[14px] font-semibold text-ink transition-[background-color,transform] hover:bg-upgrade-soft active:scale-[0.99] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
@@ -241,6 +247,27 @@ export function MoveOldMoneyPanel({
   const holdingsQuery = useLegacyHoldings(runnerInput);
   const runner = useMigrationRun(runnerInput);
 
+  // The sign-in lapsed under the upgrade (a Decane session lasts two hours
+  // and does not refresh). Every call answers 401 from then on, so nothing
+  // here can finish; the card says so and sends the person back to sign in,
+  // rather than listing every venue as "not answered, check back later".
+  const router = useRouter();
+  // The link answered 401: the sign-in is no longer valid. No retry helps.
+  const [linkExpired, setLinkExpired] = useState(false);
+  const sessionExpired =
+    linkExpired ||
+    isSessionExpired(holdingsQuery.data?.failures, holdingsQuery.error, status.error);
+  const backToSignIn = useCallback(() => {
+    track("migration_session_expired");
+    void session.logout().finally(() => router.push("/auth"));
+  }, [session, router]);
+  useEffect(() => {
+    if (!sessionExpired) return;
+    // Long enough to read the line; the button goes at once.
+    const timer = setTimeout(backToSignIn, SESSION_EXPIRED_REDIRECT_MS);
+    return () => clearTimeout(timer);
+  }, [sessionExpired, backToSignIn]);
+
   // Null until the user touches a checkbox; the defaults apply until then and
   // reset with every re-discovery.
   const [optIn, setOptIn] = useState<Set<string> | null>(null);
@@ -312,6 +339,10 @@ export function MoveOldMoneyPanel({
           if (code && TERMINAL_LINK_CODES.has(code)) {
             setLinkBlocked(code);
             track("migration_link_blocked", { code });
+            return;
+          }
+          if (errorStatus(error) === 401) {
+            setLinkExpired(true);
             return;
           }
           if (isUnconfigured(error)) return;
@@ -578,6 +609,16 @@ export function MoveOldMoneyPanel({
     // `retry` is recreated every render; what decides a retry is the state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retrying, sweepFailures]);
+
+  if (sessionExpired) {
+    return (
+      <Step compact={compact} title={t("sessionExpiredTitle")} body={t("sessionExpiredBody")}>
+        <button onClick={backToSignIn} className={PRIMARY}>
+          {t("sessionExpiredButton")}
+        </button>
+      </Step>
+    );
+  }
 
   if (!signer) {
     const known =

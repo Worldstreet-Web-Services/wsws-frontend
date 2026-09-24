@@ -3422,6 +3422,9 @@
   },
   "migrate": {
     "pendingLine": "{places} sind noch nicht aktualisiert. Schau später wieder vorbei, um ihre Aktualisierung abzuschließen.",
+    "sessionExpiredTitle": "Deine Sitzung ist abgelaufen",
+    "sessionExpiredBody": "Melde dich erneut an, um dein Upgrade abzuschließen. Nichts ist verloren gegangen.",
+    "sessionExpiredButton": "Erneut anmelden",
     "updateTitle": "Upgrade für dein Market-Konto.",
     "updateIntro": "Market wechselt zu einem neuen Kontosystem. Upgrade dein bestehendes Konto, um fortzufahren.",
     "finishTitle": "Schließe das Upgrade deines Kontos ab.",

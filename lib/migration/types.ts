@@ -121,4 +121,10 @@ export interface VenueAdapter<TRef = unknown> {
 export interface DiscoveryFailure {
   venue: Venue;
   error: string;
+  /**
+   * The HTTP status the venue's call answered with, when the failure came
+   * from the gateway at all. A 401 is the session having expired, not the
+   * venue being down, and the card must say so instead of "check back later".
+   */
+  status?: number;
 }

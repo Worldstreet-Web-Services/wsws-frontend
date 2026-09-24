@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { apiError } from "@/lib/api/envelope";
 import { discoverHoldings } from "@/features/migrate/lib/discover";
 import { runSettlement } from "@/features/migrate/lib/run";
 import { scheduleSettlement } from "@/lib/migration/schedule";
@@ -83,6 +84,23 @@ describe("discoverHoldings", () => {
     );
     expect(result.holdings.map((h) => h.venue)).toEqual(["cashier", "wallet"]);
     expect(result.failures).toEqual([{ venue: "perps", error: "boom" }]);
+  });
+
+  it("keeps the HTTP status on a failure, so an expired session is told apart", async () => {
+    const result = await discoverHoldings(
+      [
+        {
+          venue: "wallet",
+          requiresLegacySession: false,
+          discover: async () => {
+            throw apiError("UNAUTHORIZED", "sign in again", 401);
+          },
+          settle: async () => new Map(),
+        },
+      ],
+      discoverCtx(true)
+    );
+    expect(result.failures).toEqual([{ venue: "wallet", error: "sign in again", status: 401 }]);
   });
 
   it("skips ledgers that need the old sign-in until it exists", async () => {

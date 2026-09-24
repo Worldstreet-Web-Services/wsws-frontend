@@ -3422,6 +3422,9 @@
   },
   "migrate": {
     "pendingLine": "{places} ainda não foram atualizados. Volta mais tarde para concluir a atualização.",
+    "sessionExpiredTitle": "A tua sessão expirou",
+    "sessionExpiredBody": "Inicia sessão novamente para concluir a atualização. Nada se perdeu.",
+    "sessionExpiredButton": "Iniciar sessão novamente",
     "updateTitle": "Faz o upgrade da tua conta Market.",
     "updateIntro": "O Market está a mudar para um novo sistema de contas. Faz o upgrade da tua conta atual para continuar.",
     "finishTitle": "Termina o upgrade da tua conta.",

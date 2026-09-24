@@ -3422,6 +3422,9 @@
   },
   "migrate": {
     "pendingLine": "{places} haven’t upgraded yet. Check back later to finish their upgrade.",
+    "sessionExpiredTitle": "Your session expired",
+    "sessionExpiredBody": "Sign in again to finish your upgrade. Nothing has been lost.",
+    "sessionExpiredButton": "Sign in again",
     "updateTitle": "Upgrade your Market account.",
     "updateIntro": "Market is moving to a new account system. Upgrade your existing account to continue.",
     "finishTitle": "Finish upgrading your account.",

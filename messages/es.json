@@ -3422,6 +3422,9 @@
   },
   "migrate": {
     "pendingLine": "{places} aún no se han actualizado. Vuelve más tarde para terminar su actualización.",
+    "sessionExpiredTitle": "Tu sesión ha caducado",
+    "sessionExpiredBody": "Inicia sesión de nuevo para terminar tu actualización. No se ha perdido nada.",
+    "sessionExpiredButton": "Iniciar sesión de nuevo",
     "updateTitle": "Mejora tu cuenta de Market.",
     "updateIntro": "Market está pasando a un nuevo sistema de cuentas. Mejora tu cuenta actual para continuar.",
     "finishTitle": "Termina de mejorar tu cuenta.",

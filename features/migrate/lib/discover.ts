@@ -2,6 +2,7 @@
 // a few at a time, and one venue failing never hides the others. Pure so it
 // is tested with fake adapters.
 
+import { errorStatus } from "@/lib/api/envelope";
 import { mapWithLimit } from "@/lib/migration/concurrency";
 import type {
   DiscoverContext,
@@ -32,9 +33,11 @@ export async function discoverHoldings(
       return await adapter.discover(ctx);
     } catch (error) {
       console.error(`Migration discovery failed for ${adapter.venue}`, error);
+      const status = errorStatus(error);
       failures.push({
         venue: adapter.venue,
         error: error instanceof Error ? error.message : String(error),
+        ...(status !== null ? { status } : {}),
       });
       return [];
     }

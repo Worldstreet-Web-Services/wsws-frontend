@@ -3422,6 +3422,9 @@
   },
   "migrate": {
     "pendingLine": "{places} ne sont pas encore mis à jour. Reviens plus tard pour terminer leur mise à jour.",
+    "sessionExpiredTitle": "Ta session a expiré",
+    "sessionExpiredBody": "Reconnecte-toi pour terminer ta mise à jour. Rien n’a été perdu.",
+    "sessionExpiredButton": "Se reconnecter",
     "updateTitle": "Passe ton compte Market au niveau supérieur.",
     "updateIntro": "Market passe à un nouveau système de comptes. Mets ton compte actuel à niveau pour continuer.",
     "finishTitle": "Termine la mise à niveau de ton compte.",

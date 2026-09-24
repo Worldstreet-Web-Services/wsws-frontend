@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { errorStatus } from "@/lib/api/envelope";
 import {
   getMigrationStatus,
   type MigrationStatus,
@@ -52,7 +53,10 @@ export function useLedgerRekeys(enabled: boolean): void {
       let status: MigrationStatus | null = null;
       try {
         status = await getMigrationStatus();
-      } catch {
+      } catch (error) {
+        // The session is gone: every further poll answers the same, and the
+        // card is already sending the person back to sign in.
+        if (errorStatus(error) === 401) return;
         // A silent poll changes nothing; the next one asks again.
       }
       if (!live) return;

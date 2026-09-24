@@ -6,6 +6,7 @@
 // and settles through the existing sweep.
 
 import { apiFetch } from "@/lib/api";
+import { apiError } from "@/lib/api/envelope";
 import type { Portfolio } from "@/lib/server/alchemy";
 import { holdingId } from "@/lib/migration/holding";
 import type { LegacyHolding, SettleOutcome, VenueAdapter } from "@/lib/migration/types";
@@ -64,7 +65,9 @@ export const walletAdapter: VenueAdapter<SweepAsset> = {
     // be seen here, or it is never moved.
     params.set("scope", "legacy");
     const res = await apiFetch(`/api/portfolio?${params.toString()}`, {}, { requireAuth: true });
-    if (!res.ok) throw new Error("Couldn't check your old account.");
+    // With the status: a 401 here is an expired session, which the card
+    // sends back to sign-in rather than listing the wallet as unanswered.
+    if (!res.ok) throw apiError("BAD_RESPONSE", "Couldn't check your old account.", res.status);
     const portfolio = (await res.json()) as Portfolio;
     return walletHoldings(portfolio.tokens);
   },

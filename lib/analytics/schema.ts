@@ -194,6 +194,7 @@ export const EVENT_SCHEMA: Record<AnalyticsEventName, EventSchema> = {
   migration_started: [shape({ entry: "string" })],
   migration_linked: NOTHING,
   migration_link_blocked: [shape({ code: "string" })],
+  migration_session_expired: NOTHING,
   migration_gate_snoozed: [shape({ reason: "string", stage: "string" })],
   migration_reviewed: [
     shape({

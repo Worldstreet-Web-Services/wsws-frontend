@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useSocialAuth } from "decane-connect-kit";
 import { useTranslations } from "next-intl";
 import { recordAuthMethod } from "@/lib/analytics/auth-method";
-import { rememberPending } from "@/lib/last-auth-method";
+import { track } from "@/lib/analytics/mixpanel";
+import { AUTH_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
+import type { AuthMethod } from "@/lib/analytics/events";
+import { rememberPending, type LastAuthMethod } from "@/lib/last-auth-method";
 import { toast } from "@/lib/toast";
 
 // The X wordmark. Inline rather than hosted: a sign-in button that waits on a
@@ -62,13 +65,28 @@ export function SocialButtons() {
   } = useSocialAuth();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
 
+  // One report per door. The chosen method is recorded for the identity
+  // provider (lib/analytics/auth-method) AND announced as the selection; a
+  // failure is reported as a login, because this screen is one form for both
+  // and whether the account would have been new is not knowable before it
+  // exists.
+  // The doors on this screen are all methods the last-auth memory knows;
+  // AuthMethod is wider (apple, wallet) and those never reach here.
+  const choose = (method: LastAuthMethod) => {
+    recordAuthMethod(method);
+    rememberPending(method);
+    track("auth_method_selected", { method });
+  };
+  const failed = (method: AuthMethod, err: unknown) =>
+    track("login_failed", { method, ...reasonFor(AUTH_FAILURE, err) });
+
   const signIn = async () => {
     try {
-      recordAuthMethod("google");
-      rememberPending("google");
+      choose("google");
       await signInWithGoogle();
     } catch (err) {
       console.error("Google login failed:", err);
+      failed("google", err);
       toast.error(t("oauthError"));
     }
   };
@@ -79,11 +97,11 @@ export function SocialButtons() {
   const passkeySignIn = async () => {
     setPasskeyBusy(true);
     try {
-      recordAuthMethod("passkey");
-      rememberPending("passkey");
+      choose("passkey");
       await signInWithPasskey();
     } catch (err) {
       console.error("Passkey sign-in failed:", err);
+      failed("passkey", err);
       toast.error(t("passkeyError"));
     } finally {
       setPasskeyBusy(false);
@@ -98,25 +116,25 @@ export function SocialButtons() {
   // clear on the way out.
   const xSignIn = async () => {
     try {
-      recordAuthMethod("x");
-      rememberPending("x");
+      choose("x");
       await signInWithX();
     } catch (err) {
       console.error("X login failed:", err);
+      failed("x", err);
       toast.error(t("oauthError"));
     }
   };
 
   const kingschatSignIn = async () => {
     try {
-      recordAuthMethod("kingschat");
-      rememberPending("kingschat");
+      choose("kingschat");
       await signInWithKingsChat();
     } catch (err) {
       const name = (err as { name?: string })?.name;
       // A user closing the KingsChat popup is a cancellation, not an error.
       if (name !== "UserCancelledError") {
         console.error("KingsChat login failed:", err);
+        failed("kingschat", err);
         toast.error(t("oauthError"));
       }
     }

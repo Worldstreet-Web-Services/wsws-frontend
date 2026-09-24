@@ -14,6 +14,12 @@ import { DecaneTokenBridge } from "@/components/providers/decane-token-bridge";
 import { DecaneRecoveryHost } from "@/components/providers/decane-recovery-host";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
+// Deep imports, not the barrels, for the reason given for the casino import
+// below: this provider is on every session route.
+import { DepositAnalytics } from "@/features/activity/components/deposit-analytics";
+import { BankDepositAnalytics } from "@/features/funds/components/bank-deposit-analytics";
+import { BankWithdrawAnalytics } from "@/features/funds/components/bank-withdraw-analytics";
+import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
 // including the chess and arkjet screens, and this provider is mounted on
@@ -157,6 +163,17 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
                 asks for through the callbacks above. Renders nothing until one
                 is requested. */}
             <DecaneRecoveryHost />
+            {/* Report money arriving and leaving: settled deposits on either
+                rail, and bank withdrawals to their payout. Here rather than on
+                the dashboard, which a user who deposits and goes straight to
+                trading never returns to. Each waits for a signed-in wallet.
+                Render nothing. */}
+            <DepositAnalytics />
+            <BankDepositAnalytics />
+            <BankWithdrawAnalytics />
+            {/* Watches open Polymarket cashouts for the market workspace.
+                Needs Privy and the query client. Renders nothing. */}
+            <PredictionCashoutTracker />
             {/* Owns the Last Man Standing pop-out timer. Mounted here, above the
                 pages, so the floating window survives navigating anywhere in
                 the app. The gate loads the host only on Arkade routes or while

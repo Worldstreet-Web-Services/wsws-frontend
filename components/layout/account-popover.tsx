@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -9,7 +9,7 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 import { Avatar } from "@/components/ui/avatar";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
-import { InviteFriendsModal } from "@/features/referrals";
+import Link from "next/link";
 // Deep import: the @/features/migrate barrel re-exports UpdateBalanceButton,
 // which mounts the whole Privy SDK. The row itself is light; the sheet is not,
 // so only the sheet is deferred — and this popover is mounted on every route.
@@ -70,7 +70,6 @@ function InviteIcon({ size = 18 }: { size?: number }) {
 export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("account");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const { profile, logout: sessionLogout } = useAuthSession();
   const { canUsePasskey } = useSocialAuth();
   const { addPasskey } = useSocialWallet();
@@ -175,19 +174,14 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
                 </button>
               ) : null}
 
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setInviteOpen(true);
-                }}
-                className={itemClass}
-              >
+              {/* A route now, not a sheet: the referral network is something
+                  people come back to, and a link to it can be shared. */}
+              <Link href="/referrals" role="menuitem" onClick={onClose} className={itemClass}>
                 <span className="text-accent">
                   <InviteIcon />
                 </span>
                 <span>{t("inviteFriends")}</span>
-              </button>
+              </Link>
 
               {/* The always-available door into the migration. Mirrors the
                   phone Account modal, so a desktop user reaches the sweep from
@@ -229,14 +223,6 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           </motion.div>
         ) : null}
       </AnimatePresence>
-
-      <InviteFriendsModal
-        open={inviteOpen}
-        onClose={() => {
-          setInviteOpen(false);
-          onClose();
-        }}
-      />
     </>
   );
 }

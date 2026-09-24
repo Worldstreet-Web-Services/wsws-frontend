@@ -14,7 +14,6 @@ import { WinnersList } from "@/features/casino/components/last-standing/winners-
 import { estimateWinnerPayout, isSameAddress } from "@/features/casino/lib/last-standing/split";
 import { vaultLog } from "@/features/casino/lib/last-standing/log";
 import {
-  MiniTimerLauncher,
   detectTier,
   openMiniWindow,
   formatCountdown,
@@ -77,6 +76,7 @@ import {
 } from "@/features/casino/lib/last-standing/sound";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
+import { GAME_FAILURE, reasonFor } from "@/lib/analytics/failure-reason";
 
 const EXPLORER_TX_URL = "https://basescan.org/tx/";
 // How long to keep re-checking after a win, and how often. The settle window
@@ -720,14 +720,21 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
       wonPendingRef.current = true;
       if (!wonReportedRef.current) {
         wonReportedRef.current = true;
-        track("last_man_won", {
-          pot_usd: lastPotRef.current || potUsd,
-          winnings_usd: revealPrizeUsd,
-          started_it: winnerIsStarter,
+        const pot = lastPotRef.current || potUsd;
+        // The three shares from the contract's live split, not from a rate
+        // written down here: the owner can retune it, and a report that
+        // divided the pot by a hardcoded rate would restate old rounds.
+        // The treasury takes whatever the winner and the starter do not.
+        track("last_man_ended", {
+          game_id: String(gameId),
+          pot_usd: pot,
+          winner_payout_usd: revealPrizeUsd,
+          creator_usd: (pot * splitStarterBps) / 10_000,
+          house_usd: (pot * (10_000 - splitWinnerBps - splitStarterBps)) / 10_000,
         });
       }
     }
-  }, [phase, youWon, potUsd, revealPrizeUsd, winnerIsStarter]);
+  }, [phase, youWon, potUsd, revealPrizeUsd, gameId, splitWinnerBps, splitStarterBps]);
   useEffect(() => {
     if (wonPendingRef.current && hasPending && !claiming) {
       wonPendingRef.current = false;
@@ -849,11 +856,9 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
     try {
       await wager(gameId, amountUnits);
       followGame(gameId);
-      // `game_staked` is the generic "money went into a game" event the
-      // catalog uses across all of them, so it rides alongside the
-      // last-man-specific one.
-      track("last_man_played", { cost_usd: amountUsd });
-      track("game_staked", { game: "last_man", amount_usd: amountUsd });
+      // Buying into the round. `game_staked` is not sent beside it any more:
+      // this event carries the money, and both would count one buy-in twice.
+      track("last_man_joined", { game_id: String(gameId), entry_fee_usd: amountUsd });
       toast.success(t("toastYoureIn"), { id: toastId });
       playWagerSound();
       // The wager just landed on-chain, but the backend indexes it a moment
@@ -867,6 +872,11 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
     } catch (e) {
       // It will never land, so it must not hold the verdict back.
       releaseRoundEnd();
+      track("last_man_failed", {
+        game_id: String(gameId),
+        entry_fee_usd: amountUsd,
+        ...reasonFor(GAME_FAILURE, e),
+      });
       toast.error(friendlyError(e, t("toastPlayFailed")), { id: toastId });
       return false;
     }
@@ -1022,9 +1032,6 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
           <h2 className="ws-display mt-2.5 bg-[linear-gradient(180deg,#ffffff,#cfcfd4)] bg-clip-text text-[clamp(30px,4.4vw,40px)] tracking-[-0.02em] text-transparent">
             {t("title")}
           </h2>
-          <p className="mt-1.5 max-w-[54ch] text-[13.5px] font-normal text-white/55">
-            {t("intro")}
-          </p>
         </div>
         <span
           className={`ws-glass inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-white/75 ${
@@ -1118,7 +1125,9 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
               </div>
               <div className="flex items-center gap-2">
                 <ShareGameButton gameId={gameId} />
-                <MiniTimerLauncher />
+                {/* No pop-out button: the pop-out is offered on the way out
+                    now, where it is actually wanted, and a second way in only
+                    made the header busier. */}
                 <MusicToggle />
               </div>
             </div>
@@ -1309,8 +1318,6 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                 so the invite sits with the game. On a laptop the same card
                 heads the side rail instead, where the QR is in view without
                 scrolling. */}
-            <ShareGame gameId={gameId} className="mt-4 min-[980px]:hidden" />
-
             {/* Play CTA — the primary action, silver whether you're playing or
                 being nudged to add money. The add-money state carries a coin and
                 blinks to pull the eye. */}
@@ -1422,7 +1429,10 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                 <div className="text-[11px] font-normal tracking-[0.04em] text-white/45 uppercase">
                   {t("liquidityLabel")}
                 </div>
-                <div className="mt-2 flex flex-wrap items-stretch gap-2">
+                {/* Stacked on a phone. Sharing a row left the input too
+                    narrow to read the amount back, which is the one thing it
+                    exists to show. */}
+                <div className="mt-2 flex flex-col items-stretch gap-2 sm:flex-row">
                   <label
                     className={`flex min-w-0 flex-1 items-center gap-2 rounded-[12px] border bg-black/35 px-3.5 transition-colors ${
                       liquidityBelowMin || liquidityOverBalance
@@ -1446,7 +1456,7 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                     type="button"
                     onClick={() => void onAddLiquidity()}
                     disabled={!liquidityReady}
-                    className="border-accent/40 bg-accent/14 text-accent hover:bg-accent/22 shrink-0 cursor-pointer rounded-[12px] border px-4 py-2.5 font-sans text-[13px] font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    className="border-accent/40 bg-accent/14 text-accent hover:bg-accent/22 w-full shrink-0 cursor-pointer rounded-[12px] border px-4 py-2.5 font-sans text-[13px] font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                   >
                     {wagering
                       ? t("ctaPlacing")
@@ -1468,6 +1478,13 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                 </div>
               </div>
             )}
+
+            {/* On a phone the invite card sits after the play controls: the
+                clock and the two ways to put money in are what somebody opens
+                this screen for, and a QR above them pushed all of it under the
+                fold. On a laptop the same card heads the side rail, where it is
+                in view without scrolling. */}
+            <ShareGame gameId={gameId} className="mt-4 min-[980px]:hidden" />
 
             {/* Balance. Add money only shows when the play CTA isn't already
                 saying it. */}

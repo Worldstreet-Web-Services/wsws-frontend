@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/lib/toast";
@@ -9,7 +9,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar, useSquareSeed } from "@/hooks/use-square-avatar";
 import { LanguageSelect } from "@/components/ui/language-select";
-import { InviteFriendsModal } from "@/features/referrals";
 // Deep import: the @/features/migrate barrel re-exports UpdateBalanceButton,
 // which mounts the whole Privy SDK. The row is light; the sheet it opens is
 // deferred below.
@@ -45,7 +44,6 @@ function InviteIcon({ size = 20 }: { size?: number }) {
 
 export function AccountModal({ onClose }: AccountModalProps) {
   const t = useTranslations("account");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const tLanguage = useTranslations("language");
   const { profile, logout } = useAuthSession();
   const passkey = useDevicePasskey();
@@ -81,12 +79,12 @@ export function AccountModal({ onClose }: AccountModalProps) {
         <LanguageSelect />
       </div>
       <div className="mt-[18px] flex flex-col gap-1.5">
-        <button onClick={() => setInviteOpen(true)} className={`${item} text-white`}>
+        <Link href="/referrals" onClick={onClose} className={`${item} text-white`}>
           <span className="text-accent">
             <InviteIcon />
           </span>
           {t("inviteFriends")}
-        </button>
+        </Link>
         <MoveOldMoneyButton onClick={() => openMigration("account_modal")} className={item} />
         {/* Only for a device that fell back to a PIN and could hold a passkey
             now. Hidden otherwise, so it is an answer to a problem the user has
@@ -149,7 +147,6 @@ export function AccountModal({ onClose }: AccountModalProps) {
           {t("signOut")}
         </button>
       </div>
-      <InviteFriendsModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
   );
 }

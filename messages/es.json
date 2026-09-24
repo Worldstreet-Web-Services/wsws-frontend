@@ -595,7 +595,8 @@
     "how": "Cómo funciona",
     "faq": "FAQ",
     "login": "Iniciar sesión",
-    "getStarted": "Empezar"
+    "getStarted": "Empezar",
+    "getApp": "Obtener la app"
   },
   "hero": {
     "title": "Controla tu <accent>dinero</accent><break></break> y accede a los mercados globales.",
@@ -1993,7 +1994,6 @@
       "connectionLostBody": "El juego se congeló mientras reconectamos. Se pone al día solo en cuanto vuelve tu red.",
       "eyebrow": "Arkade · El ganador se lo lleva todo",
       "title": "The Last Man",
-      "intro": "Juega para ser el último en pie. Cuando el tiempo se agota, el último jugador en jugar se lleva la mitad del pozo; el 10 % va para quien creó la partida.",
       "live": "En vivo",
       "offline": "Sin conexión",
       "claimTitle": "¡Ganaste! Reclama tus ganancias",
@@ -2916,7 +2916,18 @@
     "noInactive": "Nadie está pendiente de un primer depósito.",
     "listUnavailable": "{count, plural, one {# referido aparecerá aquí cuando haya nombres disponibles.} other {# referidos aparecerán aquí cuando haya nombres disponibles.}}",
     "eligibilityTitle": "Elegibilidad de referidos",
-    "eligibilityBody": "Tu amigo debe unirse a través de tu enlace de referido y hacer un primer depósito de al menos 1 $ para que el referido cuente."
+    "eligibilityBody": "Tu amigo debe unirse a través de tu enlace de referido y hacer un primer depósito de al menos 1 $ para que el referido cuente.",
+    "networkTitle": "Tu red",
+    "networkEmpty": "Todavía no ha entrado nadie por tu enlace. Compártelo y aparecerán aquí.",
+    "networkTotal": "En tu red",
+    "networkCounted": "Contados",
+    "networkGeneration": "Generación {n}",
+    "networkRowCounts": "{counted} de {total} contados",
+    "networkBranchEmpty": "Todavía no hay nadie en este nivel.",
+    "networkLoading": "Cargando…",
+    "networkMore": "Ver más",
+    "networkCountedTag": "Contado",
+    "networkPendingTag": "Todavía no"
   },
   "marquee": {
     "liveLabel": "En vivo",
@@ -3323,7 +3334,7 @@
     "squareKicker": "Market Square",
     "squareLiveKicker": "En vivo con {host}",
     "squareIdleHeadline": "Salas en vivo en Market Square, todo el día",
-    "squareJoin": "Entrar en vivo",
+    "squareJoin": "Entrar al gistroom",
     "squareOpen": "Abrir Square",
     "memeBoomTitle": "{symbol} está en auge",
     "memeCoolTitle": "{symbol} se enfría",

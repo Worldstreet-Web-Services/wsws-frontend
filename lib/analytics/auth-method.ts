@@ -1,6 +1,6 @@
 "use client";
 
-import type { SignupMethod } from "@/lib/analytics/events";
+import type { AuthMethod } from "@/lib/analytics/events";
 
 // Privy told us which method completed a login via its onComplete callback;
 // Decane has no equivalent, so the auth components record the method they are
@@ -8,13 +8,13 @@ import type { SignupMethod } from "@/lib/analytics/events";
 // lands. A session that appears WITHOUT a recorded method is a hydrated
 // returning session (page reload), which must not count as a login event.
 
-let pendingMethod: SignupMethod | null = null;
+let pendingMethod: AuthMethod | null = null;
 
-export function recordAuthMethod(method: SignupMethod): void {
+export function recordAuthMethod(method: AuthMethod): void {
   pendingMethod = method;
 }
 
-export function consumeAuthMethod(): SignupMethod | null {
+export function consumeAuthMethod(): AuthMethod | null {
   const method = pendingMethod;
   pendingMethod = null;
   return method;

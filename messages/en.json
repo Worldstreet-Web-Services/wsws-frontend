@@ -595,7 +595,8 @@
     "how": "How it works",
     "faq": "FAQ",
     "login": "Log in",
-    "getStarted": "Get started"
+    "getStarted": "Get started",
+    "getApp": "Get app"
   },
   "hero": {
     "title": "Control your <accent>money,</accent><break></break> and access global markets.",
@@ -1993,7 +1994,6 @@
       "connectionLostBody": "The game froze while we reconnect. It catches up on its own the moment your network is back.",
       "eyebrow": "Arkade · Winner takes all",
       "title": "The Last Man",
-      "intro": "Play to become the last one standing. When the timer runs out, the last player to play takes half the pot; 10% goes to whoever started the game.",
       "live": "Live",
       "offline": "Offline",
       "claimTitle": "You won! Claim your winnings",
@@ -2916,7 +2916,18 @@
     "noInactive": "Nobody is waiting on a first deposit.",
     "listUnavailable": "{count, plural, one {# referral to show here once names are available.} other {# referrals to show here once names are available.}}",
     "eligibilityTitle": "Referral Eligibility",
-    "eligibilityBody": "Your friend must join through your referral link and make a first deposit of at least $1 for the referral to count."
+    "eligibilityBody": "Your friend must join through your referral link and make a first deposit of at least $1 for the referral to count.",
+    "networkTitle": "Your network",
+    "networkEmpty": "Nobody has joined through your link yet. Share it and they'll show up here.",
+    "networkTotal": "In your network",
+    "networkCounted": "Counted",
+    "networkGeneration": "Generation {n}",
+    "networkRowCounts": "{counted} of {total} counted",
+    "networkBranchEmpty": "Nobody at this level yet.",
+    "networkLoading": "Loading…",
+    "networkMore": "Show more",
+    "networkCountedTag": "Counted",
+    "networkPendingTag": "Not yet"
   },
   "marquee": {
     "liveLabel": "Live",
@@ -3323,7 +3334,7 @@
     "squareKicker": "Market Square",
     "squareLiveKicker": "Live with {host}",
     "squareIdleHeadline": "Live rooms on Market Square, all day",
-    "squareJoin": "Join live",
+    "squareJoin": "Join gistroom",
     "squareOpen": "Open Square",
     "memeBoomTitle": "{symbol} is Booming",
     "memeCoolTitle": "{symbol} is Cooling",

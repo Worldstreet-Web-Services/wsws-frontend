@@ -9,7 +9,7 @@ import type { TokenBalance } from "@/hooks/use-portfolio";
 // A WIRING test, not a mechanism one. Everything between the card and the
 // network stays real — useSpendableCash, useUserBalance, the query, the route
 // constant, the browser parser, lib/balance/spendable — and only the fetch
-// boundary, Privy and the OTHER data hooks are stubbed. The complaint this
+// boundary, the session and the OTHER data hooks are stubbed. The complaint this
 // file exists for is that nothing appeared in the network tab, which a test
 // that mocked useUserBalance could never have caught.
 
@@ -106,32 +106,21 @@ vi.mock("@/hooks/use-ramping", () => ramping);
 const apiFetch = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api", () => ({ apiFetch }));
 
-// The address in the sample payload, as Privy hands it back: EIP-55
+// The address in the sample payload, as the session hands it back: EIP-55
 // checksummed where the service writes lowercase.
 const WALLET = "0x72F2578adE01ca5a844Cb0a46dC1943BbD233ACa";
 const ALICE = "did:privy:alice";
 
-const privy = vi.hoisted(() => ({
+const session = vi.hoisted(() => ({
   ready: true,
   authenticated: true,
-  user: null as unknown,
+  userId: null as string | null,
+  evmAddress: null as string | null,
+  solanaAddress: null as string | null,
+  profile: { name: "u", email: "", avatarSeed: "u" },
+  logout: async () => {},
 }));
-vi.mock("@privy-io/react-auth", () => ({ usePrivy: () => privy }));
-
-function signedIn() {
-  return {
-    id: ALICE,
-    linkedAccounts: [
-      {
-        type: "wallet",
-        walletClientType: "privy",
-        chainType: "ethereum",
-        address: WALLET,
-        delegated: true,
-      },
-    ],
-  };
-}
+vi.mock("@/hooks/use-auth-session", () => ({ useAuthSession: () => session }));
 
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 import { BalanceCard } from "@/features/portfolio/components/balance-card";
@@ -199,9 +188,10 @@ describe("BalanceCard spendable cash", () => {
     vi.clearAllMocks();
     client = createQueryClient();
     client.setDefaultOptions({ queries: { ...client.getDefaultOptions().queries, retry: false } });
-    privy.ready = true;
-    privy.authenticated = true;
-    privy.user = signedIn();
+    session.ready = true;
+    session.authenticated = true;
+    session.userId = ALICE;
+    session.evmAddress = WALLET;
     portfolio.usePortfolio.mockReturnValue({
       tokens: [incumbentCash],
       loading: false,
@@ -310,8 +300,9 @@ describe("BalanceCard spendable cash", () => {
   });
 
   it("asks for nothing, and claims nothing, while there is no signed-in account", async () => {
-    privy.user = null;
-    privy.authenticated = false;
+    session.userId = null;
+    session.evmAddress = null;
+    session.authenticated = false;
 
     renderCard();
 

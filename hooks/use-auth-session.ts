@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { useSocialAuth } from "decane-connect-kit";
+import { useSocialAuth, useSocialWallet } from "decane-connect-kit";
+import { decodeDecaneUserId } from "@/lib/decane-user-id";
 import { rememberDisplayProfile, useDisplayProfile } from "@/lib/display-profile";
 import type { Profile } from "@/lib/user";
 
@@ -15,6 +16,14 @@ export interface AuthSession {
   authenticated: boolean;
   evmAddress: string | null;
   solanaAddress: string | null;
+  /**
+   * The account's id as the services know it (the token's `uid`), or null
+   * when signed out. What the user-management routes are scoped by: the
+   * balance, the notification inbox and the push subscription are all read
+   * for THIS id, and cached under it so two accounts in one browser never
+   * see each other's.
+   */
+  userId: string | null;
   profile: Profile;
   logout: () => Promise<void>;
 }
@@ -79,6 +88,19 @@ export function useAuthSession(): AuthSession {
   // real session.
   const authenticated = social.addresses !== null && Boolean(evmAddress) && !social.needsReconnect;
 
+  // Read off the access token, since the kit exposes no user object. The
+  // token can be null for a render while the kit rotates it; the id does not
+  // change under a live session, so the last one read stands until sign-out
+  // rather than flickering the queries keyed on it. Derived state, updated
+  // during render the way React documents for it, not in an effect a render
+  // behind.
+  const { getAccessToken } = useSocialWallet();
+  const token = authenticated ? getAccessToken() : null;
+  const [lastUserId, setLastUserId] = useState<string | null>(null);
+  const fromToken = token ? decodeDecaneUserId(token) : null;
+  const userId = authenticated ? (fromToken ?? lastUserId) : null;
+  if (userId !== lastUserId) setLastUserId(userId);
+
   // What sign-in told us about the user, persisted device-side because Decane
   // keeps no profile to re-fetch (see lib/display-profile). Google gives a
   // name; an email sign-in gives only the address, whose local part still
@@ -92,6 +114,7 @@ export function useAuthSession(): AuthSession {
     authenticated,
     evmAddress,
     solanaAddress,
+    userId,
     profile: {
       name,
       email: display?.email ?? "",

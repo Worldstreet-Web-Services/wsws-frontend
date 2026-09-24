@@ -7,12 +7,11 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLinkWithPasskey, useLogout, usePrivy } from "@privy-io/react-auth";
 import { SquareAvatar } from "@/components/ui/square-avatar";
 import { useSquareAvatar } from "@/hooks/use-square-avatar";
-import { InviteFriendsModal } from "@/features/referrals";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
+import Link from "next/link";
+import { openSupportChat } from "@/lib/support-chat/open";
 import { deriveProfile } from "@/lib/user";
 import { toast } from "@/lib/toast";
-
-const SUPPORT_FORM_URL = "https://forms.gle/T5DLdFCAbRsVrzU97";
 
 interface AccountPopoverProps {
   open: boolean;
@@ -65,7 +64,6 @@ function InviteIcon({ size = 18 }: { size?: number }) {
 export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("account");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const { user } = usePrivy();
   const router = useRouter();
   const reduce = useReducedMotion();
@@ -171,31 +169,29 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
                 </button>
               ) : null}
 
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setInviteOpen(true);
-                }}
-                className={itemClass}
-              >
+              {/* A route now, not a sheet: the referral network is something
+                  people come back to, and a link to it can be shared. */}
+              <Link href="/referrals" role="menuitem" onClick={onClose} className={itemClass}>
                 <span className="text-accent">
                   <InviteIcon />
                 </span>
                 <span>{t("inviteFriends")}</span>
-              </button>
+              </Link>
 
-              <a
-                href={SUPPORT_FORM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* The in-app chat, not a form in a new tab: support is a
+                  conversation the shell already carries. */}
+              <button
+                type="button"
                 role="menuitem"
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  openSupportChat();
+                }}
                 className={itemClass}
               >
                 <HelpIcon size={18} />
                 <span>{t("helpSupport")}</span>
-              </a>
+              </button>
 
               <button
                 type="button"
@@ -213,14 +209,6 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
           </motion.div>
         ) : null}
       </AnimatePresence>
-
-      <InviteFriendsModal
-        open={inviteOpen}
-        onClose={() => {
-          setInviteOpen(false);
-          onClose();
-        }}
-      />
     </>
   );
 }

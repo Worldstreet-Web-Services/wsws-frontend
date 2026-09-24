@@ -22,7 +22,6 @@
 // made by hand; the post made against an unread preference cannot be taken
 // back.
 
-import { createSquarePost } from "@/lib/api/market-square";
 import { composeShinePost, type ShineTranslate } from "@/lib/shine/compose";
 import { claimShinePost, hasShinePosted } from "@/lib/shine/posted-store";
 import { ShinePostQueue, type ShineFailure } from "@/lib/shine/queue";
@@ -113,10 +112,30 @@ export function configureShine(next: ShineRuntime | null): void {
   }
 }
 
+/**
+ * The square's client is loaded on the first post, not with the module.
+ *
+ * Importing it here put the whole Market Square client — posts, the feed,
+ * uploads — into the initial payload of every service route that calls
+ * reportShine, which is all seven. Most sessions never post anything, and a
+ * session with Shine switched off never reaches this at all, because the gate
+ * in reportShine returns before the queue is ever asked for.
+ *
+ * Nothing waits on it that a reader can see: the post is already fire and
+ * forget, already queued behind a minimum gap, and the import resolves from
+ * the same bundle the rest of the app is served from.
+ */
+async function postToSquare(text: string): Promise<unknown> {
+  const injected = runtime?.post;
+  if (injected) return injected(text);
+  const { createSquarePost } = await import("@/lib/api/market-square");
+  return createSquarePost(text);
+}
+
 function shineQueue(): ShinePostQueue {
   queue ??= new ShinePostQueue({
     store: { has: hasShinePosted, claim: claimShinePost },
-    post: (text) => (runtime?.post ?? createSquarePost)(text),
+    post: postToSquare,
     onFailure: trace,
   });
   return queue;

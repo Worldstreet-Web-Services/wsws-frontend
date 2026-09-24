@@ -62,14 +62,49 @@ describe("claiming a post", () => {
 });
 
 describe("unreadable storage", () => {
+  // The storage OBJECT is replaced, not spied on.
+  //
+  // Which target a spy has to attach to depends on the Node the suite runs
+  // under. Node 26 leaves jsdom without a usable localStorage, so
+  // vitest.setup.ts installs a plain object with own methods and an instance
+  // spy is the one that fires. Node 24 gives jsdom a real Storage, whose
+  // methods live on the prototype behind a proxy, and the instance spy is
+  // bypassed — which is how these three passed locally and, on CI, let a claim
+  // through that should have been refused. That is the wrong direction for the
+  // one guard deciding whether a post this browser cannot remember making is
+  // published. Defining the property covers both, because it is what the
+  // module reads either way.
+  const original = Object.getOwnPropertyDescriptor(window, "localStorage");
+
+  afterEach(() => {
+    if (original) Object.defineProperty(window, "localStorage", original);
+  });
+
+  function installStorage(throwing: { read: boolean; write: boolean }): void {
+    const store = new Map<string, string>();
+    const insecure = () => {
+      throw new Error("SecurityError: the operation is insecure");
+    };
+    const storage: Storage = {
+      get length() {
+        return store.size;
+      },
+      key: (index) => [...store.keys()][index] ?? null,
+      getItem: throwing.read ? insecure : (key) => store.get(key) ?? null,
+      setItem: throwing.write
+        ? () => {
+            throw new Error("QuotaExceededError");
+          }
+        : (key, value) => void store.set(key, String(value)),
+      removeItem: (key) => void store.delete(key),
+      clear: () => store.clear(),
+    };
+    Object.defineProperty(window, "localStorage", { value: storage, configurable: true });
+  }
+
+  // Safari in private mode throws on both, which is the case this covers.
   function breakStorage(): void {
-    // Safari in private mode throws on both, which is the case this covers.
-    vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
-      throw new Error("SecurityError: the operation is insecure");
-    });
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
-      throw new Error("SecurityError: the operation is insecure");
-    });
+    installStorage({ read: true, write: true });
   }
 
   it("refuses to claim, so nothing is posted it cannot remember posting", () => {
@@ -83,9 +118,7 @@ describe("unreadable storage", () => {
   });
 
   it("refuses when the read works but the write is rejected", () => {
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
-      throw new Error("QuotaExceededError");
-    });
+    installStorage({ read: false, write: true });
     expect(claimShinePost(ALICE, "memecoin", "swap-1")).toBe("storage-unavailable");
   });
 });

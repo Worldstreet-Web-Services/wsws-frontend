@@ -369,6 +369,7 @@
     "withdraw": "Auszahlen",
     "depositPending": "Deine Bankeinzahlung ist unterwegs. Es kann 5 bis 10 Minuten dauern, bis sie in deinem Guthaben erscheint; Auszahlungen sind danach wieder möglich.",
     "readyToSpend": "{amount} verfügbar",
+    "readyToSpendUnknown": "Verfügbarer Betrag nicht abrufbar",
     "breakdownTitle": "Wo dein Geld liegt",
     "assetsHeld": "Werte",
     "breakdownEmpty": "Noch nichts im Bestand.",
@@ -3043,7 +3044,96 @@
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
     "pnlShareLoss": "Closed {symbol} at a loss",
-    "partialBody": "Ein Teil deiner Historie konnte nicht geladen werden, daher ist diese Liste möglicherweise unvollständig."
+    "partialBody": "Ein Teil deiner Historie konnte nicht geladen werden, daher ist diese Liste möglicherweise unvollständig.",
+    "statusWon": "Gewonnen",
+    "statusLost": "Verloren",
+    "statusLive": "Live",
+    "statusProcessing": "In Bearbeitung",
+    "statusCompleted": "Abgeschlossen",
+    "statusEarned": "Verdient",
+    "statusFailed": "Fehlgeschlagen",
+    "statusAwaitingResults": "Warten auf Ergebnis",
+    "products": {
+      "predictions": "Prognosen",
+      "memecoins": "Memecoins",
+      "trade": "Handel",
+      "perps": "Perps",
+      "arkade": "Arkade",
+      "deposit": "Einzahlung",
+      "withdrawal": "Auszahlung",
+      "transfer": "Transfer",
+      "rewards": "Prämien"
+    },
+    "captions": {
+      "amountSent": "Gesendeter Betrag",
+      "amountReceived": "Erhaltener Betrag",
+      "stakeCommitted": "Eingesetzter Betrag",
+      "rewardPoints": "Prämienpunkte",
+      "paid": "{amount} bezahlt",
+      "received": "{amount} erhalten"
+    },
+    "subtitles": {
+      "from": "Von {address}",
+      "to": "An {address}",
+      "versus": "gegen {opponent}"
+    },
+    "dayHeadings": {
+      "today": "Heute, {day, selectordinal, other {#.}} {month}",
+      "yesterday": "Gestern, {day, selectordinal, other {#.}} {month}",
+      "date": "{day, selectordinal, other {#.}} {month}",
+      "dateWithYear": "{day, selectordinal, other {#.}} {month} {year}"
+    },
+    "filters": {
+      "searchLabel": "Aktivität suchen",
+      "searchPlaceholder": "Aktivität suchen",
+      "allProducts": "Alle Produkte",
+      "productTitle": "Nach Produkt filtern",
+      "rangeTitle": "Nach Datum filtern",
+      "noMatchesTitle": "Keine passende Aktivität",
+      "noMatchesBody": "Nichts hier passt zur Suche und zu den Filtern. Versuchen Sie einen größeren Zeitraum.",
+      "clear": "Filter zurücksetzen"
+    },
+    "ranges": {
+      "7d": "Letzte 7 Tage",
+      "30d": "Letzte 30 Tage",
+      "90d": "Letzte 90 Tage",
+      "12m": "Letzte 12 Monate",
+      "all": "Gesamter Zeitraum"
+    },
+    "detail": {
+      "eyebrow": "Aktivitätsdetails",
+      "when": "Wann",
+      "product": "Produkt",
+      "transaction": "Transaktion",
+      "share": "In Market Square teilen",
+      "explorer": "Auf {chain} ansehen"
+    },
+    "groupCount": "{count, plural, one {# Aktivität} other {# Aktivitäten}}"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "activity": "Aktivität",
+    "empty": "Noch keine Benachrichtigungen.",
+    "error": "Wir konnten deine Benachrichtigungen nicht laden.",
+    "retry": "Erneut versuchen",
+    "markAllRead": "Alle als gelesen markieren",
+    "loadMore": "Ältere anzeigen",
+    "enableTitle": "Benachrichtigungen erhalten",
+    "enableBody": "Erfahre von Ankündigungen, auch wenn dieser Tab geschlossen ist.",
+    "enable": "Aktivieren",
+    "enabling": "Wird aktiviert…",
+    "enabled": "Auf diesem Gerät aktiv",
+    "disable": "Deaktivieren",
+    "blockedTitle": "Benachrichtigungen sind blockiert",
+    "blockedBody": "Dein Browser blockiert Benachrichtigungen für diese Seite. Öffne das Schloss neben der Adresse, erlaube sie und komm zurück.",
+    "installTitle": "Zuerst zum Home-Bildschirm hinzufügen",
+    "installBody": "Auf iPhone und iPad funktionieren Benachrichtigungen, sobald diese App auf dem Home-Bildschirm liegt. Tippe auf Teilen, dann Zum Home-Bildschirm, und öffne sie von dort.",
+    "unavailableTitle": "Benachrichtigungen nicht verfügbar",
+    "unavailableBody": "Push-Benachrichtigungen sind auf diesem Server noch nicht aktiviert.",
+    "failed": "Benachrichtigungen konnten nicht aktiviert werden.",
+    "failedBlocked": "Dein Browser konnte den Benachrichtigungsdienst nicht erreichen. Meist liegt es an einem Werbe- oder Datenschutz-Blocker.",
+    "failedOff": "Benachrichtigungen konnten nicht deaktiviert werden.",
+    "newCount": "{count} neu"
   },
   "launchGate": {
     "title": "Bald verfügbar",

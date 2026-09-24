@@ -369,6 +369,7 @@
     "withdraw": "Retirer",
     "depositPending": "Votre dépôt bancaire est en route. Cela peut prendre 5 à 10 minutes avant d'apparaître sur votre solde ; les retraits seront ensuite de nouveau disponibles.",
     "readyToSpend": "{amount} disponible à dépenser",
+    "readyToSpendUnknown": "Montant disponible non chargé",
     "breakdownTitle": "Où est votre argent",
     "assetsHeld": "actifs",
     "breakdownEmpty": "Rien en portefeuille.",
@@ -3043,7 +3044,96 @@
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
     "pnlShareLoss": "Closed {symbol} at a loss",
-    "partialBody": "Une partie de votre historique n'a pas pu être chargée, cette liste est donc peut-être incomplète."
+    "partialBody": "Une partie de votre historique n'a pas pu être chargée, cette liste est donc peut-être incomplète.",
+    "statusWon": "Gagné",
+    "statusLost": "Perdu",
+    "statusLive": "En direct",
+    "statusProcessing": "En cours",
+    "statusCompleted": "Terminé",
+    "statusEarned": "Obtenu",
+    "statusFailed": "Échoué",
+    "statusAwaitingResults": "En attente des résultats",
+    "products": {
+      "predictions": "Prédictions",
+      "memecoins": "Memecoins",
+      "trade": "Trading",
+      "perps": "Perps",
+      "arkade": "Arkade",
+      "deposit": "Dépôt",
+      "withdrawal": "Retrait",
+      "transfer": "Transfert",
+      "rewards": "Récompenses"
+    },
+    "captions": {
+      "amountSent": "Montant envoyé",
+      "amountReceived": "Montant reçu",
+      "stakeCommitted": "Mise engagée",
+      "rewardPoints": "Points de récompense",
+      "paid": "{amount} payé",
+      "received": "{amount} reçu"
+    },
+    "subtitles": {
+      "from": "De {address}",
+      "to": "À {address}",
+      "versus": "contre {opponent}"
+    },
+    "dayHeadings": {
+      "today": "Aujourd'hui, {day, selectordinal, one {#er} other {#}} {month}",
+      "yesterday": "Hier, {day, selectordinal, one {#er} other {#}} {month}",
+      "date": "{day, selectordinal, one {#er} other {#}} {month}",
+      "dateWithYear": "{day, selectordinal, one {#er} other {#}} {month} {year}"
+    },
+    "filters": {
+      "searchLabel": "Rechercher une activité",
+      "searchPlaceholder": "Rechercher une activité",
+      "allProducts": "Tous les produits",
+      "productTitle": "Filtrer par produit",
+      "rangeTitle": "Filtrer par date",
+      "noMatchesTitle": "Aucune activité correspondante",
+      "noMatchesBody": "Rien ici ne correspond à votre recherche et à vos filtres. Essayez une période plus large.",
+      "clear": "Effacer les filtres"
+    },
+    "ranges": {
+      "7d": "7 derniers jours",
+      "30d": "30 derniers jours",
+      "90d": "90 derniers jours",
+      "12m": "12 derniers mois",
+      "all": "Tout l'historique"
+    },
+    "detail": {
+      "eyebrow": "Détails de l'activité",
+      "when": "Quand",
+      "product": "Produit",
+      "transaction": "Transaction",
+      "share": "Partager sur Market Square",
+      "explorer": "Voir sur {chain}"
+    },
+    "groupCount": "{count, plural, one {# activité} other {# activités}}"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "activity": "Activité",
+    "empty": "Pas encore de notifications.",
+    "error": "Nous n’avons pas pu charger tes notifications.",
+    "retry": "Réessayer",
+    "markAllRead": "Tout marquer comme lu",
+    "loadMore": "Voir les plus anciennes",
+    "enableTitle": "Être averti",
+    "enableBody": "Reçois les annonces même quand cet onglet est fermé.",
+    "enable": "Activer",
+    "enabling": "Activation…",
+    "enabled": "Activé sur cet appareil",
+    "disable": "Désactiver",
+    "blockedTitle": "Les notifications sont bloquées",
+    "blockedBody": "Ton navigateur bloque les notifications pour ce site. Ouvre le cadenas près de l’adresse, autorise-les, puis reviens.",
+    "installTitle": "Ajoute d’abord l’app à ton écran d’accueil",
+    "installBody": "Sur iPhone et iPad, les notifications fonctionnent une fois l’app sur ton écran d’accueil. Touche Partager, puis Sur l’écran d’accueil, et ouvre-la depuis là.",
+    "unavailableTitle": "Notifications indisponibles",
+    "unavailableBody": "Les notifications push ne sont pas encore activées sur ce serveur.",
+    "failed": "Nous n’avons pas pu activer les notifications.",
+    "failedBlocked": "Ton navigateur n’a pas pu joindre le service de notifications. En général, c’est un bloqueur de publicités ou de traqueurs.",
+    "failedOff": "Nous n’avons pas pu désactiver les notifications.",
+    "newCount": "{count} nouvelles"
   },
   "launchGate": {
     "title": "Bientôt disponible",

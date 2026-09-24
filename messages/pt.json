@@ -369,6 +369,7 @@
     "withdraw": "Retirar",
     "depositPending": "Seu depósito bancário está a caminho. Pode levar de 5 a 10 minutos para refletir no seu saldo; os saques são liberados assim que chegar.",
     "readyToSpend": "{amount} disponível para gastar",
+    "readyToSpendUnknown": "Não foi possível carregar o saldo disponível",
     "breakdownTitle": "Onde está o seu dinheiro",
     "assetsHeld": "ativos",
     "breakdownEmpty": "Ainda não tem nada.",
@@ -3043,7 +3044,96 @@
     "pnlPartial": "{qty} {symbol} sold with no purchase on record here, so it is not scored.",
     "pnlShareWin": "Closed {symbol} in profit",
     "pnlShareLoss": "Closed {symbol} at a loss",
-    "partialBody": "Não foi possível carregar parte do seu histórico, por isso esta lista pode estar incompleta."
+    "partialBody": "Não foi possível carregar parte do seu histórico, por isso esta lista pode estar incompleta.",
+    "statusWon": "Ganha",
+    "statusLost": "Perdida",
+    "statusLive": "Ao vivo",
+    "statusProcessing": "A processar",
+    "statusCompleted": "Concluída",
+    "statusEarned": "Obtido",
+    "statusFailed": "Falhou",
+    "statusAwaitingResults": "A aguardar resultados",
+    "products": {
+      "predictions": "Previsões",
+      "memecoins": "Memecoins",
+      "trade": "Trading",
+      "perps": "Perps",
+      "arkade": "Arkade",
+      "deposit": "Depósito",
+      "withdrawal": "Levantamento",
+      "transfer": "Transferência",
+      "rewards": "Recompensas"
+    },
+    "captions": {
+      "amountSent": "Montante enviado",
+      "amountReceived": "Montante recebido",
+      "stakeCommitted": "Valor apostado",
+      "rewardPoints": "Pontos de recompensa",
+      "paid": "Pago {amount}",
+      "received": "Recebido {amount}"
+    },
+    "subtitles": {
+      "from": "De {address}",
+      "to": "Para {address}",
+      "versus": "vs {opponent}"
+    },
+    "dayHeadings": {
+      "today": "Hoje, {day, selectordinal, other {#}} de {month}",
+      "yesterday": "Ontem, {day, selectordinal, other {#}} de {month}",
+      "date": "{day, selectordinal, other {#}} de {month}",
+      "dateWithYear": "{day, selectordinal, other {#}} de {month} de {year}"
+    },
+    "filters": {
+      "searchLabel": "Pesquisar atividade",
+      "searchPlaceholder": "Pesquisar atividade",
+      "allProducts": "Todos os produtos",
+      "productTitle": "Filtrar por produto",
+      "rangeTitle": "Filtrar por data",
+      "noMatchesTitle": "Nenhuma atividade correspondente",
+      "noMatchesBody": "Nada aqui corresponde à sua busca e aos seus filtros. Tente um intervalo de datas maior.",
+      "clear": "Limpar filtros"
+    },
+    "ranges": {
+      "7d": "Últimos 7 dias",
+      "30d": "Últimos 30 dias",
+      "90d": "Últimos 90 dias",
+      "12m": "Últimos 12 meses",
+      "all": "Todo o histórico"
+    },
+    "detail": {
+      "eyebrow": "Detalhes da atividade",
+      "when": "Quando",
+      "product": "Produto",
+      "transaction": "Transação",
+      "share": "Partilhar no Market Square",
+      "explorer": "Ver na {chain}"
+    },
+    "groupCount": "{count, plural, one {# atividade} other {# atividades}}"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "activity": "Atividade",
+    "empty": "Ainda não há notificações.",
+    "error": "Não conseguimos carregar suas notificações.",
+    "retry": "Tentar de novo",
+    "markAllRead": "Marcar tudo como lido",
+    "loadMore": "Ver anteriores",
+    "enableTitle": "Receber avisos",
+    "enableBody": "Fique sabendo dos anúncios mesmo com esta aba fechada.",
+    "enable": "Ativar",
+    "enabling": "Ativando…",
+    "enabled": "Ativado neste dispositivo",
+    "disable": "Desativar",
+    "blockedTitle": "As notificações estão bloqueadas",
+    "blockedBody": "Seu navegador está bloqueando as notificações deste site. Abra o cadeado ao lado do endereço, permita e volte aqui.",
+    "installTitle": "Adicione primeiro à sua tela de início",
+    "installBody": "No iPhone e no iPad, as notificações funcionam quando este app está na sua tela de início. Toque em Compartilhar, depois Adicionar à Tela de Início, e abra por ali.",
+    "unavailableTitle": "Notificações indisponíveis",
+    "unavailableBody": "As notificações push ainda não estão ativadas neste servidor.",
+    "failed": "Não conseguimos ativar as notificações.",
+    "failedBlocked": "Seu navegador não conseguiu acessar o serviço de notificações. Normalmente é um bloqueador de anúncios ou de rastreamento.",
+    "failedOff": "Não conseguimos desativar as notificações.",
+    "newCount": "{count} novas"
   },
   "launchGate": {
     "title": "Em breve",

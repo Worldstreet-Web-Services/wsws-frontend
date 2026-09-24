@@ -502,6 +502,10 @@ export function MemeTradeSheet({
         tokenAddress: token.address,
         amount: debouncedAmount,
         chainId: token.chainId,
+        // The Solana path has no quote to read a ticker off, so the sheet
+        // hands down the one it is already showing. The Base path ignores
+        // this and takes the symbol from its own quote.
+        tokenSymbol: displaySym,
       });
       inFlightRef.current = false;
       // Only the service's CONFIRMED is "bought" or "sold". Delivered and

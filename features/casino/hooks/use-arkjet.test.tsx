@@ -24,6 +24,10 @@ const auth = vi.hoisted(() => ({
 vi.mock("@/features/casino/lib/api/arkjet", () => api);
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => auth,
+  // The cash-out reports to Shine, which reaches the square's authed client;
+  // that module resolves a Privy access token at import time.
+  getAccessToken: vi.fn(async () => null),
+  getIdentityToken: vi.fn(async () => null),
 }));
 
 import { ARKJET_KEYS, useArkjet } from "./use-arkjet";

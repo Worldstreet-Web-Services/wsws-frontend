@@ -19,7 +19,9 @@ import {
   type RwaQuote,
   type RwaQuoteRequest,
 } from "@/features/rwa/lib/api";
+import { rwaEntryPrice, rwaShineEvent, rwaTradeId } from "@/features/rwa/lib/shine";
 import { getWalletAddress } from "@/lib/user";
+import { reportShine } from "@/lib/shine";
 import { toast } from "@/lib/toast";
 import { track } from "@/lib/analytics/mixpanel";
 import { depositProgress, quoteFee, settlementFor, type DepositProgress } from "@/lib/deposit";
@@ -456,6 +458,9 @@ export function useRwaTicket({
     }
 
     if (settlementStage === "settled") {
+      // Nothing is reported to Shine from here. This poll follows the proceeds
+      // of a sale that was already confirmed, and posted, at the execute above;
+      // the leg it is watching moves USDC between chains and is not a trade.
       // Base-to-Solana purchases are owned by the dashboard-level settlement
       // worker. It survives this ticket closing and completes the sponsored RWA
       // transaction without exposing a second bridge step to the user.
@@ -585,6 +590,18 @@ export function useRwaTicket({
       await execute(action, asset.chain, (index, step) => {
         setSignStep({ index, total: action.steps.length, label: step.description });
       });
+      // The await returning IS the confirmation, on the chains that give one.
+      // Once per action, so nothing here can re-fire; rwaShineEvent withholds
+      // the post on a chain where that await resolves on submission alone.
+      const shineEvent = rwaShineEvent({
+        id: rwaTradeId(asset.id, action.actionId),
+        symbol: asset.symbol,
+        chain: asset.chain,
+        side: isBuy ? "buy" : "sell",
+        price: rwaEntryPrice(asset),
+        stepCount: action.steps.length,
+      });
+      if (shineEvent) reportShine(shineEvent);
       track("trade_completed", {
         vertical: "real_asset",
         asset: asset.symbol,

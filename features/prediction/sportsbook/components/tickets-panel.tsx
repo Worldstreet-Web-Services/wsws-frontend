@@ -11,6 +11,7 @@ import {
 } from "../money";
 import { isLostSelectionResult } from "../ticket-status";
 import { useSportsbookOrderHistory } from "../hooks/use-sportsbook";
+import { useSportsbookShine } from "../hooks/use-sportsbook-shine";
 
 const POSITIVE = new Set(["won", "redeemable", "redeemed"]);
 const NEGATIVE = new Set(["lost", "rejected", "failed"]);
@@ -19,6 +20,11 @@ export function TicketsPanel({ onOpen }: { onOpen: (ticketId: string) => void })
   const { authenticated, login } = usePrivy();
   const ethPriceUsd = usePrices(["ETH"]).ETH ?? 0;
   const history = useSportsbookOrderHistory(authenticated);
+  // A settled winning ticket is only ever seen here for most people: they do
+  // not open the ticket again. This history also refetches on window focus,
+  // which is exactly why the report is made from an effect with a dedup store
+  // behind it rather than from the rows below.
+  useSportsbookShine(history.data?.items);
 
   if (!authenticated) {
     return (

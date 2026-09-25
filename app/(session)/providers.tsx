@@ -19,6 +19,7 @@ import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { DepositAnalytics } from "@/features/activity/components/deposit-analytics";
 import { BankDepositAnalytics } from "@/features/funds/components/bank-deposit-analytics";
 import { BankWithdrawAnalytics } from "@/features/funds/components/bank-withdraw-analytics";
+import { ShineRuntimeUnderMigration } from "@/features/migrate/components/shine-runtime-under-migration";
 import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
@@ -171,6 +172,15 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
             <DepositAnalytics />
             <BankDepositAnalytics />
             <BankWithdrawAnalytics />
+            {/* Installs the Shine runtime, so a confirmed trade anywhere in
+                the session can post itself to Market Square in the language
+                the app is being read in. Needs the session for the account
+                and the query client for the account's own Shine preferences,
+                and mounts here rather than per service page because a swap
+                can confirm long after the page that started it is gone.
+                Paused while an account upgrade is pending (see the wrapper).
+                Renders nothing. */}
+            <ShineRuntimeUnderMigration />
             {/* Watches open Polymarket cashouts for the market workspace.
                 Needs Privy and the query client. Renders nothing. */}
             <PredictionCashoutTracker />

@@ -21,3 +21,6 @@ export function ShineRuntimeUnderMigration() {
   const { offer, deciding } = useOfferMigrationState();
   return <ShineRuntimeProvider paused={offer || deciding} />;
 }
+
+// The default export is what app/(session)/providers.tsx defers through next/dynamic.
+export default ShineRuntimeUnderMigration;

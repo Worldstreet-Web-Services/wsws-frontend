@@ -19,7 +19,6 @@ import { AnalyticsSegments } from "@/components/providers/analytics-segments";
 import { DepositAnalytics } from "@/features/activity/components/deposit-analytics";
 import { BankDepositAnalytics } from "@/features/funds/components/bank-deposit-analytics";
 import { BankWithdrawAnalytics } from "@/features/funds/components/bank-withdraw-analytics";
-import { ShineRuntimeUnderMigration } from "@/features/migrate/components/shine-runtime-under-migration";
 import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
 // Deep import, not the barrel. `@/features/casino` re-exports 27 components,
@@ -67,6 +66,16 @@ const MigrationOAuthReturnHost = dynamic(
 const MigrationGateHost = dynamic(() => import("@/components/layout/migration-gate-host"), {
   ssr: false,
 });
+// The Shine runtime, paused while an upgrade is pending. Deferred for the
+// same reason again: the pause reads the migration OFFER, and that hook
+// reaches the sweep's wallet planner and the legacy-funds probe. Imported
+// statically it put 172 kB on /auth and /interests for a runtime that posts
+// nothing until a trade confirms. A trade cannot confirm before this chunk
+// has long since landed.
+const ShineRuntimeUnderMigration = dynamic(
+  () => import("@/features/migrate/components/shine-runtime-under-migration"),
+  { ssr: false }
+);
 
 const DECANE_CHAINS = ["evm:8453", "evm:1", "evm:42161", "evm:10", "evm:137", "solana:mainnet"];
 

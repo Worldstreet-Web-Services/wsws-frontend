@@ -166,9 +166,6 @@
     "consentContinue": "I understand, continue",
     "detailUnavailable": "This token's details are temporarily unavailable. Trying again shortly.",
     "detailNotFound": "This token wasn't found on its network.",
-    "viewLabel": "Which memecoins to list",
-    "viewCurated": "Curated",
-    "viewAll": "All",
     "catalogCount": "{loaded} of {total}",
     "catalogShown": "{shown} shown",
     "catalogMore": "Load more",
@@ -1551,7 +1548,10 @@
     "colFunding": "Funding",
     "colVolume": "Volume",
     "colOpenInterest": "Open Interest",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "ifTakeProfitHits": "If take profit hits",
+    "ifStopLossHits": "If stop loss hits",
+    "rewardRisk": "Reward / risk"
   },
   "perpsFunds": {
     "topUpTitle": "Top up",

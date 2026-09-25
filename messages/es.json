@@ -166,9 +166,6 @@
     "consentContinue": "Entiendo, continuar",
     "detailUnavailable": "Los detalles de este token no están disponibles temporalmente. Lo intentaremos de nuevo en breve.",
     "detailNotFound": "No se encontró este token en su red.",
-    "viewLabel": "Qué memecoins mostrar",
-    "viewCurated": "Seleccionadas",
-    "viewAll": "Todas",
     "catalogCount": "{loaded} de {total}",
     "catalogShown": "{shown} mostradas",
     "catalogMore": "Cargar más",
@@ -1551,7 +1548,10 @@
     "colFunding": "Financiación",
     "colVolume": "Volumen",
     "colOpenInterest": "Interés abierto",
-    "tryAgain": "Intentar de nuevo"
+    "tryAgain": "Intentar de nuevo",
+    "ifTakeProfitHits": "Si se alcanza el take profit",
+    "ifStopLossHits": "Si se alcanza el stop loss",
+    "rewardRisk": "Recompensa / riesgo"
   },
   "perpsFunds": {
     "topUpTitle": "Recargar",

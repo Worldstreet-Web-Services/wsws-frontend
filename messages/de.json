@@ -166,9 +166,6 @@
     "consentContinue": "Ich verstehe, weiter",
     "detailUnavailable": "Die Details zu diesem Token sind vorübergehend nicht verfügbar. Neuer Versuch in Kürze.",
     "detailNotFound": "Dieser Token wurde in seinem Netzwerk nicht gefunden.",
-    "viewLabel": "Welche Memecoins angezeigt werden",
-    "viewCurated": "Kuratiert",
-    "viewAll": "Alle",
     "catalogCount": "{loaded} von {total}",
     "catalogShown": "{shown} angezeigt",
     "catalogMore": "Mehr laden",
@@ -1551,7 +1548,10 @@
     "colFunding": "Funding",
     "colVolume": "Volumen",
     "colOpenInterest": "Open Interest",
-    "tryAgain": "Erneut versuchen"
+    "tryAgain": "Erneut versuchen",
+    "ifTakeProfitHits": "Wenn Take-Profit erreicht wird",
+    "ifStopLossHits": "Wenn Stop-Loss erreicht wird",
+    "rewardRisk": "Chance / Risiko"
   },
   "perpsFunds": {
     "topUpTitle": "Aufladen",

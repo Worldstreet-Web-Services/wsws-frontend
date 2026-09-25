@@ -115,6 +115,7 @@ describe("allowedContracts", () => {
 // Solana keeps the Portfolio API until its own change.
 describe("fetchPortfolio upstreams", () => {
   const WALLET = "0x1111111111111111111111111111111111111111";
+  let solanaPrices: (mints: string[]) => Map<string, number> = () => new Map();
   beforeEach(() => {
     vi.resetModules();
     vi.stubEnv("ZERODEV_PROJECT_ID", "test-project-id-123");
@@ -128,12 +129,19 @@ describe("fetchPortfolio upstreams", () => {
       // poll without a single assertion noticing.
       confirmBaseTokens: async () => new Map(),
     }));
+    // The second price source for Solana mints. Empty unless a test says
+    // otherwise, so the allowlist tests below see exactly Alchemy's answer.
+    vi.doMock("@/lib/server/solana-prices", () => ({
+      fetchSolanaMintPrices: async (mints: string[]) => solanaPrices(mints),
+    }));
   });
   afterEach(async () => {
     const { resetResponseCache } = await import("./response-cache");
     resetResponseCache();
+    solanaPrices = () => new Map();
     vi.doUnmock("@/lib/server/rwa-registry");
     vi.doUnmock("@/lib/server/buyable-registry");
+    vi.doUnmock("@/lib/server/solana-prices");
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -263,6 +271,14 @@ describe("fetchPortfolio upstreams", () => {
     const SOLANA = "So1anaWa11etAddress111111111111111111111111";
     const PRICED = "PrIcEdMint111111111111111111111111111111111";
     const UNPRICED = "UnPrIcEdMint1111111111111111111111111111111";
+    // Alchemy has no price for it; the second source does. PRCL, live.
+    const SECOND = "4LLbsb5ReP3yEtYzmXewyGjcir5uXtKFURtaEUVC2AHs";
+    solanaPrices = (mints) => {
+      // Only the mints Alchemy could not price are asked about.
+      expect(mints).toEqual(expect.arrayContaining([UNPRICED, SECOND]));
+      expect(mints).not.toContain(PRICED);
+      return new Map([[SECOND, 0.0059]]);
+    };
     stubFetch();
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
@@ -292,6 +308,13 @@ describe("fetchPortfolio upstreams", () => {
               },
               {
                 network: "solana-mainnet",
+                tokenAddress: SECOND,
+                tokenBalance: "5627359476",
+                tokenMetadata: { decimals: 6, symbol: "PRCL", name: "Parcl" },
+                tokenPrices: [],
+              },
+              {
+                network: "solana-mainnet",
                 tokenAddress: null,
                 tokenBalance: "2000000000",
                 tokenPrices: [{ currency: "usd", value: "150" }],
@@ -309,16 +332,21 @@ describe("fetchPortfolio upstreams", () => {
     const legacy = await fetchPortfolio(undefined, SOLANA, "all", "legacy");
     const symbols = (t: { symbol: string; balance: number }[]) =>
       t.filter((x) => x.balance > 0).map((x) => x.symbol);
-    expect(symbols(legacy.tokens)).toEqual(expect.arrayContaining(["BONK", "SOL"]));
+    expect(symbols(legacy.tokens)).toEqual(expect.arrayContaining(["BONK", "SOL", "PRCL"]));
     expect(symbols(legacy.tokens)).not.toContain("SPAM");
+    const prcl = legacy.tokens.find((t) => t.symbol === "PRCL")!;
+    expect(prcl.priceUsd).toBeCloseTo(0.0059);
+    expect(prcl.valueUsd).toBeCloseTo(5627.359476 * 0.0059, 2);
     const bonk = legacy.tokens.find((t) => t.symbol === "BONK")!;
     expect(bonk.address).toBe(PRICED);
     expect(bonk.rawBalance).toBe("250000000");
     expect(bonk.priceUsd).toBeCloseTo(0.00002);
 
     // The everyday portfolio keeps its allowlist: no spam can reach it.
+    solanaPrices = () => new Map();
     const everyday = await fetchPortfolio(undefined, SOLANA, "all");
     expect(symbols(everyday.tokens)).not.toContain("BONK");
+    expect(symbols(everyday.tokens)).not.toContain("PRCL");
   });
 
   it("still sweeps everything for the legacy fresh=1", async () => {

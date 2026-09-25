@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useWallets as useSolanaWallets } from "@privy-io/react-auth/solana";
 import type { EIP1193Provider } from "viem";
 import { getEmbeddedWallets, getWalletAddress } from "@/lib/user";
 import type { LegacySigner } from "@/lib/migration/types";
@@ -18,9 +19,19 @@ import { useMigrationStatus } from "@/features/migrate/hooks/use-migration-statu
 // to the old account IN THIS PAGE LOAD — a session Privy restored on its own is
 // discarded first, see useFreshLegacySession. Must render inside
 // LegacyPrivyProvider.
+// How long the signer waits for the old account's Solana wallet OBJECT after
+// its address is known. The EVM side waits for its object outright (below);
+// Solana's arrives through a separate provider and, seen live, later than
+// the EVM one — the automatic sweep fired on the EVM wallet alone and every
+// SOL send failed "isn't ready on Solana", a miss that counts toward the
+// gate's "this keeps failing" exit. Bounded, not open-ended: an account whose
+// Solana wallet never materialises must still move its EVM money.
+export const SOLANA_WALLET_GRACE_MS = 8_000;
+
 export function useLegacySigner(): LegacySigner | null {
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
+  const { wallets: solanaWallets } = useSolanaWallets();
   const sendBatch = useLegacyEvmSendBatch();
   const sendToken = useLegacySendToken();
   // A session restored from Privy's own storage is not proof of who is sitting
@@ -39,6 +50,23 @@ export function useLegacySigner(): LegacySigner | null {
   // The old account must belong to the person signed in to Decane — see the
   // hook. No signer means nothing links and nothing moves, on every path.
   const { mismatch } = useLegacyEmailMatch();
+
+  // The Solana grace clock starts once the old sign-in is real, and a
+  // sign-out restarts it for the next one. Derived state, reset during
+  // render the way React documents for it, so the reset is never a render
+  // behind the session it belongs to.
+  const sessionLive = fresh && ready && authenticated;
+  const [grace, setGrace] = useState({ live: false, over: false });
+  if (grace.live !== sessionLive) setGrace({ live: sessionLive, over: false });
+  useEffect(() => {
+    if (!sessionLive) return;
+    const timer = setTimeout(
+      () => setGrace((g) => (g.live ? { ...g, over: true } : g)),
+      SOLANA_WALLET_GRACE_MS
+    );
+    return () => clearTimeout(timer);
+  }, [sessionLive]);
+  const solanaGraceOver = grace.live && grace.over;
 
   return useMemo(() => {
     if (!fresh || !ready || !authenticated || mismatch) return null;
@@ -70,6 +98,11 @@ export function useLegacySigner(): LegacySigner | null {
     // The SPECIFIC funded wallet must be present, not merely any privy wallet:
     // signing from the wrong one of two embedded wallets moves nothing.
     if (evm && !wallets.some(matchesChosen)) return null;
+    // The Solana wallet object too, for as long as the grace allows. After
+    // it, the signer is handed out regardless and a SOL send that finds no
+    // wallet fails retryably, as before.
+    const solanaPresent = Boolean(solana) && solanaWallets.some((w) => w.address === solana);
+    if (solana && !solanaPresent && !solanaGraceOver) return null;
     return {
       addresses: { evm, solana },
       // Bound to the wallets resolved above, so a send can never go out from
@@ -93,6 +126,8 @@ export function useLegacySigner(): LegacySigner | null {
     mismatch,
     user,
     wallets,
+    solanaWallets,
+    solanaGraceOver,
     recorded?.evm,
     recorded?.solana,
     sendBatch,

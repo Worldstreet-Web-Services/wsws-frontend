@@ -14,12 +14,15 @@ import Link from "next/link";
 // which mounts the whole Privy SDK. The row itself is light; the sheet is not,
 // so only the sheet is deferred — and this popover is mounted on every route.
 import { MoveOldMoneyButton } from "@/features/migrate/components/move-old-money-entry";
+import { WalletAddresses } from "@/components/layout/modals/wallet-addresses";
 import { HelpIcon, SignOutIcon } from "@/components/ui/icons";
 import { openSupportChat } from "@/lib/support-chat/open";
 import { toast } from "@/lib/toast";
 import { openMigration } from "@/features/migrate/lib/migration-card-store";
 
 interface AccountPopoverProps {
+  /** Opens the Shine sheet. Hosted by the sidebar, so it outlives this menu. */
+  onOpenShine: () => void;
   open: boolean;
   onClose: () => void;
   triggerRef: React.RefObject<HTMLElement | null>;
@@ -47,6 +50,25 @@ function PasskeyIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+function ShineIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function InviteIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -67,7 +89,7 @@ function InviteIcon({ size = 18 }: { size?: number }) {
   );
 }
 
-export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProps) {
+export function AccountPopover({ open, onClose, triggerRef, onOpenShine }: AccountPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("account");
   const { profile, logout: sessionLogout } = useAuthSession();
@@ -155,6 +177,9 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
               </div>
             </div>
 
+            {/* Wallets */}
+            <WalletAddresses className="border-t border-white/8 pt-2.5 pb-1" />
+
             {/* Quick Actions */}
             <div className="mt-2.5 flex flex-col gap-1 border-t border-white/8 pt-2">
               {!hasPasskey ? (
@@ -191,6 +216,24 @@ export function AccountPopover({ open, onClose, triggerRef }: AccountPopoverProp
                 onClick={() => openMigration("account_modal")}
                 className={itemClass}
               />
+
+              {/* Shine, in the one place it lives now. It used to be a card on
+                  each of the seven service pages; this is the door to all
+                  seven. */}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onClose();
+                  onOpenShine();
+                }}
+                className={itemClass}
+              >
+                <span className="text-accent">
+                  <ShineIcon />
+                </span>
+                <span>{t("shine")}</span>
+              </button>
 
               {/* The in-app chat, not a form in a new tab: support is a
                   conversation the shell already carries. */}

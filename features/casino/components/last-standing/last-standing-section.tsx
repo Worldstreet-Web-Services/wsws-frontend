@@ -1132,8 +1132,25 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
             {/* Wraps on a narrow phone: the label plus both pills do not fit
                 one line there, and forcing them to overlapped the pot below. */}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              <div className="text-accent/80 text-[11px] font-semibold tracking-[0.18em] uppercase">
-                {t("prizePool")}
+              {/* The starter's name for this game rides the eyebrow that was
+                  already here rather than taking a heading of its own: it says
+                  WHICH game this is, which is a label on the prize pool, not a
+                  second title above it. Costs no height on a page whose whole
+                  job is the figure below. */}
+              <div className="flex min-w-0 items-baseline gap-2">
+                <span className="text-accent/80 shrink-0 text-[11px] font-semibold tracking-[0.18em] uppercase">
+                  {t("prizePool")}
+                </span>
+                {game?.title ? (
+                  <>
+                    <span aria-hidden className="shrink-0 text-[11px] text-white/25">
+                      ·
+                    </span>
+                    <h1 className="truncate text-[13px] font-semibold text-white/85">
+                      {game.title}
+                    </h1>
+                  </>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <ShareGameButton gameId={gameId} />
@@ -1143,6 +1160,14 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                 <MusicToggle />
               </div>
             </div>
+            {/* One clamped line, and only for a game that has one. The
+                starter's own words are worth showing; two lines of them on a
+                sixty-second page are not. */}
+            {game?.description ? (
+              <p className="mt-1 line-clamp-1 text-[12px] leading-[1.35] font-normal text-white/45">
+                {game.description}
+              </p>
+            ) : null}
             <motion.div
               ref={potRef}
               key={flight?.id ?? "idle"}

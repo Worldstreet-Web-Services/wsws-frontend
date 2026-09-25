@@ -1,6 +1,6 @@
 import "server-only";
 
-import { DecaneClient } from "decane-node";
+import { DecaneApiError, DecaneClient } from "decane-node";
 
 let client: DecaneClient | null = null;
 
@@ -27,12 +27,9 @@ export function decaneConfigured(): boolean {
 // booleans under short keys), written with the user's own access token. It is
 // what Privy's custom metadata was for the account-stored settings here —
 // Shine and the consent record — now that a Decane session has no Privy user
-// to hang them on.
-//
-// decane-node 1.4.0 exposes these as getPreferences / updatePreferences on
-// the client. Until that version is on the registry the two calls are made
-// here directly, against the same endpoints, so this file is the only thing
-// to collapse when it lands.
+// to hang them on. decane-node 1.4.0 makes the two calls; this wraps them so
+// a route can tell "the token was refused" (sign in again) from "Decane is
+// down" (try later) by one status, whichever call it was.
 
 export type DecaneRecord = Record<string, string | number | boolean>;
 export type DecaneRecordPatch = Record<string, string | number | boolean | null>;
@@ -40,6 +37,7 @@ export type DecaneRecordPatch = Record<string, string | number | boolean | null>
 export class DecanePreferencesError extends Error {
   constructor(
     message: string,
+    /** The HTTP status Decane answered, or 0 when the request never completed. */
     public readonly status: number
   ) {
     super(message);
@@ -47,52 +45,20 @@ export class DecanePreferencesError extends Error {
   }
 }
 
-const PREFERENCES_TIMEOUT_MS = 10_000;
-
-// The same resolution decane-node uses for every request it makes: the env
-// override when it is set to something, else the public backend. An empty
-// value counts as unset, since deploy templates write `DECANE_API_BASE=`.
-function decaneApiBase(): string {
-  const env = process.env.DECANE_API_BASE?.trim();
-  return (env || "https://backend.decane.app").replace(/\/+$/, "");
-}
-
-async function preferencesRequest(
-  token: string,
-  init: { method: "GET" | "PATCH"; body?: unknown }
-): Promise<DecaneRecord> {
-  let res: Response;
+async function preferencesCall(call: () => Promise<DecaneRecord>): Promise<DecaneRecord> {
   try {
-    res = await fetch(`${decaneApiBase()}/me/preferences`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
-      signal: AbortSignal.timeout(PREFERENCES_TIMEOUT_MS),
-      cache: "no-store",
-    });
+    return await call();
   } catch (error) {
+    if (error instanceof DecaneApiError) {
+      throw new DecanePreferencesError(error.message, error.status);
+    }
     throw new DecanePreferencesError(`Decane unreachable: ${String(error)}`, 0);
   }
-  if (!res.ok) {
-    const envelope = (await res.json().catch(() => ({}))) as {
-      error?: { code?: string; message?: string };
-    };
-    throw new DecanePreferencesError(
-      envelope.error?.message ?? `Decane answered ${res.status}`,
-      res.status
-    );
-  }
-  const body = (await res.json()) as { preferences?: unknown };
-  const record = body.preferences;
-  return record && typeof record === "object" ? (record as DecaneRecord) : {};
 }
 
 /** The token owner's preferences. `{}` for an account that never wrote any. */
 export function readDecanePreferences(token: string): Promise<DecaneRecord> {
-  return preferencesRequest(token, { method: "GET" });
+  return preferencesCall(() => getDecaneClient().getPreferences(token));
 }
 
 /**
@@ -105,5 +71,5 @@ export function updateDecanePreferences(
   token: string,
   patch: DecaneRecordPatch
 ): Promise<DecaneRecord> {
-  return preferencesRequest(token, { method: "PATCH", body: { preferences: patch } });
+  return preferencesCall(() => getDecaneClient().updatePreferences(token, patch));
 }

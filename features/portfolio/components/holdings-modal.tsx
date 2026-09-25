@@ -26,6 +26,7 @@ import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import { displaySymbol } from "@/lib/buy";
 import { coingeckoId } from "@/lib/coingecko";
 import { formatQty } from "@/lib/format";
+import { isPolymarketCollateral } from "@/lib/polymarket/config";
 import { canSellAsset } from "@/lib/sell";
 import { tokenBg } from "@/lib/trade/assets";
 import type { MemeToken } from "@/lib/meme/api";
@@ -180,26 +181,26 @@ export function HoldingsModal({
       const meme = memeTokenOf(token);
       // A real balance nobody could price: its value is unknown, never "$0.00".
       const unpriced = isUnpricedHolding(token);
+      const isPredictionCollateral = isPolymarketCollateral(token.network, token.address);
       const sellable = canSellAsset(token.network, token.address);
 
-      // Polymarket collateral used to send the reader to /prediction here.
-      // Production does not offer that section, so the holding is an ordinary
-      // one: its balance still shows, it just has no prediction doorway.
-      const buyAction = isRwa
-        ? () =>
-            onOpenRwaTrade({
-              network: token.network,
-              address: token.address as string,
-              symbol: token.symbol,
-              mode: "buy",
-            })
-        : () =>
-            onOpenBuy({
-              symbol: token.symbol,
-              name: token.name,
-              priceUsd: token.priceUsd,
-              logo: token.logo,
-            });
+      const buyAction = isPredictionCollateral
+        ? () => router.push("/prediction")
+        : isRwa
+          ? () =>
+              onOpenRwaTrade({
+                network: token.network,
+                address: token.address as string,
+                symbol: token.symbol,
+                mode: "buy",
+              })
+          : () =>
+              onOpenBuy({
+                symbol: token.symbol,
+                name: token.name,
+                priceUsd: token.priceUsd,
+                logo: token.logo,
+              });
 
       const sellAction = isRwa
         ? {
@@ -251,7 +252,7 @@ export function HoldingsModal({
             v: unpriced ? t("valuationUnavailable") : money.format(token.valueUsd),
           },
         ],
-        cta: t("buyMore", { name: token.name }),
+        cta: isPredictionCollateral ? t("managePrediction") : t("buyMore", { name: token.name }),
         onCta: buyAction,
         ...sellAction,
         coingeckoId: coingeckoId(token.symbol) ?? undefined,
@@ -319,7 +320,10 @@ export function HoldingsModal({
             {loading ? (
               <div className="mt-3" aria-hidden="true">
                 {SKELETON_ROWS.map((i) => (
-                  <div key={i} className="flex items-center gap-3 border-t border-white/6 py-3.5">
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 border-t border-white/6 px-2 py-3.5"
+                  >
                     <span className="size-9 shrink-0 animate-pulse rounded-[11px] bg-white/8" />
                     <span className="min-w-0 flex-1">
                       <span className="block font-sans text-[14.5px] font-medium">
@@ -397,7 +401,7 @@ export function HoldingsModal({
                     type="button"
                     data-no-ripple
                     onClick={() => openToken(token)}
-                    className="flex w-full cursor-pointer items-center gap-3 border-t border-white/6 py-3.5 text-left transition-colors duration-150 hover:bg-white/6"
+                    className="flex w-full cursor-pointer items-center gap-3 border-t border-white/6 px-2 py-3.5 text-left transition-colors duration-150 hover:bg-white/6"
                   >
                     <span className="relative shrink-0">
                       <AssetIcon

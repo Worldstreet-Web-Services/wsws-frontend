@@ -188,3 +188,21 @@ describe("useLegacySigner — the Solana wallet object", () => {
     expect(result.current?.addresses).toEqual({ evm: FIRST, solana: null });
   });
 });
+
+// The service stored every old wallet lower-cased, and a lower-cased Solana
+// address names no account. The recorded string picks WHICH wallet; the
+// wallet's own spelling is what the signer hands out.
+describe("useLegacySigner — the recorded address's casing", () => {
+  const SOL = "35DBqKFZ2Cys96jfCEfFEfF47qmw36ZbA6wrh3akoNfc";
+  it("hands out the wallet's own spelling, not the recorded lower-cased one", () => {
+    state.embedded = [
+      { chainType: "ethereum", address: FIRST },
+      { chainType: "solana", address: SOL },
+    ];
+    state.recordedSol = SOL.toLowerCase();
+    state.wallets = [{ walletClientType: "privy", address: FIRST }];
+    state.solanaWallets = [{ address: SOL }];
+    const { result } = renderHook(() => useLegacySigner());
+    expect(result.current?.addresses.solana).toBe(SOL);
+  });
+});

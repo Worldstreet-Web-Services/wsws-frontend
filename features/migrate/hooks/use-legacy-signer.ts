@@ -74,14 +74,19 @@ export function useLegacySigner(): LegacySigner | null {
     // provably holds the funds — over getWalletAddress's "first embedded",
     // but only when it is one of THIS account's own wallets. Same reasoning on
     // both chains: an account can carry more than one embedded wallet.
+    // The address is taken from the ACCOUNT'S OWN wallet entry, never from the
+    // recorded string, even when they name the same wallet. The service used
+    // to store every old wallet lower-cased, and a lower-cased Solana address
+    // is a different string that names no account: matched case-blind and
+    // then handed back as recorded, it made discovery read 0 SOL at a wallet
+    // holding 25. Case-blind matching is right for choosing the wallet;
+    // Privy's own spelling is the one to spend from.
     const own = (chain: "ethereum" | "solana") =>
-      getEmbeddedWallets(user)
-        .filter((w) => w.chainType === chain)
-        .map((w) => w.address.toLowerCase());
+      getEmbeddedWallets(user).filter((w) => w.chainType === chain);
     const prefer = (recordedAddr: string | null, chain: "ethereum" | "solana") =>
-      recordedAddr && own(chain).includes(recordedAddr.toLowerCase())
-        ? recordedAddr
-        : getWalletAddress(user, chain);
+      (recordedAddr &&
+        own(chain).find((w) => w.address.toLowerCase() === recordedAddr.toLowerCase())?.address) ??
+      getWalletAddress(user, chain);
     const evm = prefer(recorded?.evm ?? null, "ethereum");
     const solana = prefer(recorded?.solana ?? null, "solana");
     if (!evm && !solana) return null;

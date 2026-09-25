@@ -68,5 +68,8 @@ export function useVaultFeeds(
     activities: scopedActivities,
     winners: scopedWinners,
     winnersLoading: winners.isPending,
+    // A first paint with nothing in hand is not the same statement as "nobody
+    // has played", so the table that draws this feed needs to tell them apart.
+    activitiesLoading: activities.isPending,
   };
 }

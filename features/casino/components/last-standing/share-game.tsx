@@ -21,21 +21,17 @@ function useOrigin(): string {
   return useSyncExternalStore(NO_UPDATES, readShareOrigin, serverShareOrigin);
 }
 
-// Sharing is the point of opening a game: the starter earns 10% of whatever the
-// pot reaches, so every player they bring in pays them. The link is the game's
-// own route, which means it works for someone who is not signed in yet.
-//
-// A card of its own, with the QR always showing: players asked for it after
-// the link and code kept hiding behind a toggle under the stats. On a laptop it
-// heads the side rail above the activity feed; on a phone it keeps its place
-// under the game stats.
-export function ShareGame({ gameId, className = "" }: { gameId: number; className?: string }) {
+/**
+ * A game's invite link, and the two ways to pass it on.
+ *
+ * Three surfaces send the same link now: this card, the header button below,
+ * and the rail's invite card on the game screen. The origin, the toasts and
+ * the native-sheet fallback belong in one place, or they drift apart.
+ */
+export function useGameShare(gameId: number) {
   const t = useTranslations("casino.lastStanding");
-
   const origin = useOrigin();
-  const path = `/casino/last-standing/${gameId}`;
-  const url = `${origin}${path}`;
-
+  const url = `${origin}/casino/last-standing/${gameId}`;
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -67,6 +63,21 @@ export function ShareGame({ gameId, className = "" }: { gameId: number; classNam
     }
     await copy();
   };
+
+  return { url, copied, copy, share };
+}
+
+// Sharing is the point of opening a game: the starter earns 10% of whatever the
+// pot reaches, so every player they bring in pays them. The link is the game's
+// own route, which means it works for someone who is not signed in yet.
+//
+// A card of its own, with the QR always showing: players asked for it after
+// the link and code kept hiding behind a toggle under the stats. On a laptop it
+// heads the side rail above the activity feed; on a phone it keeps its place
+// under the game stats.
+export function ShareGame({ gameId, className = "" }: { gameId: number; className?: string }) {
+  const t = useTranslations("casino.lastStanding");
+  const { url, copied, copy, share } = useGameShare(gameId);
 
   return (
     <div className={`ws-glass rounded-[22px] p-5 ${className}`}>
@@ -125,28 +136,12 @@ export function ShareGame({ gameId, className = "" }: { gameId: number; classNam
  */
 export function ShareGameButton({ gameId }: { gameId: number }) {
   const t = useTranslations("casino.lastStanding");
-  const origin = useOrigin();
-  const url = `${origin}/casino/last-standing/${gameId}`;
-
-  const onClick = async () => {
-    if (!origin) return;
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      try {
-        await navigator.share({ title: t("shareTitle"), text: t("shareText"), url });
-        return;
-      } catch {
-        // Dismissed or refused; fall through to copying.
-      }
-    }
-    const ok = await copyText(url);
-    if (ok) toast.success(t("shareCopied"));
-    else toast.error(t("shareCopyFailed"));
-  };
+  const { share } = useGameShare(gameId);
 
   return (
     <button
       type="button"
-      onClick={() => void onClick()}
+      onClick={() => void share()}
       className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 text-[11.5px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
     >
       <svg

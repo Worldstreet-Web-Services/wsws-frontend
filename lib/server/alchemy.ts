@@ -810,6 +810,23 @@ export async function fetchPortfolio(
             if (!meme.has(address)) meme.set(address, info);
           }
         }
+        // Solana has no catalogue to ask, and its allowlist is SOL, USDC and
+        // USDT — so every other mint the old wallet held was dropped right
+        // here, and the migration never saw a person's Solana tokens at all.
+        // Alchemy's own price is the gate instead: a mint it prices has a
+        // market, and a held balance of it is money the sweep can move (the
+        // Solana leg sends any SPL or Token-2022 mint, creating the
+        // destination account as it goes). A mint it cannot price is spam or
+        // too thin to value, and the sweep's value floor would drop it anyway.
+        const buyableSolana = (registries.buyable[SOLANA_NETWORK] ??= new Set());
+        for (const t of tokensFromBatches) {
+          if (t.network !== SOLANA_NETWORK || !t.tokenAddress) continue;
+          const usd = t.tokenPrices?.find((p) => p.currency === "usd");
+          if (!usd || !(parseFloat(usd.value) > 0)) continue;
+          const decimals = t.tokenMetadata?.decimals ?? 9;
+          if (toNumber(toRawUnits(t.tokenBalance), decimals) < LEGACY_MIN_BALANCE) continue;
+          buyableSolana.add(t.tokenAddress.toLowerCase());
+        }
       }
       const held = normalize(tokensFromBatches, rwa, registries.buyable, registries.meme);
       // Only baseline the chains the user actually has a wallet on.

@@ -255,6 +255,72 @@ describe("fetchPortfolio upstreams", () => {
     expect(since.some((u) => u.includes("rpc.zerodev.app"))).toBe(false);
   });
 
+  // Seen 2026-09-25: an old wallet holding priced SPL tokens showed the
+  // migration nothing but its SOL and USDC. The whole-wallet read the EVM
+  // side has been doing was never applied to Solana, whose allowlist is three
+  // symbols long, and there is no Solana catalogue to admit the rest from.
+  it("admits a priced Solana token the old wallet holds, on the legacy read only", async () => {
+    const SOLANA = "So1anaWa11etAddress111111111111111111111111";
+    const PRICED = "PrIcEdMint111111111111111111111111111111111";
+    const UNPRICED = "UnPrIcEdMint1111111111111111111111111111111";
+    stubFetch();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : ((input as URL).href ?? (input as Request).url);
+      const ok = (body: unknown) =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      if (url.includes("assets/tokens/by-address") && String(init?.body).includes(SOLANA)) {
+        return ok({
+          data: {
+            tokens: [
+              {
+                network: "solana-mainnet",
+                tokenAddress: PRICED,
+                tokenBalance: "250000000",
+                tokenMetadata: { decimals: 6, symbol: "BONK", name: "Bonk" },
+                tokenPrices: [{ currency: "usd", value: "0.00002" }],
+              },
+              {
+                network: "solana-mainnet",
+                tokenAddress: UNPRICED,
+                tokenBalance: "1000000000",
+                tokenMetadata: { decimals: 9, symbol: "SPAM", name: "Spam" },
+                tokenPrices: [],
+              },
+              {
+                network: "solana-mainnet",
+                tokenAddress: null,
+                tokenBalance: "2000000000",
+                tokenPrices: [{ currency: "usd", value: "150" }],
+              },
+            ],
+          },
+        });
+      }
+      if (url.includes("assets/tokens/by-address")) return ok({ data: { tokens: [] } });
+      if (url.includes("/tokens/by-symbol")) return ok({ data: [] });
+      return ok({});
+    });
+    const { fetchPortfolio } = await import("./alchemy");
+
+    const legacy = await fetchPortfolio(undefined, SOLANA, "all", "legacy");
+    const symbols = (t: { symbol: string; balance: number }[]) =>
+      t.filter((x) => x.balance > 0).map((x) => x.symbol);
+    expect(symbols(legacy.tokens)).toEqual(expect.arrayContaining(["BONK", "SOL"]));
+    expect(symbols(legacy.tokens)).not.toContain("SPAM");
+    const bonk = legacy.tokens.find((t) => t.symbol === "BONK")!;
+    expect(bonk.address).toBe(PRICED);
+    expect(bonk.rawBalance).toBe("250000000");
+    expect(bonk.priceUsd).toBeCloseTo(0.00002);
+
+    // The everyday portfolio keeps its allowlist: no spam can reach it.
+    const everyday = await fetchPortfolio(undefined, SOLANA, "all");
+    expect(symbols(everyday.tokens)).not.toContain("BONK");
+  });
+
   it("still sweeps everything for the legacy fresh=1", async () => {
     const seen = stubFetch();
     const { fetchPortfolio } = await import("./alchemy");

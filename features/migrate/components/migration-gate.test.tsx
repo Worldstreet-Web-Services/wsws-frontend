@@ -46,10 +46,12 @@ vi.mock("@/features/migrate/components/move-old-money-frame", () => ({
 vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
   MoveOldMoneyPanel: ({
     locked,
+    footerAction,
     onProgress,
     onClose,
   }: {
     locked?: boolean;
+    footerAction?: boolean;
     onProgress?: (p: MigrationProgress) => void;
     onClose: () => void;
   }) => {
@@ -70,7 +72,11 @@ vi.mock("@/features/migrate/components/move-old-money-panel", () => ({
         ...p,
       });
     return (
-      <div data-testid="panel" data-locked={String(locked)}>
+      <div
+        data-testid="panel"
+        data-locked={String(locked)}
+        data-footer-action={String(footerAction ?? false)}
+      >
         <button onClick={() => emit({ coreRemaining: 1, remaining: 1 })}>core-left</button>
         <button onClick={() => emit({ stage: "finish", linked: false, coreRemaining: 0 })}>
           not-linked
@@ -230,8 +236,12 @@ describe("MigrationGate — ways out of a trap", () => {
     render(<MigrationGate adapters={[]} />);
     fireEvent.click(screen.getByText("not-yet-stuck"));
     expect(screen.queryByText("gateStuckBody")).not.toBeInTheDocument();
+    expect(screen.getByTestId("panel")).toHaveAttribute("data-footer-action", "false");
     fireEvent.click(screen.getByText("stuck"));
     expect(screen.getByText("gateStuckBody")).toBeInTheDocument();
+    // One action at a time: the footer's exit is the only button, so the
+    // panel is told to draw no "check again" beside it.
+    expect(screen.getByTestId("panel")).toHaveAttribute("data-footer-action", "true");
     expect(screen.queryByText("goToMarket")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("gateContinueLater"));
     expect(screen.queryByTestId("frame")).not.toBeInTheDocument();

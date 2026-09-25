@@ -171,6 +171,10 @@ export function MigrationGate({ adapters }: { adapters: readonly VenueAdapter[] 
             // Opened by a door, the panel's close simply puts the card away.
             onClose={locked ? ignore : closeMigration}
             compact
+            // One action at a time. Whenever the footer below draws a button,
+            // the panel draws none: "Check again" next to "Continue for now"
+            // asked the reader to choose between two next steps at once.
+            footerAction={blocked || canFinish || walletBlocked || stuck}
           />
           {blocked ? (
             <div className="mt-5 space-y-3 border-t border-white/10 pt-4">

@@ -1,0 +1,12 @@
+/* Opt-in. Mona Sans, the face the tab bar's label is set in, for a host that
+   does not already load it. A host that does (WSWS, through next/font) skips
+   this file and points --ark-chrome-font-display at its own copy instead, so
+   the font is not downloaded twice. Licensed under the SIL Open Font License;
+   the licence text ships beside the file in ../assets. */
+@font-face {
+  font-family: "Ark Chrome Display";
+  src: url("../assets/mona-sans-latin.woff2") format("woff2");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}

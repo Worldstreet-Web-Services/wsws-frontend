@@ -5,6 +5,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import Providers from "./providers";
 import "./globals.css";
+// The rail and phone tab bar's own stylesheet (packages/ark-chrome). Plain
+// unlayered CSS, so its order against globals.css does not decide anything.
+import "@ark/chrome/styles.css";
 
 // Body and normal text. Geist is a variable font, so every weight (we default
 // to medium in globals.css) ships in one file, no per-weight requests.

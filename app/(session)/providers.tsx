@@ -11,6 +11,7 @@ import { SessionCacheGuard } from "@/components/providers/session-cache-guard";
 import { IdentityTokenBridge } from "@/components/providers/identity-token-bridge";
 import { AnalyticsIdentity } from "@/components/providers/analytics-identity";
 import { AnalyticsSegments } from "@/components/providers/analytics-segments";
+import { ShineRuntimeProvider } from "@/components/providers/shine-runtime";
 import { PredictionCashoutTracker } from "@/features/prediction/components/prediction-cashout-tracker";
 import { usePredictionQueryBroadcast } from "@/features/prediction/markets/query-broadcast";
 import { BalanceVisibilityProvider } from "@/components/ui/balance-visibility";
@@ -128,6 +129,14 @@ export function SessionProviders({ children }: { children: React.ReactNode }) {
                 inside PrivyProvider to read it. Renders nothing. */}
             <AnalyticsIdentity />
             <AnalyticsSegments />
+            {/* Installs the Shine runtime, so a confirmed trade anywhere in
+                the session can post itself to Market Square in the language
+                the app is being read in. Needs Privy for the account and the
+                query client for the account's own Shine preferences, and
+                mounts here rather than per service page because a swap can
+                confirm long after the page that started it is gone. Renders
+                nothing. */}
+            <ShineRuntimeProvider />
             {/* Watches open Polymarket cashouts for the market workspace.
                 Needs Privy and the query client. Renders nothing. */}
             <PredictionCashoutTracker />

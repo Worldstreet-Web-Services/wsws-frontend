@@ -1,5 +1,5 @@
 {
-  "$comment": "Initial client JavaScript per route, gzipped kB. A ratchet: set just above what the route ships, lowered as it improves. See scripts/first-load.mjs. 2026-09-13: /, /privacy, /welcome, /prediction and /casino raised for the Watchtower error reporting SDK (@sentry/nextjs), which is loaded statically on purpose so it catches hydration-time crashes. 2026-09-17: /perps raised from 1650 to 1660. It shipped 1648 locally and 1651 in CI on the same commit: CI builds without a developer .env, so several NEXT_PUBLIC_ values are absent and the route lands about 3 kB heavier there. A ratchet set to the local figure therefore fails a build that is not any larger. The memecoin work on this branch also shares chunks with /perps. The 10 kB of headroom is for that measurement gap, not for new payload.",
+  "$comment": "Initial client JavaScript per route, gzipped kB. A ratchet: set just above what the route ships, lowered as it improves. See scripts/first-load.mjs. 2026-09-13: /, /privacy, /welcome, /prediction and /casino raised for the Watchtower error reporting SDK (@sentry/nextjs), which is loaded statically on purpose so it catches hydration-time crashes. 2026-09-17: /perps raised from 1650 to 1660. It shipped 1648 locally and 1651 in CI on the same commit: CI builds without a developer .env, so several NEXT_PUBLIC_ values are absent and the route lands about 3 kB heavier there. A ratchet set to the local figure therefore fails a build that is not any larger. The memecoin work on this branch also shares chunks with /perps. The 10 kB of headroom is for that measurement gap, not for new payload. 2026-09-24: /perps raised from 1660 to 1680 for Shine, which adds a switch and a reporting call to every service route — real new payload, not the measurement gap the previous note reserved its headroom for. It was minimised first: lib/shine now imports the Market Square client dynamically on the first post rather than statically, so a session that never posts, and any session with Shine switched off, never loads it (1666 to 1663 locally). The rest of lib/shine is still static because deferring it means restructuring the module eleven call sites depend on. Worth doing; not worth doing in the same change as the feature.",
   "default": 1900,
   "routes": {
     "/": 320,
@@ -9,7 +9,7 @@
     "/interests": 1350,
     "/dashboard": 1700,
     "/spot": 1650,
-    "/perps": 1660,
+    "/perps": 1680,
     "/meme": 1660,
     "/rwa": 1700,
     "/activity": 1650,

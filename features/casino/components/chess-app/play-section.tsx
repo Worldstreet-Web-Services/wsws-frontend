@@ -11,6 +11,7 @@ import {
 } from "@/features/casino/hooks/use-casino-chess";
 import { useCasinoWallet } from "@/features/casino/hooks/use-casino-wallet";
 import { useChessEngine } from "@/features/casino/hooks/use-chess-engine";
+import { useChessShine } from "@/features/casino/hooks/use-arcade-shine";
 import { CASHIER_KEYS, useChessCashierStatus } from "@/features/casino/hooks/use-chess-cashier";
 import { useChessProducts } from "@/features/casino/hooks/use-chess-products";
 import { CashierSheet } from "@/features/casino/components/chess/cashier-sheet";
@@ -771,6 +772,10 @@ export function PlaySection({
     extendingTime,
     claimingTimeout,
   } = useChessMatch(matchId, seatName);
+  // Shine: a win or a draw here posts itself to Market Square. `you` is null
+  // for a spectator, and the id is the match id, which is the same id the
+  // lichess round controller reports — the second of the two is a no-op.
+  useChessShine(match, you);
   const [selected, setSelected] = useState<Square | null>(null);
   const [hintGuidance, setHintGuidance] = useState<{
     fen: string;

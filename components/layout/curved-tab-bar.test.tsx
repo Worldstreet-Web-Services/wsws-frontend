@@ -73,7 +73,9 @@ beforeEach(() => {
 describe("CurvedTabBar", () => {
   it("draws five seats over the dome", () => {
     renderBar();
-    expect(screen.getAllByRole("button")).toHaveLength(5);
+    // Four host actions and the Square seat, which links to another zone.
+    expect(screen.getAllByRole("button")).toHaveLength(4);
+    expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
   it("sends the Market seat to the phone Market page", () => {
@@ -83,13 +85,17 @@ describe("CurvedTabBar", () => {
     expect(onNavigate).not.toHaveBeenCalled();
   });
 
-  it("sends the Square seat to the app's own Square page, as the desktop rail does", () => {
-    // The rail's entry opens /square in-app (ADR-2026-09-12); the phone seat
-    // opened the Square's deployment in a new tab instead (ogazboiz, 2026-09-13).
+  it("sends the Square seat to the Square zone at /square as a document navigation", () => {
+    // /square is a separate deployment this app rewrites to, so the seat is an
+    // anchor the browser follows, never a push into this app's router, which
+    // cannot render another zone's route. Same tab.
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
     const { onNavigate } = renderBar();
-    fireEvent.click(screen.getByRole("button", { name: "Square" }));
-    expect(router.push).toHaveBeenCalledWith("/square");
+    const seat = screen.getByRole("link", { name: "Square" });
+    expect(seat).toHaveAttribute("href", "/square");
+    expect(seat).not.toHaveAttribute("target");
+    fireEvent.click(seat);
+    expect(router.push).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
     expect(onNavigate).not.toHaveBeenCalled();
     open.mockRestore();
@@ -98,7 +104,7 @@ describe("CurvedTabBar", () => {
   it("raises the Square seat to the centre while on /square", () => {
     renderBar(vi.fn(), "square");
     // The seat is marked current, as the active seat is on every other route.
-    expect(screen.getByRole("button", { name: "Square" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Square" })).toHaveAttribute("aria-current", "page");
   });
 
   it("sends the Activity seat to Activity, since the phone has no drawer", () => {

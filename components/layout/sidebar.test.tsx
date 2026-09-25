@@ -57,7 +57,7 @@ vi.mock("next/link", () => ({
     href: string;
     className?: string;
   }) => (
-    <a href={href} className={className}>
+    <a href={href} className={className} data-next-link="">
       {children}
     </a>
   ),
@@ -162,6 +162,10 @@ describe("Sidebar", () => {
     const entry = screen.getByRole("link", { name: /^square$/i });
     expect(entry).toHaveAttribute("href", "/square");
     expect(entry).not.toHaveAttribute("target");
+    // /square is the Square zone, a separate deployment: a client-side
+    // next/link would look for it in this app's router and hang on
+    // "Rendering", so the entry is a plain anchor the browser follows.
+    expect(entry).not.toHaveAttribute("data-next-link");
     expect(entry.className).toContain("bg-accent/14");
     expect(screen.queryByRole("link", { name: /square\.test/ })).toBeNull();
   });

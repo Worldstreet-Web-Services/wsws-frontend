@@ -115,6 +115,15 @@
   --ws-frame-inset: max(0px, calc((100vw - var(--ws-frame-max)) / 2));
 }
 
+/* @ark/chrome, the rail and phone tab bar shared with the Square, reads its
+   frame offset and type from these, so it draws with this app's copies of
+   Geist and Mona Sans rather than downloading its own. */
+:root {
+  --ark-chrome-frame-inset: var(--ws-frame-inset);
+  --ark-chrome-font-body: var(--font-body);
+  --ark-chrome-font-display: var(--font-display);
+}
+
 /* The root element is the frame: the whole document, body and all, sits in
    this column and is centred on a wider screen. Position: fixed measures from
    the viewport regardless, which is why fixed chrome offsets itself by

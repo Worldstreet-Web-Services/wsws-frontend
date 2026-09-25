@@ -1,3 +1,15 @@
+import {
+  BriefcaseIcon,
+  BulbIcon,
+  ChartBarsIcon,
+  ClockIcon,
+  DiceIcon,
+  FlameIcon,
+  GridIcon,
+  HouseIcon,
+  TrendIcon,
+} from "@ark/chrome/icons";
+
 interface IconProps {
   size?: number;
   className?: string;
@@ -5,18 +17,20 @@ interface IconProps {
 
 const stroke = "currentColor";
 
-export function ChartBarsIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M4 19h16M6 19V9m4 10V5m4 14v-7m4 7V8"
-        stroke={stroke}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+// The section icons the rail draws live in @ark/chrome, so the rail, the phone
+// tab bar and the rest of the app draw one set, in every app that renders the
+// chrome. Re-exported here so their call sites across the app are unchanged.
+export {
+  BriefcaseIcon,
+  BulbIcon,
+  ChartBarsIcon,
+  ClockIcon,
+  DiceIcon,
+  FlameIcon,
+  GridIcon,
+  HouseIcon,
+  TrendIcon,
+};
 
 // The line-and-axis mark the 2.0 design calls chart-line-data-03. Kept on its
 // native 8.875 viewBox: the vector is Figma's own, uniformly scaled, and
@@ -101,34 +115,6 @@ export function CoinIcon({ size = 20, className }: IconProps) {
   );
 }
 
-export function TrendIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M3 17l5-6 4 3 5-8 4 5"
-        stroke={stroke}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function BulbIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M12 3v4m0 0a6 6 0 016 6c0 4-3 5-6 5s-6-1-6-5a6 6 0 016-6Z"
-        stroke={stroke}
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function YieldIcon({ size = 20, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -143,32 +129,12 @@ export function YieldIcon({ size = 20, className }: IconProps) {
   );
 }
 
-export function HouseIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M4 20V10l8-5 8 5v10" stroke={stroke} strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M9 20v-6h6v6" stroke={stroke} strokeWidth="1.8" />
-    </svg>
-  );
-}
-
 export function BondIcon({ size = 20, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <rect x="3" y="6" width="18" height="13" rx="2" stroke={stroke} strokeWidth="1.8" />
       <path d="M3 10h18" stroke={stroke} strokeWidth="1.8" />
       <circle cx="12" cy="14.5" r="2" stroke={stroke} strokeWidth="1.6" />
-    </svg>
-  );
-}
-
-export function GridIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="3" y="3" width="8" height="8" rx="2" stroke={stroke} strokeWidth="1.8" />
-      <rect x="13" y="3" width="8" height="5" rx="2" stroke={stroke} strokeWidth="1.8" />
-      <rect x="13" y="11" width="8" height="10" rx="2" stroke={stroke} strokeWidth="1.8" />
-      <rect x="3" y="14" width="8" height="7" rx="2" stroke={stroke} strokeWidth="1.8" />
     </svg>
   );
 }
@@ -327,33 +293,6 @@ export function LockIcon({ size = 13, className }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <rect x="5" y="10" width="14" height="10" rx="2" stroke={stroke} strokeWidth="1.8" />
       <path d="M8 10V7a4 4 0 018 0v3" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function DiceIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="4" y="4" width="16" height="16" rx="4" stroke={stroke} strokeWidth="1.8" />
-      <circle cx="9" cy="9" r="1.3" fill={stroke} />
-      <circle cx="15" cy="9" r="1.3" fill={stroke} />
-      <circle cx="9" cy="15" r="1.3" fill={stroke} />
-      <circle cx="15" cy="15" r="1.3" fill={stroke} />
-    </svg>
-  );
-}
-
-export function BriefcaseIcon({ size = 20, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="3" y="7" width="18" height="13" rx="3" stroke={stroke} strokeWidth="1.8" />
-      <path
-        d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"
-        stroke={stroke}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path d="M3 12h18" stroke={stroke} strokeWidth="1.8" />
     </svg>
   );
 }
@@ -529,15 +468,6 @@ export function BellIcon({ size = 26, className }: IconProps) {
   );
 }
 
-export function ClockIcon({ size = 26, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <circle cx="12" cy="12" r="9" stroke={stroke} strokeWidth="1.6" />
-      <path d="M12 7v5l3 2" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function ShieldIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -566,20 +496,6 @@ export function CollectiblesIcon({ size = 22, className }: IconProps) {
         d="m4 15 4-4 3 3 4-5 5 5"
         stroke={stroke}
         strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function FlameIcon({ size = 22, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M12 3c1 3-3.5 4.5-3.5 8.5a5.5 5.5 0 0011 0C19.5 7 14 6.5 12 3Zm0 18a3 3 0 01-3-3c0-2 3-2.5 3-4.5 1.5 1.5 3 2.5 3 4.5a3 3 0 01-3 3Z"
-        stroke={stroke}
-        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

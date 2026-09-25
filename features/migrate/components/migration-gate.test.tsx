@@ -352,6 +352,19 @@ describe("MigrationGate — opened by a door", () => {
     expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
+  // The exit must put away the card a door opened, not only lift the offer's
+  // hold: the snooze flag alone left the card on screen.
+  it("puts a door-opened card away when its exit is taken", () => {
+    state.offer = false;
+    render(<MigrationGate adapters={[]} />);
+    act(() => openMigration("balance_card"));
+    fireEvent.click(screen.getByText("stuck"));
+    expect(screen.getByText("gateStuckBody")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("gateContinueLater"));
+    expect(screen.queryByTestId("frame")).not.toBeInTheDocument();
+    expect(Number(window.localStorage.getItem(SNOOZE_KEY))).toBeGreaterThan(Date.now());
+  });
+
   it("stays locked while the offer holds it, whatever door also asked", () => {
     render(<MigrationGate adapters={[]} />);
     act(() => openMigration("balance_card"));

@@ -31,6 +31,8 @@ export interface RpcEnvelope {
 
 const ZERODEV_TIMEOUT_MS = 8_000;
 const ALCHEMY_TIMEOUT_MS = 12_000;
+const BASE_NODE_TIMEOUT_MS = 8_000;
+const BASE_CHAIN_ID = 8453;
 export const UNSUPPORTED_COOLDOWN_MS = 10 * 60_000;
 export const RATE_LIMIT_BACKOFF_MS = 60_000;
 const FAILURE_BACKOFF_MS = 2_000;
@@ -54,6 +56,45 @@ function toBatch(calls: RpcCall[]) {
   }));
 }
 
+function baseNodeUrl(): string | null {
+  const raw = process.env.BASE_READ_RPC_URL?.trim();
+  const token = process.env.BASE_READ_RPC_TOKEN?.trim();
+  if (!raw || !token) return null;
+  const url = new URL(raw);
+  url.searchParams.set("token", token);
+  return url.toString();
+}
+
+async function fromBaseNode(
+  chainId: number,
+  batch: ReturnType<typeof toBatch>
+): Promise<RpcEnvelope[] | null> {
+  if (chainId !== BASE_CHAIN_ID) return null;
+  const url = baseNodeUrl();
+  if (!url) return null;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(batch),
+      signal: AbortSignal.timeout(BASE_NODE_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      console.warn(`evm-read: Base node answered ${response.status}; using fallback provider`);
+      return null;
+    }
+    const payload: unknown = await response.json();
+    const envelopes = inCallOrder(payload, batch);
+    if (unservedError(envelopes)) return null;
+    return envelopes;
+  } catch (error) {
+    console.warn("evm-read: Base node unreachable; using fallback provider", error);
+    return null;
+  }
+}
+
 function inCallOrder(payload: unknown, batch: { id: number | string }[]): RpcEnvelope[] {
   const envelopes = (Array.isArray(payload) ? payload : [payload]) as RpcEnvelope[];
   const byId = new Map(envelopes.map((e) => [String(e.id), e]));
@@ -75,6 +116,38 @@ function unservedError(envelopes: RpcEnvelope[]): RpcEnvelope["error"] | null {
   return null;
 }
 
+/**
+ * A connection that died between requests, rather than a request that failed.
+ *
+ * Node's fetch pools HTTP/2 sessions and ZeroDev's RPC serves over HTTP/2. When
+ * the far end closes an idle session (GOAWAY, idle timeout) the pooled session
+ * is destroyed, but the next request still reaches for it and fails at once
+ * with ERR_HTTP2_INVALID_SESSION — "The session has been destroyed". Measured
+ * on a dev session before this retry: 36 of 87 reads returned 502 while the
+ * upstream was perfectly healthy and only the socket was stale.
+ *
+ * Safe to retry precisely because the request never left: nothing was sent, so
+ * nothing can have been applied twice. Deliberately narrow — a timeout, or any
+ * answer the upstream actually gave, is not this and is not retried.
+ */
+function isDeadConnection(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  for (let e: unknown = error; e && !seen.has(e); e = (e as { cause?: unknown }).cause) {
+    seen.add(e);
+    const code = (e as { code?: string }).code;
+    if (
+      code === "ERR_HTTP2_INVALID_SESSION" ||
+      code === "ERR_HTTP2_GOAWAY_SESSION" ||
+      code === "ECONNRESET" ||
+      code === "EPIPE" ||
+      code === "UND_ERR_SOCKET"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function fromZeroDev(
   chainId: number,
   batch: ReturnType<typeof toBatch>
@@ -83,15 +156,25 @@ async function fromZeroDev(
   const now = Date.now();
   if (!url || zeroDevBackoffUntil > now || (zeroDevSkipUntil.get(chainId) ?? 0) > now) return null;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
+  const send = (): Promise<Response> =>
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(batch),
       signal: AbortSignal.timeout(ZERODEV_TIMEOUT_MS),
       cache: "no-store",
     });
+
+  let response: Response;
+  try {
+    // One retry, and only for a dead pooled connection. These are reads, so
+    // replaying one costs a round trip and nothing else.
+    try {
+      response = await send();
+    } catch (error) {
+      if (!isDeadConnection(error)) throw error;
+      response = await send();
+    }
   } catch (error) {
     console.warn(`evm-read: ZeroDev unreachable for chain ${chainId}; using Alchemy`, error);
     return null;
@@ -148,6 +231,8 @@ export async function readEvm(
   calls: RpcCall[]
 ): Promise<RpcEnvelope[]> {
   const batch = toBatch(calls);
+  const baseNode = await fromBaseNode(chainId, batch);
+  if (baseNode) return baseNode;
   const zeroDev = await fromZeroDev(chainId, batch);
   if (zeroDev) return zeroDev;
 

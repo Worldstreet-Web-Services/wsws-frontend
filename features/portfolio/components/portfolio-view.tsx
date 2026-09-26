@@ -26,7 +26,6 @@ import { PromoCarousel } from "@/components/ui/promo-deck";
 import { PromoBanner, PromoRail } from "@/components/ui/promo-rail";
 import { ARKSTORE_URL } from "@/lib/brand";
 import { marketSquareHref } from "@/lib/market-square";
-import { GetKashBanner } from "@/features/portfolio/components/get-kash-banner";
 import { SetTheStakeBanner } from "@/features/portfolio/components/set-the-stake-banner";
 import { ArkStoreBanner } from "@/features/portfolio/components/ark-store-banner";
 import { KashBuyModal } from "@/features/portfolio/components/kash-buy-modal";
@@ -49,7 +48,7 @@ import { SearchIcon, WalletIcon } from "@/components/ui/icons";
 import { usePortfolio, type TokenBalance } from "@/hooks/use-portfolio";
 import {
   isUnpricedHolding,
-  isZeroValueHolding,
+  isSmallBalance,
   memeTokenOf,
   selectHoldings,
   withoutServiceKnownMemes,
@@ -68,6 +67,11 @@ interface PortfolioViewProps {
   /** Replays the walkthrough; owned by the route, wired into the balance card. */
   onTakeTour: () => void;
   crossBorderSlot: ReactNode;
+  /** The migration's sweep button, and whether to hide the figure while the
+      money is still in the old wallet. Both owned by the route: they belong to
+      another feature, and features never import each other. */
+  updateBalanceSlot?: ReactNode;
+  maskForMigration?: boolean;
   onOpenDetail: (detail: DetailPayload) => void;
   onOpenBuy: (buy: BuyPayload) => void;
   onOpenSell: (sell: SellPayload) => void;
@@ -86,6 +90,8 @@ export function PortfolioView({
   onOpenFunds,
   onOpenWithdraw,
   onTakeTour,
+  updateBalanceSlot,
+  maskForMigration,
   // crossBorderSlot is unused while the section below is commented out.
   onOpenDetail,
   onOpenBuy,
@@ -120,12 +126,13 @@ export function PortfolioView({
 
   // The table shows bought assets only, so drop the USDC-on-Base deposit float
   // first (see selectHoldings). Then, when hideZero is on, drop rows with no real
-  // value — the always-present USDC/USDT/native baseline (shown at $0) plus dust
-  // that rounds to $0.00. A held balance we could not price is not zero-value and
-  // survives the toggle; see isZeroValueHolding.
+  // value: the always-present USDC/USDT/native baseline (shown at $0) and the
+  // unsolicited tokens worth a fraction of a cent that anyone can send to any
+  // address. A held balance we could not price survives the toggle, since its
+  // value is unknown rather than nothing. See isSmallBalance.
   const visibleTokens = useMemo(() => {
     const holdings = withoutServiceKnownMemes(selectHoldings(tokens), servicePositions);
-    return hideZero ? holdings.filter((t) => !isZeroValueHolding(t)) : holdings;
+    return hideZero ? holdings.filter((t) => !isSmallBalance(t)) : holdings;
   }, [tokens, hideZero, servicePositions]);
 
   const table = useReactTable({
@@ -334,9 +341,12 @@ export function PortfolioView({
             onOpenFunds={onOpenFunds}
             onOpenWithdraw={onOpenWithdraw}
             onTakeTour={onTakeTour}
+            updateBalanceSlot={updateBalanceSlot}
+            maskForMigration={maskForMigration}
           />
           <KashCardMobile
             onBuy={() => setKashModal("buy")}
+            onSend={() => setKashModal("send")}
             onConvert={() => setKashModal("convert")}
             onHistory={() => setKashModal("history")}
           />
@@ -356,7 +366,9 @@ export function PortfolioView({
             >
               <SetTheStakeBanner />
             </Link>
-            <GetKashBanner onBuy={() => setKashModal("buy")} />
+            {/* The same banner the desk shows, not a flat export of it: its
+                words are real text in the app's own faces, and they translate. */}
+            <KashBanner onBuy={() => setKashModal("buy")} />
             {squareBanner}
           </PromoCarousel>
         </div>
@@ -368,9 +380,12 @@ export function PortfolioView({
           onOpenFunds={onOpenFunds}
           onOpenWithdraw={onOpenWithdraw}
           onTakeTour={onTakeTour}
+          updateBalanceSlot={updateBalanceSlot}
+          maskForMigration={maskForMigration}
         />
         <KashCard
           onBuy={() => setKashModal("buy")}
+          onSend={() => setKashModal("send")}
           onClaim={
             kashWallet
               ? () =>
@@ -465,7 +480,7 @@ export function PortfolioView({
               <span className="ws-display text-[22px]">{t("yourHoldings")}</span>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-[12.5px] font-normal whitespace-nowrap text-white/60">
-                  <span>{t("hideZeroValue")}</span>
+                  <span>{t("hideSmallBalances")}</span>
                   <Switch
                     size="sm"
                     checked={hideZero}

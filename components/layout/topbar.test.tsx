@@ -18,11 +18,21 @@ vi.mock("next-intl", () => ({
 }));
 
 let privyUser: User | null = null;
-vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({ user: privyUser }),
-  getAccessToken: vi.fn(),
-  getIdentityToken: vi.fn(),
-}));
+// The topbar reads the session through the Decane-backed seam; the profile is
+// derived from the Privy-shaped test user with the same helper the app used to.
+vi.mock("@/hooks/use-auth-session", async () => {
+  const { deriveProfile, getWalletAddress } = await import("@/lib/user");
+  return {
+    useAuthSession: () => ({
+      ready: true,
+      authenticated: privyUser !== null,
+      evmAddress: privyUser ? getWalletAddress(privyUser, "ethereum") : null,
+      solanaAddress: privyUser ? getWalletAddress(privyUser, "solana") : null,
+      profile: deriveProfile(privyUser),
+      logout: vi.fn(),
+    }),
+  };
+});
 
 let pathname = "/portfolio";
 const push = vi.fn();
@@ -62,6 +72,14 @@ function tourControls() {
     desktopCircle: all.find((b) => b.className.includes("md:size-[46px]")) as HTMLElement,
   };
 }
+
+// The account face reads the player's square profile. These cover the rail
+// and its chrome, not where the picture comes from, so the read is stubbed
+// out: null is the ordinary answer and leaves the seeded artwork in place.
+vi.mock("@/hooks/use-square-avatar", () => ({
+  useSquareAvatar: () => null,
+  useSquareSeed: () => "seed",
+}));
 
 describe("Topbar tour button", () => {
   beforeEach(() => {
@@ -138,5 +156,14 @@ describe("Topbar chrome", () => {
     expect(bar.className).toContain("bg-[url('/rollout/chrome/topbar-starburst.svg')]");
     expect(bar.className).toContain("bg-cover");
     expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
+  });
+
+  it("keeps the account controls in the app topbar on ArkBall", () => {
+    pathname = "/casino/arkball";
+    const { container } = render(<Topbar onOpenAccount={() => {}} />);
+    expect(container.firstElementChild).toContainElement(
+      screen.getByRole("button", { name: "Account" })
+    );
+    expect(screen.queryByRole("link", { name: "Balance $1.17" })).not.toBeInTheDocument();
   });
 });

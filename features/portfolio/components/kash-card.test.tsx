@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
@@ -18,7 +18,16 @@ vi.mock("@/features/portfolio/components/add-to-metamask-button", () => ({
 }));
 vi.mock("@/lib/analytics/mixpanel", () => ({ setProfile: vi.fn() }));
 
+const sendFlag = { enabled: false };
+vi.mock("@/features/portfolio/lib/kash-send", () => ({
+  get KASH_SEND_ENABLED() {
+    return sendFlag.enabled;
+  },
+}));
+
 import { KashCard } from "@/features/portfolio/components/kash-card";
+
+const onSend = vi.fn();
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -43,7 +52,13 @@ const account = (over: Partial<KashAccount> = {}): KashAccount =>
 
 function renderCard() {
   render(
-    <KashCard onBuy={() => {}} onConvert={() => {}} onHistory={() => {}} onUpgrade={() => {}} />,
+    <KashCard
+      onBuy={() => {}}
+      onSend={onSend}
+      onConvert={() => {}}
+      onHistory={() => {}}
+      onUpgrade={() => {}}
+    />,
     { wrapper }
   );
 }
@@ -111,13 +126,46 @@ describe("KashCard balance states", () => {
   });
 });
 
-// Send is off the card for now; Buy and Convert stay. The send modal and its
-// wiring remain in the codebase, only the door is gone.
+// Send is off the card for now: users were sending KASH+ to the Dextopus
+// deposit address and losing it. The modal and every handler stay wired, so
+// restoring it is KASH_SEND_ENABLED alone.
 describe("KashCard actions", () => {
-  it("offers Buy and Convert but not Send", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sendFlag.enabled = false;
+  });
+
+  it("offers Buy and Convert, and no way to send", () => {
     renderCard();
     expect(screen.getByRole("button", { name: "Buy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Convert" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
+  });
+
+  it("cannot reach the send modal while it is down", () => {
+    renderCard();
+    for (const button of screen.getAllByRole("button")) fireEvent.click(button);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  describe("once it is switched back on", () => {
+    beforeEach(() => {
+      sendFlag.enabled = true;
+    });
+
+    it("puts Send between Buy and Convert", () => {
+      renderCard();
+      const labels = screen
+        .getAllByRole("button")
+        .map((b) => b.textContent?.trim())
+        .filter((label) => label === "Buy" || label === "Send" || label === "Convert");
+      expect(labels).toEqual(["Buy", "Send", "Convert"]);
+    });
+
+    it("opens the send modal from the button", () => {
+      renderCard();
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+      expect(onSend).toHaveBeenCalledTimes(1);
+    });
   });
 });

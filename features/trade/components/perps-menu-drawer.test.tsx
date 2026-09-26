@@ -27,11 +27,20 @@ vi.mock("next-intl", () => ({
     MESSAGES[namespace]?.[key] ?? `${namespace}.${key}`,
 }));
 vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({ user: null }),
-  useLogout: () => ({ logout: vi.fn() }),
-  useLinkWithPasskey: () => ({ linkWithPasskey: vi.fn() }),
   getAccessToken: vi.fn(),
   getIdentityToken: vi.fn(),
+}));
+// The rail reads the session through the Decane-backed seam; no account is
+// signed in here, matching the `user: null` the Privy stub used to hand back.
+vi.mock("@/hooks/use-auth-session", () => ({
+  useAuthSession: () => ({
+    ready: true,
+    authenticated: false,
+    evmAddress: null,
+    solanaAddress: null,
+    profile: { name: "Account", email: "", avatarSeed: "worldstreet" },
+    logout: vi.fn(),
+  }),
 }));
 vi.mock("@/components/broadcast/go-live-control", () => ({
   GoLiveControl: () => <button type="button">Go Live</button>,
@@ -76,6 +85,14 @@ function hamburger() {
   return screen.getByRole("button", { name: "Menu" });
 }
 
+// The account face reads the player's square profile. These cover the rail
+// and its chrome, not where the picture comes from, so the read is stubbed
+// out: null is the ordinary answer and leaves the seeded artwork in place.
+vi.mock("@/hooks/use-square-avatar", () => ({
+  useSquareAvatar: () => null,
+  useSquareSeed: () => "seed",
+}));
+
 describe("PerpsMenuDrawer", () => {
   beforeEach(() => {
     push.mockClear();
@@ -101,20 +118,29 @@ describe("PerpsMenuDrawer", () => {
     expect(rail?.contains(document.activeElement)).toBe(true);
   });
 
-  it("lights the entry for the page the user is on", () => {
+  // The perps screen's own section is Perpetuals, and the build offers it
+  // again, so the rail lights that entry and only that one.
+  // sectionForPathname derives the section from /perps; buildNav now has an
+  // entry to mark.
+  it("lights the page's own section, and only that one", () => {
     render(<PerpsScreen />);
     fireEvent.click(hamburger());
-    // sectionForPathname derives this from /perps; nothing is hardcoded.
-    expect(screen.getByRole("button", { name: "Perpetuals" }).className).toContain("bg-accent/14");
+    const rail = document.getElementById("app-sidebar") as HTMLElement;
+    const lit = Array.from(rail.querySelectorAll("button")).filter((b) =>
+      b.className.includes("bg-accent/14")
+    );
+    expect(lit).toHaveLength(1);
+    expect(lit[0]).toHaveAccessibleName("Perpetuals");
   });
 
   // buildNav is the single reader of the nav switches, so the drawer offers
-  // exactly what the rail offers: Real assets since they returned on
-  // 2026-09-09, and Perpetuals, which staging keeps in the nav.
+  // exactly what the rail offers. HIDDEN_NAV_SECTIONS is empty as of
+  // 2026-09-25, so that is every section, Perpetuals included.
   it("offers the same sections as the rail", () => {
     render(<PerpsScreen />);
     fireEvent.click(hamburger());
     expect(screen.getByRole("button", { name: "Real assets" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prediction" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Perpetuals" })).toBeInTheDocument();
   });
 

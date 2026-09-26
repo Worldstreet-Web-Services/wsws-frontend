@@ -96,6 +96,29 @@ describe("buildSweepPlan", () => {
     expect(skipped.map((a) => a.symbol)).toEqual(["AVAX"]);
   });
 
+  it("strands a network that is in the registry but has no gas policy — it cannot be sent on", () => {
+    // hyperliquid-mainnet is listed (the portfolio reads it, the RPC proxy
+    // serves it) but carries no gasPolicy, so sponsor.ts refuses to send
+    // there. Planning it anyway is how a user's HYPE went from "failed" to
+    // invisible while it stayed in the old wallet.
+    const plan = buildSweepPlan([
+      token({
+        symbol: "HYPE",
+        network: "hyperliquid-mainnet",
+        address: null,
+        decimals: 18,
+        rawBalance: "10831193123499757",
+        valueUsd: 0,
+        priceUsd: 0,
+      }),
+      token({ network: "base-mainnet" }),
+    ]);
+    expect(plan.chains.map((c) => c.network)).toEqual(["base-mainnet"]);
+    expect(plan.skipped.map((a) => `${a.symbol}@${a.network}`)).toEqual([
+      "HYPE@hyperliquid-mainnet",
+    ]);
+  });
+
   it("returns an empty plan for an empty portfolio", () => {
     expect(buildSweepPlan([])).toEqual({ chains: [], skipped: [] });
   });

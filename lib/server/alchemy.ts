@@ -15,6 +15,7 @@ import { CONTRACTS, isPolymarketCollateral } from "@/lib/polymarket/config";
 import { HOT_NETWORKS, readEvmPortfolioTokens } from "@/lib/server/portfolio-holdings";
 import { freshFor, type FreshScope } from "@/lib/portfolio/fresh-scope";
 import { fetchSolanaMintPrices } from "@/lib/server/solana-prices";
+import { fetchNativePrices } from "@/lib/server/native-prices";
 
 // Alchemy Portfolio API. One call returns native + ERC-20 + SPL balances with
 // USD prices across every requested network. Key stays server-side.
@@ -397,7 +398,10 @@ function normalize(
   tokens: AlchemyToken[],
   rwa: RwaRegistry,
   buyable: BuyableRegistry,
-  meme: MemeRegistry
+  meme: MemeRegistry,
+  // Second-opinion prices for native coins Alchemy returned unpriced, by
+  // network. See lib/server/native-prices.ts.
+  nativePrices: ReadonlyMap<string, number> = new Map()
 ): TokenBalance[] {
   const out: TokenBalance[] = [];
   for (const t of tokens) {
@@ -424,6 +428,10 @@ function normalize(
     const usdPrice = t.tokenPrices?.find((p) => p.currency === "usd");
     let priceUsd = usdPrice ? parseFloat(usdPrice.value) : 0;
     if (priceUsd === 0 && rwaInfo) priceUsd = rwaInfo.priceUsd;
+    // A native coin Alchemy did not price (HYPE on HyperEVM, seen live) is a
+    // real balance with a real market; without a figure it read as $0.00 and
+    // dropped below every value floor downstream.
+    if (priceUsd === 0 && isNative) priceUsd = nativePrices.get(network) ?? 0;
     // Memecoins: Alchemy rarely prices them, but the trade catalog does. When
     // the catalog cannot either, the price stays unknown (0 here, which the
     // holdings list reads as unpriced and labels "Valuation unavailable").
@@ -843,7 +851,24 @@ export async function fetchPortfolio(
           }
         }
       }
-      const held = normalize(tokensFromBatches, rwa, registries.buyable, registries.meme);
+      // Native coins that came back with a balance and no price get a second
+      // opinion before anything values them.
+      const unpricedNativeNetworks = tokensFromBatches
+        .filter(
+          (t) =>
+            t.tokenAddress == null &&
+            !t.tokenPrices?.some((p) => p.currency === "usd" && parseFloat(p.value) > 0)
+        )
+        .filter((t) => toRawUnits(t.tokenBalance) > 0n)
+        .map((t) => NETWORK_ALIAS[t.network] ?? t.network);
+      const nativePrices = await fetchNativePrices(unpricedNativeNetworks);
+      const held = normalize(
+        tokensFromBatches,
+        rwa,
+        registries.buyable,
+        registries.meme,
+        nativePrices
+      );
       // Only baseline the chains the user actually has a wallet on.
       const networks = [...(evm ? evmNetworks : []), ...(includeSolana ? [SOLANA_NETWORK] : [])];
       const tokens = await withTrackedBaseline(held, networks);

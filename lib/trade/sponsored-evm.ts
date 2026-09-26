@@ -111,6 +111,24 @@ export function hasGasPolicyForChainId(chainId: number): boolean {
   return BY_CHAIN_ID.get(chainId)?.gasPolicy ?? false;
 }
 
+// Whether a sponsored send can actually be SENT here: the two conditions
+// lib/trade/sponsor.ts enforces before it will submit — a gas policy, and a
+// chain we can poll receipts on. Registry membership alone is not that: a
+// network is listed so the portfolio can read it and the RPC proxy can serve
+// it, and hyperliquid-mainnet sat in the registry with no policy. The
+// migration planned a HYPE sweep on it, sponsor.ts refused ("not configured
+// for sponsored EVM sends"), and the holding went from "failed" to invisible
+// while the coins stayed in the old wallet. Plan with this, not membership.
+export function canSponsorEvmNetwork(network: string): boolean {
+  const config = BY_NETWORK.get(network);
+  return !!config && config.gasPolicy && config.supportsReceiptPolling;
+}
+
+export function canSponsorEvmChainId(chainId: number): boolean {
+  const config = BY_CHAIN_ID.get(chainId);
+  return !!config && config.gasPolicy && config.supportsReceiptPolling;
+}
+
 // Whether a send on this network costs the wallet nothing. Solana sits outside
 // the EVM registry but is sponsored all the same, and every caller deciding
 // "does this wallet need its own gas" wants both halves of that answer.

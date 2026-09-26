@@ -5,7 +5,7 @@
 // never the float `balance`.
 
 import type { TokenBalance } from "@/lib/server/alchemy";
-import { isSponsoredEvmNetwork } from "@/lib/trade/sponsored-evm";
+import { canSponsorEvmNetwork } from "@/lib/trade/sponsored-evm";
 
 export const SOLANA_NETWORK = "solana-mainnet";
 // Two dust floors, and a token clears BOTH to be swept.
@@ -93,7 +93,12 @@ export function buildSweepPlan(tokens: TokenBalance[]): SweepPlan {
       amount,
       valueUsd: token.valueUsd,
     };
-    if (token.network !== SOLANA_NETWORK && !isSponsoredEvmNetwork(token.network)) {
+    // Stranded means the sweep CANNOT send here, which is what sponsor.ts
+    // decides (a gas policy plus receipt polling) — not whether the network
+    // is merely listed. A listed-but-unsponsored chain used to be planned,
+    // refused at send time, and then forgotten; now it is shown for what it
+    // is: "Can't carry across from here".
+    if (token.network !== SOLANA_NETWORK && !canSponsorEvmNetwork(token.network)) {
       skipped.push(asset);
       continue;
     }

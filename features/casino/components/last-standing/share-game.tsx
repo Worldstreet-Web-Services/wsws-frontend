@@ -24,9 +24,9 @@ function useOrigin(): string {
 /**
  * A game's invite link, and the two ways to pass it on.
  *
- * Three surfaces send the same link now: this card, the header button below,
- * and the rail's invite card on the game screen. The origin, the toasts and
- * the native-sheet fallback belong in one place, or they drift apart.
+ * Two surfaces send the same link: the card below and the rail's invite card on
+ * the game screen. The origin, the toasts and the native-sheet fallback belong
+ * in one place, or they drift apart.
  */
 export function useGameShare(gameId: number) {
   const t = useTranslations("casino.lastStanding");
@@ -127,40 +127,6 @@ export function ShareGame({ gameId, className = "" }: { gameId: number; classNam
   );
 }
 
-/**
- * The same link, as one button for the header row.
- *
- * The full invite block sits below the game stats, which on a laptop is under
- * the fold — a starter who never scrolls never finds the thing that earns them
- * their 10%. This puts it next to the timer and sound controls.
- */
-export function ShareGameButton({ gameId }: { gameId: number }) {
-  const t = useTranslations("casino.lastStanding");
-  const { share } = useGameShare(gameId);
-
-  return (
-    <button
-      type="button"
-      onClick={() => void share()}
-      className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 text-[11.5px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-    >
-      <svg
-        width="11"
-        height="11"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <circle cx="18" cy="5" r="3" />
-        <circle cx="6" cy="12" r="3" />
-        <circle cx="18" cy="19" r="3" />
-        <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
-      </svg>
-      {t("shareCta")}
-    </button>
-  );
-}
+// The header's own Share button lived here. It is gone: the game screen's rail
+// carries an invite card with the same link, and two Shares on one screen is
+// the same offer twice. `useGameShare` above is what that card uses.

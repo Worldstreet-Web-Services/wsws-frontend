@@ -158,6 +158,46 @@ describe("ActivityPanel tabs", () => {
     expect(onTabChange).not.toHaveBeenCalled();
   });
 
+  // 844:79509 / 844:79518 / 844:79521.
+  it("draws the design's tab boxes, underline and track", () => {
+    renderPanel();
+
+    const tablist = screen.getByRole("tablist");
+    expect(tablist.className).toContain("gap-9");
+
+    const activity = screen.getByRole("tab", { name: "Activity" });
+    const rules = screen.getByRole("tab", { name: "Game rules" });
+    expect(activity.className).toContain("min-w-[101px]");
+    expect(activity.className).toContain("justify-center");
+    expect(activity.className).toContain("text-[#ffe178]");
+    expect(rules.className).not.toContain("text-[#ffe178]");
+
+    const underline = screen.getByTestId("activity-tab-underline");
+    expect(activity).toContainElement(underline);
+    expect(underline.className).toContain("bg-[#ffe178]");
+    expect(underline.className).toContain("h-[3px]");
+    expect(underline.className).toContain("rounded-[50px]");
+    expect(underline.className).toContain("inset-x-0");
+    expect(screen.getAllByTestId("activity-tab-underline")).toHaveLength(1);
+
+    const track = screen.getByTestId("activity-tab-track");
+    expect(track.className).toContain("h-[3px]");
+    expect(track.className).toContain("bg-white/5");
+    expect(track.className).toContain("rounded-[2.4px]");
+    expect(track.className).toContain("inset-x-0");
+  });
+
+  it("sits on a solid surface with no border, 36px above the table", () => {
+    const { container } = renderPanel();
+
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.className).toContain("bg-[#121314]");
+    expect(card.className).toContain("rounded-[15px]");
+    expect(card.className).not.toContain("ws-card");
+    expect(card.className).not.toMatch(/\bborder\b/u);
+    expect(screen.getByRole("tabpanel").className).toContain("pt-9");
+  });
+
   it("points the tabpanel at the tab that labels it", () => {
     renderPanel();
 
@@ -211,6 +251,89 @@ describe("ActivityPanel table", () => {
 
     expect(mine).toHaveAttribute("data-you", "true");
     expect(theirs).not.toHaveAttribute("data-you");
+  });
+
+  // The design draws the viewer's row like any other: no fill, and the
+  // address in the same muted ink.
+  it("does not highlight the viewer's own row", () => {
+    renderPanel();
+
+    const mine = screen.getByRole("row", { name: /0x58g1fz…104/u });
+    const theirs = screen.getByRole("row", { name: /0x36g3gt…993/u });
+
+    expect(mine.className).not.toContain("bg-surface");
+    expect(mine.className).toBe(theirs.className);
+    expect(within(mine).getByText("0x58g1fz…104").className).toContain("text-[#f4f4f4]/40");
+    expect(within(mine).getByText("0x58g1fz…104").className).not.toContain("text-white");
+  });
+
+  it("rules each row in 8% white and mutes the headers", () => {
+    renderPanel();
+
+    const row = screen.getByRole("row", { name: /0x36g3gt…993/u });
+    expect(row.className).toContain("border-white/8");
+    screen
+      .getAllByRole("columnheader")
+      .forEach((h) => expect(h.className).toContain("text-[#f4f4f4]/40"));
+  });
+
+  // 929:1056: the row dividers run the full width of the card while the
+  // columns keep the drawn 174px pitch inside it. Shrinking the table to its
+  // columns stopped every rule 672px in, which reads as dead space.
+  //
+  // These assertions read classes rather than measuring: the widths come from
+  // @container queries, and jsdom computes no layout at all, so a width
+  // expectation here would pass or fail for reasons unrelated to the design.
+  it("spans its container at every width, so every rule reaches both edges", () => {
+    renderPanel();
+
+    const table = screen.getByRole("table");
+    expect(table.className).toContain("w-full");
+    // Nothing may shrink the table back to its columns at a wide container.
+    expect(table.className).not.toMatch(/@\[\d+px\]:w-(?:auto|fit|min|max)\b/u);
+
+    // Both rules are drawn by the rows: the first body row's top border is
+    // also the rule under the header, so a full-width table is what carries
+    // either of them to the card's edges.
+    const first = screen.getByRole("row", { name: /0x36g3gt…993/u });
+    const second = screen.getByRole("row", { name: /0x58g1fz…104/u });
+    [first, second].forEach((row) => {
+      expect(row.className).toContain("border-t");
+      expect(row.className).toContain("border-white/8");
+    });
+  });
+
+  // This guard used to assert the OPPOSITE — that nothing evened the columns
+  // out — because 929:1056 draws 150px columns on a 174px pitch and an even
+  // share was the shape a tidy-up would drift into. The maintainer then asked
+  // for exactly that, twice, having seen the drawn rhythm leave every value
+  // clustered left with a large empty cell after Time. So the guard is
+  // inverted rather than deleted: the even share is now the decision, and this
+  // test is what stops someone restoring the drawn pitch and calling it a fix.
+  it("shares the width evenly from a wide panel up, and stays fluid below", () => {
+    renderPanel();
+
+    const headers = screen.getAllByRole("columnheader");
+
+    expect(headers.map((h) => h.className.includes("@[672px]:w-1/4"))).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    // Nothing is pinned to the drawn 174px pitch any more.
+    headers.forEach((h) => expect(h.className).not.toMatch(/@\[672px\]:w-\[(?:174|150)px\]/u));
+    headers.slice(0, 3).forEach((h) => expect(h.className).toContain("pr-6"));
+
+    // Below 672px the columns share the width fluidly over a 480px floor:
+    // Player carries a truncated address and needs the larger share there.
+    expect(headers.map((h) => h.className.match(/(?<!:)w-\[\d+%\]/u)?.[0])).toEqual([
+      "w-[38%]",
+      "w-[26%]",
+      "w-[18%]",
+      "w-[18%]",
+    ]);
+    expect(screen.getByRole("table").className).toContain("min-w-[480px]");
   });
 
   it("keeps the table scrollable inside the card rather than widening the page", () => {

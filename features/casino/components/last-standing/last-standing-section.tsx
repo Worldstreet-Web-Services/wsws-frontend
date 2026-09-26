@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useNow, useTranslations } from "next-intl";
 import { useAuthSession } from "@/hooks/use-auth-session";
+import { useSquareAvatar } from "@/hooks/use-square-avatar";
 import { Pager } from "@/components/ui/pager";
 import { QrCode } from "@/components/ui/qr-code";
 import { useMoney } from "@/components/ui/currency-select";
-import { WinnersList } from "@/features/casino/components/last-standing/winners-list";
 import { HowItWorks } from "@/features/casino/components/last-standing/how-it-works";
 import {
   ActivityPanel,
@@ -22,6 +22,7 @@ import {
 } from "@/features/casino/components/last-standing/stage-card";
 import {
   RailActionCard,
+  RailCardFrame,
   RailClaimCard,
   RailInviteCard,
   RailPager,
@@ -31,6 +32,10 @@ import { vaultLog } from "@/features/casino/lib/last-standing/log";
 import {
   detectTier,
   openMiniWindow,
+  closeMiniWindow,
+  isMiniWindowOpen,
+  miniWindowSnapshot,
+  subscribeMiniWindow,
   formatCountdown,
 } from "@/features/casino/components/last-standing/mini-timer";
 import { useCountdown } from "@/features/casino/components/last-standing/use-countdown";
@@ -43,11 +48,17 @@ import { useVaultFeeds } from "@/features/casino/hooks/use-vault-feeds";
 import { rememberRoundLength, secondsUntil } from "@/features/casino/lib/last-standing/clock";
 import { GAME_ASSET, unitsToUsd, usdToUnits } from "@/features/casino/lib/last-standing/stake";
 import { followGame } from "@/features/casino/lib/last-standing/followed-game";
+import { useGameShare } from "@/features/casino/components/last-standing/share-game";
 import {
-  ShareGameButton,
-  useGameShare,
-} from "@/features/casino/components/last-standing/share-game";
-import { GameGoLive } from "@/features/casino/components/broadcast";
+  GameBroadcastProvider,
+  GoLivePanel,
+  isBroadcastOngoing,
+  type BroadcastCopy,
+} from "@/features/casino/components/broadcast";
+import {
+  useGameBroadcast,
+  type GameBroadcastTarget,
+} from "@/features/casino/hooks/use-game-broadcast";
 import type { TokenAmount } from "@/features/casino/lib/vault-api";
 
 // The shape the round visuals below consume, kept local now that the API
@@ -72,6 +83,10 @@ import { activityAmount } from "@/features/casino/lib/last-standing/activity-pay
 import { usePrices } from "@/hooks/use-prices";
 import { usePaged } from "@/hooks/use-paged";
 import { shouldBeginRoundEnd } from "@/features/casino/lib/last-standing/round-end";
+import {
+  currentRoundCount,
+  currentRunActivities,
+} from "@/features/casino/lib/last-standing/rounds";
 import { useLeavePrompt } from "@/features/casino/hooks/use-leave-prompt";
 import { KeepWatchingDialog } from "@/features/casino/components/last-standing/keep-watching-dialog";
 import { truncateAddress } from "@/lib/format";
@@ -132,6 +147,64 @@ const NO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // compiler does not take a handler defined in the component for render work.
 const clockNow = () => Date.now();
 
+// The raised face worn by both controls in the stage card's top-right corner.
+// Reproduced from CHROME_PILL and PILL_SHADOW in
+// components/last-standing/rail-cards.tsx — same gradient angle (179.583deg)
+// and stop positions, same shadow geometry — rather than imported: features
+// share through lib/, not sideways, and those values are that card's own.
+//
+// Two deliberate departures from the rail's pill. The face stays in a dark
+// neutral family instead of going chrome or gold: gold is the primary call to
+// action's, and a corner control must not compete with the button that starts
+// a game. And the lit top edge drops from the rail's 0.95 white to 0.24,
+// because 0.95 over a dark face is a bright seam rather than a highlight.
+// Every colour for these controls is in this one object.
+const CORNER_PILL: React.CSSProperties = {
+  backgroundImage:
+    "linear-gradient(179.583deg, #3d3d42 2.3594%, #313135 38.566%, #26262a 62.387%, #33333a 97.641%)",
+  boxShadow: "inset 0 0.619px 0 rgba(255, 255, 255, 0.24), 0 1.238px 2.477px rgba(0, 0, 0, 0.5)",
+};
+
+/**
+ * One corner control. Both the sound switch and the pop-out switch render
+ * through this, so "exactly like the sound button" is true by construction
+ * rather than by a copy that drifts on the next change.
+ *
+ * Both are toggles that say which state they are in, so both take `pressed`
+ * and expose it as `aria-pressed`: the label alone is the state, and a screen
+ * reader should hear the same thing the eye reads.
+ */
+function CornerPill({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string;
+  pressed: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={pressed}
+      // No border: the lit top edge and the shadow beneath are what say it
+      // stands off the card, and an outline on top of them reads as a painted
+      // pill again.
+      style={CORNER_PILL}
+      className="ws-pressable flex h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-white/85 hover:text-white"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        {children}
+      </svg>
+      {label}
+    </button>
+  );
+}
+
 // Play/pause for the arena's looping background track. The track (and every
 // event cue) is synthesised live with the Web Audio API — no audio file ships
 // or downloads. One switch governs all game audio: pausing the loop also mutes
@@ -150,18 +223,54 @@ function MusicToggle() {
     }
   };
   return (
-    <button
-      type="button"
+    <CornerPill
+      label={playing ? t("soundMute") : t("soundPlay")}
+      pressed={playing}
       onClick={toggle}
-      aria-label={playing ? t("soundMute") : t("soundPlay")}
-      aria-pressed={playing}
-      className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-3 text-[11.5px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        {playing ? <path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z" /> : <path d="M8 5v14l11-7L8 5Z" />}
-      </svg>
-      {playing ? t("soundMute") : t("soundPlay")}
-    </button>
+      {playing ? <path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z" /> : <path d="M8 5v14l11-7L8 5Z" />}
+    </CornerPill>
+  );
+}
+
+/**
+ * Raises the floating clock, or closes it again.
+ *
+ * The pop-out was only ever offered on the way out, by the dialog that catches
+ * a click leaving the arena. That covers navigating to another page of this
+ * app, but not switching browser tabs or apps — and it cannot, because both
+ * picture-in-picture APIs demand a user gesture and looking away is not one.
+ * This is the deliberate way in: the click IS the gesture.
+ *
+ * `followGame` runs first for the same reason it does in that dialog — the
+ * pop-out reads whichever game is followed, and following is otherwise only
+ * set by wagering, so a watcher who never played took an empty clock away.
+ */
+function PopOutToggle({ gameId }: { gameId: number }) {
+  const t = useTranslations("casino.lastStanding");
+  const mini = useSyncExternalStore(subscribeMiniWindow, miniWindowSnapshot, miniWindowSnapshot);
+  const open = isMiniWindowOpen(mini);
+  return (
+    <CornerPill
+      label={open ? t("miniClose") : t("miniOpen")}
+      pressed={open}
+      onClick={() => {
+        if (open) {
+          closeMiniWindow();
+          return;
+        }
+        followGame(gameId);
+        openMiniWindow(detectTier());
+      }}
+    >
+      {open ? (
+        // Closing: a window with an X.
+        <path d="M3 4h18v16H3V4Zm2 4v10h14V8H5Zm3.4 1.6L12 13.2l3.6-3.6 1.4 1.4-3.6 3.6 3.6 3.6-1.4 1.4-3.6-3.6-3.6 3.6-1.4-1.4 3.6-3.6-3.6-3.6 1.4-1.4Z" />
+      ) : (
+        // Opening: the standard arrow leaving a frame.
+        <path d="M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3ZM5 5h5v2H5v12h12v-5h2v7H3V5h2Z" />
+      )}
+    </CornerPill>
   );
 }
 
@@ -201,73 +310,94 @@ function WifiOffIcon({ size = 22 }: { size?: number }) {
 }
 
 /**
+ * The activity table's "when", in the design's short form (844:79535):
+ * "Just now" under a minute, then whole minutes, hours and days, each floored
+ * ("1 min ago", "3 h ago", "2 d ago"). Intl's relativeTime spells the unit out
+ * ("1 minute ago") and says "now", which the design does not, so the wording
+ * comes from the catalogue instead. A timestamp slightly ahead of this
+ * client's clock (skew) reads as "Just now" rather than a negative count.
+ */
+export function shortTimeAgo(
+  then: Date,
+  now: Date,
+  t: (
+    key: "timeJustNow" | "timeMinutesAgo" | "timeHoursAgo" | "timeDaysAgo",
+    values?: { count: number }
+  ) => string
+): string {
+  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  if (!Number.isFinite(seconds) || seconds < 60) return t("timeJustNow");
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return t("timeMinutesAgo", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("timeHoursAgo", { count: hours });
+  return t("timeDaysAgo", { count: Math.floor(hours / 24) });
+}
+
+/**
  * The page's own heading: the trail back to the Arkade, the title, the status
  * pill and the tagline. Split out because the error state below draws the same
  * frame, and a screen that fails to load should still say what it is.
  */
-function PageHeader({
-  pill,
-  children,
-}: {
-  pill: { label: string; live: boolean; ended: boolean };
-  children?: React.ReactNode;
-}) {
+function PageHeader({ pill }: { pill: { label: string; live: boolean; ended: boolean } }) {
   const t = useTranslations("casino.lastStanding");
   const tSections = useTranslations("sections");
 
   return (
     <header>
+      {/* Figma 844:79664: Mona Sans Bold 14, the trail grey and the current
+          page amber in every state, live or not. */}
       <nav
         aria-label={t("title")}
         data-testid="lms-breadcrumb"
-        className="flex items-center gap-1.5 text-[13px] font-semibold"
+        className="flex items-center gap-[0.3em] font-serif text-[14px] leading-none font-bold text-[#8a8a8a]"
       >
-        <Link href="/casino" className="text-white/40 transition-colors hover:text-white/70">
+        <Link href="/casino" className="transition-colors hover:text-white/70">
           {tSections("casino")}
         </Link>
-        <span aria-hidden className="text-white/25">
-          /
-        </span>
-        {/* Amber only while a round is running: the crumb doubles as the first
-            thing that says this page is live. */}
+        <span aria-hidden>/</span>
         <span
           data-testid="lms-crumb-current"
           data-live={String(pill.live)}
           aria-current="page"
-          className={pill.live ? "text-kash" : "text-white"}
+          className="text-[#ffe178]"
         >
           {t("title")}
         </span>
       </nav>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <h1 className="ws-display text-[clamp(28px,4.4vw,40px)] leading-none tracking-[-0.02em] text-white">
+      {/* 24 from the trail to the title (914:83409), 17 from the title to the
+          pill (844:79666), 12 down to the tagline (844:79665). */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-[17px] gap-y-3">
+          {/* Figma 844:79667: Mona Sans Bold 36, leading 1.1, -1.08px (-0.03em).
+              Scales down on a phone and settles at 36 on a desktop. */}
+          <h1 className="font-serif text-[clamp(28px,4.4vw,36px)] leading-[1.1] font-bold tracking-[-0.03em] text-white">
             {t("title")}
           </h1>
+          {/* Figma 844:79668 (Live) and 844:78319 (Ended): one neutral pill.
+              Only the live one carries the static yellow dot. */}
           <span
             data-testid="lms-pill"
-            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-bold ${
-              pill.live
-                ? "border-[#ffe178]/60 text-[#ffe178]"
-                : pill.ended
-                  ? "border-hairline text-white/50"
-                  : "border-hairline text-white/40"
+            data-live={String(pill.live)}
+            className={`inline-flex h-7 shrink-0 items-center gap-2 rounded-full border border-white/30 bg-white/[0.13] font-serif text-[14px] leading-none font-semibold whitespace-nowrap text-[#e0e0e0] ${
+              pill.live ? "pr-[13px] pl-2" : "px-3"
             }`}
           >
-            <span
-              aria-hidden
-              className={`size-1.5 rounded-full ${
-                pill.live ? "animate-pulse bg-[#ffe178]" : "bg-white/30"
-              }`}
-            />
+            {pill.live ? (
+              <span
+                aria-hidden
+                data-testid="lms-pill-dot"
+                className="size-[7.4px] shrink-0 rounded-full bg-[#FBE35C]"
+              />
+            ) : null}
             {pill.label}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-2">{children}</div>
       </div>
 
-      <p className="mt-2 max-w-[60ch] text-[14px] leading-[1.5] font-medium text-white/40">
+      {/* Figma 844:79670: Mona Sans SemiBold 14, grey, leading 1. */}
+      <p className="mt-3 max-w-[60ch] font-serif text-[14px] leading-none font-semibold tracking-[-0.01em] text-[#8a8a8a]">
         {t("tagline")}
       </p>
     </header>
@@ -282,15 +412,28 @@ interface LastStandingSectionProps {
 }
 
 /** Which rail card is on screen. The state decides which of these exist. */
-type RailCardId = "action" | "claim" | "invite";
+type RailCardId = "action" | "claim" | "invite" | "broadcast";
+
+// The copy the broadcast panel needs. It is English while the rest of the page
+// is translated: the panel carries no catalogue yet.
+const BROADCAST_COPY: BroadcastCopy = {
+  subject: "the arena",
+  finishedNotice:
+    "This game has settled. End the broadcast so you are not streaming a finished game.",
+};
 /** Which of the bottom panel's three tabs is open. */
-type PanelTab = "activity" | "rules" | "pastRounds";
+type PanelTab = "activity" | "rules";
 
 export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionProps) {
   const t = useTranslations("casino.lastStanding");
   const { evmAddress: address } = useAuthSession();
+  // One identity across the ecosystem: the picture this player set on Market
+  // Square is their picture here too. Only ever theirs — the backend has no
+  // address-to-avatar mapping yet, so every other player keeps the face drawn
+  // from their address. Null is the ordinary answer (see the hook), which is
+  // why nothing here waits on it or retries: the drawn face is already right.
+  const selfAvatar = useSquareAvatar();
   const money = useMoney();
-  const timeFormat = useFormatter();
   // One "now" for every relative time in the table, refreshed on its own slow
   // interval rather than read during render, which would make the render
   // impure and the output untestable.
@@ -312,12 +455,16 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
     resync: resyncGame,
   } = useVaultGame(gameId);
   // This game's plays and this game's result, not every game's.
-  const { activities, winners, winnersLoading, activitiesLoading } = useVaultFeeds(
-    connected,
-    gameId
-  );
+  const { activities, winners, activitiesLoading } = useVaultFeeds(connected, gameId);
   const { wager, wagering, claim, claiming, settle, settling } = useVaultActions();
   const share = useGameShare(gameId);
+
+  // This game's own rows, narrowed to the run being played: the vault reuses a
+  // game id when the contract is redeployed, so the feed can also hold a
+  // finished game's plays. The round number counts these, and the table shows
+  // them.
+  const runActivities = useMemo(() => currentRunActivities(activities) ?? [], [activities]);
+  const roundCount = useMemo(() => currentRoundCount(activities), [activities]);
 
   // The round visuals below were written against v3's single-game status. v4
   // gives one game at a time instead, so it is mapped here rather than
@@ -370,7 +517,29 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
   const [recentWinUsd, setRecentWinUsd] = useState<number | null>(null);
   // Which bottom tab is open, and which rail card the pager is on.
   const [tab, setTab] = useState<PanelTab>("activity");
-  const [railPage, setRailPage] = useState(0);
+  // Held as the card the player picked, not an index, so a card appearing or
+  // leaving does not slide the rail onto a different one. Tagged with the
+  // round state it was picked in: when the round ends the pick lapses and the
+  // rail opens on the new state's first card, which is claim for a winner.
+  const [railPick, setRailPick] = useState<{ card: RailCardId; roundOver: boolean } | null>(null);
+
+  // The broadcast lives up here rather than inside its panel: whether this
+  // session is streaming decides whether the rail offers the broadcast card
+  // at all once the round is over. The arena is all motion (the countdown,
+  // the pot, the coin flights), so it is published for framerate.
+  const broadcastTarget = useMemo<GameBroadcastTarget>(
+    () => ({
+      game: "last-standing",
+      ref: String(gameId),
+      title: `The Last Man: game ${gameId}`,
+      watchPath: `/casino/last-standing/${gameId}`,
+      descriptionLead: "Live on Ark. Outlast everyone:",
+      content: "motion",
+      creatorApplicationNote: "I play The Last Man on Ark and want to broadcast my games.",
+    }),
+    [gameId]
+  );
+  const broadcast = useGameBroadcast(broadcastTarget);
 
   const reduce = useReducedMotion();
 
@@ -394,7 +563,7 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
   const winnerLabel = revealWinner ? truncateAddress(revealWinner) : null;
 
   // Both feeds page 10 rows at a time so the cards don't grow unbounded.
-  const pagedActivities = usePaged(activities, FEED_PAGE_SIZE);
+  const pagedActivities = usePaged(runActivities, FEED_PAGE_SIZE);
 
   // The balance the player spends from is their own money on the platform. We
   // present everything as plain dollars — the underlying asset (ETH on Base)
@@ -1126,7 +1295,8 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
             : t("stageLeadingOther"),
         value: iAmKing ? `${t("youLabel")} - ${leaderName}` : leaderName,
         isYou: iAmKing,
-        avatarUrl: null,
+        // Theirs when the king is them; anyone else stays the drawn face.
+        avatarUrl: iAmKing ? selfAvatar : null,
         seed: lastPlayer,
       }
     : status
@@ -1142,32 +1312,59 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
         }
       : null;
 
+  // Gold only for THIS wallet: "You" while it leads (#FFD02C) and "Winner" once
+  // it has won (#F7A92F, 844:78328). When another player leads or won, the
+  // design draws the dark outline pill instead — "Leading" at 916:84111 and
+  // "Winner" at 918:86248 (Round Ended). `iAmKing` compares the round's last
+  // player to this wallet, and the last player is the winner once it is over.
   const stageChip: StageChip | null = !hasLeader
     ? null
     : roundOver
-      ? { label: t("chipWinner"), tone: "filled" }
+      ? { label: t("chipWinner"), tone: iAmKing ? "winner" : "other" }
       : iAmKing
-        ? { label: t("chipYou"), tone: "filled" }
-        : { label: t("chipLeading"), tone: "outline" };
+        ? { label: t("chipYou"), tone: "leading" }
+        : { label: t("chipLeading"), tone: "other" };
 
-  const endedCaption = game?.settled ? t("hintSettled") : t("hintEnded");
-  const stageCaption = roundOver
-    ? endedCaption
-    : hasLeader
-      ? t("stageCaptionLive")
-      : t("stageCaptionStart");
+  // No caption once the round is over: the ended (918:84758) and won
+  // (844:77548) stages carry only their heading and the line under it.
+  const stageCaption = roundOver ? "" : hasLeader ? t("stageCaptionLive") : t("stageCaptionStart");
 
   // The rail. A card is listed only when its action can actually be taken, so
   // the pager's length is the state's own answer to "what can I do here".
   const settleable = roundOver && game?.settled !== true;
+  //
+  //   live round:  action, invite, broadcast
+  //   round over:  claim (when there is something to settle or collect),
+  //                invite, and broadcast only while this session is still
+  //                streaming, so a finished game's stream can be ended.
+  const broadcasting = isBroadcastOngoing(broadcast.phase);
   const railCards: RailCardId[] = [];
   if (!roundOver && !!status) railCards.push("action");
-  if (settleable || hasPending) railCards.push("claim");
+  if (roundOver && (settleable || hasPending)) railCards.push("claim");
   // Always: a game is worth sharing whatever state it is in, and the starter
   // earns from everyone who joins through the link.
   railCards.push("invite");
-  const railIndex = Math.min(railPage, railCards.length - 1);
+  // A game is public, so anyone in it can stream it.
+  if (!roundOver || broadcasting) railCards.push("broadcast");
+  const picked =
+    railPick && railPick.roundOver === roundOver && railCards.includes(railPick.card)
+      ? railPick.card
+      : null;
+  const railIndex = picked ? railCards.indexOf(picked) : 0;
   const railCard = railCards[railIndex];
+  // The dots sit inside whichever card is showing, at its foot, as every
+  // frame of the design draws them.
+  const railPager = (
+    <RailPager
+      count={railCards.length}
+      index={railIndex}
+      onSelect={(index) => {
+        const card = railCards[index];
+        if (card) setRailPick({ card, roundOver });
+      }}
+      itemLabel={(index, count) => t("pagerItem", { index: index + 1, count })}
+    />
+  );
 
   // Start or add: the same wager either way. Before the first play it opens
   // the round, which is why the copy changes but the action does not.
@@ -1193,29 +1390,27 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
   // and it has to be exactly undefined: the panel falls through to its own
   // table only when it is handed no body at all, and two JSX children would
   // reach it as an array of nulls that renders to nothing.
-  const panelBody =
-    tab === "rules" ? (
-      <HowItWorks />
-    ) : tab === "pastRounds" ? (
-      <WinnersList winners={winners} loading={winnersLoading} emptyLabel={t("hallEmpty")} />
-    ) : undefined;
+  const panelBody = tab === "rules" ? <HowItWorks /> : undefined;
 
   const rows: ActivityRow[] = pagedActivities.pageItems.map((a) => {
     // A win opened and won by the same wallet shows what that wallet
     // received, not the winner's share alone — see
     // lib/last-standing/activity-payout.
     const shown = activityAmount(a, winners);
+    const mine = isSameAddress(a.address, address);
     return {
       id: a.id,
       address: a.address,
       addressLabel: truncateAddress(a.address),
-      // No wallet-to-profile lookup exists on the square yet, so every face
-      // falls back to the mark derived from the address.
-      avatarUrl: null,
+      // The reader's own rows carry their Market Square picture. No
+      // wallet-to-profile lookup exists on the square yet, so every other face
+      // falls back to the mark derived from the address — when that lookup
+      // lands, this is the line it replaces.
+      avatarUrl: mine ? selfAvatar : null,
       action: a.action === "won" ? t("actionWon") : t("actionPlayed"),
       amount: rawToMoney(shown.raw ?? a.amountWei, shown.decimals),
-      time: timeFormat.relativeTime(new Date(a.createdAt), feedNow),
-      isYou: isSameAddress(a.address, address),
+      time: shortTimeAgo(new Date(a.createdAt), feedNow, t),
+      isYou: mine,
       href: `${EXPLORER_TX_URL}${a.transactionHash}`,
     };
   });
@@ -1257,19 +1452,18 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
         </div>
       ) : null}
 
+      {/* Nothing sits beside the title any more. The rail's invite card carries
+          the share link, so a second Share here was the same offer twice; the
+          pop-out is offered on the way out, where it is actually wanted; and the
+          sound switch has moved into the stage card's top-right corner, opposite
+          the round label. */}
       <PageHeader
         pill={{
           label: gameActive ? t("pillLive") : roundOver ? t("pillEnded") : t("pillNotStarted"),
           live: gameActive,
           ended: roundOver,
         }}
-      >
-        <ShareGameButton gameId={gameId} />
-        {/* No pop-out button: the pop-out is offered on the way out now, where
-            it is actually wanted, and a second way in only made the header
-            busier. */}
-        <MusicToggle />
-      </PageHeader>
+      />
 
       {/* The socket is behind, so nothing on this page is evidence of
           anything. The clock is dimmed and frozen beside this; the banner is
@@ -1300,7 +1494,16 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
         </div>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_295px]">
+      {/* Measured off the design's own page (844:78897), not off the isolated
+          stage component, which is drawn at a width the page never uses: the
+          content row is 1002px, the stage 695px, the rail 295px, 12px apart.
+          So the rail is 29.4% of the row, not a fixed 295px. Pinned at 295px
+          it kept its width while the stage swallowed every pixel a wide
+          monitor added, which is what left the rail's cards — invite, stake,
+          claim — looking shrunken. Held as a share, the two grow together and
+          keep the drawn proportion at any width. The 295px floor keeps the
+          rail readable on a narrow laptop, and below 980px they stack. */}
+      <div className="mt-9 grid grid-cols-1 items-start gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_minmax(295px,29.4%)] min-[980px]:gap-3">
         <div className="flex min-w-0 flex-col gap-3">
           {/* The starter's name for this game, when it has one. Above the
               stage because it says WHICH game you are looking at, and only
@@ -1332,9 +1535,29 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
           ) : (
             <StageCard
               phase={stagePhase}
-              roundLabel={t("roundLabel", { round: gameId })}
+              // The round this game is on, not the game's id. Starting it is
+              // round 1 and every stake after that adds one. Omitted rather
+              // than guessed while the feed is still out: a number here reads
+              // as fact.
+              roundLabel={roundCount === null ? null : t("roundLabel", { round: roundCount })}
+              // Opposite the round label, in the corner the design leaves
+              // empty. The pop-out sits inside the arena's own card rather
+              // than beside the page title, because it carries THIS game's
+              // clock away with the reader.
+              //
+              // It is dropped once the round is over: there is no clock left
+              // to take, which is the same reason `useLeavePrompt` stops
+              // asking then. Sound outlives the round and stays.
+              cornerAction={
+                <>
+                  {roundOver ? null : <PopOutToggle gameId={gameId} />}
+                  <MusicToggle />
+                </>
+              }
               countdown={formatCountdown(gameActive ? countdown : 0)}
               progress={timerPct / 100}
+              // The ring turns red in the last URGENT_SECONDS (10) of a live round.
+              secondsLeft={gameActive ? countdown : 0}
               caption={stageCaption}
               heading={iAmWinner ? t("stageWonTitle") : t("stageEndedTitle")}
               subheading={
@@ -1438,6 +1661,7 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                     busy: wagering,
                   }}
                   ctaRef={playBtnRef}
+                  footer={railPager}
                 />
               ) : null}
 
@@ -1481,12 +1705,17 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                           busy: claiming,
                         }
                   }
+                  footer={railPager}
                 />
               ) : null}
 
               {railCard === "invite" ? (
                 <RailInviteCard
-                  badge={{ label: t("railInviteBadge"), tone: "waiting", dot: false }}
+                  // "You earn 10%" is the design's own chip (B6) — a borderless
+                  // pill on rgba(255,255,255,0.04) — not a status pill. It used
+                  // to ship through the status-pill prop, which drew it with a
+                  // border at 8.494px.
+                  chip={t("railInviteBadge")}
                   heading={t("railInviteHeading")}
                   sub={t("railInviteBody")}
                   // The card supplies the white tile, so the code goes in bare.
@@ -1496,39 +1725,32 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
                     label: share.copied ? t("shareCopied") : t("railShareCta"),
                     onPress: () => void share.share(),
                   }}
+                  footer={railPager}
                 />
+              ) : null}
+
+              {/* Broadcast to Market Square. No frame of the design draws it,
+                  so it wears the rail's own shell and heading, and the panel
+                  goes in bare so there is one card edge, not two. */}
+              {railCard === "broadcast" ? (
+                <RailCardFrame label={t("railBroadcastHeading")} footer={railPager}>
+                  <div data-rail-card="broadcast">
+                    <GameBroadcastProvider broadcast={broadcast} copy={BROADCAST_COPY}>
+                      <GoLivePanel
+                        variant="bare"
+                        activityOver={game?.settled === true}
+                        header={
+                          <h3 className="ws-display text-[24px] leading-none tracking-[-0.96px] text-[#f4f4f4]">
+                            {t("railBroadcastHeading")}
+                          </h3>
+                        }
+                      />
+                    </GameBroadcastProvider>
+                  </div>
+                </RailCardFrame>
               ) : null}
             </div>
           </div>
-
-          <RailPager
-            count={railCards.length}
-            index={railIndex}
-            onSelect={setRailPage}
-            itemLabel={(index, count) => t("pagerItem", { index: index + 1, count })}
-          />
-
-          {/* A game is public, so anyone in it can stream it. The arena is all
-              motion (the countdown, the pot, the coin flights), so it is
-              published for framerate. The copy here is English while the rest
-              of the page is translated: the panel carries no catalogue yet. */}
-          <GameGoLive
-            target={{
-              game: "last-standing",
-              ref: String(gameId),
-              title: `The Last Man: game ${gameId}`,
-              watchPath: `/casino/last-standing/${gameId}`,
-              descriptionLead: "Live on Ark. Outlast everyone:",
-              content: "motion",
-              creatorApplicationNote: "I play The Last Man on Ark and want to broadcast my games.",
-            }}
-            copy={{
-              subject: "the arena",
-              finishedNotice:
-                "This game has settled. End the broadcast so you are not streaming a finished game.",
-            }}
-            activityOver={game?.settled === true}
-          />
         </div>
       </div>
 
@@ -1537,7 +1759,6 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
           tabs={[
             { id: "activity", label: t("tabActivity") },
             { id: "rules", label: t("tabRules") },
-            { id: "pastRounds", label: t("tabPastRounds") },
           ]}
           activeTab={tab}
           onTabChange={(id) => setTab(id as PanelTab)}

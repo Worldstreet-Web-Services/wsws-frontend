@@ -38,18 +38,15 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Transfer failed";
 }
 
-// The old wallet's EIP-1193 provider, typed loosely: viem's request type is
-// keyed to its own RPC schema, and the calls here carry plain hex fields.
-type Rpc = (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-
 /**
  * A chain with no sponsorship: the old wallet pays its own gas out of the
- * native balance it holds, one plain transaction per asset. Tokens go first,
- * each confirmed before the next so the native balance below is read after
- * their fees have come out; then the native coin, with the fee cap set
- * explicitly and the value set to balance minus gas times that cap — the one
- * shape the node's balance check accepts for sending everything. Nothing here
- * is atomic and nothing needs to be: each transfer is its own outcome.
+ * native balance it holds, one plain transaction per asset through Privy's
+ * own send. Tokens go first, each confirmed before the next so the native
+ * balance below is read after their fees have come out; then the native
+ * coin, with the fee cap set explicitly and the value set to balance minus
+ * gas times that cap — the one shape the node's balance check accepts for
+ * sending everything. Nothing here is atomic and nothing needs to be: each
+ * transfer is its own outcome.
  */
 async function sweepUserPaid(
   chain: ChainSweep,
@@ -59,20 +56,14 @@ async function sweepUserPaid(
   signer: LegacySigner,
   outcomes: Map<string, SettleOutcome>
 ): Promise<void> {
-  const failAll = (error: string, retryable = true) => {
-    for (const asset of chain.assets) outcomes.set(asset.id, { ok: false, error, retryable });
-  };
-
-  let rpc: Rpc;
   try {
-    const provider = await signer.getEthereumProvider();
-    rpc = provider.request as unknown as Rpc;
-    await rpc({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: numberToHex(chainId) }],
-    });
+    // Privy's own switch first: a send names its chain, but the wallet
+    // object is bound to a current one and a mismatch is refused.
+    await signer.switchChain(chainId);
   } catch (error) {
-    failAll(errorMessage(error));
+    for (const asset of chain.assets) {
+      outcomes.set(asset.id, { ok: false, error: errorMessage(error), retryable: true });
+    }
     return;
   }
   const client = publicClientForChain(chainId);
@@ -80,12 +71,11 @@ async function sweepUserPaid(
   for (const asset of chain.assets) {
     try {
       if (asset.tokenAddress !== null) {
-        const hash = (await rpc({
-          method: "eth_sendTransaction",
-          params: [
-            { from, to: asset.tokenAddress, data: encodeErc20Transfer(destination, asset.amount) },
-          ],
-        })) as string;
+        const hash = await signer.sendTransaction({
+          chainId,
+          to: asset.tokenAddress,
+          data: encodeErc20Transfer(destination, asset.amount),
+        });
         await awaitReceipt(client, hash, `Moving ${asset.symbol}`);
         outcomes.set(asset.id, { ok: true, txHashes: [hash] });
         continue;
@@ -104,19 +94,18 @@ async function sweepUserPaid(
         });
         continue;
       }
-      const tx = {
-        from,
+      const hash = await signer.sendTransaction({
+        chainId,
         to: destination,
         value: numberToHex(amount),
-        gas: numberToHex(fee.gas),
+        gasLimit: numberToHex(fee.gas),
         ...(fee.eip1559
           ? {
               maxFeePerGas: numberToHex(fee.maxFeePerGas),
               maxPriorityFeePerGas: numberToHex(fee.maxPriorityFeePerGas),
             }
           : { gasPrice: numberToHex(fee.maxFeePerGas) }),
-      };
-      const hash = (await rpc({ method: "eth_sendTransaction", params: [tx] })) as string;
+      });
       await awaitReceipt(client, hash, `Moving ${asset.symbol}`);
       outcomes.set(asset.id, { ok: true, txHashes: [hash] });
     } catch (error) {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChainSweep, SweepAsset } from "@/features/migrate/lib/plan";
-import type { LegacySigner } from "@/lib/migration/types";
+import type { LegacyEvmTransaction, LegacySigner } from "@/lib/migration/types";
 
 // The user-paid leg: a chain with no sponsorship (HyperEVM), the old wallet
 // paying its own gas. The provider, the read client and the fee measurement
@@ -50,16 +50,18 @@ function asset(
   };
 }
 
-type Request = (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+type Send = (tx: LegacyEvmTransaction) => Promise<string>;
 
-function signer(request: Request): LegacySigner {
+function signer(sendTransaction: Send, switchChain = vi.fn(async () => {})): LegacySigner {
   return {
     addresses: { evm: OLD, solana: null },
+    switchChain,
+    sendTransaction,
     sendBatch: vi.fn(async () => {
       throw new Error("must not be used on a user-paid chain");
     }),
     sendToken: vi.fn(),
-    getEthereumProvider: async () => ({ request }),
+    getEthereumProvider: vi.fn(),
   } as unknown as LegacySigner;
 }
 
@@ -79,13 +81,12 @@ beforeEach(() => {
 
 describe("runSweep on a user-paid chain", () => {
   it("switches the old wallet to the chain, sends each token, then the native coin minus the exact fee", async () => {
-    const calls: Array<{ method: string; params?: unknown[] }> = [];
-    let sends = 0;
-    const request: Request = async (args) => {
-      calls.push(args);
-      return args.method === "eth_sendTransaction" ? `0xhash${++sends}` : null;
+    const calls: LegacyEvmTransaction[] = [];
+    const send: Send = async (tx) => {
+      calls.push(tx);
+      return `0xhash${calls.length}`;
     };
-    const s = signer(request);
+    const s = signer(send);
 
     const out = await runSweep([chain], { evm: NEW, solana: null }, s);
 
@@ -93,22 +94,16 @@ describe("runSweep on a user-paid chain", () => {
     expect(out.get("hype")).toEqual({ ok: true, txHashes: ["0xhash2"] });
     expect(s.sendBatch).not.toHaveBeenCalled();
 
-    const [switchCall, tokenCall, nativeCall] = calls;
-    expect(switchCall).toEqual({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x3e7" }],
-    });
-    expect((tokenCall.params as Array<Record<string, unknown>>)[0]).toMatchObject({
-      from: OLD,
-      to: USDT0,
-    });
+    expect(s.switchChain).toHaveBeenCalledWith(999);
+    const [tokenCall, nativeCall] = calls;
+    expect(tokenCall).toMatchObject({ chainId: 999, to: USDT0 });
     // Everything, minus gas * the cap the transaction itself carries.
     const expectedValue = balance.current - fee.feeWei;
-    expect((nativeCall.params as unknown[])[0]).toEqual({
-      from: OLD,
+    expect(nativeCall).toEqual({
+      chainId: 999,
       to: NEW,
       value: `0x${expectedValue.toString(16)}`,
-      gas: "0x5208",
+      gasLimit: "0x5208",
       maxFeePerGas: `0x${fee.maxFeePerGas.toString(16)}`,
       maxPriorityFeePerGas: "0x1",
     });
@@ -119,12 +114,12 @@ describe("runSweep on a user-paid chain", () => {
   it("refuses the native send, retryably, when the balance cannot cover the fee — and still moves the tokens", async () => {
     balance.current = fee.feeWei - 1n;
     const sent: string[] = [];
-    const request: Request = async ({ method }) => {
-      if (method === "eth_sendTransaction") sent.push(method);
-      return method === "eth_sendTransaction" ? "0xtok" : null;
+    const send: Send = async (tx) => {
+      sent.push(tx.to);
+      return "0xtok";
     };
 
-    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(request));
+    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(send));
 
     expect(out.get("usdt0")?.ok).toBe(true);
     expect(out.get("hype")).toMatchObject({
@@ -137,13 +132,15 @@ describe("runSweep on a user-paid chain", () => {
 
   it("fails every asset on the chain, retryably, when the wallet cannot be switched to it", async () => {
     let sent = 0;
-    const request: Request = async ({ method }) => {
-      if (method === "wallet_switchEthereumChain") throw new Error("Unsupported chain");
-      if (method === "eth_sendTransaction") sent++;
+    const send: Send = async () => {
+      sent++;
       return "0x";
     };
 
-    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(request));
+    const refuse = vi.fn(async () => {
+      throw new Error("Unsupported chain");
+    });
+    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(send, refuse));
 
     expect(out.get("usdt0")).toMatchObject({
       ok: false,
@@ -155,14 +152,12 @@ describe("runSweep on a user-paid chain", () => {
   });
 
   it("fails one token that reverts and carries on to the rest", async () => {
-    const request: Request = async ({ method, params }) => {
-      if (method !== "eth_sendTransaction") return null;
-      const tx = (params as Array<{ to: string }>)[0];
+    const send: Send = async (tx) => {
       if (tx.to === USDT0) throw new Error("token is paused");
       return "0xnative";
     };
 
-    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(request));
+    const out = await runSweep([chain], { evm: NEW, solana: null }, signer(send));
 
     expect(out.get("usdt0")).toMatchObject({
       ok: false,

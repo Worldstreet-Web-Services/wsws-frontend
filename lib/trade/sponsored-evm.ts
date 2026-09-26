@@ -129,6 +129,17 @@ export function canSponsorEvmChainId(chainId: number): boolean {
   return !!config && config.gasPolicy && config.supportsReceiptPolling;
 }
 
+// A chain the wallet can send on by paying its own gas: readable (a viem
+// chain, so receipts can be polled) but with no sponsorship. HyperEVM and
+// ApeChain are the standing examples — pre-Prague chains with no EIP-7702, so
+// the sponsored path cannot exist there and sells already go user-paid. The
+// migration sweeps these the same way: tokens first, then the native coin
+// minus the measured fee.
+export function isUserPaidEvmNetwork(network: string): boolean {
+  const config = BY_NETWORK.get(network);
+  return !!config && config.supportsReceiptPolling && !config.gasPolicy;
+}
+
 // Whether a send on this network costs the wallet nothing. Solana sits outside
 // the EVM registry but is sponsored all the same, and every caller deciding
 // "does this wallet need its own gas" wants both halves of that answer.

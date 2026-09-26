@@ -76,6 +76,9 @@ const LEGACY_EVM_NETWORKS = EVM_NETWORKS.filter(isSponsoredEvmNetwork);
 // A balance below this is a rounding remnant we never ask the catalogue about
 // (the same floor as DUST_MIN_BALANCE in features/migrate/lib/plan.ts).
 const LEGACY_MIN_BALANCE = 1e-6;
+// Held Solana mints neither price feed knows, admitted to the old-wallet read
+// anyway (see the legacy scope below). Each becomes one sponsored transaction.
+const LEGACY_UNPRICED_SOLANA_MINTS = 25;
 
 // ── Discovering what a wallet actually holds ─────────────────────────────────
 //
@@ -848,6 +851,32 @@ export async function fetchPortfolio(
             // The normaliser reads a catalogue price from here when Alchemy
             // has none; the logo slot stays empty and Alchemy's is used.
             if (!meme.has(lower)) meme.set(lower, { logo: null, priceUsd });
+          }
+          // A mint neither feed prices is still the user's, and the Solana
+          // leg can send any mint. A price gate here meant a held token with
+          // a thin market (PRCL, seen live) never even appeared in the review,
+          // let alone moved. Admit it unpriced — the review shows "Valuation
+          // unavailable" and the sweep moves it; it just contributes nothing
+          // to the value totals. Capped, because an old wallet can carry
+          // hundreds of airdropped spam mints and each is a sponsored
+          // transaction; the ones with the largest balances first, which is
+          // the best guess at "the ones the person actually owns".
+          const stillUnpriced = unpricedMints
+            .filter((mint) => !second.has(mint))
+            .map((mint) => ({
+              mint,
+              raw: toRawUnits(
+                tokensFromBatches.find(
+                  (t) => t.network === SOLANA_NETWORK && t.tokenAddress === mint
+                )?.tokenBalance ?? "0"
+              ),
+            }))
+            .sort((a, b) => (a.raw < b.raw ? 1 : a.raw > b.raw ? -1 : 0))
+            .slice(0, LEGACY_UNPRICED_SOLANA_MINTS);
+          for (const { mint } of stillUnpriced) {
+            const lower = mint.toLowerCase();
+            buyableSolana.add(lower);
+            if (!meme.has(lower)) meme.set(lower, { logo: null, priceUsd: null });
           }
         }
       }

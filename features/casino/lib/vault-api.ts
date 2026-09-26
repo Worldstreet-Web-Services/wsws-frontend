@@ -44,6 +44,22 @@ export interface TokenAmount {
 // the clock is derived from it rather than counted down from a snapshot.
 export interface VaultGame {
   gameId: number;
+  /**
+   * The starter's own name for the game, and an optional description. Both
+   * cosmetic, both absent on every game started before naming shipped, and
+   * both other people's text: rendered, never interpreted.
+   */
+  title?: string;
+  description?: string;
+  /**
+   * The starter chose to keep this game off the lobby. Served on every row
+   * since the v5.1 privacy upgrade; games started before it read false, which
+   * is what those games always were.
+   *
+   * It is NOT access control. Anyone holding a game id can still join, and the
+   * vault says so plainly. It decides listing, nothing else.
+   */
+  isPrivate: boolean;
   starter: string;
   king: string;
   pot: TokenAmount;
@@ -251,6 +267,49 @@ export async function registerVaultTransaction(hash: string): Promise<void> {
   }
 }
 
+/**
+ * Names a game. Keyed on the transaction hash, because the contract assigns
+ * the gameId only when the transaction mines.
+ *
+ * Cosmetic and non-fatal, like registerVaultTransaction above: the player has
+ * already paid and the game is already open, so a refused name leaves a game
+ * called "Game 246" rather than a game that failed. The failure is logged, not
+ * silenced.
+ */
+export async function submitGameMetadata(input: {
+  txHash: string;
+  title: string;
+  description?: string;
+  signature: string;
+  timestamp: number;
+  /**
+   * The address that signed. Required: the vault recovers an address from the
+   * signature and compares it to this one, because a wrong message recovers a
+   * DIFFERENT address rather than failing. Omitting it refused every
+   * submission as a mismatch, silently, since naming is fire and forget.
+   */
+  signer: string;
+}): Promise<boolean> {
+  try {
+    await vault.publicPost("/games/metadata", {
+      txHash: input.txHash,
+      title: input.title,
+      ...(input.description ? { description: input.description } : {}),
+      signer: input.signer,
+      signature: input.signature,
+      timestamp: input.timestamp,
+    });
+    vaultLog("REST POST /games/metadata", { txHash: input.txHash });
+    return true;
+  } catch (error) {
+    vaultLog("REST POST /games/metadata failed", {
+      txHash: input.txHash,
+      error: String(error),
+    });
+    return false;
+  }
+}
+
 export async function fetchVaultWinners(): Promise<VaultWinner[]> {
   const data = await vault.get<{ winners: unknown }>("/game/winners");
   const rows = onlyVaultWinners(data.winners);
@@ -286,5 +345,27 @@ export async function fetchVaultActivities(): Promise<VaultActivity[]> {
     console.warn(`[vault] dropped ${total - rows.length} /game/activities row(s) not in shape`);
   }
   vaultLog("REST /game/activities", { rows: rows.length });
+  return rows;
+}
+
+/**
+ * One game's own feed, which is every row that game ever had.
+ *
+ * The cross-game `/game/activities` above is a recent-activity strip and is
+ * capped: it answered with 25 rows spanning 12 games, two per game. Filtering
+ * that down to one game gives a truncated feed, which is fine for a ticker and
+ * wrong for anything that counts, so a game's own page reads this instead and
+ * the lobby keeps the cheap global one.
+ */
+export async function fetchVaultGameActivities(gameId: number): Promise<VaultActivity[]> {
+  const data = await vault.get<{ activities: unknown }>(`/games/${gameId}/activities`);
+  const rows = onlyVaultActivities(data.activities);
+  const total = Array.isArray(data.activities) ? data.activities.length : 0;
+  if (rows.length !== total) {
+    console.warn(
+      `[vault] dropped ${total - rows.length} /games/${gameId}/activities row(s) not in shape`
+    );
+  }
+  vaultLog(`REST /games/${gameId}/activities`, { rows: rows.length });
   return rows;
 }

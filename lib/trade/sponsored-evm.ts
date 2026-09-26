@@ -1,5 +1,7 @@
 import { defineChain, type Chain } from "viem";
-import * as viemChains from "viem/chains";
+// Named imports of the registry's chains, never the whole catalogue — see the
+// generator. A wildcard import here once put 130 kB on every signed-in route.
+import { REGISTRY_CHAINS as viemChains } from "@/lib/trade/registry-chains";
 import sponsoredEvmRegistry from "@/config/alchemy-bso-evm-networks.json";
 
 export interface SponsoredEvmChainConfig {

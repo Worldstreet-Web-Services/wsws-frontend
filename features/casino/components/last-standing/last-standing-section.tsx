@@ -1575,12 +1575,23 @@ export function LastStandingSection({ gameId, onAddFunds }: LastStandingSectionP
               when present: the number is already in the page title, so an
               unnamed game loses nothing by leaving this out. Carried over
               from the naming change (#569), which landed while this redesign
-              was in flight. */}
+              was in flight.
+
+              The description is one clamped line, taken from main (#573): the
+              starter's own words are worth showing, two lines of them on a
+              sixty-second page are not. Main made that call against its own
+              header, where the name rode the prize-pool eyebrow inline; that
+              eyebrow is gone here and the name is a heading of its own, but
+              the reason is about what the page is FOR, not how its header is
+              shaped, so it holds either way. The type is main's exactly rather
+              than re-tuned to sit under a larger heading — the two files
+              should keep converging, and a 0.5px and 5% difference is not
+              worth the next conflict. */}
           {game?.title ? (
             <div>
               <h1 className="ws-display truncate text-[17px] tracking-[-0.01em]">{game.title}</h1>
               {game.description ? (
-                <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.45] font-normal text-white/50">
+                <p className="mt-1 line-clamp-1 text-[12px] leading-[1.35] font-normal text-white/45">
                   {game.description}
                 </p>
               ) : null}

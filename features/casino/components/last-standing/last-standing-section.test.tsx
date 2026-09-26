@@ -85,6 +85,10 @@ function makeGame(over: Partial<VaultGame> = {}): VaultGame {
     timeRemaining: 600,
     settled: false,
     active: true,
+    // Public by default. `isPrivate` arrived on the merge from main (#573,
+    // real private games) and is required, so the fixture has to state it;
+    // nothing in this file turns on it.
+    isPrivate: false,
     ...over,
   };
 }

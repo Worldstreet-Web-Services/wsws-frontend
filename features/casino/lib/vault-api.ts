@@ -51,6 +51,15 @@ export interface VaultGame {
    */
   title?: string;
   description?: string;
+  /**
+   * The starter chose to keep this game off the lobby. Served on every row
+   * since the v5.1 privacy upgrade; games started before it read false, which
+   * is what those games always were.
+   *
+   * It is NOT access control. Anyone holding a game id can still join, and the
+   * vault says so plainly. It decides listing, nothing else.
+   */
+  isPrivate: boolean;
   starter: string;
   king: string;
   pot: TokenAmount;
@@ -273,12 +282,20 @@ export async function submitGameMetadata(input: {
   description?: string;
   signature: string;
   timestamp: number;
+  /**
+   * The address that signed. Required: the vault recovers an address from the
+   * signature and compares it to this one, because a wrong message recovers a
+   * DIFFERENT address rather than failing. Omitting it refused every
+   * submission as a mismatch, silently, since naming is fire and forget.
+   */
+  signer: string;
 }): Promise<boolean> {
   try {
     await vault.publicPost("/games/metadata", {
       txHash: input.txHash,
       title: input.title,
       ...(input.description ? { description: input.description } : {}),
+      signer: input.signer,
       signature: input.signature,
       timestamp: input.timestamp,
     });

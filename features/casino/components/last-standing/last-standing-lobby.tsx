@@ -13,11 +13,9 @@ import { useVaultLobby } from "@/features/casino/hooks/use-vault-lobby";
 import { GameCard } from "@/features/casino/components/last-standing/game-card";
 import { StartGameSheet } from "@/features/casino/components/last-standing/start-game-sheet";
 import { LAST_MAN_START_LIVE } from "@/features/casino/lib/last-standing/start-gate";
-import {
-  canStartPublic,
-  lobbyGames,
-  privateGameIds,
-} from "@/features/casino/lib/last-standing/visibility";
+import { privateGameIds } from "@/features/casino/lib/last-standing/visibility";
+import { publicGames } from "@/features/casino/lib/vault-game";
+import type { VaultGame } from "@/features/casino/lib/vault-api";
 import { usePayoutRefresh } from "@/features/casino/hooks/use-payout-refresh";
 import { LeaderboardBoard } from "@/features/casino/components/last-standing/leaderboard-board";
 import { HowItWorks } from "@/features/casino/components/last-standing/how-it-works";
@@ -53,14 +51,7 @@ export function LastStandingLobby() {
   // re-renders on every socket tick, and this reads localStorage and parses
   // JSON. The store only changes when this browser starts a private game,
   // which refreshes the list too, so the list is a sound trigger.
-  const { games, lobbySlotFree } = useMemo(() => {
-    const hidden = privateGameIds();
-    return {
-      // The lobby holds one slot. Everything else running is link-only.
-      games: lobbyGames(allGames, hidden),
-      lobbySlotFree: canStartPublic(allGames, hidden),
-    };
-  }, [allGames]);
+  const games = useMemo(() => publicGames(allGames, privateGameIds()), [allGames]);
 
   const [startOpen, setStartOpen] = useState(false);
   // Every settled game, for the history. The same feed the game pages scope
@@ -143,7 +134,7 @@ export function LastStandingLobby() {
                 width it sits under the type instead of beside it. */}
             <div
               aria-hidden
-              className="pointer-events-none absolute top-1/2 right-[-6%] hidden h-[230px] w-[230px] -translate-y-1/2 rotate-[13.21deg] sm:block"
+              className="pointer-events-none absolute top-1/2 right-[-2%] hidden h-[170px] w-[170px] -translate-y-1/2 rotate-[13.21deg] sm:block"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -163,29 +154,44 @@ export function LastStandingLobby() {
               />
             </div>
 
-            <div className="relative z-[1] flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
-              <div className="max-w-[30ch] min-w-0 sm:max-w-[34ch]">
+            <div className="relative z-[1] flex flex-col gap-3.5 px-5 py-5 sm:px-7 sm:py-6">
+              <div className="max-w-[46ch] min-w-0">
                 {/* The wordmark, lettered in the poster's gold-to-bark ink so
-                    the two read as one identity. One name over two lines, so a
-                    reader hears "The Last Man" rather than two fragments. */}
-                <h1>
-                  <span
-                    className={`block -rotate-[1.72deg] font-serif text-[22px] leading-[1.05] font-semibold tracking-[-1.4px] sm:text-[30px] sm:tracking-[-2.2px] ${LAST_MAN_INK}`}
-                  >
-                    {t("heroLead")}
-                  </span>
-                  <span
-                    className={`ws-chewy mt-[2px] block text-[34px] leading-[1.05] tracking-[-0.53px] sm:text-[46px] ${LAST_MAN_INK}`}
-                  >
-                    {t("heroName")}
-                  </span>
+                    the two read as one identity. */}
+                <h1
+                  className={`ws-chewy text-[30px] leading-[1] tracking-[-0.53px] sm:text-[38px] ${LAST_MAN_INK}`}
+                >
+                  {t("heroName")}
                 </h1>
-                {/* Ink rather than white: the ground is bright, and white text
-                    on this yellow fails contrast at every size. */}
-                <p className="mt-2.5 text-[13px] leading-[1.5] font-medium text-[#4a2f00]/85">
-                  {t("howIntro")}
+                {/* The pitch that used to sit in a card of its own below. One
+                    banner rather than two stacked, which is what kept the top
+                    of the lobby to a screenful. Ink rather than white: the
+                    ground is bright and white fails contrast at every size. */}
+                <p className="mt-2 text-[14px] leading-[1.35] font-bold text-[#3a2400]">
+                  {t("starterPitchTitle")}
+                </p>
+                <p className="mt-1 text-[12.5px] leading-[1.45] font-medium text-[#4a2f00]/80">
+                  {t("starterPitchBody")}
                 </p>
               </div>
+
+              {/* The button on the gold: the card's own ink, so it reads as
+                  the one thing to press rather than a third pale pill among
+                  the facts. Hidden until the list has loaded, or a stale empty
+                  frame would promise a public game the slot forbids. */}
+              {LAST_MAN_START_LIVE && !gamesLoading && !gamesError ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setStartOpen(true)}
+                    className="ws-pressable cursor-pointer rounded-full bg-[#2a1a00] px-5 py-2.5 text-[13.5px] font-semibold text-[#ffd52d] transition-colors hover:bg-[#3a2400]"
+                  >
+                    {defaultEntry === null
+                      ? t("startTitle")
+                      : t("startCtaShort", { amount: defaultEntry })}
+                  </button>
+                </div>
+              ) : null}
 
               {/* The facts and the live state. On the gold they are dark glass
                   rather than the white-on-dark pills the old card used. */}
@@ -215,31 +221,6 @@ export function LastStandingLobby() {
             </div>
           </div>
 
-          {/* Starting is always on offer now: only a PUBLIC game competes for
-              the lobby's single slot, so a taken slot changes what the button
-              opens rather than whether it exists. The list must have loaded
-              first, or a stale empty frame would promise a public game that
-              the slot forbids. */}
-          {LAST_MAN_START_LIVE && !gamesLoading && !gamesError ? (
-            <div className="ws-inset mt-5 px-4 py-4">
-              <div className="ws-display text-[17px] tracking-[-0.01em]">
-                {lobbySlotFree ? t("starterPitchTitle") : t("starterPitchTitlePrivate")}
-              </div>
-              <p className="mt-1.5 text-[13px] leading-relaxed font-normal text-white/60">
-                {lobbySlotFree ? t("starterPitchBody") : t("starterPitchBodyPrivate")}
-              </p>
-              <button
-                type="button"
-                onClick={() => setStartOpen(true)}
-                className="bg-accent mt-3.5 cursor-pointer rounded-[12px] px-5 py-2.5 text-[13.5px] font-semibold text-black"
-              >
-                {defaultEntry === null
-                  ? t("startTitle")
-                  : t("startCtaShort", { amount: defaultEntry })}
-              </button>
-            </div>
-          ) : null}
-
           <div className="mt-7 flex items-center justify-between">
             <Eyebrow>{t("liveGames")}</Eyebrow>
             {games.length > 0 ? (
@@ -255,14 +236,18 @@ export function LastStandingLobby() {
             </p>
           ) : null}
 
-          <div className="mt-3 flex flex-col gap-2">
+          {/* One game to a row on a phone, three across from lg up. A single
+              live game used to stretch the full width of a desk, which made
+              one row look like a page. The states below span every column:
+              an error or an empty lobby is about the whole list, not a cell. */}
+          <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
             {gamesLoading ? (
               // Fixed-height skeletons so the list does not jump when they resolve.
               Array.from({ length: 3 }, (_, i) => (
                 <div key={i} className="ws-inset h-[86px] animate-pulse bg-white/[0.03]" />
               ))
             ) : gamesError ? (
-              <div className="ws-inset px-4 py-6 text-center">
+              <div className="ws-inset px-4 py-6 text-center lg:col-span-3">
                 <p className="text-[13.5px] font-normal text-white/60">{t("lobbyError")}</p>
                 <button
                   type="button"
@@ -273,14 +258,14 @@ export function LastStandingLobby() {
                 </button>
               </div>
             ) : games.length === 0 ? (
-              <div className="ws-inset px-4 py-8 text-center">
+              <div className="ws-inset px-4 py-8 text-center lg:col-span-3">
                 <p className="text-[14px] font-medium text-white">{t("lobbyEmptyTitle")}</p>
                 <p className="mt-1.5 text-[13px] leading-relaxed font-normal text-white/55">
                   {t("lobbyEmptyBody")}
                 </p>
               </div>
             ) : (
-              games.map((game) => (
+              games.map((game: VaultGame) => (
                 <GameCard key={game.gameId} game={game} address={address} formatUsd={formatUsd} />
               ))
             )}
@@ -312,11 +297,6 @@ export function LastStandingLobby() {
 
       <ModalShell open={startOpen} onClose={() => setStartOpen(false)}>
         <StartGameSheet
-          canStartPublic={lobbySlotFree}
-          ensureCanStart={async () => {
-            const fresh = await refetchGames();
-            return canStartPublic(fresh.data ?? [], privateGameIds());
-          }}
           onClose={() => setStartOpen(false)}
           onStarted={resync}
           formatUsd={formatUsd}

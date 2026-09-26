@@ -784,6 +784,7 @@
     "addPasskey": "Añade una passkey para entrar más rápido",
     "inviteFriends": "Invitar amigos",
     "helpSupport": "Ayuda y soporte",
+    "shine": "Shine",
     "signOut": "Cerrar sesión",
     "wallets": "Carteras",
     "addingPasskey": "Adding a passkey…",
@@ -1550,7 +1551,10 @@
     "colFunding": "Financiación",
     "colVolume": "Volumen",
     "colOpenInterest": "Interés abierto",
-    "tryAgain": "Intentar de nuevo"
+    "tryAgain": "Intentar de nuevo",
+    "ifTakeProfitHits": "Si se alcanza el take profit",
+    "ifStopLossHits": "Si se alcanza el stop loss",
+    "rewardRisk": "Recompensa / riesgo"
   },
   "perpsFunds": {
     "topUpTitle": "Recargar",
@@ -2122,6 +2126,7 @@
       "startConfirming": "Confirmando en Base…",
       "startCta": "Iniciar por {amount}",
       "toastGameStarted": "Tu partida está en marcha",
+      "toastRoundContinued": "La ronda sigue en marcha.",
       "toastStartFailed": "No se pudo iniciar la partida",
       "startFloorUnavailable": "No se pudo contactar el contrato, así que no podemos calcular la apuesta ahora.",
       "startNeedsBalance": "Necesitas al menos {amount} en tu saldo para empezar una partida.",
@@ -2137,6 +2142,7 @@
       "shareTitle": "Partida #{gameId}",
       "shareText": "Entra en mi partida. El último en pie se lleva el bote.",
       "potLabel": "Bote",
+      "liveNow": "En vivo",
       "startedBy": "Iniciada por {who}",
       "you": "ti",
       "startBlockedLiveTitle": "Hay una partida en vivo",
@@ -3181,6 +3187,7 @@
     "activity": "Actividad",
     "empty": "Aún no hay notificaciones.",
     "error": "No pudimos cargar tus notificaciones.",
+    "partial": "Algunas notificaciones no se pudieron cargar.",
     "retry": "Reintentar",
     "markAllRead": "Marcar todo como leído",
     "loadMore": "Ver anteriores",
@@ -3872,6 +3879,22 @@
     "saveFailed": "No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.",
     "readFailed": "No se pudo cargar tu ajuste de Shine.",
     "retry": "Reintentar",
+    "settingsTitle": "Shine",
+    "settingsIntro": "Cuando Shine está activado en una sección, cada cosa que haces allí se publica sola en Market Square. Las publicaciones nunca incluyen tus importes ni tus saldos.",
+    "allLabel": "Shine en todo",
+    "allOn": "Activado en todo",
+    "allOff": "Desactivado en todo",
+    "allMixed": "Activado en algunas secciones",
+    "menuEntry": "Shine",
+    "services": {
+      "memecoin": "Memecoins",
+      "spot": "Spot",
+      "rwa": "Activos reales",
+      "prediction": "Predicción",
+      "perps": "Perpetuos",
+      "arcade": "Arkade",
+      "sports": "Deportes"
+    },
     "post": {
       "memecoin": {
         "buy": "Me metí de cabeza en {symbol}.",
